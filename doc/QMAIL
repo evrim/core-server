@@ -1,0 +1,71 @@
+#!/bin/sh
+# Qmail Installation
+# Author: evrim
+# ref: http://gentoo-wiki.com/QmailRocksOnGentoo
+# nano -w /etc/make.conf
+#  add apache2, maildir, valias, vhosts, authdaemond and mysql as USE flags.
+
+ADMIN_EMAIL="evrim@core.gen.tr"
+
+echo sys-apps/ucspi-tcp -ipv6 >> /etc/portage/package.use
+echo  mail-mta/qmail ssl >> /etc/portage/package.use
+emerge -pv mail-mta/qmail
+#[ebuild  N    ] net-mail/cmd5checkpw-0.30  25 kB 
+#[ebuild  N    ] net-mail/queue-fix-1.4-r2  21 kB 
+#[ebuild  N    ] virtual/qmail-1.03  0 kB 
+#[ebuild  N    ] net-mail/dot-forward-0.71-r2  25 kB 
+#[ebuild  N    ] net-mail/checkpassword-0.90-r2  USE="-static" 15 kB 
+#[ebuild  N    ] mail-mta/qmail-1.03-r16  USE="ssl -gencertdaily -logmail -mailwrapper -noauthcram -notlsbeforeauth (-selinux)" 459 kB 
+
+emerge -va mail-mta/qmail
+emerge --config mail-mta/qmail
+# edit /var/qmail/control/servercert.cnf 
+# and add emailAddress=evrim@core.gen.tr
+ln -s /var/qmail/supervise/qmail-send /service/qmail-send
+ln -s /var/qmail/supervise/qmail-smtpd /service/qmail-smtpd
+echo $ADMIN_EMAIL > /var/qmail/alias/.qmail-root
+echo $ADMIN_EMAIL > /var/qmail/alias/.qmail-postmaster
+echo $ADMIN_EMAIL > /var/qmail/alias/.qmail-mailer-daemon
+ln -s /var/qmail/alias/.qmail-root /var/qmail/alias/.qmail-anonymous
+chmod 644 /var/qmail/alias/.qmail*
+echo "localhost" >> /var/qmail/control/locals
+source /etc/profile
+# vi /var/qmail/control/me
+# correct fqdn
+emerge -pv net-mail/relay-ctrl
+emerge -va net-mail/relay-ctrl
+#cd /etc/tcprules.d/
+#vi tcp.qmail-smtp
+
+#VPOPMAIL
+echo "net-mail/vpopmail -mysql" >> /etc/portage/package.use
+emerge -pv net-mail/vpopmail
+emerge -va net-mail/vpopmail
+
+# COURIER
+echo net-libs/courier-authlib -mysql >> /etc/portage/package.use
+#[ebuild  N    ] net-libs/courier-authlib-0.58  USE="berkdb crypt gdbm pam -debug -ldap -mysql -postgres" 1,959 kB 
+#[ebuild  N    ] net-mail/courier-imap-4.0.4  USE="berkdb gdbm nls -debug -fam -ipv6 (-selinux)" 3,082 kB 
+emerge courier-imap -va
+#vi /etc/courier/authlib/authdaemonrc
+#authmodulelist="authvchkpw"
+#authmodulelistorig="authvchkpw"
+#vi /etc/courier-imap/imapd
+# IMAPDSTART=YES
+# MAXPERIP=20
+# # MAILDIR=.maildir
+# # MAILDIRPATH=.maildir
+# PRERUN="envdir /etc/relay-ctrl relay-ctrl-chdir"
+# LOGINRUN="relay-ctrl-allow"
+rc-update add courier-authlib default
+rc-update add courier-imapd-ssl default
+rc-update add courier-pop3d-ssl default
+# vi /etc/courier-imap/imapd.cnf
+# vi /etc/courier-imap/pop3d.cnf
+mkimapdcert
+mkpop3dcert
+rc-update add svscan default
+/etc/init.d/svscan start
+/etc/init.d/courier-authlib restart
+/etc/init.d/courier-imapd-ssl restart
+/etc/init.d/courier-pop3d-ssl restart
