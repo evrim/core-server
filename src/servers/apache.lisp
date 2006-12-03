@@ -35,10 +35,12 @@
 (defmethod create-redirector ((self apache-server) (app apache-web-application))
   (when (apache-web-application.default-entry-point app)
     (let ((redirector-pathname (merge-pathnames 
-			(make-pathname :name "index" :type "html" :directory (list :relative (web-application.fqdn app)))
-			(apache-server.htdocs-pathname self))))
+				(make-pathname :name "index"
+					       :type "html"
+					       :directory (list :relative (web-application.fqdn app)))
+				(apache-server.htdocs-pathname self))))
       (with-open-file (s redirector-pathname
-		       :direction :output :if-exists :supersede :if-does-not-exist :create)
+			 :direction :output :if-exists :supersede :if-does-not-exist :create)
 	(it.bese.yaclml:with-yaclml-stream s
 	  (<:html
 	   (<:head

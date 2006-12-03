@@ -44,3 +44,6 @@
 	   (make-transaction 'tx-unregister-app
 			     (web-application.fqdn app)))
   (unregister-application self app))
+
+(defmethod ucw-server-fqdns ((self ucw-server))
+  (arnesi:hash-table-keys (ucw-model.applications (model (ucw-server.ucw-db self)))))

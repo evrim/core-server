@@ -51,6 +51,7 @@
    #:ucw-server
    #:ucw-web-application
    ;; API
+   #:ucw-server-fqdns
    
    ;; [Database]
    ;; classes
