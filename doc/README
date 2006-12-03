@@ -1,0 +1,12 @@
+* Gentoo Distribution
+
+Apache2 Server Configuration
+
+sudo chown :apache /var/www && sudo chmod g+w /var/www
+sudo chown :apache /etc/apache2/vhosts.d && sudo chmod g+w /etc/apache2/vhosts.d
+
+Add lisp machine account to /etc/group so that it can write to /var/www.
+Add APACHE2_OPTS="-D DEFAULT_VHOST -D PROXY -D DAV -D DAV_FS" to /etc/conf.d/apache2
+
+
+
