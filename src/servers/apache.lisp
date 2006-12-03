@@ -37,8 +37,9 @@
     (let ((redirector-pathname (merge-pathnames 
 			(make-pathname :name "index" :type "html" :directory (list :relative (web-application.fqdn app)))
 			(apache-server.htdocs-pathname self))))
+      (ensure-directories-exist redirector-pathname)
       (with-open-file (s redirector-pathname
-		       :direction :output :if-exists :supersede :if-does-not-exist :create)
+			 :direction :output :if-exists :supersede :if-does-not-exist :create)
 	(it.bese.yaclml:with-yaclml-stream s
 	  (<:html
 	   (<:head
