@@ -2,7 +2,10 @@
 
 ;;; Applications
 (defclass application ()
-  ((server :accessor application.server :initform nil)))
+  ((server :accessor application.server :initform nil
+	   :documentation "On which server this application is running, setf'ed after (register)")
+   (initargs :accessor application.initargs :initarg :initargs :initform nil
+	     :documentation "Init-args when this instance is created.")))
 
 (defclass web-application (application)
   ((fqdn :accessor web-application.fqdn :initarg :fqdn :initform (error "Fqdn must be supplied."))
@@ -19,6 +22,9 @@
 		  :initform (merge-pathnames (make-pathname :directory '(:relative "etc" "skel"))
 					     (asdf:component-pathname (asdf:find-system :core-server)))
 		  :documentation "Skeleton Pathname which is copied to htdoc directory. setq nil no to.")))
+
+(defclass ucw-web-application (web-application ucw:modular-application)
+  ())
 
 ;;; Servers
 (defclass server ()
@@ -91,6 +97,24 @@
 (defclass ns-host (ns-record)
   ())
 
-(defclass ucw-server (server ucw:standard-server)
-  ()
-  (:default-initargs :name "Ucw Web Server"))
+(defclass ucw-model ()
+  ((applications :accessor ucw-model.applications :initarg :applications :initform (make-hash-table :test #'equal))))
+
+(defclass ucw-server (server ucw::standard-server)
+  ((ucw-db :accessor ucw-server.ucw-db :initarg ucw-db
+	   :initform (make-instance 'database-server
+				    :directory (merge-pathnames (make-pathname :directory '(:relative "db" "ucw"))
+								(asdf:component-pathname (asdf:find-system :core-server)))
+				    :model-class 'ucw-model)))
+  (:default-initargs :name "Ucw Web Server"
+    :backend (ucw::make-backend :mod-lisp
+				:host "127.0.0.1"
+				:port 3001)))
+
+(defclass email-server (server)
+  ())
+
+(defclass postfix-server (email-server)
+  ((postfix-script-pathname :accessor postfix-server.postfix-script-pathname :initarg postfix-script-pathname
+			    :initform (make-pathname :directory '(:absolute "etc" "init.d") :name "postfix")))
+  (:default-initargs :name "Postfix mail Server"))

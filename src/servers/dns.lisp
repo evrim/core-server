@@ -31,7 +31,7 @@
 
 ;; Tx
 (defun tx-add-record (system class fqdn ip)
-  (let* ((model (model system)))
+  (let ((model (model system)))
     (symbol-macrolet ((domain (gethash (domain-part fqdn) (ns-model.domains model))))
       (flet ((replace-record (obj)
 	       (setf domain (cons obj (remove-if #'(lambda (o)

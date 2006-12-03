@@ -49,6 +49,7 @@
    ;; [UnCommonWeb]
    ;; classes
    #:ucw-server
+   #:ucw-web-application
    ;; API
    
    ;; [Database]
@@ -90,10 +91,16 @@
    #:add-host
    #:add-alias
    #:find-domain-records
+   ;; [Postfix]
+   ;; classes
+   #:email-server
+   #:postfix-server
    ;; Helpers
    #:with-current-directory
    ))
 
 (defpackage :tr.gen.core.server.test
   (:nicknames :core-server.test)
-  (:use :common-lisp :iterate :cl-prevalence :core-server))
+  (:use :common-lisp :iterate :cl-prevalence :core-server
+	;; :cl-store
+	))

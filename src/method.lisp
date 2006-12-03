@@ -17,7 +17,7 @@
 				 (call-methods (nreverse (sort-by-specializers primary))))))
 	    ((eq type :stop)
 	     (setf primary (cons 'progn 
-				 (call-methods (nreverse (sort-by-specializers primary))))))
+				 (call-methods (sort-by-specializers primary)))))
 	    ((eq type :status)
 	     (setf primary (cons 'and 
 				 (call-methods (nreverse (sort-by-specializers primary)))))))

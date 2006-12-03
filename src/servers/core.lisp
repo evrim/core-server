@@ -4,7 +4,8 @@
   ())
 
 (defmethod start ((self a-server))
-  (format t "starting a-server~%"))
+  (format t "starting a-server~%")
+  (error "a server bozuldu"))
 
 (defmethod stop ((self a-server))
   (format t "stopping a-server~%"))
