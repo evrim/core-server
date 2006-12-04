@@ -116,5 +116,7 @@
 
 (defclass postfix-server (email-server)
   ((postfix-script-pathname :accessor postfix-server.postfix-script-pathname :initarg postfix-script-pathname
-			    :initform (make-pathname :directory '(:absolute "etc" "init.d") :name "postfix")))
+			    :initform (make-pathname :directory '(:absolute "etc" "init.d") :name "postfix"))
+   (virtual-mailbox-maps :accessor postfix-server.virtual-mailbox-maps :initarg :virtual-mailbox-maps
+			 :initform (make-pathname :directory '(:absloute "etc" "postfix") :name "vmailbox")))
   (:default-initargs :name "Postfix mail Server"))
