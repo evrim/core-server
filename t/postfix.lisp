@@ -1,6 +1,6 @@
 (in-package :core-server.test)
 
-(def-suite postfix)
+(def-suite postfix :in :core-server)
 
 (in-suite postfix)
 
