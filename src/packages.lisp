@@ -96,10 +96,8 @@
    ;; classes
    #:email-server
    #:postfix-server
-   #:email-add
-   #:email-remove
    ;; Helpers
-   #:with-current-directory
+   #:with-current-directory   
    ))
 
 (defpackage :tr.gen.core.server.test
