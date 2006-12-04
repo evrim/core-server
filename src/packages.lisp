@@ -96,6 +96,8 @@
    ;; classes
    #:email-server
    #:postfix-server
+   #:email-add
+   #:email-remove
    ;; Helpers
    #:with-current-directory
    ))
