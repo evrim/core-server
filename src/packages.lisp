@@ -103,6 +103,9 @@
    ;; [Core]
    ;; classes
    #:core-server
+   ;; [Whois]
+   ;; API
+   #:whois
    ;; Helpers
    #:with-current-directory   
    ))

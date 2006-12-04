@@ -25,7 +25,10 @@
                                    (:file "apache")
                                    (:file "postfix")
                                    (:file "ucw")
-                                   (:file "core"))))))
+                                   (:file "core")))
+                         (:module :services
+                                  :components
+                                  ((:file "whois"))))))
   :depends-on (:iterate :cl-prevalence :ucw)
   :serial t)
 
