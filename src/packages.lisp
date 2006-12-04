@@ -97,8 +97,8 @@
    #:email-server
    #:postfix-server
    ;; API
-   #:email-add
-   #:email-remove
+   #:add-email
+   #:del-email
    ;; [Core]
    ;; classes
    #:core-server

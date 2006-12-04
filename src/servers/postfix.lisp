@@ -15,7 +15,7 @@
 (defmethod status ((self postfix-server))
   (eq 0 (run-postfix-sysv-script self '("status"))))
 
-(defmethod email-add ((self postfix-server) (email string) (maildir string))
+(defmethod add-email ((self postfix-server) (email string) (maildir string))
   (unwind-protect
        (sb-impl::process-exit-code 
 	(with-input-from-string (in (concatenate 'string email " " maildir))
@@ -24,7 +24,7 @@
 				    (format nil "hash:~A" (postfix-server.virtual-mailbox-maps self)))
 			      :input in
 			      :output *standard-output*)))))
-(defmethod email-remove ((self postfix-server) (email string) &optional delete-maildir)
+(defmethod del-email ((self postfix-server) (email string) &optional delete-maildir)
   (unwind-protect
        (sb-impl::process-exit-code 
 	(sb-ext:run-program +sudo+
