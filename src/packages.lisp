@@ -2,7 +2,8 @@
 (defpackage :tr.gen.core.server
   (:nicknames :core-server)
   (:use :common-lisp :iterate :cl-prevalence :yaclml :arnesi :ucw)
-  (:shadow #:ucw #:start #:arnesi #:name #:body #:self)
+  (:shadowing-import-from #:ucw #:start)
+  (:shadowing-import-from #:arnesi #:name #:body #:self)
   (:export
    ;; [Protocol]
    ;; classes
@@ -105,9 +106,3 @@
    ;; Helpers
    #:with-current-directory   
    ))
-
-(defpackage :tr.gen.core.server.test
-  (:nicknames :core-server.test)
-  (:use :common-lisp :iterate :cl-prevalence :core-server
-	;; :cl-store
-	))
