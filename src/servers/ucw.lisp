@@ -4,9 +4,10 @@
   (start (ucw-server.ucw-db self))
   (startup-server self)
   (maphash #'(lambda (fqdn app)
-	       (register-application self (apply #'make-instance (car app) (cons :fqdn
-										 (cons fqdn
-										       (cdr app))))))
+	       (when (find-class (car app) nil)
+		 (register-application self (apply #'make-instance (car app) (cons :fqdn
+										   (cons fqdn
+											 (cdr app)))))))
 	   (ucw-model.applications (model (ucw-server.ucw-db self)))))
 
 (defmethod stop ((self ucw-server))
