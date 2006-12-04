@@ -6,3 +6,6 @@
 	;; :cl-store
 	)
   (:shadowing-import-from #:arnesi #:name))
+
+(in-package :core-server.test)
+(def-suite :core-server)
