@@ -1,14 +1,20 @@
 (in-package :core-server.test)
 
-(defparameter *m*
+(def-suite postfix)
+
+(in-suite postfix)
+
+(defparameter *postfix*
   (make-instance 'postfix-server
 		 :virtual-mailbox-maps (make-pathname :directory '(:absolute "tmp") :name "vmailbox")))
+(test me
+  (is (eq t t)))
 
-(describe *m*)
+;; (describe *m*)
 
-(start *m*)
-(status *m*)
-(stop *m*)
+;; (start *m*)
+;; (status *m*)
+;; (stop *m*)
 
-(add-email *m* "aycan@core.gen.tr" "/home/aycan/eposta/")
-(del-email *m* "aycan@core.gen.tr")
+;; (add-email *m* "aycan@core.gen.tr" "/home/aycan/eposta/")
+;; (del-email *m* "aycan@core.gen.tr")
