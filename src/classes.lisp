@@ -51,7 +51,9 @@
 
 (defclass database-server (server guarded-prevalence-system)
   ((model-class :accessor database-server.model-class :initarg :model-class
-		:initform nil :documentation "model class for initial creation"))
+		:initform nil :documentation "model class for initial creation")
+   (db-auto-start :accessor database-server.db-auto-start :initarg :db-auto-start
+		  :initform nil :documentation "when t, db is autostarted."))
   (:default-initargs :file-extension "sexp"
     :serializer 'cl-prevalence::serialize-sexp
     :deserializer 'cl-prevalence::deserialize-sexp

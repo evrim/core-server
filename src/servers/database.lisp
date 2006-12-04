@@ -22,8 +22,10 @@
 (defmethod cl-prevalence::initialize-instance :after ((system prevalence-system) &rest initargs &key &allow-other-keys)
   "After a system is initialized, derive its file paths and try to restore it"
   (declare (ignore initargs))
-  (unless (typep system 'database-server)
-    (start-prevalence-system system)))
+  (if (typep system 'database-server)
+      (if (database-server.db-auto-start system)
+	  (start-prevalence-system system))
+      (start-prevalence-system system)))
 
 (defun create-guard-with-mutex (mutex)
   #'(lambda (thunk)
