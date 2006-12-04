@@ -31,12 +31,14 @@
 
 (defsystem :core-server.test
   :components ((:module :t
-			:components ((:file "protocol")
-				     (:file "database")
-				     (:file "dns")
-				     (:file "apache")
-				     (:file "ucw")
-                                     (:file "core"))))
+			:components ((:file "packages")
+                                     (:file "postfix")
+                                     ;; (:file "database")
+                                     ;; (:file "dns")
+                                     ;; (:file "apache")
+                                     ;; (:file "ucw")
+                                     ;; (:file "core")
+                                     )))
   :depends-on (:core-server :FiveAM))
 
 (defmethod perform ((op asdf:test-op) (system (eql (find-system :core-server))))
