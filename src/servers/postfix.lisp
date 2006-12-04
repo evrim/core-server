@@ -24,6 +24,7 @@
 				    (format nil "hash:~A" (postfix-server.virtual-mailbox-maps self)))
 			      :input in
 			      :output *standard-output*)))))
+
 (defmethod del-email ((self postfix-server) (email string) &optional delete-maildir)
   (unwind-protect
        (sb-impl::process-exit-code 
