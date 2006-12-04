@@ -1,4 +1,4 @@
-(in-package :core-server)
+(in-package :tr.gen.core.server)
 
 (defmethod run-postfix-sysv-script ((self postfix-server) params)
   (unwind-protect
@@ -14,3 +14,23 @@
 
 (defmethod status ((self postfix-server))
   (eq 0 (run-postfix-sysv-script self '("status"))))
+
+(defmethod email-add ((self postfix-server) (email string) (maildir string))
+  (unwind-protect
+       (sb-impl::process-exit-code 
+	(with-input-from-string (in (concatenate 'string email " " maildir))
+	  (sb-ext:run-program +sudo+
+			      (list (namestring +postmap+) "-i" "-r"
+				    (format nil "hash:~A" (postfix-server.virtual-mailbox-maps self)))
+			      :input in
+			      :output *standard-output*)))))
+(defmethod email-remove ((self postfix-server) (email string) &optional delete-maildir)
+  (unwind-protect
+       (sb-impl::process-exit-code 
+	(sb-ext:run-program +sudo+
+			    (list (namestring +postmap+)
+				  "-d" email
+				  (format nil "hash:~A" (postfix-server.virtual-mailbox-maps self)))
+			    :output *standard-output*)))
+  (when delete-maildir
+    (error "Removing maildirs not implemented yet")))
