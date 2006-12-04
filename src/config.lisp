@@ -13,3 +13,4 @@
 (defvar +find+ #P"/usr/bin/find")
 (defvar +rm+ #P"/usr/bin/rm")
 (defvar +mkdir+ #P"/usr/bin/mkdir")
+(defvar +postmap+ #P"/usr/sbin/postmap")
