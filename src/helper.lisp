@@ -24,7 +24,9 @@
 
 ;; DNS aids
 (defun host-part (fqdn)
-  (subseq fqdn 0 (position #\. fqdn)))
+  (awhen (position #\. fqdn)
+    (subseq fqdn 0 it)))
 
 (defun domain-part (fqdn)
-  (subseq fqdn (+ 1 (position #\. fqdn))))
+  (awhen (position #\. fqdn)
+    (subseq fqdn (+ 1 it))))
