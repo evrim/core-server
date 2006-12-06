@@ -22,10 +22,8 @@
 (defmethod cl-prevalence::initialize-instance :after ((system prevalence-system) &rest initargs &key &allow-other-keys)
   "After a system is initialized, derive its file paths and try to restore it"
   (declare (ignore initargs))
-  (if (typep system 'database-server)
-      (if (database-server.db-auto-start system)
-	  (start-prevalence-system system))
-      (start-prevalence-system system)))
+  (unless (typep system 'database-server)
+    (start-prevalence-system system)))
 
 (defun create-guard-with-mutex (mutex)
   #'(lambda (thunk)
@@ -41,19 +39,29 @@
 (defmethod snapshot :after ((self database-server))
   (open-transaction-log-stream self))
 
-(defmethod start ((self database-server))  
+(defmethod shared-initialize :after ((self database-server) slot-name
+				     &rest initargs &key &allow-other-keys)
+  (declare (ignorable initargs))
+  (when (database-server.db-auto-start self)
+    (%start-database self)))
+
+(defmethod %start-database ((self database-server))  
   (start-prevalence-system self)
   (open-transaction-log-stream self)
   ;; synchronize transactions with a mutex
   (setf (get-guard self) 
 	(create-guard-with-mutex (sb-thread::make-mutex :name "tx-mutex")))
+  (unless (get-root-object self :id-counter)      
+    ;; create global id
+    (execute self (make-transaction 'tx-create-id-counter)))
   ;; create model
   (unless (get-root-object self :model)
-    ;; create global id
-    (execute self (make-transaction 'tx-create-id-counter))
     ;; create a model
     (awhen (database-server.model-class self)
       (execute self (make-transaction 'tx-model-create it)))))
+
+(defmethod start ((self database-server))
+  (%start-database self))
 
 (defmethod stop ((self database-server))  
   (cl-prevalence::close-open-streams self)
@@ -77,11 +85,12 @@
 						     :deserializer cl-prevalence::deserialize-sexp
 						     :file-extension "sexp"))))
     ;; synchronize transactions with a mutex
-    (setf (get-guard system) (create-guard-with-mutex (sb-thread::make-mutex :name "database-mutex")))	 
+    (setf (get-guard system) (create-guard-with-mutex (sb-thread::make-mutex :name "database-mutex")))
+    (unless (get-root-object system :id-counter)      
+      ;; create global id
+      (execute system (make-transaction 'tx-create-id-counter)))
     ;; create model
     (unless (get-root-object system :model)
-      ;; create global id
-      (execute system (make-transaction 'tx-create-id-counter))
       ;; create a model
       (execute system (make-transaction 'tx-model-create model-class)))
     system))
