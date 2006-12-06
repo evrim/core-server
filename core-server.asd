@@ -17,7 +17,10 @@
                          (:file "protocol")
                          (:file "application")
                          (:file "server")
-                         (:file "helper")                         
+                         (:file "helper")
+                         (:module :applications
+                                  :components
+                                  ((:file "ucw")))
                          (:module :servers
                                   :components
                                   ((:file "database")
