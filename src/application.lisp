@@ -7,7 +7,6 @@
 		(cond 
 		  ((eq 0 (mod (position arg initargs) 2))
 		   (setf current-keyword arg)
-		   (format t "keyword:~A~%" arg)
 		   acc)
 		  ((eq 1 (mod (position arg initargs) 2))		     
 		   (if (or (functionp arg) (typep arg 'standard-object) (pathnamep arg))
