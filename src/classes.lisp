@@ -8,7 +8,7 @@
 	     :documentation "Init-args when this instance is created.")))
 
 (defclass web-application (application)
-  ((fqdn :accessor web-application.fqdn :initarg :fqdn :initform (error "Fqdn must be supplied."))
+  ((fqdn :reader web-application.fqdn :initarg :fqdn :initform (error "Fqdn must be supplied."))
    (admin-email :accessor web-application.admin-email :initarg :admin-email :initform (error "Administrator email must be supplied."))))
 
 (defclass apache-web-application (web-application)
@@ -24,7 +24,8 @@
 		  :documentation "Skeleton Pathname which is copied to htdoc directory. setq nil no to.")))
 
 (defclass ucw-web-application (web-application ucw:modular-application)
-  ())
+  ()
+  (:default-initargs :debug-on-error t))
 
 ;;; Servers
 (defclass server ()
@@ -55,8 +56,8 @@
    (db-auto-start :accessor database-server.db-auto-start :initarg :db-auto-start
 		  :initform nil :documentation "when t, db is autostarted."))
   (:default-initargs :file-extension "sexp"
-    :serializer 'cl-prevalence::serialize-sexp
-    :deserializer 'cl-prevalence::deserialize-sexp
+    :serializer #'cl-prevalence::serialize-sexp
+    :deserializer #'cl-prevalence::deserialize-sexp
     :name "Guarded Prevalence Database Server"))
 
 (defclass name-server (server)
