@@ -6,7 +6,22 @@ sudo chown :apache /var/www && sudo chmod g+w /var/www
 sudo chown :apache /etc/apache2/vhosts.d && sudo chmod g+w /etc/apache2/vhosts.d
 
 Add lisp machine account to /etc/group so that it can write to /var/www.
+Compile mod-lisp2 from http://www.fractalconcept.com:8000/public/open-source/mod_lisp/
+apxs2 -i -c mod_lisp2.c
+Configure mod-lisp:
+evrim apache2 # cat modules.d/51_mod_lisp2.conf 
+<IfModule !mod_lisp2.c>
+        LoadModule lisp_module    modules/mod_lisp2.so
+</IfModule>
+<IfModule mod_lisp2.c>
+	<LocationMatch "\.core$">
+		LispServer  127.0.0.1 3001 "evrim"
+		SetHandler lisp-handler
+	</LocationMatch>
+</IfModule>
+
 Add APACHE2_OPTS="-D DEFAULT_VHOST -D PROXY -D DAV -D DAV_FS" to /etc/conf.d/apache2
 
 Postfix Configuration
 By default virtual-mailbox-maps is /etc/postfix/vmailbox
+
