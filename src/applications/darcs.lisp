@@ -1,0 +1,11 @@
+(in-package :core-server)
+
+(defmethod serialize ((self darcs-web-appllication))
+  (ensure-directories-exist (darcs-web-appllication.source-pathname self))
+  (when (probe-file (merge-pathnames (make-pathname :directory (list :relative "_darcs"))
+				     (darcs-web-appllication.source-pathname self)))
+    (error "bu proje zaten var."))
+  (mapcar #'(lambda (dir)
+	      (ensure-directories-exist (merge-pathnames (pathname dir))
+					(darcs-web-appllication.source-pathname self)))
+	  (darcs-web-appllication.directory-list self)))

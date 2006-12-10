@@ -5,6 +5,7 @@
 
 (defparameter *db* 
   (make-instance 'database-server
+		 :db-auto-start nil
 		 :directory #P"/tmp/ceek/"
 		 :model-class 'db-model))
 (describe *db*)

@@ -27,6 +27,14 @@
   ()
   (:default-initargs :debug-on-error t))
 
+(defclass darcs-web-appllication (web-application)
+  ((project-name :accessor darcs-web-application.project-name :initarg :project-name :initform (error "Project name must be provied."))
+   (source-pathname :accessor darcs-web-application.source-pathname :initarg :source-pathname :initform (error "Source Pathname must be provided."))
+   (directory-list :accessor darcs-web-application.directory-list :initarg :directory-list :initform '("src" "t" "doc" "db"))
+   (templates-pathname :accessor darcs-web-application.templates-pathname :initarg :templates-pathname 
+		       :initform (merge-pathnames (make-pathname :directory '(:relative "etc" "darcs"))
+						 (asdf:component-pathname (asdf:find-system :core-server))))))
+
 ;;; Servers
 (defclass server ()
   ((name :accessor server.name :initarg :name :initform "Dummy Server")
