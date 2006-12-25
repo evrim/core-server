@@ -36,6 +36,9 @@
 (defun tx-model-create (system model-class)
   (setf (get-root-object system :model) (make-instance model-class)))
 
+(defun tx-set-creation-date (system date)
+  (setf (creation-date (get-root-object system :model)) date))
+
 (defmethod snapshot :after ((self database-server))
   (open-transaction-log-stream self))
 
@@ -51,14 +54,16 @@
   ;; synchronize transactions with a mutex
   (setf (get-guard self) 
 	(create-guard-with-mutex (sb-thread::make-mutex :name "tx-mutex")))
-  (unless (get-root-object self :id-counter)      
+  (unless (get-root-object self :id-counter)
     ;; create global id
     (execute self (make-transaction 'tx-create-id-counter)))
   ;; create model
   (unless (get-root-object self :model)
     ;; create a model
     (awhen (database-server.model-class self)
-      (execute self (make-transaction 'tx-model-create it)))))
+      (execute self (make-transaction 'tx-model-create it)))
+    (when (typep (get-root-object self :model) 'standard-model-class)
+      (execute self (make-transaction 'tx-set-creation-date (get-universal-time))))))
 
 (defmethod start ((self database-server))
   (%start-database self))
