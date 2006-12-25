@@ -22,6 +22,10 @@
                        ,@body))
      (sb-posix:chdir *default-pathname-defaults*)))
 
+(defmacro make-project-path (system path)
+  `(merge-pathnames (make-pathname :directory '(:relative ,path))
+                    (asdf:component-pathname (asdf:find-system ,system))))
+
 ;; DNS aids
 (defun host-part (fqdn)
   (awhen (position #\. fqdn)
