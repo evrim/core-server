@@ -47,3 +47,10 @@
 (defgeneric find-domain-records (server domain-name)
   (:documentation "Return the list of dns records of the associated domain identified by name."))
 
+;;; Ticket Server Protocol
+
+(defgeneric add-ticket (server hash type &optional used)
+  (:documentation "Add ticket to the server"))
+
+(defgeneric generate-tickets (server amount type)
+  (:documentation "Generate given amount of tickets with random hash"))
