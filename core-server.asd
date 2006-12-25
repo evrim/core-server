@@ -28,7 +28,8 @@
                                    (:file "apache")
                                    (:file "postfix")
                                    (:file "ucw")
-                                   (:file "core")))
+                                   (:file "core")
+                                   (:file "ticket")))
                          (:module :services
                                   :components
                                   ((:file "whois"))))))
