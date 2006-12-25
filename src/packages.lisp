@@ -57,8 +57,10 @@
    ;; [Database]
    ;; classes
    #:database-server
+   #:standard-model-class
    ;; Accessors
    #:database-server.model-class
+   #:standard-model-class.creation-date
    ;; API
    #:database-server.model-class
    #:create-guard-with-mutex
@@ -100,6 +102,17 @@
    ;; API
    #:add-email
    #:del-email
+   ;; [Ticket]
+   ;; classes
+   #:ticket-model
+   #:ticket-server
+   ;; API
+   #:make-ticket-server
+   #:generate-tickets
+   #:find-ticket
+   #:add-ticket
+   #:ticket-model.tickets
+   #:ticket-server.db
    ;; [Core]
    ;; classes
    #:core-server
@@ -107,5 +120,6 @@
    ;; API
    #:whois
    ;; Helpers
-   #:with-current-directory   
+   #:with-current-directory
+   #:make-project-path
    ))
