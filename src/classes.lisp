@@ -9,7 +9,7 @@
 
 (defclass web-application (application)
   ((fqdn :reader web-application.fqdn :initarg :fqdn :initform (error "Fqdn must be supplied."))
-   (admin-email :accessor web-application.admin-email :initarg :admin-email :initform (error "Administrator email must be supplied."))))
+   (admin-email :accessor web-application.admin-email :initarg :admin-email :initform (error "Admin email must be supplied."))))
 
 (defclass apache-web-application (web-application)
   ((vhost-template-pathname :accessor apache-web-application.vhost-template-pathname :initarg :vhost-template-pathname
@@ -27,13 +27,24 @@
   ()
   (:default-initargs :debug-on-error t))
 
-(defclass darcs-web-appllication (web-application)
-  ((project-name :accessor darcs-web-application.project-name :initarg :project-name :initform (error "Project name must be provied."))
-   (source-pathname :accessor darcs-web-application.source-pathname :initarg :source-pathname :initform (error "Source Pathname must be provided."))
-   (directory-list :accessor darcs-web-application.directory-list :initarg :directory-list :initform '("src" "t" "doc" "db"))
-   (templates-pathname :accessor darcs-web-application.templates-pathname :initarg :templates-pathname 
+(defclass darcs-web-application (web-application)
+  ((project-name :accessor darcs-web-application.project-name
+		 :initarg :project-name
+		 :initform (error "Project name must be provied."))
+   (source-pathname :accessor darcs-web-application.source-pathname
+		    :initarg :source-pathname
+		    :initform (error "Source Pathname must be provided."))
+   (directory-list :accessor darcs-web-application.directory-list
+		   :initarg :directory-list
+		   :initform (list (make-pathname :directory '(:relative "src"))
+				   (make-pathname :directory '(:relative "src" "ui"))
+				   (make-pathname :directory '(:relative "t"))
+				   (make-pathname :directory '(:relative "doc"))
+				   (make-pathname :directory '(:relative "db"))))
+   (templates-pathname :accessor darcs-web-application.templates-pathname
+		       :initarg :templates-pathname 
 		       :initform (merge-pathnames (make-pathname :directory '(:relative "etc" "darcs"))
-						 (asdf:component-pathname (asdf:find-system :core-server))))))
+						  (asdf:component-pathname (asdf:find-system :core-server))))))
 
 ;;; Servers
 (defclass server ()
@@ -67,6 +78,9 @@
     :serializer #'cl-prevalence::serialize-sexp
     :deserializer #'cl-prevalence::deserialize-sexp
     :name "Guarded Prevalence Database Server"))
+
+(defclass standard-model-class ()
+  ((creation-date :accessor standard-model-class.creation-date :initarg :creation-date :initform nil)))
 
 (defclass name-server (server)
   ((ns-script-pathname :accessor name-server.ns-script-pathname :initarg :ns-script-pathname
@@ -131,3 +145,25 @@
    (virtual-mailbox-maps :accessor postfix-server.virtual-mailbox-maps :initarg :virtual-mailbox-maps
 			 :initform (make-pathname :directory '(:absloute "etc" "postfix") :name "vmailbox")))
   (:default-initargs :name "Postfix mail Server"))
+
+(defclass ticket-model ()
+  ((tickets :accessor ticket-model.tickets :initarg :tickets :initform (make-hash-table :test #'equal))))
+
+(defclass ticket ()
+  ((hash :accessor ticket.hash :initarg :hash :initform (error "No hash given."))
+   (type :accessor ticket.type :initarg :type :initform nil)
+   (used :accessor ticket.used :initarg :used :initform nil)))
+
+(defun create-unique-hash (table)
+  (let ((hash (arnesi::random-string 10)))
+    (cond
+      ((null (cadr (multiple-value-list (gethash hash table)))) hash)
+      (t (create-unique-hash table)))))
+
+(defclass ticket-server (server)
+  ((db :accessor ticket-server.db :initarg :db
+       :initform (error "Ticket database not found! Please use :db argument."))
+   (hash-fun :accessor ticket-server.hash-fun :initarg :hash-fun
+	     :initform #'(lambda (oldhashlist) 
+			   (create-unique-hash oldhashlist))))
+  (:default-initargs :name "Ticket Server"))
