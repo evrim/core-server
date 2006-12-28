@@ -34,3 +34,8 @@
 (defun domain-part (fqdn)
   (awhen (position #\. fqdn)
     (subseq fqdn (+ 1 it))))
+
+(defmacro with-package (package &body b0dy)  
+  `(let ((*package* (find-package ,package)))
+     ,@b0dy))
+
