@@ -120,5 +120,10 @@
    ;; API
    #:whois
    ;; Helpers
-   #:with-current-directory   
+   #:with-current-directory
+   #:make-project-path
+   #:with-current-directory
+   #:time->string
+   #:+day-names+
+   #:+month-names+
    ))
