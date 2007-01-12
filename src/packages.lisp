@@ -120,6 +120,5 @@
    ;; API
    #:whois
    ;; Helpers
-   #:with-current-directory
-   #:make-project-path
+   #:with-current-directory   
    ))

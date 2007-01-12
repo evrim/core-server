@@ -39,3 +39,16 @@
   `(let ((*package* (find-package ,package)))
      ,@b0dy))
 
+(defparameter +day-names+ '((:tr "Pazartesi" "Salı" "Çarşamba" "Perşembe" "Cuma" "Cumartesi" "Pazar")))
+(defparameter +month-names+ '((:tr "Ocak" "Şubat" "Mart" "Nisan" "Mayıs" "Haziran" "Temmuz"
+			       "Ağustos" "Eylül" "Ekim" "Kasım" "Aralık")))
+
+(defun time->string (time &optional mode (lang :tr))
+  (multiple-value-bind (second minute hour day month year day-of-week dst-p tz)
+      (decode-universal-time time)
+    (declare (ignore tz dst-p))
+    (case mode
+      (:long (format nil "~2,'0d ~a ~d ~a, ~2,'0d:~2,'0d:~2,'0d"
+		     day (nth (decf month) (rest (assoc lang +month-names+)))
+		     year (nth day-of-week (rest (assoc lang +day-names+))) hour minute second))
+      (t (format nil "~2,'0d/~2,'0d/~d ~2,'0d:~2,'0d" day month year hour minute)))))
