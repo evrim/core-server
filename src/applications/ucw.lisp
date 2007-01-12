@@ -8,3 +8,12 @@
   (declare (ignorable initargs))
   (setf (ucw::application.url-prefix self)
 	(ucw::application.url-prefix self)))
+
+(defun current-application (&optional (context *context*))
+  (ucw::context.application context))
+
+(defun current-window (&optional (context *context*))
+  (ucw::context.window-component context))
+
+(defun current-session (&optional (context *context*))
+  (ucw::context.session context))
