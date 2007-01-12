@@ -56,6 +56,7 @@
    #:current-application
    #:current-window
    #:current-session
+   #:find-ucw-application
    
    ;; [Database]
    ;; classes

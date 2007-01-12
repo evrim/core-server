@@ -48,3 +48,10 @@
 
 (defmethod ucw-server-fqdns ((self ucw-server))
   (arnesi:hash-table-keys (ucw-model.applications (model (ucw-server.ucw-db self)))))
+
+(defmethod find-ucw-application ((self ucw-server) path)
+  (find (if (and (starts-with path "/")
+		 (ends-with path "/"))
+	    path
+	    (format nil "/~A/" path))
+	(ucw::server.applications self) :key #'ucw::application.url-prefix :test #'equal))
