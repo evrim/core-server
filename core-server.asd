@@ -20,7 +20,8 @@
                          (:file "helper")
                          (:module :applications
                                   :components
-                                  ((:file "ucw")))
+                                  ((:file "ucw")
+                                   (:file "darcs")))
                          (:module :servers
                                   :components
                                   ((:file "database")
