@@ -33,17 +33,19 @@
       (remhash fqdn (ucw-model.applications model)))))
 
 (defmethod register ((self ucw-server) (app ucw-web-application))
-  (execute (ucw-server.ucw-db self) 
-	   (make-transaction 'tx-register-app 
-			     (web-application.fqdn app)
-			     (class-name (class-of app))
-			     (application.initargs app)))
+  (when (ucw-web-application.persistent app)
+    (execute (ucw-server.ucw-db self) 
+	     (make-transaction 'tx-register-app 
+			       (web-application.fqdn app)
+			       (class-name (class-of app))
+			       (application.initargs app))))
   (register-application self app))
 
 (defmethod unregister ((self ucw-server) (app ucw-web-application))
-  (execute (ucw-server.ucw-db self)
-	   (make-transaction 'tx-unregister-app
-			     (web-application.fqdn app)))
+  (when (ucw-web-application.persistent app)
+    (execute (ucw-server.ucw-db self)
+	     (make-transaction 'tx-unregister-app
+			       (web-application.fqdn app))))
   (unregister-application self app))
 
 (defmethod ucw-server-fqdns ((self ucw-server))

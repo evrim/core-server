@@ -24,7 +24,7 @@
 		  :documentation "Skeleton Pathname which is copied to htdoc directory. setq nil no to.")))
 
 (defclass ucw-web-application (web-application ucw:modular-application)
-  ()
+  ((persistent :accessor ucw-web-application.persistent :initarg :persistent :initform nil))
   (:default-initargs :debug-on-error t))
 
 (defclass darcs-web-application (web-application)
