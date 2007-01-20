@@ -18,12 +18,12 @@
 
 ;; <project-pathname>/project-name.asd (systems source)
 (defun systems-source (project-pathname project-name)
-  (merge-pathnames (make-pathname :name project-name :type "asd")
+  (merge-pathnames (make-pathname :name (string-downcase project-name) :type "asd")
 		   project-pathname))
 
 ;; <project-pathname>/project-name.lisp (main source)
 (defun main-source (project-pathname project-name)
-  (merge-pathnames (make-pathname :name project-name :type "lisp")
+  (merge-pathnames (make-pathname :name (string-downcase project-name) :type "lisp")
 		   project-pathname))
 
 ;; <project-pathname>/src/model.lisp (model source)
