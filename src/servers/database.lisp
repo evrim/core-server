@@ -37,7 +37,7 @@
   (setf (get-root-object system :model) (make-instance model-class)))
 
 (defun tx-set-creation-date (system date)
-  (setf (creation-date (get-root-object system :model)) date))
+  (setf (standard-model-class.creation-date (get-root-object system :model)) date))
 
 (defmethod snapshot :after ((self database-server))
   (open-transaction-log-stream self))
