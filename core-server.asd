@@ -49,6 +49,15 @@
                                      )))
   :depends-on (:core-server :FiveAM))
 
+;; Add distribution related features
+(defmethod asdf:perform :around ((o asdf:load-op) (c (eql (find-system :core-server))))
+  (cond
+    ((probe-file "/etc/pardus-release")
+     (push :pardus *features*))
+    ((probe-file "/etc/gentoo-release")
+     (push :gentoo *features*)))
+  (call-next-method))
+
 (defmethod perform ((op asdf:test-op) (system (eql (find-system :core-server))))
   (asdf:oos 'asdf:load-op :core-server.test)
   (funcall (intern (string :run!) (string :it.bese.FiveAM)) :core-server))
