@@ -60,7 +60,9 @@
 
 (defclass apache-server (web-server)
   ((apachectl-pathname :accessor apache-server.apachectl-pathname :initarg :apachectl-pathname
-		       :initform (make-pathname :directory '(:absolute "etc" "init.d") :name "apache2"))
+		       :initform
+		       #+pardus (make-pathname :directory '(:absolute "usr" "sbin") :name "apache2ctl")
+		       #-pardus (make-pathname :directory '(:absolute "etc" "init.d") :name "apache2"))
    (htpasswd-pathname :accessor apache-server.htpasswd-pathname :initarg :htpasswd-pathname
 		      :initform (make-pathname :directory '(:absolute "usr" "sbin") :name "htpasswd2"))
    (vhosts.d-pathname :accessor apache-server.vhosts.d-pathname :initarg :vhosts.d-pathname

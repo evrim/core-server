@@ -8,6 +8,12 @@
   (merge-pathnames (make-pathname :directory (list :relative (web-application.fqdn self)))
 		   (apache-server.htdocs-pathname server)))
 
+#+pardus
+(defmethod comar ((self apache-server) command)
+  (unwind-protect
+       (sb-ext:run-program +sudo+
+			   (cons "/bin/service" (cons "apache" command)))))
+
 (defmethod apachectl ((self apache-server) params)
   (unwind-protect
        (sb-ext:run-program +sudo+
@@ -18,18 +24,21 @@
 
 (defmethod start ((self apache-server))
   (when (validate-configuration self)
-    (eq 0 (apachectl self '("start")))) t)
+    (eq 0 (#+pardus comar #-pardus apachectl self '("start")))) t)
 
 (defmethod stop ((self apache-server))
   (when (validate-configuration self)
-    (eq 0 (apachectl self '("stop")))))
+    (eq 0 (#+pardus comar #-pardus apachectl self '("stop")))))
 
 (defmethod graceful ((self apache-server))
   (when (validate-configuration self)
     (with-server-mutex (self)
-      (eq 0 (sb-impl::process-exit-code (apachectl self '("reload")))))))
+      (eq 0 (sb-impl::process-exit-code (#+pardus comar #-pardus apachectl self '("reload")))))))
 
 (defmethod status ((self apache-server))
+  #+pardus
+  (probe-file "/var/run/apache2.pid")
+  #-pardus
   (eq 0 (sb-impl::process-exit-code (apachectl self '("status")))))
 
 (defmethod create-redirector ((self apache-server) (app apache-web-application))

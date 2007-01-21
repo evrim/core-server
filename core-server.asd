@@ -1,6 +1,14 @@
 ;;;; -*- Mode: lisp; indent-tabs-mode: nil; outline-regexp: ";;;;;*"; -*-
 (in-package :asdf)
 
+;; Add distribution based features
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (cond
+    ((probe-file "/etc/pardus-release")
+     (pushnew :pardus *features*))
+    ((probe-file "/etc/gentoo-release")
+     (pushnew :gentoo *features*))))
+
 (defsystem :core-server
   :description "Core Server"
   :version "0"
@@ -9,7 +17,7 @@
   :components ((:static-file "core-server.asd")
 	       (:module :src
                         :serial t
-			:components
+                        :components
 			((:file "packages")
                          (:file "config")
                          (:file "method")
@@ -48,15 +56,6 @@
                                      ;; (:file "core")
                                      )))
   :depends-on (:core-server :FiveAM))
-
-;; Add distribution related features
-(defmethod asdf:perform :around ((o asdf:load-op) (c (eql (find-system :core-server))))
-  (cond
-    ((probe-file "/etc/pardus-release")
-     (push :pardus *features*))
-    ((probe-file "/etc/gentoo-release")
-     (push :gentoo *features*)))
-  (call-next-method))
 
 (defmethod perform ((op asdf:test-op) (system (eql (find-system :core-server))))
   (asdf:oos 'asdf:load-op :core-server.test)
