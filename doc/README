@@ -1,4 +1,4 @@
-* Pardus Distribution
+* Gentoo and Pardus Distributions
 
 Sudo configuration:
 
@@ -6,42 +6,6 @@ Add below line to /etc/sudoers,
   %wheel ALL=(ALL) NOPASSWD: ALL
 
 Apache2 Server Configuration:
-
-Configure same as gentoo but overwrite these methods:
-
-(defmethod service ((self apache-server) command)
-  (unwind-protect
-       (sb-ext:run-program +sudo+
-                           (cons "/bin/service" (cons "apache" command)))))
-
-(defmethod apachectl ((self apache-server) params)
-  (unwind-protect
-       (sb-ext:run-program +sudo+
-                           (cons (sb-ext::native-namestring (apache-server.apachectl-pathname self)) params))))
-
-(defmethod validate-configuration ((self apache-server))
-  ;; no methods at this time
-  t)
-
-(defmethod start ((self apache-server))
-  (when (validate-configuration self)
-    (eq 0 (service self '("start")))) t)
-
-(defmethod stop ((self apache-server))
-  (when (validate-configuration self)
-    (eq 0 (service self '("stop")))))
-
-(defmethod graceful ((self apache-server))
-  (when (validate-configuration self)
-    (with-server-mutex (self)
-      (eq 0 (sb-impl::process-exit-code (service self '("reload")))))))
-
-(defmethod status ((self apache-server))
-  (probe-file "/var/run/apache2.pid"))
-
-* Gentoo Distribution
-
-Apache2 Server Configuration
 
 sudo chown :apache /var/www && sudo chmod g+w /var/www
 sudo chown :apache /etc/apache2/vhosts.d && sudo chmod g+w /etc/apache2/vhosts.d
@@ -65,4 +29,3 @@ Add APACHE2_OPTS="-D DEFAULT_VHOST -D PROXY -D DAV -D DAV_FS" to /etc/conf.d/apa
 
 Postfix Configuration
 By default virtual-mailbox-maps is /etc/postfix/vmailbox
-
