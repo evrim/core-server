@@ -14,3 +14,5 @@
 (defvar +rm+ #P"/usr/bin/rm")
 (defvar +mkdir+ #P"/usr/bin/mkdir")
 (defvar +postmap+ #P"/usr/sbin/postmap")
+(defvar +sed+ #P"/usr/bin/sed")
+(defvar +darcs+ #P"/usr/bin/darcs")

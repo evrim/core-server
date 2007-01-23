@@ -1,3 +1,7 @@
-(in-package (project-package))
+(in-package :project-name)
 
-(comment "Define model classes.")
+(defclass project-name-model ()
+  ())
+
+(defmethod print-object ((self project-name-model) stream)
+  (print-unreadable-object (self stream :type t :identity t)))

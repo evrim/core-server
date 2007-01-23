@@ -52,3 +52,17 @@
 		     day (nth (decf month) (rest (assoc lang +month-names+)))
 		     year (nth day-of-week (rest (assoc lang +day-names+))) hour minute second))
       (t (format nil "~2,'0d/~2,'0d/~d ~2,'0d:~2,'0d" day month year hour minute)))))
+
+(defun string-replace-all (old new big)
+  "Replace all occurences of OLD string with NEW
+string in BIG string."
+  (do ((newlen (length new))
+       (oldlen (length old))
+       (i (search old big)
+          (search old big :start2 (+ i newlen))))
+      ((null i) big)
+    (setq big
+	  (concatenate 'string
+		       (subseq big 0 i)
+		       new
+		       (subseq big (+ i oldlen))))))

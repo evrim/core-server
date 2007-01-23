@@ -40,6 +40,9 @@
 				   (make-pathname :directory '(:relative "src" "ui"))
 				   (make-pathname :directory '(:relative "t"))
 				   (make-pathname :directory '(:relative "doc"))
+				   (make-pathname :directory '(:relative "wwwroot"))
+				   (make-pathname :directory '(:relative "wwwroot" "style"))
+				   (make-pathname :directory '(:relative "wwwroot" "images"))
 				   (make-pathname :directory '(:relative "db"))))
    (templates-pathname :accessor darcs-web-application.templates-pathname
 		       :initarg :templates-pathname 
