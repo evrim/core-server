@@ -23,8 +23,8 @@
 			     :url-prefix "/project-name/"
 			     :debug-on-error t))
 
-(defun register-me (server)
-  (register-application server *app*))
+(defun register-me ()
+  (core-server::register core-server::*server* *app*))
 
 (defun unregister-me (server)
-  (unregister-application server *app*))
+  (core-server::unregister core-server::*server* *app*))
