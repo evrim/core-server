@@ -56,7 +56,8 @@
 
 (defmethod serialize ((self darcs-web-application)) 
   (let ((ppath (make-pathname :directory (darcs-web-application.source-pathname self)))
-	(pname (darcs-web-application.project-name self)))
+	(pname (darcs-web-application.project-name self))
+	(syspname (asdf:component-pathname (asdf:find-system :core-server))))
     ;; Create project folder
     (ensure-directories-exist ppath)
 
@@ -71,7 +72,8 @@
 
     ;; Create standard files
     (with-open-file (out (systems-source ppath pname) :direction :output :if-does-not-exist :create) 
-      (with-open-file (in #P"/home/aycan/lisp/core-server/etc/darcs/project-name.asd" :direction :input)
+      (with-open-file (in (merge-pathnames (make-pathname :directory '(:relative "etc" "darcs") :name "project-name" :type "asd") syspname) :direction :input)
+			  
 	(sb-ext::run-program
 	 +sed+ (list (format nil "-e {s/project-name/~A/g ; s/admin-email/~A/g}"
 			     (string-downcase (darcs-web-application.project-name self))
@@ -80,9 +82,11 @@
 	 :output out)))
 
     (with-open-file (out (main-source ppath pname) :direction :output :if-does-not-exist :create)
-      (with-open-file (in #P"/home/aycan/lisp/core-server/etc/darcs/src/project-name.lisp" :direction :input)
+      (with-open-file (in (merge-pathnames (make-pathname :directory '(:relative "etc" "darcs" "src")
+							  :name "project-name" :type "lisp")
+					   syspname) :direction :input)
 	(sb-ext::run-program
-	 +sed+ (list (format nil "-e {s/project-name/~A/g ; s/project-admin-email/~S/g ; s/project-path\\//~A/g ; s/project-fqdn/~S/g}"
+	 +sed+ (list (format nil "-e {s/project-name/~A/g ; s/project-admin-email/~S/g ; s/project-path/~A/g ; s/project-fqdn/~S/g}"
 			     (string-downcase (darcs-web-application.project-name self))
 			     (web-application.admin-email self)
 			     (string-replace-all "/" "\\/" (darcs-web-application.source-pathname self))
@@ -91,7 +95,9 @@
 	 :output out)))
 
     (with-open-file (out (model-source ppath) :direction :output :if-does-not-exist :create)
-      (with-open-file (in #P"/home/aycan/lisp/core-server/etc/darcs/src/model.lisp" :direction :input)
+      (with-open-file (in (merge-pathnames (make-pathname :directory '(:relative "etc" "darcs" "src")
+							  :name "model" :type "lisp")
+					   syspname) :direction :input)
 	(sb-ext::run-program
 	 +sed+ (list (format nil "-e {s/project-name/~A/g}"
 			     (string-downcase (darcs-web-application.project-name self))))
@@ -99,7 +105,9 @@
 	 :output out)))
     
     (with-open-file (out (packages-source ppath) :direction :output :if-does-not-exist :create)
-      (with-open-file (in #P"/home/aycan/lisp/core-server/etc/darcs/src/packages.lisp" :direction :input)
+      (with-open-file (in (merge-pathnames (make-pathname :directory '(:relative "etc" "darcs" "src")
+							  :name "packages" :type "lisp")
+					   syspname) :direction :input)
 	(sb-ext::run-program
 	 +sed+ (list (format nil "-e {s/project-name/~A/g}"
 			     (string-downcase (darcs-web-application.project-name self))))
@@ -107,7 +115,9 @@
 	 :output out)))
 
     (with-open-file (out (transactions-source ppath) :direction :output :if-does-not-exist :create)
-      (with-open-file (in #P"/home/aycan/lisp/core-server/etc/darcs/src/transactions.lisp" :direction :input)
+      (with-open-file (in (merge-pathnames (make-pathname :directory '(:relative "etc" "darcs" "src")
+							  :name "transactions" :type "lisp")
+					   syspname) :direction :input)
 	(sb-ext::run-program
 	 +sed+ (list (format nil "-e {s/project-name/~A/g}"
 			     (string-downcase (darcs-web-application.project-name self))))
@@ -115,7 +125,9 @@
 	 :output out)))
 
     (with-open-file (out (interfaces-source ppath) :direction :output :if-does-not-exist :create)
-      (with-open-file (in #P"/home/aycan/lisp/core-server/etc/darcs/src/interfaces.lisp" :direction :input)
+      (with-open-file (in (merge-pathnames (make-pathname :directory '(:relative "etc" "darcs" "src")
+							  :name "interfaces" :type "lisp")
+					   syspname) :direction :input)
 	(sb-ext::run-program
 	 +sed+ (list (format nil "-e {s/project-name/~A/g}"
 			     (string-downcase (darcs-web-application.project-name self))))
@@ -123,7 +135,9 @@
 	 :output out)))
 
     (with-open-file (out (main-ui-source ppath) :direction :output :if-does-not-exist :create)
-      (with-open-file (in #P"/home/aycan/lisp/core-server/etc/darcs/src/ui/main.lisp" :direction :input)
+      (with-open-file (in (merge-pathnames (make-pathname :directory '(:relative "etc" "darcs" "src" "ui")
+							  :name "main" :type "lisp")
+					   syspname) :direction :input)
 	(sb-ext::run-program
 	 +sed+ (list (format nil "-e {s/project-name/~A/g}"
 			     (string-downcase (darcs-web-application.project-name self))))
