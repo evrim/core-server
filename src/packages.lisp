@@ -23,6 +23,7 @@
    #:register
    #:unregister
    #:with-server-mutex
+
    ;; [Apache]
    ;; classes
    #:apache-server
@@ -47,6 +48,7 @@
    #:config-pathname
    #:apache-server.refresh
    #:apache-server.destroy
+
    ;; [UnCommonWeb]
    ;; classes
    #:ucw-server
@@ -99,6 +101,7 @@
    #:add-host
    #:add-alias
    #:find-domain-records
+
    ;; [Postfix]
    ;; classes
    #:email-server
@@ -106,6 +109,7 @@
    ;; API
    #:add-email
    #:del-email
+
    ;; [Ticket]
    ;; classes
    #:ticket-model
@@ -117,9 +121,11 @@
    #:add-ticket
    #:ticket-model.tickets
    #:ticket-server.db
+
    ;; [Core]
    ;; classes
    #:core-server
+
    ;; [Whois]
    ;; API
    #:whois
@@ -130,4 +136,8 @@
    #:time->string
    #:+day-names+
    #:+month-names+
+
+   ;; [Darcs Web Application]
+   ;; classes
+   #:darcs-web-application
    ))

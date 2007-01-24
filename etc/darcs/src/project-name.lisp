@@ -3,7 +3,7 @@
 (defparameter *db-location* #P"project-path/db/")
 (defparameter *wwwroot* #P"project-path/wwwroot/")
 
-(defclass project-name-application (modular-application
+(defclass project-name-application (ucw-web-application
 				    cookie-session-application-module
 				    ajax-application-module)
   ()
