@@ -19,6 +19,7 @@
                         :serial t
                         :components
 			((:file "packages")
+                         (:file "prevalence")
                          (:file "config")
                          (:file "method")
                          (:file "classes")
