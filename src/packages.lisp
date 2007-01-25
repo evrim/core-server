@@ -125,7 +125,9 @@
    ;; [Core]
    ;; classes
    #:core-server
-
+   #:core-web-server
+   #:*core-server*
+   #:*core-web-server*
    ;; [Whois]
    ;; API
    #:whois
