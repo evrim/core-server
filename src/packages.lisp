@@ -141,5 +141,5 @@
 
    ;; [Darcs Web Application]
    ;; classes
-   #:darcs-web-application
+   #:darcs-application
    ))

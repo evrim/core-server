@@ -27,27 +27,31 @@
   ((persistent :accessor ucw-web-application.persistent :initarg :persistent :initform nil))
   (:default-initargs :debug-on-error t))
 
-(defclass darcs-web-application (web-application)
-  ((project-name :accessor darcs-web-application.project-name
+(defclass darcs-application (web-application)
+  ((project-name :accessor darcs-application.project-name
 		 :initarg :project-name
-		 :initform (error "Project name must be provied."))
-   (source-pathname :accessor darcs-web-application.source-pathname
-		    :initarg :source-pathname
-		    :initform (error "Source Pathname must be provided."))
-   (directory-list :accessor darcs-web-application.directory-list
-		   :initarg :directory-list
-		   :initform (list (make-pathname :directory '(:relative "src"))
-				   (make-pathname :directory '(:relative "src" "ui"))
-				   (make-pathname :directory '(:relative "t"))
-				   (make-pathname :directory '(:relative "doc"))
-				   (make-pathname :directory '(:relative "wwwroot"))
-				   (make-pathname :directory '(:relative "wwwroot" "style"))
-				   (make-pathname :directory '(:relative "wwwroot" "images"))
-				   (make-pathname :directory '(:relative "db"))))
-   (templates-pathname :accessor darcs-web-application.templates-pathname
-		       :initarg :templates-pathname 
-		       :initform (merge-pathnames (make-pathname :directory '(:relative "etc" "darcs"))
-						  (asdf:component-pathname (asdf:find-system :core-server))))))
+		 :initform (error "Project name must be provided."))
+   (project-pathname :accessor darcs-application.project-pathname
+		     :initarg :project-pathname
+		     :initform (error "Source Pathname must be provided."))
+   (sources :accessor darcs-application.sources
+	    :initarg :sources
+	    :initform '(src/packages src/model src/tx src/interfaces src/application src/security src/ui/main))
+   (directories :accessor darcs-application.directories
+		:initarg :directories
+		:initform (list (make-pathname :directory '(:relative "src"))
+				(make-pathname :directory '(:relative "src" "ui"))
+				(make-pathname :directory '(:relative "t"))
+				(make-pathname :directory '(:relative "doc"))
+				(make-pathname :directory '(:relative "wwwroot"))
+				(make-pathname :directory '(:relative "wwwroot" "style"))
+				(make-pathname :directory '(:relative "wwwroot" "images"))
+				(make-pathname :directory '(:relative "templates"))
+				(make-pathname :directory '(:relative "db"))))
+   (use :accessor darcs-application.use :initarg :use
+	:initform (list :common-lisp :ucw :core-server :cl-prevalence))
+   (depends-on :accessor darcs-application.depends-on :initarg :depends-on
+	       :initform (list :iterate :core-server :ucw))))
 
 ;;; Servers
 (defclass server ()

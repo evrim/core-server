@@ -1,14 +1,25 @@
 (in-package :tr.gen.core.server)
 
 (defmethod start ((self ucw-server))
-  (start (ucw-server.ucw-db self))
-  (startup-server self)
-  (maphash #'(lambda (fqdn app)
-	       (when (find-class (car app) nil)
-		 (register-application self (apply #'make-instance (car app) (cons :fqdn
-										   (cons fqdn
-											 (cdr app)))))))
-	   (ucw-model.applications (model (ucw-server.ucw-db self)))))
+  (flet ((require-app (app)
+	   (let ((found nil))
+	     (mapcar #'(lambda (project-name)
+			 (when found
+			   (format t "requiring:~A" project-name)
+			   (require (make-keyword project-name))
+			   (setq found nil))
+			 (if (eq project-name :project-name)
+			     (setq found t)))
+		     app))))
+    (start (ucw-server.ucw-db self))
+    (startup-server self)
+    (maphash #'(lambda (fqdn app)
+		 (require-app app)
+		 (when (find-class (car app) nil)
+		   (register-application self (apply #'make-instance (car app) (cons :fqdn
+										     (cons fqdn
+											   (cdr app)))))))
+	     (ucw-model.applications (model (ucw-server.ucw-db self))))))
 
 (defmethod stop ((self ucw-server))
   (mapcar #'(lambda (app)
