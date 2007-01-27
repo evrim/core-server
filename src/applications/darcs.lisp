@@ -86,9 +86,9 @@
 (defmethod src/application ((self darcs-application))
   `(progn
      (in-package ,(package-keyword self))
-     (defvar *wwwroot* (merge-pathnames (make-pathname :directory '(:relative "wwwroot"))))
-     (defvar *talroot* (merge-pathnames (make-pathname :directory '(:relative "templates"))))
-     (defvar *db-location* (merge-pathnames (make-pathname :directory '(:relative "db"))))
+     (defvar *wwwroot* (make-project-path ,(symbol-name (package-keyword self)) "wwwroot"))
+     (defvar *talroot* (make-project-path ,(symbol-name (package-keyword self)) "templates"))
+     (defvar *db-location* (make-project-path ,(symbol-name (package-keyword self)) "db"))
      (defclass ,(application-class self) (ucw-web-application
 					  database-server
 					  cookie-session-application-module
@@ -144,12 +144,13 @@
 		     (darcs-application.project-pathname self))))
 
 (defmethod serialize-source ((self darcs-application) symbol)
-  (with-open-file (out (source-to-pathname self symbol) :direction :output :if-does-not-exist :create :if-exists :supersede)
-    (let ((*print-escape* nil)
-	  (*print-pretty* t))
-      (mapcar #'(lambda (line)
-		  (format out "~A" (string-downcase (format nil "~S~%~%" line))))
-	      (cdr (apply symbol (list self)))))))
+  (with-package :core-server
+    (with-open-file (out (source-to-pathname self symbol) :direction :output :if-does-not-exist :create :if-exists :supersede)
+      (let ((*print-escape* nil)
+	    (*print-pretty* t))
+	(mapcar #'(lambda (line)
+		    (format out "~A" (string-downcase (format nil "~S~%~%" line))))
+		(cdr (apply symbol (list self))))))))
 
 (defmethod serialize-asd ((self darcs-application))
   (with-open-file (out (merge-pathnames (make-pathname :name (darcs-application.project-name self) :type "asd")

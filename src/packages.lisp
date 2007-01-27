@@ -142,4 +142,13 @@
    ;; [Darcs Web Application]
    ;; classes
    #:darcs-application
+   #:src/model
+   #:src/packages
+   #:src/interfaces
+   #:src/security
+   #:src/tx
+   #:src/ui/main
+   #:src/application
+   #:darcs-application.sources
+   #:serialize-source
    ))
