@@ -1,8 +1,8 @@
 (in-package :asdf)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (asdf:oos 'asdf:load-op :core-server)
-  (asdf:oos 'asdf:load-op :ucw+))
+  (asdf:oos 'asdf:load-op :ucw+)
+  (asdf:oos 'asdf:load-op :core-server))
 
 (in-package :core-server)
 
