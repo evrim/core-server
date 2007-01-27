@@ -198,7 +198,8 @@
     (darcs "record" "-m" (or patch-name "core-server checkpoint")
 	   "--all" "--author" "bilgi@core.gen.tr" "--skip-long-comment" "--look-for-adds")))
 
-(defmethod put ((self darcs-application) &optional (remote-repo (format nil "evrim.ulu@node2:/home/projects/~A" (darcs-application.project-name self))))
+(defmethod put ((self darcs-application) &optional (remote-repo (format nil "~A@node2:/home/projects/~A" 
+									+remote-user+ (darcs-application.project-name self))))
   (with-current-directory (darcs-application.project-pathname self)
     (darcs "put" remote-repo)))
 
