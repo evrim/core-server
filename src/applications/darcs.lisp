@@ -10,17 +10,17 @@
   (intern (string-upcase str) (find-package :keyword)))
 
 (defmethod package-keyword ((self darcs-application) &optional long)
-  (or (and long (make-keyword (strcat "tr.gen.core." (darcs-application.project-name self))))
-      (make-keyword (darcs-application.project-name self))))
+  (or (and long (make-keyword (strcat "tr.gen.core." (web-application.project-name self))))
+      (make-keyword (web-application.project-name self))))
 
 (defmethod package-test-keyword ((self darcs-application))
   (make-keyword (format nil "~A.test" (package-keyword self))))
 
 (defmethod model-class ((self darcs-application))  
-  (intern (format nil "~A" (string-upcase (strcat (darcs-application.project-name self) "-model")))))
+  (intern (format nil "~A" (string-upcase (strcat (web-application.project-name self) "-model")))))
 
 (defmethod application-class ((self darcs-application))
-  (intern (format nil "~A" (string-upcase (strcat (darcs-application.project-name self) "-application")))))
+  (intern (format nil "~A" (string-upcase (strcat (web-application.project-name self) "-application")))))
 
 (defmethod asd ((self darcs-application))
   `(progn
@@ -32,7 +32,7 @@
        :author (web-application.admin-email self)
        :maintainer "bilgi@core.gen.tr"
        :licence "LGPL v2"
-       :components ((:static-file ,(strcat (darcs-application.project-name self) ".asd"))
+       :components ((:static-file ,(strcat (web-application.project-name self) ".asd"))
 		    (:module :src
 			     :serial t
 			     :components
@@ -105,8 +105,8 @@
 	 :model-class ',(model-class self)
 	 :fqdn ,(web-application.fqdn self)
 	 :admin-email ,(web-application.admin-email self)
-	 :project-name ,(darcs-application.project-name self)
-	 :project-pathname ,(darcs-application.project-pathname self)
+	 :project-name ,(web-application.project-name self)
+	 :project-pathname ,(web-application.project-pathname self)
 	 :sources ',(darcs-application.sources self)
 	 :directories ',(darcs-application.directories self)))
      (defvar *app* (make-instance ',(application-class self)))
@@ -141,7 +141,7 @@
 	 (directories (butlast result))
 	 (file (last1 result)))
     (merge-pathnames (make-pathname :directory (cons :relative directories) :name file :type "lisp")
-		     (darcs-application.project-pathname self))))
+		     (web-application.project-pathname self))))
 
 (defmethod serialize-source ((self darcs-application) symbol)
   (with-package :core-server
@@ -153,8 +153,8 @@
 		(cdr (apply symbol (list self))))))))
 
 (defmethod serialize-asd ((self darcs-application))
-  (with-open-file (out (merge-pathnames (make-pathname :name (darcs-application.project-name self) :type "asd")
-					(darcs-application.project-pathname self))
+  (with-open-file (out (merge-pathnames (make-pathname :name (web-application.project-name self) :type "asd")
+					(web-application.project-pathname self))
 		       :direction :output :if-does-not-exist :create :if-exists :supersede)
     (mapcar #'(lambda (line)
 		(format out "~A" (string-downcase (format nil "~S~%~%" line))))
@@ -162,7 +162,7 @@
 
 (defmethod darcs-directory ((self darcs-application))
   (merge-pathnames (make-pathname :directory '(:relative "_darcs"))
-		   (darcs-application.project-pathname self)))
+		   (web-application.project-pathname self)))
 
 (defmethod darcs-author-file ((self darcs-application))
   (merge-pathnames (make-pathname :directory '(:relative "prefs") :name "author") (darcs-directory self)))
@@ -175,7 +175,7 @@
     
   ;; Create template folders
   (mapcar #'(lambda (dir)
-	      (ensure-directories-exist (merge-pathnames dir (darcs-application.project-pathname self))))
+	      (ensure-directories-exist (merge-pathnames dir (web-application.project-pathname self))))
 	  (darcs-application.directories self))
 
   (serialize-asd self)
@@ -187,7 +187,7 @@
   (put self))
 
 (defmethod init ((self darcs-application))
-  (if (zerop (with-current-directory (darcs-application.project-pathname self)
+  (if (zerop (with-current-directory (web-application.project-pathname self)
 	       (darcs "init")))
       (progn
 	(with-open-file (out (darcs-author-file self) :direction :output :if-does-not-exist :create)
@@ -195,16 +195,16 @@
       (error "darcs init failed.")))
 
 (defmethod record ((self darcs-application) &optional patch-name)
-  (with-current-directory (darcs-application.project-pathname self)
+  (with-current-directory (web-application.project-pathname self)
     (darcs "record" "-m" (or patch-name "core-server checkpoint")
 	   "--all" "--author" "bilgi@core.gen.tr" "--skip-long-comment" "--look-for-adds")))
 
 (defmethod put ((self darcs-application) &optional (remote-repo (format nil "~A@node2:/home/projects/~A" 
-									+remote-user+ (darcs-application.project-name self))))
-  (with-current-directory (darcs-application.project-pathname self)
+									+remote-user+ (web-application.project-name self))))
+  (with-current-directory (web-application.project-pathname self)
     (darcs "put" remote-repo)))
 
 (defmethod push-all ((self darcs-application))
-  (with-current-directory (darcs-application.project-pathname self)    
+  (with-current-directory (web-application.project-pathname self)    
     (darcs "push" "--all")))
 

@@ -9,7 +9,13 @@
 
 (defclass web-application (application)
   ((fqdn :reader web-application.fqdn :initarg :fqdn :initform (error "Fqdn must be supplied."))
-   (admin-email :accessor web-application.admin-email :initarg :admin-email :initform (error "Admin email must be supplied."))))
+   (admin-email :accessor web-application.admin-email :initarg :admin-email :initform (error "Admin email must be supplied."))
+   (project-name :accessor web-application.project-name
+		 :initarg :project-name
+		 :initform (error "Project name must be provided."))
+   (project-pathname :accessor web-application.project-pathname
+		     :initarg :project-pathname
+		     :initform (error "Source Pathname must be provided."))))
 
 (defclass apache-web-application (web-application)
   ((vhost-template-pathname :accessor apache-web-application.vhost-template-pathname :initarg :vhost-template-pathname
@@ -28,13 +34,7 @@
   (:default-initargs :debug-on-error t))
 
 (defclass darcs-application (web-application)
-  ((project-name :accessor darcs-application.project-name
-		 :initarg :project-name
-		 :initform (error "Project name must be provided."))
-   (project-pathname :accessor darcs-application.project-pathname
-		     :initarg :project-pathname
-		     :initform (error "Source Pathname must be provided."))
-   (sources :accessor darcs-application.sources
+  ((sources :accessor darcs-application.sources
 	    :initarg :sources
 	    :initform '(src/packages src/model src/tx src/interfaces src/application src/security src/ui/main))
    (directories :accessor darcs-application.directories
@@ -49,9 +49,9 @@
 				(make-pathname :directory '(:relative "templates"))
 				(make-pathname :directory '(:relative "db"))))
    (use :accessor darcs-application.use :initarg :use
-	:initform (list :common-lisp :ucw :core-server :cl-prevalence))
+	:initform (list :common-lisp :ucw :core-server :cl-prevalence :arnesi :yaclml))
    (depends-on :accessor darcs-application.depends-on :initarg :depends-on
-	       :initform (list :iterate :core-server :ucw))))
+	       :initform (list :arnesi :core-server :ucw))))
 
 ;;; Servers
 (defclass server ()
