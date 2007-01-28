@@ -1,13 +1,15 @@
 (in-package :core-server)
 
 (defun make-darcs-application (fqdn project-name admin-email project-pathname &optional use depends-on)
-  (make-instance 'darcs-application
-		 :fqdn fqdn
-		 :project-name project-name
-		 :admin-email admin-email
-		 :project-pathname project-pathname
-		 :use use
-		 :depends-on depends-on))
+  (let ((params (list :fqdn fqdn
+		      :project-name project-name
+		      :admin-email admin-email
+		      :project-pathname project-pathname)))
+    (and use (nconc params (list :use use)))
+    (and depends-on (nconc params (list :depends-on depends-on)))
+    (apply #'make-instance
+	   'darcs-application
+	   params)))
 
 (defun darcs (&rest args)
   (unwind-protect
