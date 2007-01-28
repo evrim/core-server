@@ -124,7 +124,7 @@
      (defvar *app* (make-instance ',(application-class self)))
      (defun register-me ()
        (core-server::register core-server::*server* *app*))     
-     (defun unregister-me (server)
+     (defun unregister-me ()
        (core-server::unregister core-server::*server* *app*))
      (defentry-point "^index.*$" (:application *app* :class regexp-dispatcher)
 	 ()
