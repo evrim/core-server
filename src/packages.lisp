@@ -141,6 +141,7 @@
 
    ;; [Darcs Web Application]
    ;; classes
+   #:make-darcs-application
    #:darcs-application
    #:src/model
    #:src/packages
