@@ -179,7 +179,6 @@
 (defmethod darcs-author-file ((self darcs-application))
   (merge-pathnames (make-pathname :directory '(:relative "prefs") :name "author") (darcs-directory self)))
   
-
 (defmethod serialize ((self darcs-application))  
   ;; Error if exists
   (when (probe-file (darcs-directory self))

@@ -152,4 +152,5 @@
    #:src/application
    #:darcs-application.sources
    #:serialize-source
+   #:serialize-asd
    ))
