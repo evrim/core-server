@@ -18,7 +18,7 @@
 	  (prin1 (pathname-name object) stream)
 	  (write-string " :TYPE " stream)
 	  (prin1 (pathname-type object) stream)
-	  (write-string " ) )" stream)))))
+	  (write-string " )" stream)))))
 
 (defun deserialize-sexp-internal (sexp deserialized-objects)
   (if (atom sexp) 
