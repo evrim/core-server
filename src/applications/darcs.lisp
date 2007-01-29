@@ -124,8 +124,8 @@
 	 :depends-on ',(darcs-application.depends-on self)
 	 :dispatchers (cons (make-instance 'regexp-dispatcher :url-string "^index.*$"
 					   :handler (lambda ()
-						      (with-call/cc
-							(let ((it.bese.ucw:self nil))
+						      (arnesi::with-call/cc
+							(let ((self nil))
 							  (with-request-params nil (context.request *context*)
 							    (call 'main-window))))))
 			    (ucw::standard-dispatchers))))
