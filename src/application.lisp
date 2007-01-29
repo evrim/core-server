@@ -3,15 +3,18 @@
 ;;; FIXmE: pathname bile serialize edemio bu prevalence!
 (defmethod sieve-initargs ((self application) initargs)  
   (let ((current-keyword))
+    (remf initargs :dispatchers)
     (reduce #'(lambda (acc arg)
 		(cond 
 		  ((eq 0 (mod (position arg initargs) 2))
 		   (setf current-keyword arg)
 		   acc)
 		  ((eq 1 (mod (position arg initargs) 2))		     
-		   (if (or (functionp arg) (typep arg 'standard-object))
-		       acc
-		       (append acc (list current-keyword arg))))))
+		   (cond
+		     ((or (functionp arg) (typep arg 'standard-object))
+		      acc)		     
+		     (t
+		      (append acc (list current-keyword arg)))))))
 	    initargs
 	    :initial-value '())))
 
