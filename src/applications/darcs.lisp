@@ -48,8 +48,8 @@
 			     :components
 			     ((:file "packages")
 			      (:file "model" :depends-on ("packages"))
-			      (:file "application" :depends-on ("packages" "model"))
 			      (:file "tx" :depends-on ("packages" "model"))
+			      (:file "application" :depends-on ("packages" "model" "tx"))
 			      (:file "interfaces" :depends-on ("tx"))
 			      (:module :ui
 				       :serial t
