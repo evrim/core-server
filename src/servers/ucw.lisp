@@ -1,25 +1,29 @@
 (in-package :tr.gen.core.server)
 
+(defun marshall-symbol (sym)
+  `(intern ,(string sym) (find-package (make-keyword ,(package-name (symbol-package sym))))))
+
+(defmethod load-application ((self ucw-server) fqdn app)  
+  (awhen (getf (cdr app) :project-pathname)
+    (pushnew it asdf:*central-registry*)
+    (asdf:oos 'asdf:load-op (make-keyword (getf (cdr app) :project-name))))
+  (let ((app (reduce #'(lambda (acc val)
+			 (append acc
+				 (if (and (listp val) (eq 'intern (car val)))
+				     (list (eval val))
+				     (list val))))
+		     app :initial-value nil)))
+    (let ((application-class (car app))
+	  (initargs (cdr app)))
+      (remf initargs :fqdn)
+      (register-application self (apply #'make-instance application-class
+					(cons :fqdn (cons fqdn initargs)))))))
+
 (defmethod start ((self ucw-server))
-  (flet ((require-app (app)
-	   (let ((found nil))
-	     (mapcar #'(lambda (project-name)
-			 (when found
-			   (format t "requiring:~A" project-name)
-			   (require (make-keyword project-name))
-			   (setq found nil))
-			 (if (eq project-name :project-name)
-			     (setq found t)))
-		     app))))
-    (start (ucw-server.ucw-db self))
-    (startup-server self)
-    (maphash #'(lambda (fqdn app)
-		 (require-app app)
-		 (when (find-class (car app) nil)
-		   (register-application self (apply #'make-instance (car app) (cons :fqdn
-										     (cons fqdn
-											   (cdr app)))))))
-	     (ucw-model.applications (model (ucw-server.ucw-db self))))))
+  (start (ucw-server.ucw-db self))
+  (startup-server self)
+  (maphash (arnesi:curry #'load-application self)
+	   (ucw-model.applications (model (ucw-server.ucw-db self)))))
 
 (defmethod stop ((self ucw-server))
   (mapcar #'(lambda (app)
@@ -48,8 +52,15 @@
     (execute (ucw-server.ucw-db self) 
 	     (make-transaction 'tx-register-app 
 			       (web-application.fqdn app)
-			       (class-name (class-of app))
-			       (application.initargs app))))
+			       (marshall-symbol (class-name (class-of app)))
+			       (mapcar #'(lambda (arg)
+					   (if (and (not (keywordp arg))
+						    (symbolp arg)
+						    (eq (find-package (make-keyword (getf (application.initargs app) :project-name)))
+							(symbol-package arg)))
+					       (marshall-symbol arg)
+					       arg))
+				       (application.initargs app)))))
   (register-application self app))
 
 (defmethod unregister ((self ucw-server) (app ucw-web-application))

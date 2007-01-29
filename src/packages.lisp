@@ -153,4 +153,10 @@
    #:darcs-application.sources
    #:serialize-source
    #:serialize-asd
+   #:serialize
+   #:share
+   #:evaluate
+   #:record
+   #:put
+   #:push-all
    ))

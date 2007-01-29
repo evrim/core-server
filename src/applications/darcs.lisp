@@ -100,6 +100,7 @@
      (defvar *talroot* (make-project-path ,(symbol-name (package-keyword self)) "templates"))
      (defvar *db-location* (make-project-path ,(symbol-name (package-keyword self)) "db"))
      (defclass ,(application-class self) (ucw-web-application
+					  apache-web-application
 					  database-server
 					  cookie-session-application-module
 					  ajax-application-module
@@ -120,15 +121,19 @@
 	 :sources ',(darcs-application.sources self)
 	 :directories ',(darcs-application.directories self)
 	 :use ',(darcs-application.use self)
-	 :depends-on ',(darcs-application.depends-on self)))
+	 :depends-on ',(darcs-application.depends-on self)
+	 :dispatchers (cons (make-instance 'regexp-dispatcher :url-string "^index.*$"
+					   :handler (lambda ()
+						      (with-call/cc
+							(let ((it.bese.ucw:self nil))
+							  (with-request-params nil (context.request *context*)
+							    (call 'main-window))))))
+			    (ucw::standard-dispatchers))))
      (defvar *app* (make-instance ',(application-class self)))
      (defun register-me ()
-       (core-server::register core-server::*server* *app*))     
+       (core-server::register core-server::*server* *app*))
      (defun unregister-me ()
-       (core-server::unregister core-server::*server* *app*))
-     (defentry-point "^index.*$" (:application *app* :class regexp-dispatcher)
-	 ()
-       (call 'main-window))))
+       (core-server::unregister core-server::*server* *app*))))
 
 (defmethod src/security ((self darcs-application))
   `(progn
@@ -191,11 +196,17 @@
 
   (serialize-asd self)
 
-  (mapcar (curry #'serialize-source self) (darcs-application.sources self))    
+  (mapcar (curry #'serialize-source self) (darcs-application.sources self)))
 
+(defmethod share ((self darcs-application))
   (init self)
   (record self)
   (put self))
+
+(defmethod evaluate ((self darcs-application))
+  (pushnew (web-application.project-pathname self)
+	   asdf:*central-registry*)
+  (asdf:oos 'asdf:load-op (package-keyword self)))
 
 (defmethod init ((self darcs-application))
   (if (zerop (with-current-directory (web-application.project-pathname self)

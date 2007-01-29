@@ -9,7 +9,7 @@
 		   (setf current-keyword arg)
 		   acc)
 		  ((eq 1 (mod (position arg initargs) 2))		     
-		   (if (or (functionp arg) (typep arg 'standard-object) (pathnamep arg))
+		   (if (or (functionp arg) (typep arg 'standard-object))
 		       acc
 		       (append acc (list current-keyword arg))))))
 	    initargs
