@@ -39,8 +39,8 @@
      (defsystem ,(package-keyword self)
        :description "Core Template Application"
        :version ".1"
-       :author (web-application.admin-email self)
-       :maintainer "bilgi@core.gen.tr"
+       :author ,(web-application.admin-email self)
+       :maintainer ,(web-application.admin-email self)
        :licence "LGPL v2"
        :components ((:static-file ,(strcat (web-application.project-name self) ".asd"))
 		    (:module :src
@@ -48,9 +48,10 @@
 			     :components
 			     ((:file "packages")
 			      (:file "model" :depends-on ("packages"))
+			      (:file "application" :depends-on ("packages" "model"))
 			      (:file "tx" :depends-on ("packages" "model"))
-			      (:file "application" :depends-on ("packages" "model" "tx"))
 			      (:file "interfaces" :depends-on ("tx"))
+			      (:file "application" :depends-on ("interfaces"))
 			      (:module :ui
 				       :serial t
 				       :components
