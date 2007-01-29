@@ -73,8 +73,9 @@
      (in-package :cl-user)
      (defpackage ,(package-keyword self t)       
        (:nicknames ,(package-keyword self))
-       (:use :common-lisp :ucw :core-server :cl-prevalence)
-       (:import-from #:yaclml #:file-system-generator))))
+       (:use ,@(darcs-application.use self))
+       (:import-from #:yaclml #:file-system-generator)
+       (:shadowing-import-from #:cl-prevalence #:name))))
 
 (defmethod src/model ((self darcs-application))  
   `(progn
