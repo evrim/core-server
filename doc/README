@@ -2,17 +2,24 @@
 
 Sudo configuration:
 
-Add below line to /etc/sudoers,
+Add below line to /etc/sudoers (note: emerge app-admin/sudo),
   %wheel ALL=(ALL) NOPASSWD: ALL
 
 Apache2 Server Configuration:
+
+Set permissions:
 
 sudo chown :apache /var/www && sudo chmod g+w /var/www
 sudo chown :apache /etc/apache2/vhosts.d && sudo chmod g+w /etc/apache2/vhosts.d
 
 Add lisp machine account to /etc/group so that it can write to /var/www.
-Compile mod-lisp2 from http://www.fractalconcept.com:8000/public/open-source/mod_lisp/
+
+Download latest mod-lisp2.c from fractalconcept:
+wget http://www.fractalconcept.com:8000/public/open-source/mod_lisp/mod_lisp2.c
+
+Compile mod-lisp2:
 apxs2 -i -c mod_lisp2.c
+
 Configure mod-lisp:
 evrim apache2 # cat modules.d/51_mod_lisp2.conf 
 <IfModule !mod_lisp2.c>
