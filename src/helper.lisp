@@ -66,3 +66,9 @@ string in BIG string."
 		       (subseq big 0 i)
 		       new
 		       (subseq big (+ i oldlen))))))
+
+(defmethod make-keyword ((str string))
+  (intern (string-upcase str) :keyword))
+
+(defmethod make-keyword ((sym symbol))
+  (intern (symbol-name sym) :keyword))

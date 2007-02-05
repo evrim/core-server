@@ -138,6 +138,7 @@
    #:time->string
    #:+day-names+
    #:+month-names+
+   #:make-keyword
 
    ;; [Darcs Web Application]
    ;; classes
