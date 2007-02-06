@@ -27,6 +27,7 @@
                          (:file "application")
                          (:file "server")
                          (:file "helper")
+                         (:file "search")
                          (:module :applications
                                   :components
                                   ((:file "ucw")

@@ -138,7 +138,6 @@
    #:time->string
    #:+day-names+
    #:+month-names+
-   #:make-keyword
 
    ;; [Darcs Web Application]
    ;; classes
@@ -160,4 +159,10 @@
    #:record
    #:put
    #:push-all
+   ;; [Helpers]
+   #:make-keyword
+   ;; [Search]
+   #:core-search
+   #:string-search
+   #:integer-search
    ))
