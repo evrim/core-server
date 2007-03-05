@@ -16,5 +16,5 @@
 (defvar +postmap+ #P"/usr/sbin/postmap")
 (defvar +sed+ #P"/usr/bin/sed")
 (defvar +darcs+ #P"/usr/bin/darcs")
-
-(defvar +remote-user+ "evrim.ulu")
+(defvar +git+ #P"/usr/bin/git")
+(defvar +remote-user+ "aycan.irican")

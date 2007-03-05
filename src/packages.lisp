@@ -139,6 +139,8 @@
    #:+day-names+
    #:+month-names+
 
+   ;; [Serializable Application]
+   #:serializable-web-application
    ;; [Darcs Web Application]
    ;; classes
    #:make-darcs-application

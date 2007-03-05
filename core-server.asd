@@ -31,6 +31,7 @@
                          (:module :applications
                                   :components
                                   ((:file "ucw")
+                                   (:file "serializable-application")
                                    (:file "darcs")))
                          (:module :servers
                                   :components

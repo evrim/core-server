@@ -33,11 +33,11 @@
   ((persistent :accessor ucw-web-application.persistent :initarg :persistent :initform nil))
   (:default-initargs :debug-on-error t))
 
-(defclass darcs-application (web-application)
-  ((sources :accessor darcs-application.sources
+(defclass serializable-web-application (web-application)
+  ((sources :accessor serializable-web-application.sources
 	    :initarg :sources
 	    :initform '(src/packages src/model src/tx src/interfaces src/application src/security src/ui/main))
-   (directories :accessor darcs-application.directories
+   (directories :accessor serializable-web-application.directories
 		:initarg :directories
 		:initform (list (make-pathname :directory '(:relative "src"))
 				(make-pathname :directory '(:relative "src" "ui"))
@@ -48,10 +48,16 @@
 				(make-pathname :directory '(:relative "wwwroot" "images"))
 				(make-pathname :directory '(:relative "templates"))
 				(make-pathname :directory '(:relative "db"))))
-   (use :accessor darcs-application.use :initarg :use
+   (use :accessor serializable-web-application.use :initarg :use
 	:initform (list :common-lisp :ucw :core-server :cl-prevalence :arnesi :yaclml))
-   (depends-on :accessor darcs-application.depends-on :initarg :depends-on
+   (depends-on :accessor serializable-web-application.depends-on :initarg :depends-on
 	       :initform (list :arnesi :core-server :ucw))))
+
+(defclass darcs-application (serializable-web-application)
+  ())
+
+(defclass git-application (serializable-web-application)
+  ())
 
 ;;; Servers
 (defclass server ()
