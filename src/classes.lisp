@@ -22,7 +22,7 @@
 			    :initform (merge-pathnames (make-pathname :directory '(:relative "etc") :name "vhost" :type "conf")
 						       (asdf:component-pathname (asdf:find-system :core-server)))
 			    :documentation "Apache Vhost Configuration Template Pathname") 
-   (default-entry-point :accessor apache-web-application.default-entry-point :initarg default-entry-point
+   (default-entry-point :accessor apache-web-application.default-entry-point :initarg :default-entry-point
 			:initform "index.core" :documentation "Default Entry Point for redirector creation, setq nil not to.")
    (skel-pathname :accessor apache-web-application.skel-pathname :initarg :skel-pathname
 		  :initform (merge-pathnames (make-pathname :directory '(:relative "etc" "skel"))
