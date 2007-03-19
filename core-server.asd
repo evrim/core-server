@@ -32,7 +32,8 @@
                                   :components
                                   ((:file "ucw")
                                    (:file "serializable-application")
-                                   (:file "darcs")))
+                                   (:file "darcs")
+                                   (:file "git")))
                          (:module :servers
                                   :components
                                   ((:file "database")

@@ -10,6 +10,9 @@
 (defgeneric serialize (app)
   (:documentation "Serialize application"))
 
+(defgeneric package-keyword (app &optional long)
+  (:documentation "Package name for our new application"))
+
 (defgeneric src/packages (app)
   (:documentation "Serialize a source directory"))
 (defgeneric src/model (app)
@@ -24,6 +27,19 @@
   (:documentation "Serialize a source directory"))
 (defgeneric src/ui/main (app)
   (:documentation "Serialize a source directory"))
+
+(defmethod package-keyword ((self serializable-web-application) &optional long)
+  (or (and long (make-keyword (strcat "tr.gen.core." (web-application.project-name self))))
+      (make-keyword (web-application.project-name self))))
+
+(defmethod package-test-keyword ((self serializable-web-application))
+  (make-keyword (format nil "~A.test" (package-keyword self))))
+
+(defmethod model-class ((self serializable-web-application))  
+  (intern (format nil "~A" (string-upcase (strcat (web-application.project-name self) "-model")))))
+
+(defmethod application-class ((self serializable-web-application))
+  (intern (format nil "~A" (string-upcase (strcat (web-application.project-name self) "-application")))))
 
 (defmethod serialize-source ((self serializable-web-application) symbol)
   (with-package :core-server
@@ -58,6 +74,11 @@
   (serialize-asd self)
 
   (mapcar (curry #'serialize-source self) (serializable-web-application.sources self)))
+
+(defmethod evaluate ((self serializable-web-application))
+  (pushnew (web-application.project-pathname self)
+	   asdf:*central-registry*)
+  (asdf:oos 'asdf:load-op (package-keyword self)))
 
 (defmethod asd ((self serializable-web-application))
   `(progn
@@ -157,10 +178,10 @@
 							    (call 'main-window))))))
 			    (ucw::standard-dispatchers))))
      (defvar *app* (make-instance ',(application-class self)))
-     (defun register-me ()
-       (core-server::register core-server::*server* *app*))
-     (defun unregister-me ()
-       (core-server::unregister core-server::*server* *app*))))
+     (defun register-me (server)
+       (core-server::register server *app*))
+     (defun unregister-me (server)
+       (core-server::unregister server *app*))))
 
 (defmethod src/security ((self serializable-web-application))
   `(progn
