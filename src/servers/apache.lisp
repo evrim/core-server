@@ -36,10 +36,9 @@
       (eq 0 (sb-impl::process-exit-code (#+pardus comar #-pardus apachectl self '("reload")))))))
 
 (defmethod status ((self apache-server))
-  #+pardus
-  (probe-file "/var/run/apache2.pid")
-  #-pardus
-  (eq 0 (sb-impl::process-exit-code (apachectl self '("status")))))
+  #+pardus (probe-file "/var/run/apache2.pid")
+  #+debian (> (length (cl-fad:list-directory #P"/var/run/apache2/")) 0)
+  #-(or debian pardus) (eq 0 (sb-impl::process-exit-code (apachectl self '("status")))))
 
 (defmethod create-redirector ((self apache-server) (app apache-web-application))
   (when (apache-web-application.default-entry-point app)

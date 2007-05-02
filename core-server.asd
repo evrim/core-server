@@ -7,7 +7,9 @@
     ((probe-file "/etc/pardus-release")
      (pushnew :pardus *features*))
     ((probe-file "/etc/gentoo-release")
-     (pushnew :gentoo *features*))))
+     (pushnew :gentoo *features*))
+    ((probe-file "/etc/debian_version")
+     (pushnew :debian *features*))))
 
 (defsystem :core-server
   :description "Core Server"
@@ -59,8 +61,8 @@
                                      ;; (:file "ucw")
                                      ;; (:file "core")
                                      )))
-  :depends-on (:core-server :FiveAM))
+  :depends-on (:core-server))
 
-(defmethod perform ((op asdf:test-op) (system (eql (find-system :core-server))))
-  (asdf:oos 'asdf:load-op :core-server.test)
-  (funcall (intern (string :run!) (string :it.bese.FiveAM)) :core-server))
+;; (defmethod perform ((op asdf:test-op) (system (eql (find-system :core-server))))
+;;   (asdf:oos 'asdf:load-op :core-server.test)
+;;   (funcall (intern (string :run!) (string :it.bese.FiveAM)) :core-server))

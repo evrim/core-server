@@ -13,9 +13,11 @@
       (unless (status *apache-server*)
 	(error "Error occured while starting apache server."))))
 
-(defparameter *apache-application* (make-instance 'apache-web-application
-						  :fqdn (format nil "www.test-~A.com" (string-downcase (gensym)))
-						  :admin-email "evrim@core.gen.tr"))
+(defparameter *apache-application*
+  (make-instance 'apache-web-application
+   :fqdn "www.test123.com"
+   :admin-email "evrim@core.gen.tr"))
+
 (describe *apache-application*)
 (register *apache-server* *apache-application*)
 (unregister *apache-server* *apache-application*)

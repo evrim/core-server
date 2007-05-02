@@ -12,10 +12,10 @@
    (admin-email :accessor web-application.admin-email :initarg :admin-email :initform (error "Admin email must be supplied."))
    (project-name :accessor web-application.project-name
 		 :initarg :project-name
-		 :initform (error "Project name must be provided."))
+		 :initform nil)
    (project-pathname :accessor web-application.project-pathname
 		     :initarg :project-pathname
-		     :initform (error "Source Pathname must be provided."))))
+		     :initform nil)))
 
 (defclass apache-web-application (web-application)
   ((vhost-template-pathname :accessor apache-web-application.vhost-template-pathname :initarg :vhost-template-pathname
@@ -75,11 +75,16 @@
   ((apachectl-pathname :accessor apache-server.apachectl-pathname :initarg :apachectl-pathname
 		       :initform
 		       #+pardus (make-pathname :directory '(:absolute "usr" "sbin") :name "apache2ctl")
-		       #-pardus (make-pathname :directory '(:absolute "etc" "init.d") :name "apache2"))
+		       #+debian (make-pathname :directory '(:absolute "usr" "sbin") :name "apache2ctl")
+		       #+(not (or pardus debian)) (make-pathname :directory '(:absolute "etc" "init.d") :name "apache2"))
    (htpasswd-pathname :accessor apache-server.htpasswd-pathname :initarg :htpasswd-pathname
-		      :initform (make-pathname :directory '(:absolute "usr" "sbin") :name "htpasswd2"))
+		      :initform
+		      #+debian (make-pathname :directory '(:absolute "usr" "bin") :name "htpasswd")
+		      #-debian (make-pathname :directory '(:absolute "usr" "sbin") :name "htpasswd2"))
    (vhosts.d-pathname :accessor apache-server.vhosts.d-pathname :initarg :vhosts.d-pathname
-		      :initform (make-pathname :directory '(:absolute "etc" "apache2" "vhosts.d")))
+		      :initform
+		      #+debian (make-pathname :directory '(:absolute "etc" "apache2" "sites-enabled"))
+		      #-debian (make-pathname :directory '(:absolute "etc" "apache2" "vhosts.d")))
    (htdocs-pathname :accessor apache-server.htdocs-pathname :initarg :htdocs-pathname
 		    :initform (make-pathname :directory '(:absolute "var" "www"))))
   (:default-initargs :name "Apache2 Web Server"))
@@ -99,7 +104,9 @@
 
 (defclass name-server (server)
   ((ns-script-pathname :accessor name-server.ns-script-pathname :initarg :ns-script-pathname
-		       :initform (make-pathname :directory '(:absolute "etc" "init.d") :name "svscan"))
+		       :initform
+		       #-debian (make-pathname :directory '(:absolute "etc" "init.d") :name "svscan")
+		       #+debian (make-pathname :directory '(:absolute "etc" "init.d") :name "djbdns"))
    (ns-db-pathname :accessor name-server.ns-db-pathname :initarg :ns-db-pathname
 		   :initform (merge-pathnames (make-pathname :directory '(:relative "db" "ns"))
 					      (asdf:component-pathname (asdf:find-system :core-server))))

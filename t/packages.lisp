@@ -2,10 +2,10 @@
 
 (defpackage :tr.gen.core.server.test
   (:nicknames :core-server.test)
-  (:use :common-lisp :iterate :cl-prevalence :core-server :5am :arnesi
-	;; :cl-store
+  (:use :common-lisp :iterate :cl-prevalence :core-server :arnesi
+	;; :cl-store :5am
 	)
   (:shadowing-import-from #:arnesi #:name))
 
-(in-package :core-server.test)
-(def-suite :core-server)
+;;(in-package :core-server.test)
+;;(def-suite :core-server)

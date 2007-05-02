@@ -1,6 +1,8 @@
 (in-package :core-server.test)
 
-(defparameter *ucw-server* (make-instance 'ucw-server :backend (ucw::make-backend :httpd :host "127.0.0.1" :port 8080)))
+(defparameter *ucw-server*
+  (make-instance 'ucw-server :backend (ucw::make-backend :httpd :host "127.0.0.1" :port 8080)))
+
 (describe *ucw-server*)
 (start *ucw-server*)
 (status *ucw-server*)
