@@ -48,7 +48,7 @@
                          (:module :services
                                   :components
                                   ((:file "whois"))))))
-  :depends-on (:iterate :cl-prevalence :ucw)
+  :depends-on (:iterate :cl-prevalence :ucw+)
   :serial t)
 
 (defsystem :core-server.test
