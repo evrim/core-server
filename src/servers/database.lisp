@@ -99,3 +99,19 @@
       ;; create a model
       (execute system (make-transaction 'tx-model-create model-class)))
     system))
+
+(defun update-slots (instance lst)
+  (let ((clazz (class-of instance))
+	(key nil))
+    (mapc #'(lambda (item)
+	      (cond
+		((keywordp item)
+		 (setf key item))
+		(t
+		 (when key
+		   (let ((slot-name (intern (symbol-name key))))
+		     (if (sb-pcl::find-slot-definition clazz slot-name)
+			 (setf (slot-value instance slot-name) item)
+			 (warn "slot ~A not found in class ~A" slot-name (class-name clazz))))))))
+	  lst)
+    instance))

@@ -48,10 +48,10 @@
 				(apache-server.htdocs-pathname self))))
       (with-open-file (s redirector-pathname
 			 :direction :output :if-exists :supersede :if-does-not-exist :create)
-	(it.bese.yaclml:with-yaclml-stream s
+	(it.bese.yaclml:with-yaclml-stream s	  
 	  (<:html
 	   (<:head
-	    (<:meta :http-equiv "Refresh"
+	    (<:meta :http--equiv "Refresh"
 		    :content (format nil "0;URL=~A" (apache-web-application.default-entry-point app)))))))
       (fix-apache-permissions redirector-pathname))))
 

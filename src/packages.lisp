@@ -72,7 +72,7 @@
    #:create-guard-with-mutex
    #:model
    #:make-database
-
+   #:update-slots
    ;; [Nameserver]
    ;; classes
    #:name-server
