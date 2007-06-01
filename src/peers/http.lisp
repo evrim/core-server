@@ -4,14 +4,16 @@
   ())
 
 (defmethod read-request ((self http-peer) stream)
-  (multiple-value-bind (headers method uri version) (http-request-headers? stream)
+  (multiple-value-bind (method uri version general-headers request-headers unknown-headers)
+      (http-request-headers? stream)
     (when method
       (let ((request (make-instance 'http-request)))
-	(setf (http-request.headers request) headers
+	(setf (http-message.general-headers request) general-headers
+	      (http-message.unknown-headers request) unknown-headers
+	      (http-request.headers request) request-headers
 	      (http-request.uri request) uri
 	      (http-request.method request) method
 	      (http-message.version request) version)
-	(describe request)
 	request))))
 
 (defmethod eval-request ((self http-peer) request)
@@ -23,22 +25,22 @@
      (<:head
       (<:title "Test1"))
      (<:body
-      (loop for i from 0 upto 13000
+      (loop for i from 0 upto 5000
  	 do (<:ai "A"))))))
 
 (defmethod print-response ((self http-peer) response stream)
-  (checkpoint-stream stream)
-  (string! stream "HTTP/1.1 200 OK")
-  (char! stream #\Newline)
-  (string! stream "Content-Type: text/html")
-  (char! stream #\Newline)  
-  (string! stream "Content-Length: ")
-  (fixnum! stream (length *response-body*))
-  (char! stream #\Newline)
-  (char! stream #\Newline)
-  (string! stream *response-body*)
-  (char! stream #\Newline)
-  (commit-stream stream))
+    (checkpoint-stream stream)
+    (string! stream "HTTP/1.1 200 OK")
+    (char! stream #\Newline)
+    (string! stream "Content-Type: text/html")
+    (char! stream #\Newline)  
+    (string! stream "Content-Length: ")
+    (fixnum! stream (length *response-body*))
+    (char! stream #\Newline)
+    (char! stream #\Newline)
+    (string! stream *response-body*)
+    (char! stream #\Newline)
+    (commit-stream stream))
 
 (defmethod mod-lisp-print-response ((self http-peer) response stream)
   (checkpoint-stream stream)

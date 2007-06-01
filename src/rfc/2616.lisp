@@ -855,7 +855,8 @@
 ;;;-----------------------------------------------------------------------------
 (defclass http-message ()
   ((version :accessor http-message.version :initform '(1 1))
-   (general-headers :accessor http-message.general-headers :initform '())))
+   (general-headers :accessor http-message.general-headers :initform '())
+   (unknown-headers :accessor http-message.unknown-headers :initform '())))
 
 ;;;-----------------------------------------------------------------------------
 ;;; HTTP REQUEST
@@ -883,21 +884,22 @@
 		    (eval header-list) :initial-value nil)))))
 
 (defhttp-header-parser http-general-header? +http-general-headers+)
-(defhttp-header-parser http-request-header? (append +http-general-headers+ +http-request-headers+))
+(defhttp-header-parser http-request-header? +http-request-headers+)
 
-(defrule http-request-headers? (c method uri version header (headers '()) key value)
-  (:http-request-first-line? method uri version)
-  (:lwsp?)
+(defrule http-request-headers? (c method uri version header (gh '()) (rh '()) (uh '()) key value)
+  (:http-request-first-line? method uri version) (:crlf?)
   (:zom
-   (:or (:and (:http-request-header? header) (:do (push header headers)))
+   (:or (:and (:http-general-header? header) (:do (push header gh)))
+	(:and (:http-request-header? header) (:do (push header rh)))
 	(:and (:do (setq key (make-accumulator)))
 	      (:zom (:type http-header-name? c) (:collect c key))
-	      #\:
+	      #\: (:zom (:type space?))
 	      (:do (setq value (make-accumulator :byte)))
 	      (:zom (:type http-header-value? c) (:collect c value))
-	      (:do (push (cons key value) headers))))
-   (:lwsp?))
-  (:return (values (nreverse headers) method uri version)))
+	      (:do (push (cons key value) uh))))
+   (:crlf?))
+  (:return (values method uri version (nreverse gh) (nreverse rh)
+		   (nreverse uh))))
 
 ;;;-----------------------------------------------------------------------------
 ;;; HTTP RESPONSE

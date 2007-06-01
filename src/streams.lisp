@@ -1,5 +1,5 @@
 (in-package :tr.gen.core.server)
-(declaim (optimize (speed 3) (space 2) (safety 0) (debug 0) (compilation-speed 0)))
+;;(declaim (optimize (speed 3) (space 2) (safety 0) (debug 0) (compilation-speed 0)))
 
 ;;;-----------------------------------------------------------------------------
 ;;; IMPLEMENTATION OF SEVERAL BOGUS TURING MACHINES (Left is broken)
@@ -90,6 +90,13 @@
   (if (not (transactionalp self))
       -1
       (call-next-method)))
+
+(defmethod close-stream :around ((self core-stream))
+  (when (transactionalp self)
+    (do ((i (current-checkpoint self) (current-checkpoint self)))
+	((= -1 i) nil)
+      (commit-stream self)))
+  (call-next-method))
 
 ;;;-----------------------------------------------------------------------------
 ;;; Vector Stream
@@ -205,7 +212,7 @@
 (declaim (inline stream-using-cache?))
 (defun stream-using-cache? (self)
   (< (the fixnum (s-v '%read-index))
-     (length (the (vector (unsigned-byte 8)) (s-v '%read-buffer)))))
+     (length (s-v '%read-buffer))))
 
 (defmethod %peek-stream ((self core-fd-io-stream))
   (if (< (the fixnum (s-v '%peek)) 0)
@@ -222,21 +229,22 @@
 
 (defmethod peek-stream ((self core-fd-io-stream))
   (if (stream-using-cache? self)
-      (aref (the (vector (unsigned-byte 8)) (s-v '%read-buffer))
+      (aref (s-v '%read-buffer)
 	    (the fixnum (s-v '%read-index)))
       (%peek-stream self)))
 
 (defmethod read-stream ((self core-fd-io-stream))
   (if (stream-using-cache? self)
-      (prog1 (aref (the (vector (unsigned-byte 8)) (s-v '%read-buffer)) (s-v '%read-index))
+      (prog1 (aref (s-v '%read-buffer) (s-v '%read-index))
 	(incf (the fixnum (s-v '%read-index)))
-	(if (= (s-v '%read-index) (length (the (vector (unsigned-byte 8)) (s-v '%read-buffer))))
-	    (setf (s-v '%read-index) 0
-		  (s-v '%read-buffer) (make-accumulator :byte))))
+	(when (not (transactionalp self))
+	  (if (= (s-v '%read-index) (length (s-v '%read-buffer)))
+	      (setf (s-v '%read-index) 0
+		    (s-v '%read-buffer) (make-accumulator :byte)))))
       (let ((read (%read-stream self)))
 	(when read
 	  (when (transactionalp self)	      
-	    (push-atom read (the (vector (unsigned-byte 8)) (s-v '%read-buffer)))
+	    (push-atom read (s-v '%read-buffer))
 	    (incf (the fixnum (s-v '%read-index))))
 	  read))))
 

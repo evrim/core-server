@@ -1,5 +1,5 @@
 (in-package :tr.gen.core.server)
-(declaim (optimize (speed 3) (space 2) (safety 0) (debug 0) (compilation-speed 0)))
+;;(declaim (optimize (speed 3) (space 2) (safety 0) (debug 0) (compilation-speed 0)))
 
 ;;;-----------------------------------------------------------------------------
 ;;; HENRY G. BAKER PARSER GENERATOR WITH EXTENDED GRAMMER
@@ -7,28 +7,27 @@
 ;;;-----------------------------------------------------------------------------
 (declaim (inline match-atom))
 (defun match-atom (stream atom)
-  (let ((c (peek-stream stream)))
-    (if c
-	(cond
-	  ((and (characterp atom) (> (char-code atom) 127)) ;;utf-8
+  (let ((c (peek-stream stream)))    
+    (cond
+      ((and (characterp atom) (> (char-code atom) 127)) ;;utf-8
+       (prog1 t
+	 (checkpoint-stream stream)
+	 (let ((acc (make-accumulator :byte)))
+	   (char->utf8 atom acc)
 	   (prog1 t
-	     (checkpoint-stream stream)
-	     (let ((acc (make-accumulator :byte)))
-	       (char->utf8 atom acc)
-	       (prog1 t
-		 (reduce #'(lambda (acc atom)
-			     (declare (ignore acc))
-			     (if (eq (the (unsigned-byte 8) atom) (the (unsigned-byte 8) c))
-				 (progn
-				   (read-stream c) (setq c (peek-stream stream)))
-				 (progn
-				   (rewind-stream stream)
-				   (return-from match-atom nil)))
-			     nil)
-			 acc :initial-value nil)))
-	     (commit-stream stream)))
-	  ((characterp atom) (eq c (char-code atom)))
-	  (t (eq atom c))))))
+	     (reduce #'(lambda (acc atom)
+			 (declare (ignore acc))
+			 (if (eq (the (unsigned-byte 8) atom) (the (unsigned-byte 8) c))
+			     (progn
+			       (read-stream c) (setq c (peek-stream stream)))
+			     (progn
+			       (rewind-stream stream)
+			       (return-from match-atom nil)))
+			 nil)
+		     acc :initial-value nil)))
+	 (commit-stream stream)))
+      ((characterp atom) (eq c (char-code atom)))
+      (t (eq atom c)))))
 
 (defmacro match/stream (stream atom)
   `(when (match-atom ,stream ,atom)
@@ -53,7 +52,7 @@
 	     (declare (type (unsigned-byte 8) c))
 	     ,@body)))
      (deftype ,name ()
-       `(and (not null) (satisfies ,',name)))))
+       `(satisfies ,',name))))
 
 ;;; http://www.w3.org/Protocols/rfc2616/rfc2616-sec2.html#sec2
 (defatom bit? ()
