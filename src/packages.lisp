@@ -20,7 +20,7 @@
    #:core-fd-io-stream
    #:core-file-io-stream
    #:make-core-stream
-   ;; rfcs
+   ;; rfc 2109
    #:cookie
    #:cookie.name
    #:cookie.value
@@ -37,6 +37,23 @@
    #:rfc2109-cookie-value?
    #:rfc2109-quoted-value?
    #:cookie?
+   ;; rfc 2388
+   #:mime-part
+   #:mime-part.name
+   #:mime-part.filename
+   #:mime-part.content-type
+   #:mime-part.charset
+   #:mime-part.encoding
+   #:mime-part.mixed-boundary
+   #:mime-part.data
+   #:make-mime-part
+   #:rfc2388-boundary-char?
+   #:rfc2388-boundary?
+   #:rfc2388-content-disposition?
+   #:rfc2388-content-type?
+   #:rfc2388-content-transfer-encoding?
+   #:rfc2388-mime-part?
+   #:mime-parts?
    ;; [Protocol]
    ;; classes
    #:application

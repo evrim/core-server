@@ -86,7 +86,8 @@
 			:components ((:file "packages")
                                      (:file "postfix")
                                      (:module :rfc
-                                              :components ((:file "2109"))
+                                              :components ((:file "2109")
+                                                           (:file "2388"))
                                               :serial t)
                                      ;; (:file "database")
                                      ;; (:file "dns")

@@ -21,6 +21,7 @@ Part_Number=\"Rocket_Launcher_0001\"; $Path=\"/acme\";
 Shipping=\"FedEx\"; $Path=/acme;"))
 	   (cookies (cookie? cstream)))
       (and (equal 3 (length cookies))
+	   ;; check some slots
 	   (equal (cookie.name (car cookies)) "Customer")
 	   (equal (cookie.value (car cookies)) "WILE_E_COYOTE")
 	   (equal (cookie.domain (car cookies)) "gee")
