@@ -82,15 +82,19 @@
 
 (defsystem :core-server.test
   :components ((:module :t
+                        :serial t
 			:components ((:file "packages")
                                      (:file "postfix")
+                                     (:module :rfc
+                                              :components ((:file "2109"))
+                                              :serial t)
                                      ;; (:file "database")
                                      ;; (:file "dns")
                                      ;; (:file "apache")
                                      ;; (:file "ucw")
                                      ;; (:file "core")
                                      )))
-  :depends-on (:core-server))
+  :depends-on (:core-server :rt))
 
 ;; (defmethod perform ((op asdf:test-op) (system (eql (find-system :core-server))))
 ;;   (asdf:oos 'asdf:load-op :core-server.test)

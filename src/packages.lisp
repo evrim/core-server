@@ -20,6 +20,23 @@
    #:core-fd-io-stream
    #:core-file-io-stream
    #:make-core-stream
+   ;; rfcs
+   #:cookie
+   #:cookie.name
+   #:cookie.value
+   #:cookie.version
+   #:cookie.comment
+   #:cookie.domain
+   #:cookie.max-age
+   #:cookie.path
+   #:cookie.secure
+   #:make-cookie
+   #:cookiep
+   #:cookie!
+   #:rfc2109-cookie-header?
+   #:rfc2109-cookie-value?
+   #:rfc2109-quoted-value?
+   #:cookie?
    ;; [Protocol]
    ;; classes
    #:application
