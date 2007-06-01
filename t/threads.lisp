@@ -2,7 +2,7 @@
 
 (defparameter *msg* nil)
 
-(deftest thread-spawn
+(deftest thread-messaging
     (let ((master (thread-spawn #'(lambda ()
 				    (let* ((message '(1 2.0 "abc"))
 					   (self (core-server::current-thread))
