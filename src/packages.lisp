@@ -5,7 +5,15 @@
   (:shadowing-import-from #:ucw #:start)
   (:shadowing-import-from #:swank #:send #:receive #:accept-connection)
   (:shadowing-import-from #:arnesi #:name #:body #:self)
-  (:export   
+  (:export 
+   ;; Threads
+   #:thread-mailbox
+   #:thread-send
+   #:thread-receive
+   #:cleanup-mailbox
+   #:thread-spawn
+   #:thread-interrupt
+   #:thread-kill
    ;; [Streams]
    #:core-stream
    #:read-stream
