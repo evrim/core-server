@@ -77,7 +77,7 @@
                          (:module :services
                                   :components
                                   ((:file "whois"))))))
-  :depends-on (:iterate :cl-prevalence :ucw)
+  :depends-on (:iterate :cl-prevalence :ucw :sb-bsd-sockets)
   :serial t)
 
 (defsystem :core-server.test
