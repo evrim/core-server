@@ -47,13 +47,23 @@
    #:mime-part.mixed-boundary
    #:mime-part.data
    #:make-mime-part
-   #:rfc2388-boundary-char?
-   #:rfc2388-boundary?
-   #:rfc2388-content-disposition?
-   #:rfc2388-content-type?
-   #:rfc2388-content-transfer-encoding?
    #:rfc2388-mime-part?
    #:mime-parts?
+   ;; rfc 2396
+   #:uri
+   #:uri.scheme
+   #:uri.username
+   #:uri.password
+   #:uri.server
+   #:uri.port
+   #:uri.paths
+   #:uri.queries
+   #:uri.fragments
+   #:urip
+   #:make-uri
+   #:uri?
+   #:query!
+   #:uri!
    ;; [Protocol]
    ;; classes
    #:application
