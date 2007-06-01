@@ -22,6 +22,12 @@
    #:core-fd-io-stream
    #:core-file-io-stream
    #:make-core-stream
+   ;; sockets
+   #:resolve-hostname
+   #:make-server
+   #:close-server
+   #:accept
+   #:connect
    ;; rfc 2109
    #:cookie
    #:cookie.name

@@ -1,13 +1,25 @@
-(in-package :tr.gen.core.server)
+(in-package :tr.gen.core.server.test)
 
-(defvar *www #(212 175 40 11))
-(defvar *www-result (resolve-hostname "www.core.gen.tr"))
-(eq t (reduce #'(lambda (acc item)
-		  (if item
-		      t))
-	      (map 'list #'equal *www *www-result)
-	      :initial-value nil))
+(defparameter *listen-ip* "0.0.0.0")
+(defparameter *listen-port* 5555)
 
-(defparameter *server (make-server :port 5555))
-(describe *server)
-(close-server *server)
+(deftest resolv-hostname
+    (let ((h #(212 175 40 11))
+	  (result (resolve-hostname "www.core.gen.tr")))
+      (reduce #'(lambda (x y)
+		  (if x y nil))
+	      (map 'list #'equal h result)
+	      :initial-value t))
+  t)
+
+(deftest server
+    (let ((server (make-server :host *listen-ip* :port *listen-port*)))
+      (handler-case
+	  (unwind-protect
+	       (let* ((stream (connect *listen-ip* *listen-port*)))
+		 ;; should listen on 5555
+		 (and server stream t))
+	    (close-server server))
+	(condition (c)
+	  (close-server server))))
+  t)
