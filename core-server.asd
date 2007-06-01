@@ -85,6 +85,7 @@
                         :serial t
 			:components ((:file "packages")
                                      (:file "postfix")
+                                     (:file "streams.lisp")
                                      (:module :rfc
                                               :components ((:file "2109")
                                                            (:file "2388")

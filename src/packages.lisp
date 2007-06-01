@@ -8,12 +8,14 @@
   (:export   
    ;; [Streams]
    #:core-stream
-   #:peek-stream
    #:read-stream
-   #:write-stream
-   #:rewind-stream
+   #:peek-stream
    #:checkpoint-stream
    #:commit-stream
+   #:rewind-stream
+   #:write-stream
+   #:close-stream
+   #:core-streamp
    ;; [Stream Types]
    #:core-vector-io-stream
    #:core-string-io-stream
