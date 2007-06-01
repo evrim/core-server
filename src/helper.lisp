@@ -1,5 +1,15 @@
 (in-package :tr.gen.core.server)
 
+(defmacro s-v (slot-name)
+  "slot-value self slot-name"
+  `(slot-value self ,slot-name))
+
+(defmacro seq (how-many)
+  "(seq how-many) => (0 1 2 .. how-many-1)"
+  `(let ((result))
+     (dotimes (n ,how-many (nreverse result))
+       (push n result))))
+
 (defun load-file-into-string (pathname)
   (iter (for l in-file pathname using #'read-line)
 	(reducing l by #'(lambda (acc elem)
