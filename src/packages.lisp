@@ -1,10 +1,25 @@
 (in-package :cl-user)
 (defpackage :tr.gen.core.server
   (:nicknames :core-server)
-  (:use :common-lisp :iterate :cl-prevalence :yaclml :arnesi :ucw)
+  (:use :common-lisp :iterate :cl-prevalence :yaclml :arnesi :ucw :sb-bsd-sockets)
   (:shadowing-import-from #:ucw #:start)
+  (:shadowing-import-from #:swank #:send #:receive #:accept-connection)
   (:shadowing-import-from #:arnesi #:name #:body #:self)
-  (:export
+  (:export   
+   ;; [Streams]
+   #:core-stream
+   #:peek-stream
+   #:read-stream
+   #:write-stream
+   #:rewind-stream
+   #:checkpoint-stream
+   #:commit-stream
+   ;; [Stream Types]
+   #:core-vector-io-stream
+   #:core-string-io-stream
+   #:core-fd-io-stream
+   #:core-file-io-stream
+   #:make-core-stream
    ;; [Protocol]
    ;; classes
    #:application

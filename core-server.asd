@@ -21,6 +21,12 @@
                         :serial t
                         :components
 			((:file "packages")
+                         (:file "helper")
+                         (:file "streams")
+                         (:file "parser")
+                         (:file "sockets")
+                         (:file "threads")
+                         (:file "units")
                          (:file "prevalence")
                          (:file "config")
                          (:file "method")
@@ -28,7 +34,6 @@
                          (:file "protocol")
                          (:file "application")
                          (:file "server")
-                         (:file "helper")
                          (:file "search")
                          (:module :applications
                                   :components
@@ -44,11 +49,35 @@
                                    (:file "postfix")
                                    (:file "ucw")
                                    (:file "core")
-                                   (:file "ticket")))
+                                   (:file "ticket")
+                                   (:file "socket")
+                                   ;; (:module :web
+;;                                             :components
+;;                                             ((:module :backend
+;;                                                        :components
+;;                                                        ((:file "accept")
+;;                                                         (:file "common")
+;;                                                         (:file "httpd")
+;;                                                         (:file "multithread-httpd")
+;;                                                         (:file "mod-lisp")))))
+                                   ))
+                         (:module :rfc
+                                  :serial t
+                                  :components 
+                                  ((:file "2109") ;;cookie
+                                   (:file "2396") ;;uri
+                                   (:file "2388") ;;mime
+                                   (:file "2616")
+                                   )) ;;http
+                         (:module :peers
+                                  :components
+                                  ((:file "peer")
+                                   (:file "http")
+                                   ))
                          (:module :services
                                   :components
                                   ((:file "whois"))))))
-  :depends-on (:iterate :cl-prevalence :ucw+)
+  :depends-on (:iterate :cl-prevalence :ucw)
   :serial t)
 
 (defsystem :core-server.test
