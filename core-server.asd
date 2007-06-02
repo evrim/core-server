@@ -85,6 +85,7 @@
                         :serial t
 			:components ((:file "packages")
                                      (:file "postfix")
+                                     (:file "parser")
                                      (:file "streams")
                                      (:file "sockets")
                                      (:module :rfc
