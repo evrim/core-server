@@ -115,14 +115,14 @@
        `(progn
 	  (defmethod ,method-name ,method-args ,@method-body)
 	  (defmethod ,name ,method-args
-	    (if (me-p self)
+	    (if (me-p ,self)
 		(,method-name ,@arg-names)
 		(async-method-call ,self ',method-name ,@(rest arg-names))))))
       ((eq method-keyword :async-no-return)
        `(progn
 	  (defmethod ,method-name ,method-args ,@method-body)
 	  (defmethod ,name ,method-args
-	    (if (me-p self)
+	    (if (me-p ,self)
 		(,method-name ,@arg-names)
 		(async-method-call-with-no-return ,self ',method-name ,@(rest arg-names)))
 	    (values))))
@@ -130,7 +130,7 @@
        `(progn
 	  (defmethod ,method-name ,method-args ,@method-body)
 	  (defmethod ,name ,method-args
-	    (if (me-p self)
+	    (if (me-p ,self)
 		(,method-name ,@arg-names)
 		(funcall (async-method-call ,self ',method-name ,@(rest arg-names)))))))
       (t
