@@ -383,11 +383,11 @@
 (declaim (inline object-to-list))
 (defun object-to-list (object)
   (reduce #'(lambda (acc item)
-	      (let ((name (sb-mop:slot-definition-name item)))
+	      (let ((name (mopp::slot-definition-name item)))
 		(if (slot-boundp object name)
 		    (append acc (list (cons name (slot-value object name))))
 		    acc)))
-	  (sb-mop:class-slots (class-of object))
+	  (mopp:class-slots (class-of object))
 	  :initial-value nil))
 
 (defmethod shared-initialize :after ((self core-object-io-stream) slot-name
@@ -403,10 +403,10 @@
   (let ((o (make-instance clazz)))
     (reduce #'(lambda (acc slot)
 		(declare (ignore acc))
-		(let ((name (sb-mop:slot-definition-name slot)))
+		(let ((name (mopp:slot-definition-name slot)))
 		  (setf (slot-value o name) (cdr (assoc name list))))
 		nil)
-	    (sb-mop:class-slots (find-class clazz))
+	    (mopp:class-slots (find-class clazz))
 	    :initial-value nil)
     o))
 

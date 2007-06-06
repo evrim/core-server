@@ -1,7 +1,7 @@
 (in-package :cl-user)
 (defpackage :tr.gen.core.server
   (:nicknames :core-server)
-  (:use :common-lisp :iterate :cl-prevalence :yaclml :arnesi :ucw :sb-bsd-sockets)
+  (:use :common-lisp :iterate :cl-prevalence :yaclml :arnesi :ucw :sb-bsd-sockets :bordeaux-threads)
   (:shadowing-import-from #:ucw #:start)
   (:shadowing-import-from #:swank #:send #:receive #:accept-connection)
   (:shadowing-import-from #:arnesi #:name #:body #:self)
@@ -12,7 +12,6 @@
    #:thread-receive
    #:cleanup-mailbox
    #:thread-spawn
-   #:thread-interrupt
    #:thread-kill
    ;; [Streams]
    #:core-stream

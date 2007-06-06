@@ -77,7 +77,7 @@
                          (:module :services
                                   :components
                                   ((:file "whois"))))))
-  :depends-on (:iterate :cl-prevalence :ucw :sb-bsd-sockets)
+  :depends-on (:bordeaux-threads :iterate :cl-prevalence :ucw :sb-bsd-sockets)
   :serial t)
 
 (defsystem :core-server.test
@@ -99,7 +99,7 @@
                                      ;; (:file "ucw")
                                      ;; (:file "core")
                                      )))
-  :depends-on (:core-server :rt))
+  :depends-on (:bordeaux-threads :core-server :rt))
 
 ;; (defmethod perform ((op asdf:test-op) (system (eql (find-system :core-server))))
 ;;   (asdf:oos 'asdf:load-op :core-server.test)
