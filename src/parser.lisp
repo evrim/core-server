@@ -123,7 +123,7 @@
 ;;;-----------------------------------------------------------------------------
 ;;; Grammer
 ;;;-----------------------------------------------------------------------------
-(eval-when (:compile-toplevel :execute)
+(eval-when (:compile-toplevel :load-toplevel :execute)
   (defvar +parser-rules+ (make-hash-table :test #'equal)) ;; Rule or not
   (defvar +checkpoint+ nil)) ;; used for backtracking
   
