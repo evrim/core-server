@@ -28,7 +28,6 @@
 	(:do (push (cons key value) parameters)
 	     (setq key (make-accumulator)))
 	#\;
-	(:debug)
 	(:lwsp?))
   (:return (list type (nreverse parameters))))
 
