@@ -88,7 +88,7 @@
   (:segment? segment params)
   (:do (push (cons segment params) segments))
   (:zom #\/
-	(:segment? segment)
+	(:segment? segment params)
 	(:do (push (cons segment params) segments)))
   (:return (nreverse segments)))
 
