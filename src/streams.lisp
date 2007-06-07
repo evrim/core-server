@@ -6,12 +6,6 @@
 ;;;-----------------------------------------------------------------------------
 
 ;;;-----------------------------------------------------------------------------
-;;; Utils
-;;;-----------------------------------------------------------------------------
-(defun char->utf8 (char acc)
-  (sb-impl::char->utf8 char acc))
-
-;;;-----------------------------------------------------------------------------
 ;;; Simple Accumulator
 ;;;-----------------------------------------------------------------------------
 (defun make-accumulator (&optional (type :character) (size 0))  
@@ -32,7 +26,11 @@
 (defun push-atom (atom accumulator)
   (cond
     ((and (characterp atom) (not (eq 'character (array-element-type accumulator))))
-     (char->utf8 atom accumulator))
+     (reduce #'(lambda (acc atom)
+		 (declare (ignore acc))
+		 (vector-push-extend atom accumulator)
+		 nil)
+	     (string-to-octets (string atom)) :initial-value nil))
     ((and (typep atom '(unsigned-byte 8)) (eq 'character (array-element-type accumulator)))
      (vector-push-extend (code-char atom) accumulator))
     (t

@@ -11,20 +11,18 @@
     (cond
       ((and (characterp atom) (> (char-code atom) 127)) ;;utf-8
        (prog1 t
-	 (checkpoint-stream stream)
-	 (let ((acc (make-accumulator :byte)))
-	   (char->utf8 atom acc)
-	   (prog1 t
-	     (reduce #'(lambda (acc atom)
-			 (declare (ignore acc))
-			 (if (eq (the (unsigned-byte 8) atom) (the (unsigned-byte 8) c))
-			     (progn
-			       (read-stream c) (setq c (peek-stream stream)))
-			     (progn
-			       (rewind-stream stream)
-			       (return-from match-atom nil)))
-			 nil)
-		     acc :initial-value nil)))
+	 (checkpoint-stream stream) 
+	 (prog1 t
+	   (reduce #'(lambda (acc atom)
+		       (declare (ignore acc))
+		       (if (eq (the (unsigned-byte 8) atom) (the (unsigned-byte 8) c))
+			   (progn
+			     (read-stream c) (setq c (peek-stream stream)))
+			   (progn
+			     (rewind-stream stream)
+			     (return-from match-atom nil)))
+		       nil)
+		   (string-to-octets (string atom)) :initial-value nil))
 	 (commit-stream stream)))
       ((characterp atom) (eq c (char-code atom)))
       (t (eq atom c)))))
@@ -346,15 +344,12 @@
 
 (defun char! (stream char)
   (let ((code (char-code char)))
-    (if (> code 127)
-	(let ((acc (make-accumulator :byte)))
-	  (declare (type (vector (unsigned-byte 8)) acc))
-	  (char->utf8 char acc)
-	  (reduce #'(lambda (acc atom)
-		      (declare (ignore acc))
-		      (byte! stream atom)
-		      nil)
-		  acc :initial-value nil))
+    (if (> code 127) 
+	(reduce #'(lambda (acc atom)
+		    (declare (ignore acc))
+		    (byte! stream atom)
+		    nil)
+		(string-to-octets (string char)) :initial-value nil)
 	(byte! stream code))))
 
 (defun string! (stream string)
