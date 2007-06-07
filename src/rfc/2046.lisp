@@ -46,7 +46,7 @@
   (core-search (if (listp root-mime-or-mimes)
 		   root-mime-or-mimes
 		   (list root-mime-or-mimes))
-	       goal-p succ #'prepend))
+	       goal-p succ #'(lambda (x y) (append y x))))
 
 (defatom mime-boundary-char? ()
   (and (or (visible-char? c) (space? c)) (not (eq c #.(char-code #\-)))))
