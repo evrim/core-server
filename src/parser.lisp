@@ -390,7 +390,7 @@
 
 (defvar +hex-alphabet+
   #.(reduce #'(lambda (acc atom) (push-atom (char-code atom) acc) acc)
-	    "0123456789ABDEF" :initial-value (make-accumulator :byte)))
+	    "0123456789ABCDEF" :initial-value (make-accumulator :byte)))
 
 (defun hex-value! (stream hex)
   (byte! stream (aref +hex-alphabet+ (floor (/ hex 16))))
