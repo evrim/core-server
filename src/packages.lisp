@@ -52,13 +52,14 @@
    #:rfc2109-cookie-value?
    #:rfc2109-quoted-value?
    #:cookie?
-   ;; rfc 2345
-   #:quoted-printable   ;; header symbol
+   ;; rfc 2045
    #:quoted-printable?
    #:quoted-printable!
    #:base64?
    #:base64!
-   ;; rfc 2346
+   ;;;; header symbol
+   #:quoted-printable
+   ;; rfc 2046
    ;;;; classes and methods
    #:mime
    #:mime.headers
@@ -72,6 +73,8 @@
    #:make-composite-level-media
    #:mime-search
    #:mime.header
+   ;;;; header symbols
+   #:content-type
    ;; rfc 2388
    #:rfc2388-mimes?
    ;; rfc 2396
