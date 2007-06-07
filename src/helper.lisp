@@ -138,8 +138,7 @@ string in BIG string."
 	  (return-from tr-string< t))
       (if (tr-char< (aref b i) (aref a i))
   	  (return-from tr-string< nil)))
-    nil)
-  )
+    nil))
 
 (defun tr-string> (a b)
   (not (tr-string< a b)))
