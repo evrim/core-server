@@ -320,7 +320,7 @@
   (:zom (:and (:http-media-range? type subtype)
 	      (:do (push (cons type subtype) accept))
 	      (:zom (:not #\,) (:type http-header-name?)))
-	(:type space?))
+	(:zom (:type space?)))
   (:return accept))
 
 ;; Http Language
@@ -341,7 +341,7 @@
   (:zom (:and (:http-language? e)
 	      (:do (push e e*))
 	      (:zom (:not #\,) (:type http-header-name?)))
-	(:type space?))
+	(:zom (:type space?)))
   (:return (nreverse e*)))
 
 ;; 14.3 Accept Encoding
@@ -352,7 +352,7 @@
   (:zom (:and (:http-language? e)
 	      (:do (push e e*))
 	      (:zom (:not #\,) (:type http-header-name?)))
-	(:type space?))
+	(:zom (:type space?)))
   (:return (nreverse e*)))
 
 ;; 14.4 Accept Language
@@ -364,7 +364,7 @@
   (:zom (:and (:http-language? lang)
 	      (:do (push lang langs))
 	      (:zom (:not #\,) (:type http-header-name?)))
-	(:type space?))
+	(:zom (:type space?)))
   (:return (nreverse langs)))
 
 ;; 14.8 Authorization
@@ -509,7 +509,7 @@
    (:and #\; (:lwsp?)
 	 (:user-agent-token? os) (:lwsp?)
 	 (:zom (:user-agent-token? token))
-	 #\) (:lwsp?)
+	 #\)
 	 (:return (list (cons 'browser 'ie)
 			(list 'moz-ver moz-ver)
 			(list 'version version)
@@ -527,12 +527,12 @@
    (:user-agent-token?) (:user-agent-token?) 
    (:do (setq os (make-accumulator))) (:user-agent-token? os)
    (:user-agent-token?) (:lwsp?) (:seq "rv:") (:version? revision)
-   #\) (:lwsp?) (:zom (:type http-header-name?)) (:lwsp?)
+   #\) (:lwsp?) (:zom (:type http-header-name?))
    (:or (:checkpoint
+	 (:lwsp?)
 	 (:do (setq browser (make-accumulator)))
 	 (:zom (:not #\/) (:type visible-char? c) (:collect c browser))
 	 (:version? version)
-	 (:lwsp?)
 	 (:return (list (cons 'browser (intern (string-upcase browser)))
 			(list 'moz-ver moz-ver)
 			(cons 'os os)
@@ -548,11 +548,9 @@
 (defrule opera-user-agent? (version os)
   (:seq "Opera/")
   (:version? version)
-  (:debug) (:lwsp?) #\( (:user-agent-token?)
+  (:lwsp?) #\( (:user-agent-token?)
   (:user-agent-token? os)
-  (:debug)
   (:zom (:type http-header-value?))
-  (:debug) (:lwsp?)
   (:return (list (cons 'browser 'opera)
 		 (list 'version version)
 		 (cons 'os os))))
@@ -750,12 +748,22 @@
 ;; 14.17 Content-Type
 ;; Content-Type   = "Content-Type" ":" media-type
 ;; Content-Type: text/html; charset=ISO-8859-4
-(defrule http-content-type? ((type (make-accumulator))
-			     (subtype (make-accumulator)) c)
-  (:zom (:not #\/) (:type http-header-value? c) (:collect c type))
-  (:zom (:not #\;) (:type http-header-value? c) (:collect c subtype))
-  (:zom (:type http-header-value?))
-  (:return (values type subtype)))
+(defrule http-content-type? (type subtype c
+				  (key (make-accumulator))
+				  (value (make-accumulator))
+				  parameters)
+  (:http-media-range? type subtype)
+  (:or (:checkpoint
+	#\; (:lwsp?)
+	(:zom (:type http-header-name? c) (:collect c key)
+	      (:zom (:not #\=) (:type http-header-name? c) (:collect c key))
+	      (:or (:quoted? value)
+		   (:and (:type http-header-value? c) (:collect c value)
+			 (:zom (:not #\,) (:type http-header-value? c) (:collect c value))))	      
+	      (:do (push (cons key value) parameters)
+		   (setq key (make-accumulator) value (make-accumulator))))
+	(:return (list type subtype parameters)))
+       (:return (list type subtype))))
 
 (defun http-content-type! (stream type-subtype-cons)
   (string! stream (car type-subtype-cons))
@@ -786,7 +794,8 @@
 (eval-when (:compile-toplevel :execute)
   (defvar +mod-lisp-request-headers+
     '(url method remote-ip-addr remote-ip-port server-ip-addr server-ip-port
-      server-protocol script-filename ssl-session-id))) ;; len=9
+      server-protocol script-filename ssl-session-id server-id
+      server-baseversion modlisp-version modlisp-major-version))) ;; len=9
 
 ;; 1. URL
 (defrule mod-lisp-http-url? (uri)
@@ -824,7 +833,8 @@
 
 ;; 8. SCRIPT-FILENAME
 (defrule mod-lisp-http-script-filename? (c (acc (make-accumulator :byte)))
-  (:zom (:type octet? c) (:collect c acc))
+  (:zom (:type (and (not linefeed?) (not carriage-return?) octet?) c)
+	(:collect c acc))
   (:return (octets-to-string acc :utf-8)))
 
 ;; 9. SSL-SESSION-ID
@@ -856,7 +866,8 @@
 (defclass http-message ()
   ((version :accessor http-message.version :initform '(1 1))
    (general-headers :accessor http-message.general-headers :initform '())
-   (unknown-headers :accessor http-message.unknown-headers :initform '())))
+   (unknown-headers :accessor http-message.unknown-headers :initform '())
+   (entities :accessor http-message.entities :initform '())))
 
 ;;;-----------------------------------------------------------------------------
 ;;; HTTP REQUEST
@@ -864,43 +875,98 @@
 (defclass http-request (http-message)
   ((method :accessor http-request.method)
    (uri :accessor http-request.uri)
-   (headers :accessor http-request.headers :initform '())))
+   (headers :accessor http-request.headers :initform '())
+   (entity-headers :accessor http-request.entity-headers :initform '())))
 
 (defrule http-request-first-line? (method uri proto)
   (:http-method? method) (:lwsp?) (:uri? uri) (:lwsp?)
-  (:http-protocol? proto) (:return (values method uri (cdr proto))))
+  (:http-protocol? proto) (:return (values method uri (cadr proto))))
 
-(defmacro defhttp-header-parser (name header-list)
+(defmacro defhttp-header-parser (name format header-list)
  `(defrule ,name (stub)    
     (:or ,@(nreverse
 	    (reduce #'(lambda (acc atom)
 			(cons
 			 `(:checkpoint
 			   (:sci ,(symbol-name atom))
-			   #\: (:zom (:type space?))
-			   (,(intern (format nil "HTTP-~A?" atom) :keyword) stub)
+			   (:or (:and #\: (:zom (:type space?)))
+				(:crlf?))
+			   (,(intern (format nil format atom) :keyword) stub)
 			   (:return (list ',atom stub)))
 			 acc))
 		    (eval header-list) :initial-value nil)))))
 
-(defhttp-header-parser http-general-header? +http-general-headers+)
-(defhttp-header-parser http-request-header? +http-request-headers+)
+(defhttp-header-parser http-general-header? "HTTP-~A?" +http-general-headers+)
+(defhttp-header-parser http-request-header? "HTTP-~A?" +http-request-headers+)
+(defhttp-header-parser http-entity-header? "HTTP-~A?" +http-entity-headers+)
+(defhttp-header-parser mod-lisp-header? "MOD-LISP-HTTP-~A?" +mod-lisp-request-headers+)
 
-(defrule http-request-headers? (c method uri version header (gh '()) (rh '()) (uh '()) key value)
-  (:http-request-first-line? method uri version) (:crlf?)
-  (:zom
-   (:or (:and (:http-general-header? header) (:do (push header gh)))
-	(:and (:http-request-header? header) (:do (push header rh)))
-	(:and (:do (setq key (make-accumulator)))
-	      (:zom (:type http-header-name? c) (:collect c key))
-	      #\: (:zom (:type space?))
-	      (:do (setq value (make-accumulator :byte)))
-	      (:zom (:type http-header-value? c) (:collect c value))
-	      (:do (push (cons key value) uh))))
-   (:crlf?))
-  (:return (values method uri version (nreverse gh) (nreverse rh)
-		   (nreverse uh))))
+(defrule rfc2616-request-headers? (c method uri version key value header gh rh eh uh)
+  (:http-request-first-line? method uri version)
+  (:lwsp?)
+  (:zom (:or
+	 (:and (:http-general-header? header) (:do (push header gh)))		    
+	 (:and (:http-request-header? header) (:do (push header rh)))
+	 (:and (:http-entity-header? header) (:do (push header eh)))
+	 (:and (:do (setq key (make-accumulator)))
+	       (:type http-header-name? c) (:collect c key)
+	       (:zom (:type http-header-name? c) (:collect c key))
+	       (:or (:and #\: (:zom (:type space?)))
+		    (:and (:zom (:type space?)) (:crlf?)))
+	       (:do (setq value (make-accumulator :byte)))
+	       (:zom (:type http-header-value? c) (:collect c value))
+	       (:do (push (cons key value) uh))))
+	(:zom (:type space?))
+	(:crlf?)
+	(:checkpoint
+	 (:crlf?)
+	 (:return (values method uri version (nreverse gh)
+			  (nreverse rh) (nreverse eh) (nreverse uh))))))
 
+(defrule mod-lisp-request-headers? (c header mlh gh rh eh key value uh)
+  (:and (:mod-lisp-header? header) (:do (push header mlh)) (:crlf?)
+	     (:zom (:or (:and (:http-general-header? header) (:do (push header gh)))
+			(:and (:http-request-header? header) (:do (push header rh)))
+			(:and (:http-entity-header? header) (:do (push header eh)))
+			(:and (:mod-lisp-header? header) (:do (push header mlh)))
+			(:and (:do (setq key (make-accumulator)))
+			      (:type http-header-name? c) (:collect c key)
+			      (:zom (:type http-header-name? c) (:collect c key))
+			      (:or (:and #\: (:zom (:type space?)))
+				   (:crlf?))
+			      (:do (setq value (make-accumulator :byte)))
+			      (:zom (:type http-header-value? c) (:collect c value))
+			      (:do (push (cons key value) uh))))
+		   (:crlf?)
+		   (:checkpoint
+		    (:seq "end")
+		    (:return (values  (cadr (assoc 'method mlh)) ;;method
+				      (cadr (assoc 'url mlh)) ;; uri
+				      (cadadr (assoc 'server-protocol mlh)) ;; version
+				      (nreverse gh) (nreverse rh)
+				      (nreverse eh) (nreverse uh)
+				      (nreverse mlh)))))))
+
+(defrule http-request-headers? (method uri version gh rh eh uh mlh)
+  (:or (:and (:rfc2616-request-headers? method uri version gh rh eh uh)
+	     (:return (values method uri version gh rh eh uh)))
+       (:and (:mod-lisp-request-headers? method uri version gh rh eh uh mlh)
+	     (:return (values method uri version gh (append rh mlh) eh uh)))))
+
+(defrule x-www-form-urlencoded? (query)
+  (:query? query) (:return query))
+
+;; (defrule http-request? (method uri version gh rh eh uh mlh)
+;;   (:http-request-headers? method uri version gh rh eh uh mlh)
+;;   (:if eh
+;;        (:do (let ((content-type (cadr (assoc 'content-type eh))))
+;; 	      (cond
+;; 		((and (string= 'multipart (string-upcase (car content-type)))
+;; 		      (string= 'form-data (string-upcase (cadr content-type))))
+;; 		 (:) (values method uri version gh rh eh uh mlh))
+;; 		((and (string= 'application (string-upcase (car content-type)))
+;; 		      (string= 'x-www-form-urlencoded (string-upcase (cadr content-type))))
+;; 		 ))))))
 ;;;-----------------------------------------------------------------------------
 ;;; HTTP RESPONSE
 ;;;-----------------------------------------------------------------------------
@@ -1035,31 +1101,6 @@
 ;; 	 (:zom (:type mod-lisp-header-value? c) (:collect c val))
 ;; 	 (:do (push (cons key val) headers))
 ;; 	 #\Newline))))
-
-;; (defatom x-www-form-field-name? ()
-;;   (and (visible-char? c)
-;;        (not (= c (char-code #\=)))
-;;        (not (= c (char-code #\&)))))
-
-;; (defatom x-www-form-field-value? ()
-;;   (and (visible-char? c)
-;;        (not (= c (char-code #\=)))
-;;        (not (= c (char-code #\&)))))
-
-;; (defrule x-www-form-urlencoded? ((key (make-accumulator))
-;; 				 (val (make-accumulator :byte))
-;; 				 c (parameters '()))
-;;   (:zom (:and (:zom (:type x-www-form-field-name? c)
-;; 		    (:collect c key))	      
-;; 	      #\=
-;; 	      (:zom (:type x-www-form-field-value? c)
-;; 		    (:collect c val))
-;; 	      (:zom #\&)
-;; 	      (:do (push (cons key val) parameters)
-;; 		   (setq key (make-accumulator)
-;; 			 val (make-accumulator :byte))
-;; 	       t)))
-;;   (:return (nreverse parameters)))
 
 ;; (defvar +mod-lisp-request-headers+
 ;;   '("url" "content-type" "content-length" "method" "remote-ip-addr"
@@ -1303,19 +1344,21 @@ Accept-Encoding: gzip, deflate
 User-Agent: Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)
 Host: 10.0.0.10:3011
 Connection: Keep-Alive
+
 ")
 
-(defvar *ie-http-form* "POST /ee.gee HTTP/1.1                  
-Accept: image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*                               
-Referer: http://10.0.0.10/a.html       
-Accept-Language: tr                    
+(defparameter *ie-http-form* "POST /ee.gee HTTP/1.1
+Accept: image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*
+Referer: http://10.0.0.10/a.html
+Accept-Language: tr
 Content-Type: multipart/form-data; boundary=---------------------------7d728030200f0
-Accept-Encoding: gzip, deflate         
+Accept-Encoding: gzip, deflate
 User-Agent: Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)
-Host: 10.0.0.10:3010                   
-Content-Length: 646                    
-Connection: Keep-Alive                 
-Cache-Control: no-cache                
+Host: 10.0.0.10:3010
+Content-Length: 646
+Connection: Keep-Alive
+Cache-Control: no-cache   
+
                                        
 -----------------------------7d728030200f0
 Content-Disposition: form-data; name=\"gee\"
