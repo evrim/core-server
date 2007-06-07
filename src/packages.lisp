@@ -53,6 +53,7 @@
    #:rfc2109-quoted-value?
    #:cookie?
    ;; rfc 2345
+   #:quoted-printable   ;; header symbol
    #:quoted-printable?
    #:quoted-printable!
    #:base64?
@@ -66,6 +67,7 @@
    #:composite-level-media
    #:mime.children
    ;;;; utilities
+   #:mimes?
    #:make-top-level-media
    #:make-composite-level-media
    #:mime-search
