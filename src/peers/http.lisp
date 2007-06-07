@@ -4,17 +4,43 @@
   ())
 
 (defmethod read-request ((self http-peer) stream)
-  (multiple-value-bind (method uri version general-headers request-headers unknown-headers)
+  (multiple-value-bind (method uri version general-headers request-headers entity-headers
+			       unknown-headers)
       (http-request-headers? stream)
-    (when method
-      (let ((request (make-instance 'http-request)))
-	(setf (http-message.general-headers request) general-headers
-	      (http-message.unknown-headers request) unknown-headers
-	      (http-request.headers request) request-headers
-	      (http-request.uri request) uri
-	      (http-request.method request) method
-	      (http-message.version request) version)
-	request))))
+    (if method
+	(let ((request (make-instance 'http-request)))
+	  (let ((content-type (cadr (assoc 'content-type entity-headers))))
+	    (cond
+	      ((and (string= 'multipart (string-upcase (car content-type)))
+		    (string= 'form-data (string-upcase (cadr content-type))))
+	       (describe content-type)
+	       (setf (http-message.entities request)
+		     (rfc2388-mimes? stream
+		      (cdr
+		       (assoc "boundary" (caddr content-type) :test #'string=)))))
+	      ((and (string= 'application (string-upcase (car content-type)))
+		    (string= 'x-www-form-urlencoded (string-upcase (cadr content-type))))
+	       (setf (uri.queries uri) (append (uri.queries uri)
+					       (x-www-form-urlencoded? stream))))
+	      ((not (null content-type))
+	       (error "unknown content-type:~A" (cadr (assoc 'content-type entity-headers))))))
+	  (setf (http-message.general-headers request) general-headers
+		(http-message.unknown-headers request) unknown-headers
+		(http-request.headers request) request-headers
+		(http-request.entity-headers request) entity-headers
+		(http-request.uri request) uri
+		(http-request.method request) method
+		(http-message.version request) version)
+	  (describe request)
+	  (describe uri)
+	  (mapcar #'(lambda (mime)
+		      (describe mime)
+		      (when (mime.data mime)
+			(describe (octets-to-string
+				   (mime.data mime) :iso-8859-9)))) (http-message.entities request))
+;;	  (describe (mime-part.data (nth 3 (http-message.entities request))))
+	  request)
+	(error 'bullshit))))
 
 (defmethod eval-request ((self http-peer) request)
   )
@@ -25,7 +51,7 @@
      (<:head
       (<:title "Test1"))
      (<:body
-      (loop for i from 0 upto 5000
+      (loop for i from 0 upto 400
  	 do (<:ai "A"))))))
 
 (defmethod print-response ((self http-peer) response stream)
