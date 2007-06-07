@@ -66,8 +66,10 @@
                                   :components 
                                   ((:file "2109") ;;cookie
                                    (:file "2396") ;;uri
-                                   (:file "2388") ;;mime
-                                   (:file "2616")
+                                   (:file "2616") ;;http
+                                   (:file "2045") ;;mime-part1
+                                   (:file "2046") ;;mime-part2
+                                   (:file "2388") ;;multpart/form-data
                                    )) ;;http
                          (:module :peers
                                   :components
