@@ -52,18 +52,26 @@
    #:rfc2109-cookie-value?
    #:rfc2109-quoted-value?
    #:cookie?
+   ;; rfc 2345
+   #:quoted-printable?
+   #:quoted-printable!
+   #:base64?
+   #:base64!
+   ;; rfc 2346
+   ;;;; classes and methods
+   #:mime
+   #:mime.headers
+   #:top-level-media
+   #:mime.data
+   #:composite-level-media
+   #:mime.children
+   ;;;; utilities
+   #:make-top-level-media
+   #:make-composite-level-media
+   #:mime-search
+   #:mime.header
    ;; rfc 2388
-   #:mime-part
-   #:mime-part.name
-   #:mime-part.filename
-   #:mime-part.content-type
-   #:mime-part.charset
-   #:mime-part.encoding
-   #:mime-part.mixed-boundary
-   #:mime-part.data
-   #:make-mime-part
-   #:rfc2388-mime-part?
-   #:mime-parts?
+   #:rfc2388-mimes?
    ;; rfc 2396
    #:uri
    #:uri.scheme
