@@ -283,12 +283,12 @@
 	     nil))))))
 
 (defrule crlf? ()
-  (:type (or carriage-return? linefeed?))
+  (:or (:and #\Return #\Newline)
+       #\Newline)
   (:return t))
 
-(defrule lwsp? ()
-  (:zom (:or (:type (or space? tab?)) 
-	     (:crlf?)))
+(defrule lwsp? ()  
+  (:zom (:type (or space? tab? carriage-return? linefeed?)))
   (:return t))
 
 (defrule hex-value? (a b)  
@@ -341,6 +341,9 @@
 	       (:collect c value))
 	 (:return (octets-to-string value :utf-8)))))
 
+(defun byte! (stream byte)
+  (write-stream stream byte))
+
 (defun char! (stream char)
   (let ((code (char-code char)))
     (if (> code 127)
@@ -349,10 +352,10 @@
 	  (char->utf8 char acc)
 	  (reduce #'(lambda (acc atom)
 		      (declare (ignore acc))
-		      (write-stream stream atom)
+		      (byte! stream atom)
 		      nil)
 		  acc :initial-value nil))
-	(write-stream stream code))))
+	(byte! stream code))))
 
 (defun string! (stream string)
   (reduce #'(lambda (acc atom)
@@ -384,6 +387,14 @@
 
 (defun quoted-fixnum! (stream number)
   (quoted! stream (format nil "~D" number)))
+
+(defvar +hex-alphabet+
+  #.(reduce #'(lambda (acc atom) (push-atom (char-code atom) acc) acc)
+	    "0123456789ABDEF" :initial-value (make-accumulator :byte)))
+
+(defun hex-value! (stream hex)
+  (byte! stream (aref +hex-alphabet+ (floor (/ hex 16))))
+  (byte! stream (aref +hex-alphabet+ (rem hex 16))))
 
 ;; (defrule abc? (header abc)
 ;;   (:cond
