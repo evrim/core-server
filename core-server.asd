@@ -92,8 +92,9 @@
                                      (:file "sockets")
                                      (:module :rfc
                                               :components ((:file "2109")
-                                                           (:file "2388")
-                                                           (:file "2396"))
+                                                           (:file "2396")
+                                                           (:file "2045")
+                                                           (:file "2388"))
                                               :serial t)
                                      ;; (:file "database")
                                      ;; (:file "dns")

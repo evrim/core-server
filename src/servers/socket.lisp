@@ -1,5 +1,7 @@
 (in-package :tr.gen.core.server)
 
+(defparameter *handler-counter* 0)
+
 (defclass socket-server (server)
   ((host :initarg :host :initform "0.0.0.0")
    (port :initarg :port :initform 3009)
@@ -50,8 +52,10 @@
 
 (defmethod run ((self socket-server))
   (loop
-     (mapc #'(lambda (peer)
-	       (multiple-value-bind (stream address) (accept (s-v '%socket))
-		 (when stream
-		   (handle-stream peer stream address))))
-	   (s-v '%peers))))
+     (progn
+       (setf *handler-counter* (+ *handler-counter* (s-v 'peers-max)))
+       (mapc #'(lambda (peer)
+		 (multiple-value-bind (stream address) (accept (s-v '%socket))
+		   (when stream
+		     (handle-stream peer stream address))))
+	     (s-v '%peers)))))
