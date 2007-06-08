@@ -359,6 +359,15 @@
 	      nil)
 	  (string-to-octets string :utf-8) :initial-value nil))
 
+(defun version! (stream version)
+  (fixnum! stream (car version))
+  (reduce #'(lambda (acc atom)
+	      (declare (ignore acc))
+	      (char! stream #\.)
+	      (fixnum! stream atom)
+	      nil)
+	  (cdr version) :initial-value nil))
+
 (defun symbol! (stream symbol)
   (string! stream (symbol-name symbol)))
 
