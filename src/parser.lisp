@@ -305,8 +305,9 @@
   (:return (+ (* (the (unsigned-byte 8) a) 16) (the (unsigned-byte 8) b))))
 
 ;;       escaped       = "%" hex hex
-(defrule escaped? (hex)  
-  (:and #\% (:hex-value? hex) (:return hex)))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defrule escaped? (hex)  
+    (:and #\% (:hex-value? hex) (:return hex))))
 
 (defrule digit-value? (d)
   (:and (:type digit? d)

@@ -296,10 +296,13 @@
       MAX-FORWARDS PROXY-AUTHORIZATION RANGE REFERER TE USER-AGENT))) ;; len=18
 
 ;; 14.1 Accept
-;; Accept         = "Accept" ":" #( media-range [ accept-params ] )
-;; media-range    = ( "*/*" | ( type "/" "*" ) | ( type "/" subtype ))
-;;                 *( ";" parameter )
-;; accept-params  = ";" "q" "=" qvalue *( accept-extension )
+;; Accept           = "Accept" ":"
+;;                    #( media-range [ accept-params ] )
+;; media-range      = ( "*/*"
+;;                    | ( type "/" "*" )
+;;                    | ( type "/" subtype )
+;;                    ) *( ";" parameter )
+;; accept-params    = ";" "q" "=" qvalue *( accept-extension )
 ;; accept-extension = ";" token [ "=" ( token | quoted-string ) ]
 ;; text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
 (defatom http-media-type? ()
@@ -308,12 +311,27 @@
        (not (eq c #.(char-code #\/)))
        (http-header-name? c)))
 
+;; http-media-range? :: stream -> (values type subtype ((attr .val) ...))
 (defrule http-media-range? ((type (make-accumulator))
-			    (subtype (make-accumulator)) c)
+			    (subtype (make-accumulator))
+			    (attr (make-accumulator))
+			    (val (make-accumulator))
+			    params c)
   (:zom (:type http-media-type? c) (:collect c type))
   #\/
-  (:zom (:type http-media-type? c) (:collect c subtype))  
-  (:return (values type subtype)))
+  (:zom (:type http-media-type? c) (:collect c subtype))
+  (:zom (:and #\;
+	      (:zom (:type alphanum? c)
+		    (:collect c attr))
+	      #\=
+	      (:zom
+	       (:type http-media-type? c)
+	       (:collect c val)))
+	(:do
+	 (push (cons attr val) params)
+	 (setq attr (make-accumulator)
+	       val (make-accumulator))))
+  (:return (values type subtype (nreverse params))))
 
 ;; FIXmE: parse quality and friends
 (defrule http-accept? (type subtype accept)
@@ -971,7 +989,8 @@
 ;;; HTTP RESPONSE
 ;;;-----------------------------------------------------------------------------
 (defclass http-response (http-message)
-  ((headers :accessor http-response.headers :initform '())))
+  ((headers :accessor http-response.headers :initform '())
+   (status-code :accessor http-response.status-code :initform '(200))))
 
 (defparameter *status-codes*
   '((100 . "Continue")

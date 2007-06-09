@@ -167,10 +167,11 @@
        (:and (:hostname? host) (:return host))))
 
 ;;       hostport      = host [ ":" port ]
-(defrule hostport? (host port)
-  (:or (:checkpoint
-	(:host? host) #\: (:port? port) (:return (list host port)))
-       (:and (:host? host) (:return (list host nil)))))
+(eval-when (:compile-toplevel :load-toplevel :execute) 
+  (defrule hostport? (host port)
+    (:or (:checkpoint
+	  (:host? host) #\: (:port? port) (:return (list host port)))
+	 (:and (:host? host) (:return (list host nil))))))
 
 ;;       userinfo      = *( unreserved | escaped | ";" | ":" | "&" | "=" | "+" | "$" | "," )
 (defatom userinfo-specials? ()
