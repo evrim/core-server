@@ -319,6 +319,13 @@
 	(:collect c acc))
   (:return (parse-integer acc)))
 
+(defrule float? ((acc (make-accumulator)) c)
+  (:and (:zom (:type digit? c) (:collect c acc))
+	(:and #\. (:collect #\. acc))
+	(:and (:type digit? c) (:collect c acc))
+	(:zom (:type digit? c) (:collect c acc)))
+  (:return  acc))
+
 (defrule version? (version d)
   (:fixnum? d) (:do (push d version))
   (:zom #\. (:fixnum? d) (:do (push d version)))
