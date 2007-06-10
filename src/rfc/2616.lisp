@@ -321,12 +321,9 @@
   #\/
   (:zom (:type http-media-type? c) (:collect c subtype))
   (:zom (:and #\;
-	      (:zom (:type alphanum? c)
-		    (:collect c attr))
+	      (:zom (:type alphanum? c) (:collect c attr))
 	      #\=
-	      (:zom
-	       (:type http-media-type? c)
-	       (:collect c val)))
+	      (:zom (:type http-media-type? c) (:collect c val)))
 	(:do
 	 (push (cons attr val) params)
 	 (setq attr (make-accumulator)
@@ -334,9 +331,9 @@
   (:return (values type subtype params)))
 
 ;; FIXmE: parse quality and friends
-(defrule http-accept? (type subtype accept)
-  (:zom (:and (:http-media-range? type subtype)
-	      (:do (push (cons type subtype) accept))
+(defrule http-accept? (type subtype params accept)
+  (:zom (:and (:http-media-range? type subtype params)
+	      (:do (push (list type subtype params) accept))
 	      (:zom (:not #\,) (:type http-header-name?)))
 	(:zom (:type space?)))
   (:return accept))
