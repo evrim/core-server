@@ -326,10 +326,11 @@
 	(:zom (:type digit? c) (:collect c acc)))
   (:return  acc))
 
-(defrule version? (version d)
-  (:fixnum? d) (:do (push d version))
-  (:zom #\. (:fixnum? d) (:do (push d version)))
-  (:return (nreverse version)))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defrule version? (version d)
+    (:fixnum? d) (:do (push d version))
+    (:zom #\. (:fixnum? d) (:do (push d version)))
+    (:return (nreverse version))))
 
 (defrule quoted? ((value (make-accumulator :byte)) c)
   (:or

@@ -354,7 +354,7 @@
 	 (push param params)))
   (:return (values type subtype params)))
 
-;; FIXmE: parse quality and friends
+;; http-accept? :: stream -> ((type subtype ((attr . val) ...)) ...)
 (defrule http-accept? (type subtype params accept)
   (:zom (:and (:http-media-range? type subtype params)
 	      (:do (push (list type subtype params) accept))
