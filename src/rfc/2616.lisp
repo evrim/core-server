@@ -311,23 +311,45 @@
        (not (eq c #.(char-code #\/)))
        (http-header-name? c)))
 
+;; header-parameter? :: stream -> (attr . val)
+(defrule header-parameter? ((attr (make-accumulator))
+			    (val (make-accumulator)) c)
+  (:and #\; (:lwsp?)
+	(:zom (:type alphanum? c) (:collect c attr))
+	#\=
+	(:zom (:type http-media-type? c)
+	      (:collect c val)))
+  (:return (cons attr val)))
+
+;; 3.9 Quality Values
+;; qvalue         = ( "0" [ "." 0*3DIGIT  ])
+;;                | ( "1" [ "." 0*3("0") ] )
+(defrule quality-value? ((val (make-accumulator)) c)
+  (:and (:or (:and #\0 (:collect #\0 val)
+		   #\. (:collect #\. val)
+		   (:zom (:type digit? c) (:collect c val)))
+	     (:and #\1 (:collect #\1 val)
+		   (:zom (:type digit? c)))))
+  (:return (parse-float val)))
+
+;; quality-parameter? :: stream -> ("q" . float)
+(defrule quality-parameter? (val c)
+  (:and #\; (:lwsp?) #\q #\=
+	(:quality-value? val))
+  (:return (cons "q" val)))
+
 ;; http-media-range? :: stream -> (values type subtype ((attr .val) ...))
 (defrule http-media-range? ((type (make-accumulator))
 			    (subtype (make-accumulator))
-			    (attr (make-accumulator))
-			    (val (make-accumulator))
-			    params c)
+			    param params c)
   (:zom (:type http-media-type? c) (:collect c type))
   #\/
   (:zom (:type http-media-type? c) (:collect c subtype))
-  (:zom (:and #\;
-	      (:zom (:type alphanum? c) (:collect c attr))
-	      #\=
-	      (:zom (:type http-media-type? c) (:collect c val)))
+  (:zom (:or (:quality-parameter? param)
+	     ;; accept-extension
+	     (:header-parameter? param))
 	(:do
-	 (push (cons attr val) params)
-	 (setq attr (make-accumulator)
-	       val (make-accumulator))))
+	 (push param params)))
   (:return (values type subtype params)))
 
 ;; FIXmE: parse quality and friends

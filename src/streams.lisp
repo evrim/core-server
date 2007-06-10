@@ -30,7 +30,7 @@
 		 (declare (ignore acc))
 		 (vector-push-extend atom accumulator)
 		 nil)
-	     (string-to-octets (string atom)) :initial-value nil))
+	     (string-to-octets (string atom) :utf8) :initial-value nil))
     ((and (typep atom '(unsigned-byte 8)) (eq 'character (array-element-type accumulator)))
      (vector-push-extend (code-char atom) accumulator))
     (t
