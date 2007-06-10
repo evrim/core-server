@@ -22,7 +22,7 @@
 			     (rewind-stream stream)
 			     (return-from match-atom nil)))
 		       nil)
-		   (string-to-octets (string atom)) :initial-value nil))
+		   (string-to-octets (string atom) :utf-8) :initial-value nil))
 	 (commit-stream stream)))
       ((characterp atom) (eq c (char-code atom)))
       (t (eq atom c)))))
@@ -265,20 +265,21 @@
 ;;;-----------------------------------------------------------------------------
 ;;; Rules
 ;;;-----------------------------------------------------------------------------
-(defmacro defrule (name args &rest body)
-  "Rule definition macro that provides a common lexical environment for rules."
-  (with-unique-names (stream)
-    (flet ((rule-args ()
-	     (if args
-		 (list* stream '&aux args)
-		 (list stream))))
-      (setf (gethash (make-keyword name) +parser-rules+) name)
-      `(defun ,name ,(rule-args)
-	 (block rule-block
-	   (let ((cp (current-checkpoint ,stream)))
-	     (declare (ignorable cp))
-	     ,(compile-parser-grammar stream `(:checkpoint ,@body))
-	     nil))))))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defmacro defrule (name args &rest body)
+    "Rule definition macro that provides a common lexical environment for rules."
+    (with-unique-names (stream)
+      (flet ((rule-args ()
+	       (if args
+		   (list* stream '&aux args)
+		   (list stream))))
+	(setf (gethash (make-keyword name) +parser-rules+) name)
+	`(defun ,name ,(rule-args)
+	   (block rule-block
+	     (let ((cp (current-checkpoint ,stream)))
+	       (declare (ignorable cp))
+	       ,(compile-parser-grammar stream `(:checkpoint ,@body))
+	       nil)))))))
 
 (defrule crlf? ()
   (:or (:and #\Return #\Newline)
@@ -313,11 +314,13 @@
   (:and (:type digit? d)
 	(:return (- (the (unsigned-byte 8) d) 48))))
 
-(defrule fixnum? ((acc (make-accumulator)) c)
-  (:type digit? c) (:collect c acc)
-  (:zom (:type digit? c)
-	(:collect c acc))
-  (:return (parse-integer acc)))
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defrule fixnum? ((acc (make-accumulator)) c)
+    (:type digit? c) (:collect c acc)
+    (:zom (:type digit? c)
+	  (:collect c acc))
+    (:return (parse-integer acc))))
 
 (defrule float? ((acc (make-accumulator)) c)
   (:and (:zom (:type digit? c) (:collect c acc))
@@ -358,7 +361,7 @@
 		    (declare (ignore acc))
 		    (byte! stream atom)
 		    nil)
-		(string-to-octets (string char)) :initial-value nil)
+		(string-to-octets (string char) :utf-8) :initial-value nil)
 	(byte! stream code))))
 
 (defun string! (stream string)

@@ -335,7 +335,7 @@
   (:return (parse-float val)))
 
 ;; quality-parameter? :: stream -> ("q" . float)
-(defrule quality-parameter? (val c)
+(defrule quality-parameter? (val)
   (:and #\; (:lwsp?) #\q #\=
 	(:quality-value? val))
   (:return (cons "q" val)))
