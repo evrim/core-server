@@ -321,15 +321,17 @@
 	      (:collect c val)))
   (:return (cons attr val)))
 
+;; quality-value? :: stream -> float
 ;; 3.9 Quality Values
 ;; qvalue         = ( "0" [ "." 0*3DIGIT  ])
 ;;                | ( "1" [ "." 0*3("0") ] )
 (defrule quality-value? ((val (make-accumulator)) c)
-  (:and (:or (:and #\0 (:collect #\0 val)
-		   #\. (:collect #\. val)
-		   (:zom (:type digit? c) (:collect c val)))
-	     (:and #\1 (:collect #\1 val)
-		   (:zom (:type digit? c)))))
+  (:or (:and #\0 (:collect #\0 val)
+	     (:or (:and #\. (:collect #\. val)
+			(:zom (:type digit? c) (:collect c val)))
+		  (:return (float 0))))
+       (:and #\1 (:collect #\1 val)
+	     (:zom (:type digit? c))))
   (:return (parse-float val)))
 
 ;; quality-parameter? :: stream -> ("q" . float)
@@ -366,10 +368,13 @@
        (not (eq c #.(char-code #\;)))
        (visible-char? c)))
 
-(defrule http-language? (c (lang (make-accumulator)))
+;; http-language? :: stream -> (language . quality)
+(defrule http-language? (c (lang (make-accumulator)) quality)
   (:type http-language-type? c) (:collect c lang)
   (:zom (:type http-language-type? c) (:collect c lang))
-  (:return lang))
+  (:or (:and (:quality-parameter? quality)
+	     (:return (cons lang (cdr quality))))
+       (:return (cons lang 1.0))))
 
 ;; 14.2 Accept Charset
 ;; Accept-Charset = "Accept-Charset" ":" 1#( ( charset | "*" )[ ";" "q" "=" qvalue ] )
