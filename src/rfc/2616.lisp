@@ -331,7 +331,7 @@
 	 (push (cons attr val) params)
 	 (setq attr (make-accumulator)
 	       val (make-accumulator))))
-  (:return (values type subtype (nreverse params))))
+  (:return (values type subtype params)))
 
 ;; FIXmE: parse quality and friends
 (defrule http-accept? (type subtype accept)
