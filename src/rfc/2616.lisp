@@ -790,22 +790,11 @@
 ;; 14.17 Content-Type
 ;; Content-Type   = "Content-Type" ":" media-type
 ;; Content-Type: text/html; charset=ISO-8859-4
-(defrule http-content-type? (type subtype c
-				  (key (make-accumulator))
-				  (value (make-accumulator))
-				  parameters)
-  (:http-media-range? type subtype)
-  (:or (:checkpoint
-	#\; (:lwsp?)
-	(:zom (:type http-header-name? c) (:collect c key)
-	      (:zom (:not #\=) (:type http-header-name? c) (:collect c key))
-	      (:or (:quoted? value)
-		   (:and (:type http-header-value? c) (:collect c value)
-			 (:zom (:not #\,) (:type http-header-value? c) (:collect c value))))	      
-	      (:do (push (cons key value) parameters)
-		   (setq key (make-accumulator) value (make-accumulator))))
-	(:return (list type subtype parameters)))
-       (:return (list type subtype))))
+(defrule http-content-type? (type subtype params)
+  (:http-media-range? type subtype params)
+  (:return (if params
+	       (list type subtype params)
+	       (list type subtype))))
 
 (defun http-content-type! (stream type-subtype-cons)
   (string! stream (car type-subtype-cons))
