@@ -908,9 +908,9 @@
 ;;;-----------------------------------------------------------------------------
 (defclass http-message ()
   ((version :accessor http-message.version :initform '(1 1))
-   (general-headers :accessor http-message.general-headers :initform '())
+   (general-headers :accessor http-message.general-headers :initarg :general-headers :initform '())
    (unknown-headers :accessor http-message.unknown-headers :initform '())
-   (entities :accessor http-message.entities :initform '())))
+   (entities :accessor http-message.entities :initarg :entities :initform '())))
 
 ;;;-----------------------------------------------------------------------------
 ;;; HTTP REQUEST
