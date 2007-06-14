@@ -926,18 +926,18 @@
   (:http-protocol? proto) (:return (values method uri (cadr proto))))
 
 (defmacro defhttp-header-parser (name format header-list)
- `(defrule ,name (stub)    
-    (:or ,@(nreverse
-	    (reduce #'(lambda (acc atom)
-			(cons
-			 `(:checkpoint
-			   (:sci ,(symbol-name atom))
-			   (:or (:and #\: (:zom (:type space?)))
-				(:crlf?))
-			   (,(intern (format nil format atom) :keyword) stub)
-			   (:return (list ',atom stub)))
-			 acc))
-		    (eval header-list) :initial-value nil)))))
+  `(defrule ,name (stub)    
+     (:or ,@(nreverse
+	     (reduce #'(lambda (acc atom)
+			 (cons
+			  `(:checkpoint
+			    (:sci ,(symbol-name atom))
+			    (:or (:and #\: (:zom (:type space?)))
+				 (:crlf?))
+			    (,(intern (format nil format atom) :keyword) stub)
+			    (:return (list ',atom stub)))
+			  acc))
+		     (eval header-list) :initial-value nil)))))
 
 (defhttp-header-parser http-general-header? "HTTP-~A?" +http-general-headers+)
 (defhttp-header-parser http-request-header? "HTTP-~A?" +http-request-headers+)
