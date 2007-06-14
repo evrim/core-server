@@ -81,14 +81,18 @@
     proxy-revalidate max-age s-maxage))
 
 (defun http-cache-control! (stream cache-control-cons)
-  (typecase (cdr cache-control-cons)
-    (symbol (symbol! stream (car cache-control-cons))
-	    #\= (symbol! stream (cdr cache-control-cons)))
-    (string (symbol! stream (car cache-control-cons))
-	    #\= (string! stream (cdr cache-control-cons)))
-    (fixnum (symbol! stream (car cache-control-cons))
-	    #\= (fixnum! stream (cdr cache-control-cons)))
-    (t (symbol! stream (car cache-control-cons)))))
+  (if (atom cache-control-cons)
+      (typecase cache-control-cons
+	(symbol (symbol! stream cache-control-cons))
+	(string (string! stream cache-control-cons)))      
+      (typecase (cdr cache-control-cons)
+	(symbol (symbol! stream (car cache-control-cons))
+		#\= (symbol! stream (cdr cache-control-cons)))
+	(string (symbol! stream (car cache-control-cons))
+		#\= (string! stream (cdr cache-control-cons)))
+	(fixnum (symbol! stream (car cache-control-cons))
+		#\= (fixnum! stream (cdr cache-control-cons)))
+	(t (error "Invalid Cache-Control declaration!")))))
 
 ;; 14.10 Connection
 ;; Connection = "Connection" ":" 1#(connection-token)
