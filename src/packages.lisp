@@ -108,6 +108,11 @@
    #:http-response.headers
    #:http-response.status-code
    ;; helpers
+   #:http-accept?
+   #:http-accept-charset?
+   #:http-accept-encoding?
+   #:http-accept-language?
+   #:http-request-headers?
    #:http-response!
    ;; header symbols
    ;; request methods
