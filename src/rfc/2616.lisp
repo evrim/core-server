@@ -1039,7 +1039,7 @@
 (defhttp-header-render http-entity-header! "HTTP-~A!" +http-entity-headers+)
 ;; (defhttp-header-render mod-lisp-header! "MOD-LISP-HTTP-~A!" +mod-lisp-response-headers+)
 
-(eval-when (:compile-toplevel :execute)
+(eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter *status-codes*
     '((100 . "Continue")
       (101 . "Switching Protocols")
