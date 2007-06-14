@@ -31,20 +31,22 @@
 
 ;;       query         = *uric
 ;; NOTE: this rule parses queries and return a list of key value cons
-(defrule query? ((key (make-accumulator))
-		 (val (make-accumulator)) c (queries '()))
-  (:zom (:and (:zom (:or (:type unreserved? c)
-			 (:escaped? c))
-		    (:collect c key))
-	      (:type reserved?)
-	      (:zom (:or (:type unreserved? c)
-			 (:escaped? c))
-		    (:collect c val))
-	      (:do (push (cons key val) queries)
-		   (setq key (make-accumulator)
-			 val (make-accumulator)))
-	      (:type reserved?)))
-  (:return (nreverse queries)))
+
+(eval-when (:load-toplevel :compile-toplevel :execute)
+  (defrule query? ((key (make-accumulator))
+		   (val (make-accumulator)) c (queries '()))
+    (:zom (:and (:zom (:or (:type unreserved? c)
+			   (:escaped? c))
+		      (:collect c key))
+		(:type reserved?)
+		(:zom (:or (:type unreserved? c)
+			   (:escaped? c))
+		      (:collect c val))
+		(:do (push (cons key val) queries)
+		     (setq key (make-accumulator)
+			   val (make-accumulator)))
+		(:type reserved?)))
+    (:return (nreverse queries))))
 
 ;;       fragment      = *uric
 (defrule fragment? (q)
