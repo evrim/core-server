@@ -423,6 +423,13 @@
 	    (standard-object (list 'core-object-io-stream :object target)))
 	  args)))
 
+;; HELPERS
+(defmacro with-core-stream ((var val) &body body) 
+  `(let ((,var (make-core-stream ,val))) 
+     (unwind-protect
+	  (progn ,@body) 
+       (close-stream ,var))))
+
 ;; (defmethod rewind-stream ((self core-fd-input-stream))
 ;;   (setf (s-v '%read-index) (s-v '%current))
 ;;   (commit-stream self))

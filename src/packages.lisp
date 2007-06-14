@@ -29,6 +29,8 @@
    #:core-fd-io-stream
    #:core-file-io-stream
    #:make-core-stream
+   ;; Stream Helpers
+   #:with-core-stream
    ;; sockets
    #:resolve-hostname
    #:make-server
@@ -113,6 +115,7 @@
    #:http-accept-encoding?
    #:http-accept-language?
    #:http-request-headers?
+   #:http-expect?
    #:http-response!
    ;; header symbols
    ;; request methods

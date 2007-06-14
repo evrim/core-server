@@ -418,6 +418,15 @@
 (defrule http-authorization? ()
   (:return nil))
 
+(defrule expectation-extension? ((attr (make-accumulator))
+				 (val (make-accumulator)) c)
+  (:and (:lwsp?)
+	(:zom (:type alphanum? c) (:collect c attr))
+	#\=
+	(:zom (:type http-media-type? c)
+	      (:collect c val)))
+  (:return (cons attr val)))
+
 ;; 14.20 Expect
 ;; Expect       =  "Expect" ":" 1#expectation
 ;; expectation  =  "100-continue" | expectation-extension
@@ -425,8 +434,13 @@
 ;;                         *expect-params ]
 ;; expect-params =  ";" token [ "=" ( token | quoted-string ) ]
 ;; FIXmE: implement extensions.
-(defrule http-expect? ()
-  (:seq "100-continue") (:return '100-continue))
+(defrule http-expect? (expectation param params)
+  (:or (:and (:seq "100-continue")
+	     (:return '100-continue))
+       (:and (:expectation-extension? expectation)
+	     (:zom (:and (:header-parameter? param)
+			 (:do (push param params))))))
+  (:return (cons expectation params)))
 
 ;; 14.22 From
 ;; From   = "From" ":" mailbox
