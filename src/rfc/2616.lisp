@@ -362,8 +362,9 @@
 (defrule http-accept? (type subtype params accept)
   (:zom (:and (:http-media-range? type subtype params)
 	      (:do (push (list type subtype params) accept))
-	      (:zom (:not #\,) (:type http-header-name?)))
-	(:zom (:type space?)))
+	      (:zom (:not #\,) (:type http-header-name?))) 
+	(:zom (:type space?))
+	(:lwsp?))
   (:return accept))
 
 ;; Http Language
