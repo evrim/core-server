@@ -36,3 +36,26 @@
       (equal '(("tr" . 1.0) ("en-gb" . 0.8) ("en" . 0.7))
 	     (core-server::http-accept-language? cstream)))
   t)
+
+(deftest http-response-render
+    (let ((date (encode-universal-time 0 20 6 1 1 2008))
+	  (cstream (make-core-stream ""))
+	  (response (make-instance 'http-response)))
+      (setf (http-message.general-headers response)
+	    `((CACHE-CONTROL . "private")
+	      (DATE . ,date)
+	      (CONNECTION . CLOSE)))
+      (setf (http-response.headers response)
+	    `((SERVER . "(CORE-SERVER . (0 2))")))
+      (setf (http-message.entities response)
+	    `((CONTENT-TYPE . ("text" "html" . (("charset" . "UTF-8"))))))
+      (http-response! cstream response)
+      (equal (core-server::stream-data cstream)
+	     "HTTP/1.1 200 OK
+CACHE-CONTROL: private
+DATE: Tue, 01 Feb 2008 04:20:00 GMT
+CONNECTION: CLOSE
+SERVER: (CORE-SERVER . (0 2))
+CONTENT-TYPE: text/html;charset=UTF-8
+"))
+  t)

@@ -1106,7 +1106,7 @@
   (reduce #'(lambda (acc item)
 	      (declare (ignorable acc))
 	      (http-general-header! stream item))
-	  (http-response.headers response) :initial-value nil)
+	  (http-message.general-headers response) :initial-value nil)
   ;; response headers
   (reduce #'(lambda (acc item)
 	      (declare (ignorable acc))
@@ -1116,7 +1116,7 @@
   (reduce #'(lambda (acc item)
 	      (declare (ignorable acc))
 	      (http-entity-header! stream item))
-	  (http-response.headers response) :initial-value nil))
+	  (http-message.entities response) :initial-value nil))
 
 ;;;-----------------------------------------------------------------------------
 ;;; MOD-LISP REQUEST
