@@ -1026,11 +1026,13 @@
 				  `((eql ,hname ',h)
 				    (progn
 				      (symbol! stream ',h)
-				      (char! stream #\:)(char! stream #\ ) 
+				      (char! stream #\:)
+				      (char! stream #\ ) 
 				      (function ,(intern (format nil format h))))))
 			      (eval header-list))
 		    (t (error (format nil "Unknown header name: ~A" (car hdr))))))
-		stream (cdr hdr)))))
+		stream (cdr hdr))
+       (char! stream #\Newline))))
 
 (defhttp-header-render http-general-header! "HTTP-~A!" +http-general-headers+)
 (defhttp-header-render http-response-header! "HTTP-~A!" +http-response-headers+)
