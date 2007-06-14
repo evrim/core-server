@@ -306,7 +306,7 @@
   (:return (+ (* (the (unsigned-byte 8) a) 16) (the (unsigned-byte 8) b))))
 
 ;;       escaped       = "%" hex hex
-(eval-when (:compile-toplevel :load-toplevel :execute)
+(eval-when (:load-toplevel :compile-toplevel :execute)
   (defrule escaped? (hex)  
     (:and #\% (:hex-value? hex) (:return hex))))
 
@@ -315,7 +315,7 @@
 	(:return (- (the (unsigned-byte 8) d) 48))))
 
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
+(eval-when (:load-toplevel :compile-toplevel :execute)
   (defrule fixnum? ((acc (make-accumulator)) c)
     (:type digit? c) (:collect c acc)
     (:zom (:type digit? c)
@@ -329,7 +329,7 @@
 	(:zom (:type digit? c) (:collect c acc)))
   (:return  acc))
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
+(eval-when (:load-toplevel :compile-toplevel :execute)
   (defrule version? (version d)
     (:fixnum? d) (:do (push d version))
     (:zom #\. (:fixnum? d) (:do (push d version)))
