@@ -394,7 +394,6 @@
 ;; 14.3 Accept Encoding
 ;; Accept-Encoding  = "Accept-Encoding" ":" 1#( codings [ ";" "q" "=" qvalue ])
 ;; codings          = ( content-coding | "*" )
-;; FIXmE: parse quality values
 (defrule http-accept-encoding? (e e*)
   (:zom (:and (:http-language? e)
 	      (:do (push e e*))
@@ -406,7 +405,6 @@
 ;; Accept-Language = "Accept-Language" ":" 1#( language-range [ ";" "q" "=" qvalue ])
 ;; language-range  = ( ( 1*8ALPHA * ( "-" 1*8ALPHA)) | "*" )
 ;; Accept-Language: da, en-gb;q=0.8, en;q=0.7
-;; FIXmE: parse quality
 (defrule http-accept-language? (langs lang)
   (:zom (:and (:http-language? lang)
 	      (:do (push lang langs))
