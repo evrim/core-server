@@ -92,6 +92,102 @@
    #:uri?
    #:query!
    #:uri!
+   ;; rfc 2616
+   ;; classes
+   #:http-request
+   #:http-response
+   ;; accessors
+   #:http-message.version
+   #:http-message.general-headers
+   #:http-message.unknown-headers
+   #:http-message.entities
+   #:http-request.method
+   #:http-request.uri
+   #:http-request.headers
+   #:http-request.entity-headers
+   #:http-response.headers
+   #:http-response.status-code
+   ;; helpers
+   #:http-response!
+   ;; header symbols
+   ;; request methods
+   #:OPTIONS
+   #:GET
+   #:HEAD
+   #:POST
+   #:PUT
+   #:DELETE
+   #:TRACE
+   #:CONNECT
+   ;; cache request directives
+   #:NO-CACHE
+   #:NO-STORE
+   #:MAX-AGE
+   #:MAX-STALE
+   #:MIN-FRESH
+   #:NO-TRANSFORM
+   #:ONLY-IF-CACHED
+   ;; cache response directives
+   #:PUBLIC
+   #:PRIVATE
+   #:NO-CACHE
+   #:NO-STORE
+   #:NO-TRANSFORM
+   #:MUST-REVALIDATE
+   #:PROXY-REVALIDATE
+   #:MAX-AGE
+   #:S-MAXAGE
+   ;; general headers
+   #:CACHE-CONTROL
+   #:CONNECTION
+   #:DATE
+   #:PRAGMA
+   #:TRAILER
+   #:TRANSFER-ENCODING
+   #:UPGRADE
+   #:VIA
+   #:WARNING
+   ;; request headers
+   #:ACCEPT
+   #:ACCEPT-CHARSET
+   #:ACCEPT-ENCODING
+   #:ACCEPT-LANGUAGE
+   #:AUTHORIZATION
+   #:EXPECT
+   #:FROM
+   #:HOST
+   #:IF-MATCH
+   #:IF-MODIFIED-SINCE
+   #:IF-RANGE
+   #:IF-UNMODIFIED-SINCE
+   #:MAX-FORWARDS
+   #:PROXY-AUTHORIZATION
+   #:RANGE
+   #:REFERER
+   #:TE
+   #:USER-AGENT
+   ;; response headers
+   #:ACCEPT-RANGES
+   #:AGE
+   #:ETAG
+   #:LOCATION
+   #:PROXY-AUTHENTICATE
+   #:RETRY-AFTER
+   #:SERVER
+   #:VARY
+   #:WWW-AUTHENTICATE
+   ;; entity headers
+   #:ALLOW
+   #:CONTENT-ENCODING
+   #:CONTENT-LANGUAGE
+   #:CONTENT-LENGTH
+   #:CONTENT-LOCATION
+   #:CONTENT-MD5
+   #:CONTENT-RANGE
+   #:CONTENT-TYPE
+   #:EXPIRES
+   #:LAST-MODIFIED
+   ;; 
    ;; [Protocol]
    ;; classes
    #:application
