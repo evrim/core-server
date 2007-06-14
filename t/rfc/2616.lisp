@@ -37,6 +37,49 @@
 	     (core-server::http-accept-language? cstream)))
   t)
 
+;; test request headers
+;;ACCEPT ACCEPT-CHARSET ACCEPT-ENCODING ACCEPT-LANGUAGE AUTHORIZATION
+;;EXPECT FROM HOST IF-MATCH IF-MODIFIED-SINCE IF-RANGE IF-UNMODIFIED-SINCE
+;;MAX-FORWARDS PROXY-AUTHORIZATION RANGE REFERER TE USER-AGENT
+
+;; ACCEPT
+(deftest http-accept?
+    (let ((cstream (make-core-stream "text/*;q=0.3, text/html;q=0.7, text/html;level=1,
+                                      text/html;level=2;q=0.4, */*;q=0.5")))
+      (equal (http-accept? cstream)
+	     '(("*" "*" (("q" . 0.5)))
+	      ("text" "html" (("q" . 0.4) ("level" . "2")))
+	      ("text" "html" (("level" . "1")))
+	      ("text" "html" (("q" . 0.7)))
+	      ("text" "*" (("q" . 0.3)))))) 
+  t)
+
+;; ACCEPT-CHARSET
+(deftest http-accept-charset?
+    (let ((cstream (make-core-stream "iso-8859-5, unicode-1-1;q=0.8")))
+      (equal (http-accept-charset? cstream)
+	     '(("iso-8859-5" . 1.0) ("unicode-1-1" . 0.8))))
+  t)
+
+;; ACCEPT-ENCODING
+(deftest http-accept-encoding?
+    (let ((cstream (make-core-stream "gzip;q=1.0, identity; q=0.5, *;q=0")))
+      (equal (http-accept-encoding? cstream)
+	     '(("gzip" . 1.0) ("identity" . 0.5) ("*" . 0.0))))
+  t)
+
+;; ACCEPT-LANGUAGE
+(deftest http-accept-language?
+    (let ((cstream (make-core-stream "tr, en-us;q=0.1, en;q=0.7")))
+      (equal (http-accept-language? cstream)
+	     '(("tr" . 1.0) ("en-us" . 0.1) ("en" . 0.7))))
+  t)
+
+;; AUTHORIZATION
+(deftest http-authorization?
+    "Implement http-authorization!"
+  t)
+
 (deftest http-response-render
     (let ((date (encode-universal-time 0 20 6 1 1 2008))
 	  (cstream (make-core-stream ""))
