@@ -734,7 +734,7 @@
 	(:zom (:type space?)))
   (:return (nreverse langs)))
 
-(defun http-content-langauge! (stream langs)
+(defun http-content-language! (stream langs)
   (let ((langs (ensure-list langs)))
     (typecase (car langs)
       (string (string! stream (car langs)))
@@ -800,10 +800,18 @@
 	       (list type subtype params)
 	       (list type subtype))))
 
-(defun http-content-type! (stream type-subtype-cons)
-  (string! stream (car type-subtype-cons))
-  (string! stream "; charset=")
-  (string! stream (cdr type-subtype-cons)))
+;; http-content-type! :: (string string . string)
+;; ex: '("text" "html" . (("charset" . "UTF-8") ...))
+(defun http-content-type! (stream typesubtype-charset-cons)
+  (string! stream (car typesubtype-charset-cons))
+  (char! stream #\/)
+  (string! stream (cadr typesubtype-charset-cons))
+  (reduce #'(lambda (acc item)
+	      (char! stream #\;)
+	      (string! stream (car item))
+	      (char! stream #\=)
+	      (string! stream (cdr item)))
+	  (cddr typesubtype-charset-cons) :initial-value nil))
 
 ;; 14.21 Expires
 ;; Expires = "Expires" ":" HTTP-date
