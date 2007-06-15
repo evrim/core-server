@@ -296,8 +296,9 @@
 (eval-when ( :compile-toplevel :execute)
   (defvar +http-request-headers+
     '(ACCEPT ACCEPT-CHARSET ACCEPT-ENCODING ACCEPT-LANGUAGE AUTHORIZATION
-      EXPECT FROM HOST IF-MATCH IF-MODIFIED-SINCE IF-RANGE IF-UNMODIFIED-SINCE
-      MAX-FORWARDS PROXY-AUTHORIZATION RANGE REFERER TE USER-AGENT))) ;; len=18
+      EXPECT FROM HOST IF-MATCH IF-MODIFIED-SINCE IF-NONE-MATCH IF-RANGE
+      IF-UNMODIFIED-SINCE MAX-FORWARDS PROXY-AUTHORIZATION RANGE REFERER
+      TE USER-AGENT))) ;; len=19
 
 ;; 14.1 Accept
 ;; Accept           = "Accept" ":"
@@ -315,6 +316,7 @@
        (not (eq c #.(char-code #\/)))
        (http-header-name? c)))
 
+;; Ex: ";asd=asd"
 ;; header-parameter? :: stream -> (attr . val)
 (defrule header-parameter? ((attr (make-accumulator))
 			    (val (make-accumulator)) c)
@@ -455,24 +457,39 @@
 (defrule http-host? (hp)
   (:hostport? hp) (:return hp))
 
+;; 14.19 Etag
+;; ETag = "ETag" ":" entity-tag
+;; 3.11 Entity Tags
+;; entity-tag = [ weak ] opaque-tag
+;; weak       = "W/"
+;; opaque-tag = quoted-string
+;;
+;; http-etag? :: stream -> (tagstr . weak?)
+(defrule http-etag? (tagstr weak?)
+  (:checkpoint
+   #\W #\/ (:do (setq weak? t)) (:commit))
+  (:quoted? tagstr)
+  (:return (cons tagstr weak?)))
+
 ;; 14.24 If-Match
 ;; If-Match = "If-Match" ":" ( "*" | 1#entity-tag )
 ;; If-Match: "xyzzy"
 ;; If-Match: "xyzzy", "r2d2xxxx", "c3piozzzz"
 ;; If-Match: *
-(defrule http-if-match? (q (entities '()))
+(defrule http-if-match? (tag (etags '()))
   (:or (:and #\* (:return (cons '* nil)))
-       (:and (:quoted? q) (:do (push q entities))
-	     #\, (:lwsp?)
-	     (:zom (:and (:quoted? q) (:do (push q entities)))
-		   #\, (:lwsp?))))
-  (:return (nreverse entities)))
+       (:and (:http-etag? tag)
+	     (:do (push tag etags))
+	     (:zom #\, (:lwsp?) (:http-etag? tag)
+		   (:do (push tag etags)))))
+  (:return (nreverse etags)))
 
 ;; 14.25 If-Modified-Since
 ;; If-Modified-Since = "If-Modified-Since" ":" HTTP-date
 ;; If-Modified-Since: Sat, 29 Oct 1994 19:43:31 GMT
 (defrule http-if-modified-since? (date)
-  (:http-date? date) (:return date))
+  (:http-date? date)
+  (:return date))
 
 ;; 14.26 If-None-Match
 ;; If-None-Match = "If-None-Match" ":" ( "*" | 1#entity-tag )
@@ -481,23 +498,24 @@
 ;; If-None-Match: "xyzzy", "r2d2xxxx", "c3piozzzz"
 ;; If-None-Match: W/"xyzzy", W/"r2d2xxxx", W/"c3piozzzz"
 ;; If-None-Match: *
-;; FIXmE: Implement me.
-(defrule http-if-none-match? (c (acc (make-accumulator :byte)))
-  (:type http-header-value? c) (:collect c acc)
-  (:zom (:type http-header-value? c) (:collect c acc))
-  (:return (octets-to-string acc :utf-8)))
+(defrule http-if-none-match? (res)
+  (:http-if-match? res)
+  (:return res))
 
 ;; 14.27 If-Range
 ;; If-Range = "If-Range" ":" ( entity-tag | HTTP-date )
 ;; FIXmE: Implement me.
-(defrule http-if-range? ()
-  (:return nil))
+(defrule http-if-range? (range)
+  (:or (:http-date? range)
+       (:http-etag? range))
+  (:return range))
 
 ;; 14.28 If-Unmodified-Since
 ;; If-Unmodified-Since = "If-Unmodified-Since" ":" HTTP-date
 ;; If-Unmodified-Since: Sat, 29 Oct 1994 19:43:31 GMT
 (defrule http-if-unmodified-since? (date)
-  (:http-date? date) (:return date))
+  (:http-date? date)
+  (:return date))
 
 ;; 14.31 Max-Forwards
 ;; Max-Forwards   = "Max-Forwards" ":" 1*DIGIT
@@ -511,6 +529,50 @@
   (:return nil))
 
 ;; 14.35 Range
+;; 14.35.1 Byte Ranges
+;; ranges-specifier = byte-ranges-specifier
+;; byte-ranges-specifier = bytes-unit "=" byte-range-set
+;; byte-range-set  = 1#( byte-range-spec | suffix-byte-range-spec )
+;; byte-range-spec = first-byte-pos \"-\" [last-byte-pos]
+;; first-byte-pos  = 1*DIGIT
+;; last-byte-pos   = 1*DIGIT
+;; suffix-byte-range-spec = \"-\" suffix-length
+;; suffix-length = 1*DIGIT
+
+(defrule http-bytes-unit? (c (unit (make-accumulator)))
+  (:zom (:type alpha? c)
+	(:collect c unit))
+  (:return unit))
+
+(defrule http-byte-range-set? (c l r)
+  (:or (:and #\- (:fixnum? r) (:do (push (cons nil r) c)))        
+       (:and
+	(:fixnum? l) #\-       
+	(:checkpoint
+	 (:fixnum? r)
+	 (:commit))
+	(:do (push (cons l r) c))))
+  (:zom #\, (:lwsp?)
+	(:or (:and #\- (:fixnum? r) (:do (push (cons nil r) c)))        
+	     (:and
+	      (:fixnum? l) #\-       
+	      (:checkpoint
+	       (:fixnum? r)
+	       (:commit))
+	      (:do (push (cons l r) c)))))
+  (:return c))
+
+(defrule http-byte-ranges-specifier? (c bytes-unit ranges)
+  (:http-bytes-unit? bytes-unit)
+  #\=
+  (:http-byte-range-set? ranges)
+  (:return (cons bytes-unit ranges)))
+
+(defrule http-ranges-specifier? (c)
+  (:http-byte-ranges-specifier? c)
+  (:return c))
+
+;; 14.35 Range
 ;; Range = "Range" ":" ranges-specifier
 ;; ranges-specifier = byte-ranges-specifier
 ;; byte-ranges-specifier = bytes-unit "=" byte-range-set
@@ -520,9 +582,9 @@
 ;; last-byte-pos   = 1*DIGIT
 ;; suffix-byte-range-spec = "-" suffix-length
 ;; suffix-length = 1*DIGIT
-;; FIXmE: Implement me.
-(defrule http-range? ()
-  (:return nil))
+(defrule http-range? (c)
+  (:http-ranges-specifier? c)
+  (:return c))
 
 ;; 14.36 Referer
 ;; Referer        = "Referer" ":" ( absoluteURI | relativeURI )
@@ -536,9 +598,19 @@
 ;; TE: deflate
 ;; TE:
 ;; TE: trailers, deflate;q=0.5
-;; FIXmE: Implement me.
-(defrule http-te? ()
-  (:return nil))
+(defrule http-transfer-extension? ((token (make-accumulator)) 
+				   param params c)
+  (:zom (:type http-media-type? c) (:collect c token))
+  (:zom (:or (:quality-parameter? param)
+	     ;; accept-extension
+	     (:header-parameter? param))
+	(:do
+	 (push param params)))
+  (:return (cons token params)))
+
+(defrule http-te? (te)
+  (:http-transfer-extension? te)
+  (:return te))
 
 ;; 14.43 User-Agent
 ;; User-Agent     = "User-Agent" ":" 1*( product | comment )

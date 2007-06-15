@@ -141,7 +141,7 @@
 		((:or)
 		 `(or ,@(compiled-subexprs form nil)))
 		((:not)
-		 `(not ,@(compiled-subexprs form continue)))
+		 `(not ,@(compiled-subexprs form continue))) 
 		((:checkpoint)
 		 (with-unique-names (checkpoint)
 		   (let ((+checkpoint+ checkpoint)) 

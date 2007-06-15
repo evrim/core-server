@@ -116,6 +116,18 @@
    #:http-accept-language?
    #:http-request-headers?
    #:http-expect?
+   #:http-from?
+   #:http-host?
+   #:http-if-match?
+   #:http-if-modified-since?
+   #:http-if-none-match?
+   #:http-if-range?
+   #:http-if-unmodified-since?
+   #:http-max-forwards?
+   #:http-range?
+   #:http-referer?
+   #:http-te?
+   #:http-user-agent?
    #:http-response!
    ;; header symbols
    ;; request methods
@@ -195,6 +207,15 @@
    #:CONTENT-TYPE
    #:EXPIRES
    #:LAST-MODIFIED
+   ;; browser symbols
+   #:BROWSER
+   #:VERSION
+   #:OPERA
+   #:MOZ-VER
+   #:OS
+   #:REVISION
+   #:IE
+   #:SEAMONKEY
    ;; 
    ;; [Protocol]
    ;; classes

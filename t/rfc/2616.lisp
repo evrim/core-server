@@ -6,7 +6,7 @@
 	     (multiple-value-list (core-server::http-media-range? s))))
   t)
 
-;; test request headers
+;;;; test request headers
 ;;ACCEPT ACCEPT-CHARSET ACCEPT-ENCODING ACCEPT-LANGUAGE AUTHORIZATION
 ;;EXPECT FROM HOST IF-MATCH IF-MODIFIED-SINCE IF-RANGE IF-UNMODIFIED-SINCE
 ;;MAX-FORWARDS PROXY-AUTHORIZATION RANGE REFERER TE USER-AGENT
@@ -46,7 +46,7 @@
 
 ;; AUTHORIZATION
 (deftest http-authorization?
-    "Implement http-authorization!"
+    "Implement http-authorization (rfc2616) plz!"
   t)
 
 ;; EXPECT
@@ -59,7 +59,132 @@
 		    '100-continue))) 
   t)
 
-;;EXPECT FROM HOST IF-MATCH IF-MODIFIED-SINCE
+;; FROM
+(deftest http-from?
+    "Implement http-from (rfc2616) plz!"
+  t)
+
+(deftest http-host?
+    (with-core-stream (s "www.core.gen.tr:80")
+      (equal (http-host? s)
+	     '("www.core.gen.tr" . 80)))
+    t)
+
+;; IF-MATCH
+(deftest http-etag?
+    (and (with-core-stream (s "W/\"testmeup\"")
+	   (equal (core-server::http-etag? s)
+		  '("testmeup" . t)))
+	 (with-core-stream (s "\"testmeup\"")
+	   (equal (core-server::http-etag? s)
+		  '("testmeup"))))
+  t)
+
+(deftest http-if-match?
+    (and (with-core-stream (s "*")
+	   (equal (http-if-match? s)
+		  '(*)))
+	 (with-core-stream (s "W/\"test\"")
+	   (equal (http-if-match? s)
+		  '(("test" . t))))
+	 (with-core-stream (s "\"test\", W/\"me\", W/\"up\"")
+	   (equal (http-if-match? s)
+		  '(("test") ("me" . T) ("up" . T)))))
+  t)
+
+;; IF-MODIFIED-SINCE
+(deftest http-if-modified-since?
+    (with-core-stream (s "Sat, 29 Oct 1994 19:43:31 GMT")
+      (equal (http-if-modified-since? s)
+	     2989849411))
+    t)
+
+;; IF-NONE-MATCH
+(deftest http-if-none-match?
+    (and (with-core-stream (s "*")
+	   (equal (http-if-none-match? s)
+		  '(*)))
+	 (with-core-stream (s "\"xyzzy\", \"r2d2xxxx\", \"c3piozzzz\"")
+	   (equal (http-if-none-match? s)
+		  '(("xyzzy") ("r2d2xxxx") ("c3piozzzz"))))
+	 (with-core-stream (s "W/\"test\",W/\"meplease\"")
+	   (equal (http-if-none-match? s)
+		  '(("test" . t) ("meplease" . t))))
+	 (with-core-stream (s "\"test\", W/\"me\", W/\"up\"")
+	   (equal (http-if-none-match? s)
+		  '(("test") ("me" . T) ("up" . T)))))
+  t)
+
+;; IF-RANGE
+(deftest http-if-range?
+    (and (with-core-stream (s "Tue, 01 Feb 2008 04:20:00 GMT")
+	   (equal (http-if-range? s)
+		  3408142800))
+	 (with-core-stream (s "W/\"ranger\"")
+	   (equal (http-if-range? s)
+		  '("ranger" . t))))
+  t)
+
+
+;; IF-UNMODIFIED-SINCE
+(deftest http-if-unmodified-since
+    (with-core-stream (s "Tue, 01 Feb 2008 04:20:00 GMT")
+      (equal (http-if-unmodified-since? s)
+	     3408142800))
+  t)
+
+;; MAX-FORWARDS
+(deftest http-max-forwards?
+    (with-core-stream (s "414")
+      (equal (http-max-forwards? s)
+	     414))
+  t)
+
+;; PROXY-AUTHORIZATION
+(deftest http-proxy-authorization?
+    "Implement proxy-authorization (rfc2616) plz!"
+    t)
+
+;; RANGE
+(deftest http-range?
+    (with-core-stream (s "bytes=300-400,-300,300-")
+      (equal (http-range? s)
+	     '("bytes" (300) (NIL . 300) (300 . 400))))
+  t)
+
+;; REFERER
+(deftest http-referer?
+  (with-core-stream (s "http://www.w3.org/hypertext/DataSources/Overview.html")
+    (let ((uri (http-referer? s)))
+      (and (equal (uri.scheme uri) "http")
+	   (equal (uri.server uri) "www.w3.org")
+	   (equal (uri.paths uri)
+		  '(("hypertext") ("DataSources") ("Overview.html"))))))
+  t)
+
+;; TE
+(deftest http-te?
+    (with-core-stream (s "deflate;q=0.3;asd=234")
+      (equal (http-te? s)
+	     '("deflate" ("asd" . "234") ("q" . 0.3))))
+  t)
+
+;; USER-AGENT
+(deftest http-user-agent?
+    (and (with-core-stream (s "Opera/9.21 (X11; Linux i686; U; en)")
+	   (equal (http-user-agent? s)
+		  '((BROWSER . OPERA) (VERSION (9 21)) (OS . "Linux i686"))))
+	 (with-core-stream (s "Mozilla/5.0 (X11; U; Linux i686; tr-TR; rv:1.8.1.2) Gecko/20070511 SeaMonkey/1.1.1")
+	   (equal (http-user-agent? s)
+		  '((BROWSER . SEAMONKEY) (MOZ-VER (5 0)) (OS . "Linux i686") (REVISION (1 8 1 2)) (VERSION (1 1 1)))))
+	 (with-core-stream (s "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.1.4322; .NET CLR 2.0.50727)")
+	   (equal (http-user-agent? s)
+		  '((BROWSER . IE) (MOZ-VER (4 0)) (VERSION (6 0)) (OS . "Windows NT 5.1"))))) 
+  t)
+
+;;;; request headers test end
+
+;;;; test response headers
 
 (deftest http-response-render?
     (let ((date (encode-universal-time 0 20 6 1 1 2008))
