@@ -172,8 +172,8 @@
 (eval-when (:compile-toplevel :load-toplevel :execute) 
   (defrule hostport? (host port)
     (:or (:checkpoint
-	  (:host? host) #\: (:port? port) (:return (list host port)))
-	 (:and (:host? host) (:return (list host nil))))))
+	  (:host? host) #\: (:port? port) (:return (cons host port)))
+	 (:and (:host? host) (:return (cons host nil))))))
 
 ;;       userinfo      = *( unreserved | escaped | ";" | ":" | "&" | "=" | "+" | "$" | "," )
 (defatom userinfo-specials? ()
@@ -194,9 +194,9 @@
   (:or (:checkpoint
 	(:userinfo? userinfo) #\@
 	(:hostport? hostport)
-	(:return (list (car hostport) (cadr hostport) userinfo)))
+	(:return (list (car hostport) (cdr hostport) userinfo)))
        (:and (:hostport? hostport)
-	     (:return (list (car hostport) (cadr hostport) nil)))))
+	     (:return (list (car hostport) (cdr hostport) nil)))))
 
 ;;       authority     = server | reg_name
 (defrule authority? (authority)
