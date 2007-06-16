@@ -716,6 +716,20 @@
 (defun http-age! (stream age)
   (fixnum! stream age))
 
+;; 14.19 ETag
+;; ETag = "ETag" ":" entity-tag
+;; ETag: "xyzzy"
+;; ETag: W/"xyzzy"
+;; ETag: ""
+;; FIXmE: whats thiz?
+(defun http-etag! (stream etag)
+  (if (cdr etag)
+      (progn
+	(char! stream #\W)
+	(char! stream #\/)
+	(quoted! stream (car etag)))
+      (quoted! stream (car etag))))
+
 ;; 14.30 Location
 ;; Location       = "Location" ":" absoluteURI
 ;; Location: http://www.w3.org/pub/WWW/People.html
@@ -724,8 +738,8 @@
 
 ;; 14.33 Proxy Authenticate
 ;; Proxy-Authenticate  = "Proxy-Authenticate" ":" 1#challenge
-(defun http-proxy-authenticate! (stream pa)
-  (string! stream pa))
+(defun http-proxy-authenticate! (stream challenges)
+  (http-challenge! stream challenge))
 
 ;; 14.37 Retry-After
 ;; Retry-After  = "Retry-After" ":" ( HTTP-date | delta-seconds )
@@ -755,8 +769,8 @@
 
 ;; 14.47 WWW-Authenticate
 ;; WWW-Authenticate  = "WWW-Authenticate" ":" 1#challenge
-(defun http-www-authenticate! (stream wa)
-  (string! stream wa))
+(defun http-www-authenticate! (stream challenge)
+  (http-challenge! stream challenge))
 
 ;;;-----------------------------------------------------------------------------
 ;;; 7.1 HTTP ENTITY HEADERS

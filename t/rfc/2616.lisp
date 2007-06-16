@@ -185,6 +185,58 @@
 ;;;; request headers test end
 
 ;;;; test response headers
+;; ACCEPT-RANGES
+(deftest http-accept-ranges!
+    (with-core-stream (s "")
+      (http-accept-ranges s "bytes")
+      (equal (core-server::stream-data s)
+	     "bytes"))
+  t)
+
+;; AGE
+(deftest http-age!
+    (with-core-stream (s "")
+      (http-age! s 12)
+      (equal (core-server::stream-data s)
+	     "12"))
+  t)
+
+;; ETAG
+(deftest http-etag!
+    (and (with-core-stream (s "")
+	   (http-etag! s '("test" . t))
+	   (equal (core-server::stream-data s)
+		  "W/\"test\""))
+	 (with-core-stream (s "")
+	   (http-etag! s '("wotest"))
+	   (equal (core-server::stream-data s)
+		  "\"wotest\"")))
+  t)
+
+;; LOCATION
+(deftest http-location!
+    (with-core-stream (s "")
+      (http-location! s (make-uri :scheme "http"
+				  :username "john"
+				  :password "foo"
+				  :server "127.0.0.1"
+				  :port 8080
+				  :paths '(("test") ("me") ("up.html"))))
+      (equal (core-server::stream-data s)
+	     "http://john:foo@127.0.0.1:8080/test/me/up.html"))
+  t)
+
+;; PROXY-AUTHENTICATE
+(deftest http-proxy-authenticate!
+    "Implement proxy-authenticate (rfc2616) plz!"
+  t)
+
+;; RETRY-AFTER
+(deftest http-retry-after!
+    nil
+  t)
+
+;; SERVER VARY WWW-AUTHENTICATE
 
 (deftest http-response-render?
     (let ((date (encode-universal-time 0 20 6 1 1 2008))
