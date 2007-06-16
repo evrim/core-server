@@ -430,6 +430,80 @@
 	  (progn ,@body) 
        (close-stream ,var))))
 
+
+;; (with-core-stream (s "abc")
+;;   (read-stream s))
+(defmacro with-core-stream ((var val) &body body)
+  `(let ((,var (make-core-stream ,val)))
+     (unwind-protect
+	  (progn ,@body)
+       (close-stream ,var))))
+
+(defclass pipe-stream (core-stream)
+  ((%input :accessor pipe-stream.input :initform nil
+	   :initarg :input :type core-stream)
+   (%output :accessor pipe-stream.output :initform nil
+	    :initarg :output :type core-stream)))
+
+(defmethod peek-stream ((self pipe-stream))
+  (peek-stream (s-v '%input)))
+
+(defmethod read-stream ((self pipe-stream))
+  (read-stream (s-v '%input)))
+
+(defmethod write-stream ((self pipe-stream) c)
+  (write-stream (s-v '%output) c))
+
+(defmethod checkpoint-stream ((self pipe-stream))
+  (if (transactionalp self)
+      (push (list (s-v '%current)) (s-v '%checkpoints)))
+  (checkpoint-stream (s-v '%input))
+  (checkpoint-stream (s-v '%output))
+  (setf (s-v '%current) (length (s-v '%checkpoints)))
+  (length (s-v '%checkpoints)))
+
+(defmethod rewind-stream ((self pipe-stream))
+  (prog1 (length (s-v '%checkpoints))
+    (setf (s-v '%current)
+	  (or (pop (s-v '%checkpoints))
+	      -1))
+    (rewind-stream (s-v '%input))
+    (rewind-stream (s-v '%output))))
+
+(defmethod commit-stream ((self pipe-stream))
+  (prog1 (length (s-v '%checkpoints))
+    (setf (s-v '%current) (or (pop (s-v '%checkpoints))
+			      -1))
+    (commit-stream (s-v '%input))
+    (commit-stream (s-v '%output))))
+
+(defmethod close-stream ((self pipe-stream))
+  (close-stream (s-v '%output))
+  (close-stream (s-v '%input)))
+
+(defmethod stream-data ((self pipe-stream))
+  (stream-data (s-v '%output)))
+
+(defvar +stream-funs+ '(peek-stream read-stream write-stream checkpoint-stream
+		       rewind-stream commit-stream close-stream current-checkpoint))
+
+(defun trace-streams ()
+  (eval `(progn
+	   ,@(mapcar #'(lambda (a)
+			 `(trace ,a)) +stream-funs+))))
+
+(defun untrace-streams ()
+  (eval `(progn
+	   ,@(mapcar #'(lambda (a)
+			 `(untrace ,a)) +stream-funs+))))
+
+(defvar +stream-tx-funs+ '(peek-stream checkpoint-stream rewind-stream commit-stream close-stream
+			   current-checkpoint))
+(defun untrace-tx ()
+  (eval `(progn
+	   ,@(mapcar #'(lambda (a)
+			 `(untrace ,a)) +stream-tx-funs+))))
+
 ;; (defmethod rewind-stream ((self core-fd-input-stream))
 ;;   (setf (s-v '%read-index) (s-v '%current))
 ;;   (commit-stream self))
