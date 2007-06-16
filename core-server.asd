@@ -66,6 +66,7 @@
                                   :components 
                                   ((:file "2109") ;;cookie
                                    (:file "2396") ;;uri
+                                   (:file "2617") ;;http auth
                                    (:file "2616") ;;http
                                    (:file "2045") ;;mime-part1
                                    (:file "2046") ;;mime-part2
