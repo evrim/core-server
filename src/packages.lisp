@@ -110,6 +110,7 @@
    #:http-response.headers
    #:http-response.status-code
    ;; helpers
+   ;;; request
    #:http-accept?
    #:http-accept-charset?
    #:http-accept-encoding?
@@ -129,6 +130,16 @@
    #:http-te?
    #:http-user-agent?
    #:http-response!
+   ;;; response
+   #:http-accept-ranges!
+   #:http-age!
+   #:http-etag!
+   #:http-location!
+   #:http-proxy-authenticate!
+   #:http-retry-after!
+   #:server!
+   #:vary!
+   #:wwww-authenticate!
    ;; header symbols
    ;; request methods
    #:OPTIONS

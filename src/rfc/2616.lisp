@@ -465,11 +465,13 @@
 ;; opaque-tag = quoted-string
 ;;
 ;; http-etag? :: stream -> (tagstr . weak?)
-(defrule http-etag? (tagstr weak?)
-  (:checkpoint
-   #\W #\/ (:do (setq weak? t)) (:commit))
-  (:quoted? tagstr)
-  (:return (cons tagstr weak?)))
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defrule http-etag? (tagstr weak?)
+    (:checkpoint
+     #\W #\/ (:do (setq weak? t)) (:commit))
+    (:quoted? tagstr)
+    (:return (cons tagstr weak?))))
 
 ;; 14.24 If-Match
 ;; If-Match = "If-Match" ":" ( "*" | 1#entity-tag )
@@ -695,7 +697,7 @@
 ;;;-----------------------------------------------------------------------------
 ;;; 5.3 HTTP RESPONSE HEADERS
 ;;;-----------------------------------------------------------------------------
-(eval-when ( :compile-toplevel :execute)
+(eval-when (:compile-toplevel :load-toplevel :execute)
   (defvar +http-response-headers+
     '(ACCEPT-RANGES AGE ETAG LOCATION PROXY-AUTHENTICATE RETRY-AFTER SERVER
       VARY WWW-AUTHENTICATE))) ;; len=9
@@ -703,10 +705,9 @@
 ;; 14.5 Accept Ranges
 ;; Accept-Ranges     = "Accept-Ranges" ":" acceptable-ranges
 ;; acceptable-ranges = 1#range-unit | "none"
-;; FIXmE: implement extenstion token for range-unit
-(defun http-accept-ranges! (stream accept-ranges)
+(defun http-accept-ranges! (stream &optional accept-ranges)
   (if accept-ranges
-      (string! stream "bytes")
+      (string! stream accept-ranges)
       (string! stream "none")))
 
 ;; 14.6 Age
@@ -714,15 +715,6 @@
 ;; age-value = delta-seconds
 (defun http-age! (stream age)
   (fixnum! stream age))
-
-;; 14.19 ETag
-;; ETag = "ETag" ":" entity-tag
-;; ETag: "xyzzy"
-;; ETag: W/"xyzzy"
-;; ETag: ""
-;; FIXmE: whats thiz?
-(defun http-etag! (stream etag)
-  (quoted! stream etag))
 
 ;; 14.30 Location
 ;; Location       = "Location" ":" absoluteURI
