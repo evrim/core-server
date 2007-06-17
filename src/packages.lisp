@@ -137,9 +137,9 @@
    #:http-location!
    #:http-proxy-authenticate!
    #:http-retry-after!
-   #:server!
-   #:vary!
-   #:wwww-authenticate!
+   #:http-server!
+   #:http-vary!
+   #:http-wwww-authenticate!
    ;; header symbols
    ;; request methods
    #:OPTIONS

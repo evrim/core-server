@@ -188,7 +188,7 @@
 ;; ACCEPT-RANGES
 (deftest http-accept-ranges!
     (with-core-stream (s "")
-      (http-accept-ranges s "bytes")
+      (http-accept-ranges! s "bytes")
       (equal (core-server::stream-data s)
 	     "bytes"))
   t)
@@ -233,10 +233,31 @@
 
 ;; RETRY-AFTER
 (deftest http-retry-after!
-    nil
+    (with-core-stream (s "")
+      (http-retry-after! s (encode-universal-time 0 20 6 1 1 2008))
+      (equal (core-server::stream-data s)
+	     "Tue, 01 Feb 2008 04:20:00 GMT"))
   t)
 
-;; SERVER VARY WWW-AUTHENTICATE
+;; SERVER
+(deftest http-server!
+    (with-core-stream (s "")
+      (http-server! s "(CORE-SERVER . (0 2))")
+      (equal (core-server::stream-data s)
+	     "(CORE-SERVER . (0 2))"))
+  t)
+
+;; VARY
+(deftest http-vary!
+    (and (with-core-stream (s "")
+	   (http-vary! s '())
+	   (equal (core-stream::stream-data s) "*"))
+	 (with-core-stream (s "")
+	   (http-vary! s '("Free" "Software"))
+	   (equal (core-stream::stream-data s) "Free,Software")))
+  t)
+
+;; WWW-AUTHENTICATE
 
 (deftest http-response-render?
     (let ((date (encode-universal-time 0 20 6 1 1 2008))
