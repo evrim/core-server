@@ -380,22 +380,23 @@ cam=\"foo\""))
 (deftest http-transfer-encoding?
     (and (with-core-stream (s "chunked")
 	   (equal (http-transfer-encoding? s)
-		  '("chunked")))
+		  '(("chunked"))))
 	 (with-core-stream (s "token;attribute=\"value\"")
 	   (equal (http-transfer-encoding? s)
-		  '("token" ("attribute" . "value")))))
+		  '(("token" ("attribute" . "value"))))))
   t)
 
 (deftest http-transfer-encoding!
     (and (with-core-stream (s "")
-	   (http-transfer-encoding! s '(CHUNKED))
+	   (http-transfer-encoding! s '((CHUNKED)))
 	   (equal (core-server::stream-data s)
 		  "CHUNKED"))
 	 (with-core-stream (s "")
-	   (http-transfer-encoding! s '("token" . ("attr" . "val")))
+	   (http-transfer-encoding! s '(("token" . (("attr" . "val") ("attr2" . "val2")))))
 	   (equal (core-server::stream-data s)
-		  "token;attr=\"val\"")))
+		  "token;attr=\"val\";attr2=\"val2\"")))
   t)
+
 ;; UPGRADE
 (deftest http-upgrade?
     (with-core-stream (s "HTTP/2.0, SHTTP/1.3, IRC/6.9, RTA/x11")
@@ -412,7 +413,26 @@ cam=\"foo\""))
 	     "RTA/x11, IRC/6.9, SHTTP/1.3, HTTP/2.0"))
   t)
 
-;; VIA WARNING
+;; VIA
+(deftest http-via?
+    (with-core-stream (s "HTTP/1.1 core.gen.tr:80 (core server site), 1.1 nasa, 1.0 cgrid (asd)")
+      (equal (http-via? s)
+	     '((("HTTP" . "1.1") ("core.gen.tr" . 80) "core server site")
+	       (("1.1") ("nasa") NIL)
+	       (("1.0") ("cgrid") "asd"))))
+  
+  t)
+
+(deftest http-via!
+    (with-core-stream (s "")
+      (http-via! s '((("HTTP" . "1.1") ("core.gen.tr" . 80) "core server site")
+		     ((NIL . "1.1") ("nasa") NIL)
+		     ((NIL . "1.0") ("cgrid") "asd")))
+      (equal (core-server::stream-data s)
+	     "HTTP/1.1 core.gen.tr:80 (core server site), 1.1 nasa , 1.0 cgrid (asd)"))
+  t)
+
+;;WARNING
 
 (deftest http-response-render?
     (let ((date (encode-universal-time 0 20 6 1 1 2008))

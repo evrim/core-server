@@ -93,16 +93,22 @@
   (:return dl))
 
 ;; comment     =  "(" *(ctext / quoted-pair / comment) ")"
-(defrule comment? ((text (make-accumulator)) c)
-  #\(
-  (:zom (:or (:type ctext? c)
-	     (:quoted-pair? c)
-	     ;; TODO: fix recursion
-	     ;; (:comment? c)
-	     )
-	(:collect c text))
-  #\)
-  (:return text))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defrule comment? ((text (make-accumulator)) c)
+    #\(
+    (:zom (:or (:type ctext? c)
+	       (:quoted-pair? c)
+	       ;; TODO: fix recursion
+	       ;; (:comment? c)
+	       )
+	  (:collect c text))
+    #\)
+    (:return text)))
+
+(defun comment! (stream text)
+  (char! stream #\()
+  (string! stream text)
+  (char! stream #\)))
 
 ;; delimiters  =  specials / linear-white-space / comment
 (defrule delimiter? (c)

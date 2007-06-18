@@ -65,8 +65,7 @@
 
 ;; Ex: ;asd=asd or ;asd="asd"
 ;; header-parameter? :: stream -> (attr . val)
-(defrule header-parameter? ((attr (make-accumulator))
-			    (val (make-accumulator)) c)
+(defrule header-parameter? (attr val)
   (:and #\; (:lwsp?)
 	(:token? attr)
 	#\=
@@ -317,24 +316,20 @@
 ;;
 ;; Transfer-Encoding       = "Transfer-Encoding" ":" 1#transfer-coding
 ;; Transfer-Encoding: chunked (see 3.6)
-(defrule http-transfer-extension? (tok param params)
-  (:token? tok)
-  (:zom (:header-parameter? param)
-	(:do (push param params)))
-  (:return (cons tok params)))
 
 ;; http-transfer-encoding? :: stream -> (token . (attr . val))
-(defrule http-transfer-encoding? (encoding c)
-  (:http-transfer-extension? encoding)
-  (:return encoding))
+(defrule http-transfer-encoding? (encs c)
+  (:http-transfer-extension? c)
+  (:do (push c encs))
+  (:zom #\, (:lwsp?)
+	(:http-transfer-extension? c)
+	(:do (push c encs)))
+  (:return encs))
 
-;; http-transfer-encoding! :: stream -> (token . (attr . val)) -> nil
-(defun http-transfer-encoding! (stream encoding)
-  (typecase (car encoding)
-    (string (string! stream (car encoding)))
-    (symbol (symbol! stream (car encoding))))
-  (when (cdr encoding)
-    (header-parameter! stream (cdr encoding))))
+;; http-transfer-encoding! :: stream -> ((token . (attr . val)) ...) -> nil
+(defun http-transfer-encoding! (stream encodings)
+  (with-separator (i encodings #\, stream)
+    (http-transfer-extension! stream i)))
 
 ;; 14.42 Upgrade
 ;; Upgrade        = "Upgrade" ":" 1#product
@@ -348,18 +343,10 @@
   (:return products))
 
 (defun http-upgrade! (stream products)
-  (if (car products)
-      (progn
-	(string! stream (caar products))
-	(char! stream #\/)
-	(string! stream (cdar products))
-	(reduce #'(lambda (acc item)
-		    (declare (ignore acc))
-		    (char! stream #\,) (char! stream #\ )
-		    (string! stream (car item))
-		    (char! stream #\/)
-		    (string! stream (cdr item)))
-		(cdr products) :initial-value nil))))
+  (with-separator (i products #\, stream)
+    (string! stream (car i))
+    (char! stream #\/)
+    (string! stream (cdr i))))
 
 ;; 14.45 Via
 ;; Via =  "Via" ":" 1#( received-protocol received-by [ comment ] )
@@ -371,14 +358,56 @@
 ;; Via: 1.0 fred, 1.1 nowhere.com (Apache/1.1)
 ;; Via: 1.0 ricky, 1.1 ethel, 1.1 fred, 1.0 lucy
 ;; Via: 1.0 ricky, 1.1 mertz, 1.0 lucy
-;; FIXME: implement as seperate protocols.
-(defrule http-via? (c (acc (make-accumulator)))
-  (:type http-header-value? c) (:collect c acc)
-  (:zom (:type http-header-value? c) (:collect c acc))
-  (:return acc))
+(defrule via-received-by? (c)
+  (:or (:hostport? c)
+       (:token? c))
+  (:return c))
 
-(defun http-via! (stream via)
-  (string! stream via))
+(defrule via-received-protocol? (pname pver)
+  (:token? pname)
+  (:or (:and #\/
+	     (:token? pver)
+	     (:return (cons pname pver)))
+       (:return (cons nil pname))))
+
+;; ex: (("HTTP" . "1.1") ("core.gen.tr" . 80) "core server site")
+(defrule http-via? (prot by comment vias)
+  (:via-received-protocol? prot)
+  (:lwsp?)
+  (:via-received-by? by)
+  (:lwsp?)
+  (:checkpoint
+   (:or (:and (:comment? comment)
+	      (:do (push (list prot by comment) vias)))
+	(:do (push (list prot by nil) vias)))
+   (:commit))
+  (:zom #\, (:lwsp?)
+	(:via-received-protocol? prot)
+	(:lwsp?)
+	(:via-received-by? by)
+	(:lwsp?)
+	(:checkpoint
+	 (:or (:and (:comment? comment)
+		    (:do (push (list prot by comment) vias)))
+	      (:do (push (list prot by nil) vias)))
+	 (:commit)))
+  (:return (nreverse vias)))
+
+(defun http-via! (stream vias)
+  (with-separator (i vias #\, stream)
+    (when (car i)
+      (if (caar i) 
+	  (progn
+	    (string! stream (caar i))
+	    (char! stream #\/)
+	    (string! stream (cdar i)))
+	  (string! stream (cdar i))))
+    (char! stream #\ )
+    (when (cadr i)
+      (hostport! stream (cadr i)))
+    (char! stream #\ )
+    (when (caddr i)
+      (comment! stream (caddr i)))))
 
 ;; 14.46 Warning
 ;; Warning    = "Warning" ":" 1#warning-value
@@ -695,15 +724,22 @@
 ;; TE: deflate
 ;; TE:
 ;; TE: trailers, deflate;q=0.5
-(defrule http-transfer-extension? ((token (make-accumulator)) 
-				   param params c)
-  (:zom (:type http-media-type? c) (:collect c token))
-  (:zom (:or (:quality-parameter? param)
-	     ;; accept-extension
-	     (:header-parameter? param))
-	(:do
-	 (push param params)))
-  (:return (cons token params)))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defrule http-transfer-extension? (tok param params)
+    (:token? tok)
+    (:zom (:header-parameter? param)
+	  (:do (push param params)))
+    (:return (cons tok params))))
+
+(defun http-transfer-extension! (stream te)
+  (typecase (car te)
+    (string (string! stream (car te)))
+    (symbol (symbol! stream (car te))))
+  (when (cdr te)
+    (reduce #'(lambda (acc item)
+		(declare (ignore acc))
+		(header-parameter! stream item))
+	    (cdr te) :initial-value nil)))
 
 (defrule http-te? (te)
   (:http-transfer-extension? te)
