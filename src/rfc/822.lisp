@@ -14,6 +14,12 @@
 					 #\, #\; #\: #\\ #\"
 					 #\. #\[ #\])))
       t))
+
+(defatom atomic? ()
+  (and (not (special? c))
+       (not (control? c))
+       (not (white-space? c))))
+
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defrule quoted-pair? ((pair (make-accumulator)) c)
     (:and #\\
@@ -42,6 +48,7 @@
 (defatom qtext? () 
   (or (white-space? c)
       (and (char? c)
+	   (not (eq c #.(char-code #\")))
 	   (not (eq c #.(char-code #\<)))
 	   (not (eq c #.(char-code #\>)))
 	   (not (eq c #.(char-code #\\)))
@@ -58,6 +65,20 @@
 	   (not (eq c #.(char-code #\])))
 	   (not (eq c #.(char-code #\\)))
 	   (not (carriage-return? c)))))
+
+;; quoted-string = < "> *(qtext/quoted-pair) <">; Regular qtext or
+;;                                              ;   quoted chars.
+(defrule quoted-string? ((value (make-accumulator)) c)
+  #\"
+  (:or (:type qtext? c)
+       (:quoted-pair? c))
+  (:collect c value)
+  (:zom (:or (:type qtext? c)
+	     (:quoted-pair? c))
+	(:debug)
+	(:collect c value))
+  #\"
+  (:return value))
 
 ;; domain-literal =  "[" *(dtext / quoted-pair) "]"
 (defrule domain-literal? (c (dl (make-accumulator)))
@@ -92,38 +113,35 @@
 
 ;; atom        =  1*<any CHAR except specials, SPACE and CTLs>
 (defrule atom? ((atom (make-accumulator)) c)
-  (:and (:not (:type special? c))
-	(:not (:type control? c))
-	(:not #\ )
-	(:type char? c)
+  (:type atomic? c)
+  (:collect c atom)
+  (:zom (:type atomic? c)
 	(:collect c atom))
-  (:zom (:and (:not (:type special? c))
-	      (:not (:type control? c))
-	      (:not #\ )
-	      (:type char? c)
-	      (:collect c atom)))
   (:return atom))
 
 (defrule word? (word)
   (:or
    (:atom? word)
-   (:quoted? word)))
+   (:quoted-string? word))
+  (:return word))
 
-(defrule phrase? ((words (make-accumulator)) c)
-  (:and (:word? c) (:do (push c words)))
-  (:zom (:and (:word? c) (:do (push c words))))
-  (:return words))
+(defrule phrase? (words c)
+  (:word? c)
+  (:do (push c words))
+  (:zom #\ 
+	(:word? c)
+	(:do (push c words)))
+  (:return (nreverse words)))
 
-;; addr-spec? :: stream -> (local-part . domain)
-(defrule addr-spec? ((local-part (make-accumulator))
-		     (domain (make-accumulator))
-		     c)
-    (:and (:zom (:type visible-char? c)
-		(:collect c local-part))
-	  #\@
-	  (:zom (:type visible-char? c)
-		(:collect c domain)))
-    (:return (cons local-part domain)))
+;; local-part  =  word * ("." word) ; uninterpreted
+;;                                  ; case-preserved
+(defrule local-part? (c lp)
+  (:word? c)
+  (:do (push c lp))
+  (:zom #\.
+	(:word? c)
+	(:do (push "." lp) (push c lp)))
+  (:return (apply #'concatenate 'string (nreverse lp))))
 
 ;; domain-ref  =  atom
 (defrule domain-ref? (c)
@@ -143,7 +161,15 @@
   (:zom #\.
 	(:sub-domain? c)
 	(:do (push c d)))
-  (:return d))
+  (:return (nreverse d)))
+
+;; addr-spec? :: stream -> (local-part . domain)
+(defrule addr-spec? (local-part domain)
+  (:local-part? local-part)
+  #\@
+  (:domain? domain)
+  (:return (cons local-part domain)))
+
 
 ;; ex: @relay1,@relay2,@relay3:user@domain
 ;; See: RFC1123/5.2.18
@@ -167,10 +193,12 @@
   #\>
   (:return (cons as r)))
 
-;; mailbox?
-(defrule mailbox? (as p ra mbox)
+;; mailbox     =  addr-spec                    ; simple address
+;;             /  phrase route-addr            ; name & addr-spec
+;; mailbox? :: stream -> (cons addr-spec|route-addr phrase) 
+(defrule mailbox? (as p)
   (:or (:and (:addr-spec? as)
-	     (:return (cons as nil)))       
+	     (:return (cons as p)))
        (:or (:phrase? p)
-	    (:route-addr? ra)))
-  (:return (cons ra p)))
+	    (:route-addr? as)))
+  (:return (cons as p)))

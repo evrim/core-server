@@ -63,14 +63,16 @@ cam=\"dsa\"")
 
 ;; FROM
 (deftest http-from?
-    "Implement http-from (rfc2616) plz!"
+    (with-core-stream (s "<bill.gates@microsoft.com>")
+      (equal (http-from? s)
+	     '((("bill.gates" "microsoft" "com")))))
   t)
 
 (deftest http-host?
     (with-core-stream (s "www.core.gen.tr:80")
       (equal (http-host? s)
 	     '("www.core.gen.tr" . 80)))
-    t)
+  t)
 
 ;; IF-MATCH
 (deftest http-etag?
@@ -99,7 +101,7 @@ cam=\"dsa\"")
     (with-core-stream (s "Sat, 29 Oct 1994 19:43:31 GMT")
       (equal (http-if-modified-since? s)
 	     2989849411))
-    t)
+  t)
 
 ;; IF-NONE-MATCH
 (deftest http-if-none-match?
