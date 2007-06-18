@@ -1,4 +1,16 @@
 (in-package :tr.gen.core.server)
+
+;;; sugars
+(defmacro with-separator ((var lst sep stream) &body body) 
+  `(let ((,var (car ,lst)))
+     ,@body
+     (reduce #'(lambda (acc ,var)
+		 (declare (ignore acc))
+		 (char! ,stream ,sep)
+		 (char! ,stream #\ )
+		 ,@body)
+	     (cdr ,lst) :initial-value nil)))
+
 ;;;-----------------------------------------------------------------------------
 ;;; RFC 2616 - Hypertext Transfer Protocol -- HTTP/1.1
 ;;;-----------------------------------------------------------------------------
