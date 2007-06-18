@@ -19,7 +19,7 @@
 	       ("text" "html" (("q" . 0.4) ("level" . "2")))
 	       ("text" "html" (("level" . "1")))
 	       ("text" "html" (("q" . 0.7)))
-	       ("text" "*" (("q" . 0.3)))))) 
+	       ("text" "*" (("q" . 0.3))))))
   t)
 
 ;; ACCEPT-CHARSET
@@ -171,9 +171,10 @@ cam=\"foo\"")
 
 ;; TE
 (deftest http-te?
-    (with-core-stream (s "deflate;q=0.3;asd=234")
+    (with-core-stream (s "trailers, deflate;q=0.3;asd=\"val\"")
       (equal (http-te? s)
-	     '("deflate" ("asd" . "234") ("q" . 0.3))))
+	     '(("trailers")
+	       ("deflate" ("asd" . "val") ("q" . "0.3")))))
   t)
 
 ;; USER-AGENT
@@ -367,13 +368,15 @@ cam=\"foo\""))
 ;; TRAILER
 (deftest http-trailer?
     (with-core-stream (s "Content-Type, Cache-Control, Server")
-      (http-trailer? s))
+      (equal (http-trailer? s)
+	     '("Server" "Cache-Control" "Content-Type")))
   t)
 
 (deftest http-trailer!
     (with-core-stream (s "")
       (http-trailer! s '("Content-Type, Cache-Control, Server"))
-      (core-server::stream-data s))
+      (equal (core-server::stream-data s)
+	     "Content-Type, Cache-Control, Server"))
   t)
 
 ;; TRANSFER-ENCODING
@@ -415,12 +418,11 @@ cam=\"foo\""))
 
 ;; VIA
 (deftest http-via?
-    (with-core-stream (s "HTTP/1.1 core.gen.tr:80 (core server site), 1.1 nasa, 1.0 cgrid (asd)")
+    (with-core-stream (s "HTTP/1.1 core.gen.tr:80 (core server site), 1.1 nasa, 1.0 cgrid (asd)") 
       (equal (http-via? s)
 	     '((("HTTP" . "1.1") ("core.gen.tr" . 80) "core server site")
-	       (("1.1") ("nasa") NIL)
-	       (("1.0") ("cgrid") "asd"))))
-  
+	       ((nil . "1.1") ("nasa") NIL)
+	       ((nil . "1.0") ("cgrid") "asd"))))
   t)
 
 (deftest http-via!
@@ -432,7 +434,19 @@ cam=\"foo\""))
 	     "HTTP/1.1 core.gen.tr:80 (core server site), 1.1 nasa , 1.0 cgrid (asd)"))
   t)
 
-;;WARNING
+;; WARNING
+(deftest http-warning?
+    (with-core-stream (s "199 www.core.gen.tr:80 \"warn text\" \"Tue, 01 Feb 2008 04:20:00 GMT\"")
+      (equal (http-warning? s)
+	     '((199 ("www.core.gen.tr" . 80) "warn text" 3408142800))))
+  t)
+
+(deftest http-warning!
+    (with-core-stream (s "")
+      (http-warning! s '((199 ("www.core.gen.tr" . 80) "warn text" 3408142800)))
+      (equal (core-server::stream-data s) 
+	     "199 www.core.gen.tr:80 \"warn text\" \"Tue, 01 Feb 2008 02:20:00 GMT\""))
+  t)
 
 (deftest http-response-render?
     (let ((date (encode-universal-time 0 20 6 1 1 2008))

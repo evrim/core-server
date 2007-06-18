@@ -55,6 +55,8 @@
        (not (control? c))))
 
 (defrule token? (c (acc (make-accumulator)))
+  (:type tokenatom? c)
+  (:collect c acc)
   (:zom (:type tokenatom? c)
 	(:collect c acc))
   (:return acc))
@@ -69,7 +71,8 @@
   (:and #\; (:lwsp?)
 	(:token? attr)
 	#\=
-	(:quoted? val))
+	(:or (:token? val)
+	     (:quoted? val)))
   (:return (cons attr val)))
 
 (defun header-parameter! (stream hp)
@@ -316,6 +319,22 @@
 ;;
 ;; Transfer-Encoding       = "Transfer-Encoding" ":" 1#transfer-coding
 ;; Transfer-Encoding: chunked (see 3.6)
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defrule http-transfer-extension? (tok param params)
+    (:token? tok)
+    (:zom (:header-parameter? param)
+	  (:do (push param params)))
+    (:return (cons tok params))))
+
+(defun http-transfer-extension! (stream te)
+  (typecase (car te)
+    (string (string! stream (car te)))
+    (symbol (symbol! stream (car te))))
+  (when (cdr te)
+    (reduce #'(lambda (acc item)
+		(declare (ignore acc))
+		(header-parameter! stream item))
+	    (cdr te) :initial-value nil)))
 
 ;; http-transfer-encoding? :: stream -> (token . (attr . val))
 (defrule http-transfer-encoding? (encs c)
@@ -418,14 +437,50 @@
 ;;           ; the Warning header, for use in debugging
 ;; warn-text  = quoted-string
 ;; warn-date  = <"> HTTP-date <">
-;; FIXME: implement me.
-(defrule http-warning? (c (acc (make-accumulator)))
-  (:type http-header-value? c) (:collect c acc)
-  (:zom (:type http-header-value? c) (:collect c acc))
+(defrule warn-agent? (agent)
+  (:or (:hostport? agent)
+       (:token? agent))
+  (:return agent))
+
+(defrule warn-code? (c)
+  (:fixnum? c)
+  (:return c))
+
+(defrule warn-date? (d)
+  #\" (:http-date? d) #\"
+  (:return d))
+
+(defrule warning-value? (code agent text date)
+  (:warn-code? code)
+  (:lwsp?)
+  (:warn-agent? agent)
+  (:lwsp?)
+  (:quoted? text)
+  (:lwsp?)
+  (:warn-date? date)
+  (:return (list code agent text date)))
+
+(defrule http-warning? (c acc)
+  (:warning-value? c)
+  (:do (push c acc))
+  (:zom (:warning-value? c)
+	(:do (push c acc)))
   (:return acc))
 
-(defun http-warning! (stream warning)
-  (string! stream warning))
+;; warning :: '((199 ("www.core.gen.tr" . 80) "warn text" 3408142800))
+(defun http-warning! (stream warnings)
+  (with-separator (i warnings #\, stream)
+    (fixnum! stream (car i))
+    (char! stream #\ )
+    (if (cdr (cadr i))
+	(hostport! stream (cadr i))
+	(string! stream (car (cadr i))))
+    (char! stream #\ )
+    (quoted! stream (caddr i))
+    (char! stream #\ )
+    (char! stream #\")
+    (http-date! stream (cadddr i))
+    (char! stream #\")))
 
 ;;;-----------------------------------------------------------------------------
 ;;; 5.3 HTTP REQUEST HEADERS
@@ -724,26 +779,13 @@
 ;; TE: deflate
 ;; TE:
 ;; TE: trailers, deflate;q=0.5
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defrule http-transfer-extension? (tok param params)
-    (:token? tok)
-    (:zom (:header-parameter? param)
-	  (:do (push param params)))
-    (:return (cons tok params))))
-
-(defun http-transfer-extension! (stream te)
-  (typecase (car te)
-    (string (string! stream (car te)))
-    (symbol (symbol! stream (car te))))
-  (when (cdr te)
-    (reduce #'(lambda (acc item)
-		(declare (ignore acc))
-		(header-parameter! stream item))
-	    (cdr te) :initial-value nil)))
-
-(defrule http-te? (te)
+(defrule http-te? (te acc)
   (:http-transfer-extension? te)
-  (:return te))
+  (:do (push te acc))
+  (:zom #\, (:lwsp?)
+	(:http-transfer-extension? te)
+	(:do (push te acc)))
+  (:return (nreverse acc)))
 
 ;; 14.43 User-Agent
 ;; User-Agent     = "User-Agent" ":" 1*( product | comment )
