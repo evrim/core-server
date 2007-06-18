@@ -46,7 +46,10 @@
 
 ;; AUTHORIZATION
 (deftest http-authorization?
-    "Implement http-authorization (rfc2616) plz!"
+    (with-core-stream (s "Digest mac=\"asd\",
+cam=\"dsa\"")
+      (equal (http-authorization? s)
+	     '("Digest" ("cam" . "dsa") ("mac" . "asd"))))
   t)
 
 ;; EXPECT
@@ -141,9 +144,12 @@
   t)
 
 ;; PROXY-AUTHORIZATION
-(deftest http-proxy-authorization?
-    "Implement proxy-authorization (rfc2616) plz!"
-    t)
+(deftest http-proxy-authorization?    
+    (with-core-stream (s "digest mac=\"0E:F0:FF:FF:FF:00\",
+cam=\"foo\"")
+      (equal (http-proxy-authorization? s)
+	     '("digest" . ("mac" . "0E:F0:FF:FF:FF:00")))) 
+  t)
 
 ;; RANGE
 (deftest http-range?
@@ -228,7 +234,11 @@
 
 ;; PROXY-AUTHENTICATE
 (deftest http-proxy-authenticate!
-    "Implement proxy-authenticate (rfc2616) plz!"
+    (with-core-stream (s "")
+      (http-proxy-authenticate! s '("Digest" . (("attribute1" . "value1") ("attr2" . "val2"))))
+      (equal (core-server::stream-data s)
+	     "Digest attribute1=\"value1\",
+attr2=\"val2\""))
   t)
 
 ;; RETRY-AFTER
@@ -251,13 +261,20 @@
 (deftest http-vary!
     (and (with-core-stream (s "")
 	   (http-vary! s '())
-	   (equal (core-stream::stream-data s) "*"))
+	   (equal (core-server::stream-data s) "*"))
 	 (with-core-stream (s "")
 	   (http-vary! s '("Free" "Software"))
-	   (equal (core-stream::stream-data s) "Free,Software")))
+	   (equal (core-server::stream-data s) "Free,Software")))
   t)
 
 ;; WWW-AUTHENTICATE
+(deftest http-www-authenticate!
+    (with-core-stream (s "")
+      (http-www-authenticate! s '("digest" . (("mac" . "0E:F0:FF:FF:FF:00") ("cam" . "foo"))))
+      (equal (core-server::stream-data s)
+	     "digest mac=\"0E:F0:FF:FF:FF:00\",
+cam=\"foo\""))
+  t)
 
 (deftest http-response-render?
     (let ((date (encode-universal-time 0 20 6 1 1 2008))

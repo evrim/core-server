@@ -416,9 +416,9 @@
 
 ;; 14.8 Authorization
 ;; Authorization  = "Authorization" ":" credentials
-;; FIXmE: who's gonna implement me?
-(defrule http-authorization? ()
-  (:return nil))
+(defrule http-authorization? (challenge)
+  (:http-challenge? challenge)
+  (:return challenge))
 
 (defrule expectation-extension? ((attr (make-accumulator))
 				 (val (make-accumulator)) c)
@@ -526,9 +526,9 @@
 
 ;; 14.34 Proxy-Authorization
 ;; Proxy-Authorization     = "Proxy-Authorization" ":" credentials
-;; FIXmE: Implement me.
-(defrule http-proxy-authorization? ()
-  (:return nil))
+(defrule http-proxy-authorization? (creds)
+  (:http-credentials? creds)
+  (:return creds))
 
 ;; 14.35 Range
 ;; 14.35.1 Byte Ranges
@@ -738,7 +738,7 @@
 
 ;; 14.33 Proxy Authenticate
 ;; Proxy-Authenticate  = "Proxy-Authenticate" ":" 1#challenge
-(defun http-proxy-authenticate! (stream challenges)
+(defun http-proxy-authenticate! (stream challenge)
   (http-challenge! stream challenge))
 
 ;; 14.37 Retry-After
@@ -760,11 +760,14 @@
 ;; Vary  = "Vary" ":" ( "*" | 1#field-name )
 (defun http-vary! (stream vary)
   (if (> (length vary) 1)
-      (reduce #'(lambda (acc atom)
-		  (declare (ignore acc))
-		  (string! stream atom)
-		  (char! stream #\,))
-	      vary :initial-value nil)
+      (if (car vary)
+	  (progn
+	    (string! stream (car vary))
+	    (reduce #'(lambda (acc atom)
+			(declare (ignore acc))
+			(char! stream #\,)
+			(string! stream atom))
+		    (cdr vary) :initial-value nil))) 
       (char! stream #\*)))
 
 ;; 14.47 WWW-Authenticate

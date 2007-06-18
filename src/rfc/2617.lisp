@@ -43,6 +43,7 @@
 	(:do (push param params)))
   (:return (cons scheme params)))
 
+;; http-challenge! :: stream (cons string ((attrstr . val) ...))
 (defun http-challenge! (stream challenge)
   (string! stream (car challenge))
   (char! stream #\ )
@@ -55,9 +56,9 @@
 	  (reduce #'(lambda (acc item)
 		      (char! stream #\,)
 		      (char! stream #\Newline)
-		      (string! stream (caar params))
+		      (string! stream (car item))
 		      (char! stream #\=)
-		      (quoted! stream (cdar params)))
+		      (quoted! stream (cdr item)))
 		  (cdr params) :initial-value nil)))))
 
 (defrule http-realm-value? (c)
@@ -69,3 +70,8 @@
   (:http-realm-value? realm)
   (:return realm))
 
+(defrule http-credentials? (scheme param)
+  (:http-auth-scheme? scheme)
+  (:lwsp?)
+  (:http-auth-param? param)
+  (:return (cons scheme param)))

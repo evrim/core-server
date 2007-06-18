@@ -115,6 +115,7 @@
    #:http-accept-charset?
    #:http-accept-encoding?
    #:http-accept-language?
+   #:http-authorization?
    #:http-request-headers?
    #:http-expect?
    #:http-from?
@@ -125,6 +126,7 @@
    #:http-if-range?
    #:http-if-unmodified-since?
    #:http-max-forwards?
+   #:http-proxy-authorization?
    #:http-range?
    #:http-referer?
    #:http-te?
@@ -139,7 +141,7 @@
    #:http-retry-after!
    #:http-server!
    #:http-vary!
-   #:http-wwww-authenticate!
+   #:http-www-authenticate!
    ;; header symbols
    ;; request methods
    #:OPTIONS
