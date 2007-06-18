@@ -138,10 +138,19 @@
 			    :element-type '(unsigned-byte 8)
 			    :initial-contents (list d1 d2 d3 d4)))))
 
+(defun ipv4address! (stream lst)
+  (reduce #'(lambda (acc i)
+	      (declare (ignore acc))
+	      (fixnum! stream i))
+	  lst :initial-value nil))
+
 ;;       port          = *digit
 (defrule port? (d)
   (:fixnum? d)
   (:if (and (>= d 0) (< d 65536)) (:return d)))
+
+(defun port! (stream p)
+  (fixnum! stream p))
 
 ;;       toplabel      = alpha | alpha *( alphanum | "-" ) alphanum
 ;; FIXmE: Toplabel can't end with a #\-
@@ -168,12 +177,23 @@
   (:or (:and (:ipv4address? host) (:return host))
        (:and (:hostname? host) (:return host))))
 
+(defun host! (stream host)
+  (typecase host
+    (list (ipv4address! stream host))
+    (string (string! stream host))))
+
 ;;       hostport      = host [ ":" port ]
 (eval-when (:compile-toplevel :load-toplevel :execute) 
   (defrule hostport? (host port)
     (:or (:checkpoint
 	  (:host? host) #\: (:port? port) (:return (cons host port)))
 	 (:and (:host? host) (:return (cons host nil))))))
+
+(defun hostport! (stream hp-cons)
+  (host! stream (car hp-cons))
+  (when (cdr hp-cons)
+    (char! stream #\:)
+    (port! stream (cdr hp-cons))))
 
 ;;       userinfo      = *( unreserved | escaped | ";" | ":" | "&" | "=" | "+" | "$" | "," )
 (defatom userinfo-specials? ()
