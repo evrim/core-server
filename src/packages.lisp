@@ -111,8 +111,8 @@
    #:http-request.entity-headers
    #:http-response.headers
    #:http-response.status-code
-   ;; helpers
-   ;;; request
+   ;;; helpers
+   ;; request
    #:http-accept?
    #:http-accept-charset?
    #:http-accept-encoding?
@@ -134,7 +134,7 @@
    #:http-te?
    #:http-user-agent?
    #:http-response!
-   ;;; response
+   ;; response
    #:http-accept-ranges!
    #:http-age!
    #:http-etag!
@@ -144,6 +144,25 @@
    #:http-server!
    #:http-vary!
    #:http-www-authenticate!
+   ;; general
+   #:http-cache-control?
+   #:http-cache-control!
+   #:http-connection?
+   #:http-connection!
+   #:http-date?
+   #:http-date!
+   #:http-pragma?
+   #:http-pragma!
+   #:http-trailer?
+   #:http-trailer!
+   #:http-transfer-encoding?
+   #:http-transfer-encoding!
+   #:http-upgrade?
+   #:http-upgrade!
+   #:http-via?
+   #:http-via!
+   #:http-warning?
+   #:http-warning!
    ;; header symbols
    ;; request methods
    #:OPTIONS
