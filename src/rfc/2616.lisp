@@ -51,6 +51,35 @@
   (:token? c)
   (:return c))
 
+;; Ex: ;asd=asd or ;asd="asd"
+;; header-parameter? :: stream -> (attr . val)
+(defrule header-parameter? ((attr (make-accumulator))
+			    (val (make-accumulator)) c)
+  (:and #\; (:lwsp?)
+	(:token? attr)
+	#\=
+	(:quoted? val))
+  (:return (cons attr val)))
+
+(defun header-parameter! (stream hp)
+  (char! stream #\;)
+  (string! stream (car hp))
+  (char! stream #\=)
+  (quoted! stream (cdr hp)))
+
+;; 3.8 product tokens
+;; product         = token [ "/" product-version]
+;; product-version = token
+(defrule product-version? (c)
+  (:token? c)
+  (:return c))
+
+(defrule product? (prod ver)
+  (:token? prod)
+  (:zom #\/
+	(:product-version? ver))
+  (:return (cons prod ver)))
+
 ;;;-----------------------------------------------------------------------------
 ;;; 4.5 HTTP GENERAL HEADERS
 ;;;-----------------------------------------------------------------------------
