@@ -106,12 +106,17 @@
 	(symbol (symbol! stream cache-control-cons))
 	(string (string! stream cache-control-cons)))      
       (typecase (cdr cache-control-cons)
-	(symbol (symbol! stream (car cache-control-cons))
-		#\= (symbol! stream (cdr cache-control-cons)))
-	(string (symbol! stream (car cache-control-cons))
-		#\= (string! stream (cdr cache-control-cons)))
 	(fixnum (symbol! stream (car cache-control-cons))
-		#\= (fixnum! stream (cdr cache-control-cons)))
+		(char! stream #\=)
+		(fixnum! stream (cdr cache-control-cons)))
+	(cons (symbol! stream (car cache-control-cons))
+	      (char! stream #\,)
+	      (string! stream (cadr cache-control-cons))
+	      (char! stream #\=)
+	      (quoted! stream (cddr cache-control-cons)))
+	(string (symbol! stream (car cache-control-cons))
+		(char! stream #\=)
+		(quoted! stream (cdr cache-control-cons)))
 	(t (error "Invalid Cache-Control declaration!")))))
 
 ;; 14.10 Connection
@@ -228,24 +233,44 @@
 ;; Pragma            = "Pragma" ":" 1#pragma-directive
 ;; pragma-directive  = "no-cache" | extension-pragma
 ;; extension-pragma  = token [ "=" ( token | quoted-string ) ]
-;;
-;; FIXmE: implement extension-pragma
-(defrule http-pragma? ()
-  (:seq "no-cache") (:return (cons 'no-cache nil)))
+(defrule extension-pragma? ((attr (make-accumulator)) val c)
+  (:lwsp?)
+  (:http-field-name? attr)
+  #\=
+  (:quoted? val)
+  (:return (cons attr val)))
+
+(defrule http-pragma? (pragma)
+  (:or (:and (:seq "no-cache") (:do (setq pragma (cons 'no-cache nil))))
+       (:extension-pragma? pragma))
+  (:return pragma))
 
 (defun http-pragma! (stream pragma-cons)
-  (when pragma-cons
-    (string! stream "no-cache")))
+  (typecase (car pragma-cons)
+    (symbol (symbol! stream (car pragma-cons)))
+    (string (string! stream (car pragma-cons))
+	    (char! stream #\=)
+	    (string! stream (cdr pragma-cons)))))
 
 ;; 14.40 Trailer
 ;;
 ;; Trailer  = "Trailer" ":" 1#field-name
-;;
-(defrule http-trailer? ((field (make-accumulator)) c)
-  (:zom (:type alpha? c) (:collect c field)) (:return field))
+(defrule http-trailer? (fields c)
+  (:http-field-name? c)
+  (:do (push c fields))
+  (:zom #\, (:lwsp?)
+	(:http-field-name? c)
+	(:do (push c fields)))
+  (:return fields))
 
-(defun http-trailer! (stream field-name)
-  (string! stream field-name))
+(defun http-trailer! (stream fields)
+  (if (car fields) 
+      (progn
+	(string! stream (car fields))
+	(reduce #'(lambda (acc item)
+		    (char! stream #\,)
+		    (string! stream item))
+		(cdr fields) :initial-value nil))))
 
 ;; 14.41 Transfer-Encoding
 ;;
