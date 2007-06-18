@@ -6,10 +6,9 @@
 	     (multiple-value-list (core-server::http-media-range? s))))
   t)
 
-;;;; test request headers
-;;ACCEPT ACCEPT-CHARSET ACCEPT-ENCODING ACCEPT-LANGUAGE AUTHORIZATION
-;;EXPECT FROM HOST IF-MATCH IF-MODIFIED-SINCE IF-RANGE IF-UNMODIFIED-SINCE
-;;MAX-FORWARDS PROXY-AUTHORIZATION RANGE REFERER TE USER-AGENT
+;;;
+;;; test request headers
+;;;
 
 ;; ACCEPT
 (deftest http-accept?
@@ -188,9 +187,10 @@ cam=\"foo\"")
 		  '((BROWSER . IE) (MOZ-VER (4 0)) (VERSION (6 0)) (OS . "Windows NT 5.1"))))) 
   t)
 
-;;;; request headers test end
+;;;
+;;; test response headers
+;;;
 
-;;;; test response headers
 ;; ACCEPT-RANGES
 (deftest http-accept-ranges!
     (with-core-stream (s "")

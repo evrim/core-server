@@ -446,11 +446,9 @@
 
 ;; 14.22 From
 ;; From   = "From" ":" mailbox
-;; FIXmE: Implement mailbox parser from RFC 1123
-(defrule http-from? (c (acc (make-accumulator)))
-  (:type visible-char? c) (:collect c acc)
-  (:zom (:type visible-char? c) (:collect c acc))
-  (:return acc))
+(defrule http-from? (mbox)
+  (:mailbox? mbox)
+  (:return mbox))
 
 ;; 14.23 Host
 ;; Host = "Host" ":" host [ ":" port ] ; Section 3.2.2

@@ -94,6 +94,8 @@
    #:uri?
    #:query!
    #:uri!
+   ;; rfc 822
+   #:mailbox?
    ;; rfc 2616
    ;; classes
    #:http-request
