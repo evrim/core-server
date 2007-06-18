@@ -31,6 +31,26 @@
 (defatom http-header-value? ()
   (or (visible-char? c) (space? c)))
 
+(defatom separator? ()
+  (if (member c '#.(cons 9 (mapcar #'char-code '(#\( #\) #\< #\> #\@
+						 #\, #\; #\: #\\ #\"
+						 #\/ #\[ #\] #\? #\=
+						 #\{ #\} #\ ))))
+      t))
+
+(defatom tokenatom? ()
+  (and (not (separator? c))
+       (not (control? c))))
+
+(defrule token? (c (acc (make-accumulator)))
+  (:zom (:type tokenatom? c)
+	(:collect c acc))
+  (:return acc))
+
+(defrule http-field-name? (c)
+  (:token? c)
+  (:return c))
+
 ;;;-----------------------------------------------------------------------------
 ;;; 4.5 HTTP GENERAL HEADERS
 ;;;-----------------------------------------------------------------------------
