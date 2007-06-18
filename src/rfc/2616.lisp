@@ -305,27 +305,49 @@
 ;;
 ;; Transfer-Encoding       = "Transfer-Encoding" ":" 1#transfer-coding
 ;; Transfer-Encoding: chunked (see 3.6)
-(defrule http-transfer-encoding? ((encoding (make-accumulator)) c)
-  (:type alpha? c) (:collect c encoding)
-  (:zom (:type alpha? c) (:collect c encoding))
+(defrule http-transfer-extension? (tok param params)
+  (:token? tok)
+  (:zom (:header-parameter? param)
+	(:do (push param params)))
+  (:return (cons tok params)))
+
+;; http-transfer-encoding? :: stream -> (token . (attr . val))
+(defrule http-transfer-encoding? (encoding c)
+  (:http-transfer-extension? encoding)
   (:return encoding))
 
+;; http-transfer-encoding! :: stream -> (token . (attr . val)) -> nil
 (defun http-transfer-encoding! (stream encoding)
-  (typecase encoding
-    (string (string! stream encoding))
-    (symbol (symbol! stream encoding))))
+  (typecase (car encoding)
+    (string (string! stream (car encoding)))
+    (symbol (symbol! stream (car encoding))))
+  (when (cdr encoding)
+    (header-parameter! stream (cdr encoding))))
 
 ;; 14.42 Upgrade
 ;; Upgrade        = "Upgrade" ":" 1#product
 ;; Upgrade: HTTP/2.0, SHTTP/1.3, IRC/6.9, RTA/x11
-;; FIXmE: implement as seperate protocols.
-(defrule http-upgrade? (c (acc (make-accumulator)))
-  (:type http-header-value? c) (:collect c acc)
-  (:zom (:type http-header-value? c) (:collect c acc))
-  (:return acc))
+(defrule http-upgrade? (c products)
+  (:product? c)
+  (:do (push c products))
+  (:zom #\, (:lwsp?)
+	(:product? c)
+	(:do (push c products)))
+  (:return products))
 
-(defun http-upgrade! (stream upgrade)
-  (string! stream upgrade))
+(defun http-upgrade! (stream products)
+  (if (car products)
+      (progn
+	(string! stream (caar products))
+	(char! stream #\/)
+	(string! stream (cdar products))
+	(reduce #'(lambda (acc item)
+		    (declare (ignore acc))
+		    (char! stream #\,) (char! stream #\ )
+		    (string! stream (car item))
+		    (char! stream #\/)
+		    (string! stream (cdr item)))
+		(cdr products) :initial-value nil))))
 
 ;; 14.45 Via
 ;; Via =  "Via" ":" 1#( received-protocol received-by [ comment ] )
@@ -389,17 +411,6 @@
        (not (eq c #.(char-code #\;)))
        (not (eq c #.(char-code #\/)))
        (http-header-name? c)))
-
-;; Ex: ";asd=asd"
-;; header-parameter? :: stream -> (attr . val)
-(defrule header-parameter? ((attr (make-accumulator))
-			    (val (make-accumulator)) c)
-  (:and #\; (:lwsp?)
-	(:zom (:type alphanum? c) (:collect c attr))
-	#\=
-	(:zom (:type http-media-type? c)
-	      (:collect c val)))
-  (:return (cons attr val)))
 
 ;; quality-value? :: stream -> float
 ;; 3.9 Quality Values

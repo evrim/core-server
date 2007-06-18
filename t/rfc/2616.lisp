@@ -278,6 +278,142 @@ attr2=\"val2\""))
 cam=\"foo\""))
   t)
 
+;;;
+;;; test general-headers
+;;;
+
+;; CACHE-CONTROL
+(deftest http-cache-control?
+    (and
+     ;; cache-requests
+     (and (with-core-stream (s "no-cache")
+	    (equal (http-cache-control? s)
+		   '(NO-CACHE)))
+	  (with-core-stream (s "no-store")
+	    (equal (http-cache-control? s)
+		   '(NO-STORE)))
+	  (with-core-stream (s "max-age=3600")
+	    (equal (http-cache-control? s)
+		   '(MAX-AGE . 3600))))
+     )
+  t)
+
+(deftest http-cache-control!
+    ;;cache-responses
+    (and (with-core-stream (s "")
+	   (http-cache-control! s 'PUBLIC)
+	   (equal (core-server::stream-data s)
+		  "PUBLIC"))
+	 (with-core-stream (s "")
+	   (http-cache-control! s '(NO-CACHE . ("extension" . "value")))
+	   (equal (core-server::stream-data s)
+		  "NO-CACHE,extension=\"value\""))
+	 (with-core-stream (s "")
+	   (http-cache-control! s '(PRIVATE . ("here" . "Iam")))
+	   (equal (core-server::stream-data s)
+		  "PRIVATE,here=\"Iam\"")))
+  t)
+
+;; CONNECTION
+(deftest http-connection?
+    (with-core-stream (s "close")
+      (equal (http-connection? s)
+	     "close"))
+  t)
+(deftest http-connection!
+    (with-core-stream (s "")
+      (http-connection! s 'CLOSE)
+      (equal (core-server::stream-data s)
+	     "CLOSE"))
+    t)
+
+;; DATE
+(deftest http-date?
+    (with-core-stream (s "Tue, 01 Feb 2008 04:20:00 GMT")
+      (equal (http-date? s) 
+	     3408142800))
+  t)
+(deftest http-date!
+    (with-core-stream (s "")
+      (http-date! s (encode-universal-time 0 20 6 1 1 2008))
+      (equal (core-server::stream-data s)
+	     "Tue, 01 Feb 2008 04:20:00 GMT"))
+  t)
+
+;; PRAGMA
+(deftest http-pragma?
+    (and (with-core-stream (s "no-cache")
+	   (equal (http-pragma? s)
+		  '(NO-CACHE)))
+	 (with-core-stream (s "name=val")
+	   (equal (http-pragma? s)
+		  '("name" . "val")))
+	 (with-core-stream (s "name=\"quoted\"")
+	   (equal (http-pragma? s)
+		  '("name" . "quoted"))))
+  t)
+
+(deftest http-pragma!
+    (and (with-core-stream (s "")
+	   (http-pragma! s '(NO-CACHE))
+	   (equal (core-server::stream-data s)
+		  "NO-CACHE"))
+	 (with-core-stream (s "")
+	   (http-pragma! s '("name" . "val"))
+	   (equal (core-server::stream-data s)
+		  "name=val")))
+  t)
+
+;; TRAILER
+(deftest http-trailer?
+    (with-core-stream (s "Content-Type, Cache-Control, Server")
+      (http-trailer? s))
+  t)
+
+(deftest http-trailer!
+    (with-core-stream (s "")
+      (http-trailer! s '("Content-Type, Cache-Control, Server"))
+      (core-server::stream-data s))
+  t)
+
+;; TRANSFER-ENCODING
+(deftest http-transfer-encoding?
+    (and (with-core-stream (s "chunked")
+	   (equal (http-transfer-encoding? s)
+		  '("chunked")))
+	 (with-core-stream (s "token;attribute=\"value\"")
+	   (equal (http-transfer-encoding? s)
+		  '("token" ("attribute" . "value")))))
+  t)
+
+(deftest http-transfer-encoding!
+    (and (with-core-stream (s "")
+	   (http-transfer-encoding! s '(CHUNKED))
+	   (equal (core-server::stream-data s)
+		  "CHUNKED"))
+	 (with-core-stream (s "")
+	   (http-transfer-encoding! s '("token" . ("attr" . "val")))
+	   (equal (core-server::stream-data s)
+		  "token;attr=\"val\"")))
+  t)
+;; UPGRADE
+(deftest http-upgrade?
+    (with-core-stream (s "HTTP/2.0, SHTTP/1.3, IRC/6.9, RTA/x11")
+      (equal (http-upgrade? s)
+	     '(("RTA" . "x11") ("IRC" . "6.9")
+	       ("SHTTP" . "1.3") ("HTTP" . "2.0"))))
+  t)
+
+(deftest http-upgrade!
+    (with-core-stream (s "")
+      (http-upgrade! s '(("RTA" . "x11") ("IRC" . "6.9")
+			 ("SHTTP" . "1.3") ("HTTP" . "2.0")))
+      (equal (core-server::stream-data s)
+	     "RTA/x11, IRC/6.9, SHTTP/1.3, HTTP/2.0"))
+  t)
+
+;; VIA WARNING
+
 (deftest http-response-render?
     (let ((date (encode-universal-time 0 20 6 1 1 2008))
 	  (response (make-instance 'http-response)))
