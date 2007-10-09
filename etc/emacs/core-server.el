@@ -2,6 +2,9 @@
 ;;(setenv "LANG" "tr_TR.UTF-8")
 ;;(setenv "LC_ALL" "tr_TR.UTF-8")
 
+(if (null (getenv "CORESERVER_HOME"))
+    (error "Environment variable CORESERVER_HOME is not set."))
+
 (defun load-el (str)
   "Load the el file in the core-server base directory"
   (load (concat (getenv "CORESERVER_HOME") "etc/emacs/" str)))
