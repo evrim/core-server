@@ -1,0 +1,5 @@
+- dojo stub
+- / stub
+- start.lisp is fucked up for server installation.
+- dojo build
+- set CORESERVER_HOME
