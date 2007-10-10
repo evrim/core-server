@@ -680,7 +680,7 @@ case \"$1\" in
         echo \"Trying to start core-server..\"
         export LANG=tr_TR.UTF-8 LC_ALL=tr_TR.UTF-8
         export CORESERVER_HOME=\"$CORESERVER_HOME\"
-        $SCREEN -S core-server -d -m $SBCL --dynamic-space-size $MEMSIZE --load $CONFIGFILE
+        $SCREEN -c /dev/null -dmS core-server $SBCL --dynamic-space-size $MEMSIZE --load $CONFIGFILE
         ;;
     stop)
         echo \"Trying to stop core-server..\"
