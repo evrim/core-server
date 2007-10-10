@@ -292,13 +292,13 @@
 (defcommand ln (shell)
   ((source :host local :initform (error "please specify source"))
    (target :host local :initform (error "please specify target")))
-  (:default-initargs :cmd +ln+))
+  (:default-initargs :cmd +ln+ :args '("-sf")))
 
 (defmethod run ((self ln))
   (setf (args self)
-	(cons "-sf"
-	      (cons (s-v 'source)
-		    (cons (s-v 'target) (args self))))))
+	(append (args self)
+		(list (s-v 'source) (s-v 'target))))
+  (call-next-method))
 
 (defvar +chown+ (whereis "chown"))
 (defcommand chown (shell)
@@ -508,18 +508,24 @@
 (defmethod find-system ((self layout) sysname)
   (find-if #'(lambda (s) (string= (name s) sysname)) (s-v 'registry)))
 
-(defmethod layout.lib.conf ((self layout))
-  (if (sb-posix:getenv "CORESERVER_HOME")
-      (merge-pathnames (s-v 'lib.conf) (pathname (sb-posix:getenv "CORESERVER_HOME")))
-      (s-v 'lib.conf)))
-
 (defmethod layout.root ((self layout))
   (if (sb-posix:getenv "CORESERVER_HOME")
       (pathname (sb-posix:getenv "CORESERVER_HOME"))
       (s-v 'root)))
 
+(defmethod layout.lib.conf ((self layout))
+  (if (sb-posix:getenv "CORESERVER_HOME")
+      (merge-pathnames (s-v 'lib.conf) (layout.root self))
+      #P"lib.conf"))
+
+(defmethod layout.etc ((self layout))
+  (merge-pathnames (s-v 'etc) (layout.root self)))
+
 (defmethod layout.bin ((self layout))
   (merge-pathnames (s-v 'bin) (layout.root self)))
+
+(defmethod layout.lib ((self layout))
+  (merge-pathnames (s-v 'lib) (layout.root self)))
 
 (defmethod layout.start.lisp ((self layout))
   (merge-pathnames (s-v 'start.lisp) (layout.etc self)))
@@ -528,8 +534,7 @@
   (merge-pathnames (s-v 'core-server.sh) (layout.bin self)))
 
 (defmethod layout.systems ((self layout))
-  (merge-pathnames (s-v 'systems)
-		   (merge-pathnames (s-v 'lib) (layout.root self))))
+  (merge-pathnames (s-v 'systems) (layout.lib self)))
 
 (defun tokenize (string)
   (let ((pos (min (or (position #\Space string) (1- (length string)))
@@ -561,20 +566,17 @@
 		  (repo sys)))))
 
 (defmethod checkout-system ((self layout) (sys sys))
-  (fetch sys (merge-pathnames (layout.lib self) (s-v 'root))))
+  (fetch sys (layout.lib self)))
 
 (defmethod checkout-systems ((self layout))  
   (mapcar #'(lambda (r) (checkout-system self r)) (s-v 'registry)))
 
 (defmethod link-systems ((self layout))
-  (with-current-directory (merge-pathnames (layout.lib self) (s-v 'root))
+  (with-current-directory  (layout.lib self)
     (let ((systems (find-file :name "*.asd")))
       (mapcar #'(lambda (sys)
 		  (unless (search "_darcs" sys)
-		    (ln :source (merge-pathnames
-					(merge-pathnames (pathname sys)
-							 (layout.lib self))
-					(s-v 'root))
+		    (ln :source (merge-pathnames (pathname sys) (layout.lib self))
 			:target (layout.systems self))))
 	      systems))))
 
@@ -593,7 +595,7 @@
   `(progn     
      (in-package :cl-user)
      (require :sb-posix)
-     (sb-posix:putenv ,(format nil "CORESERVER_HOME=~S" (s-v 'root)))
+     (sb-posix:putenv ,(format nil "CORESERVER_HOME=~S" (layout.root self)))
      (require :asdf)
      (pushnew ,(layout.systems self) asdf:*central-registry* :test #'equal)     
      (asdf:oos 'asdf:load-op :asdf-binary-locations)
@@ -694,7 +696,7 @@ case \"$1\" in
 esac
 cd $OLDPWD
 exit 0
-" (s-v 'root) (layout.start.lisp self)))
+" (layout.root self) (layout.start.lisp self)))
 
 (defmethod emacs.sh ((self layout))
   (format nil "
@@ -704,7 +706,7 @@ if [ -z $CORESERVER_HOME ]; then
 fi
 emacs -l $CORESERVER_HOME/etc/emacs/core-server.el
 "
-	  (s-v 'root)))
+	  (layout.root self)))
 
 (defmethod make-installer.sh ((self layout))
   (format nil "
@@ -726,13 +728,11 @@ $CP $CORESERVER_HOME/src/install/* core-server-installer;
 $TAR zcf $TARBALL *
 mv $TARBALL /tmp/
 echo \"Core Server Installer tarball is ready: /tmp/$TARBALL \"
-" (s-v 'root)))
+" (layout.root self)))
 
 (defmethod write-templates ((self layout))
-  (write-template-sexp (start.lisp :server-type :httpd :systems (layout.systems self))
-		       (layout.start.lisp self)) 		       
-  (write-template-string (core-server.sh :start.lisp (layout.start.lisp self))
-			 (layout.core-server.sh self))
+  (write-template-sexp (start.lisp self) (layout.start.lisp self)) 		       
+  (write-template-string (core-server.sh self) (layout.core-server.sh self))
   (write-template-string (emacs.sh self)
 			 (merge-pathnames #P"emacs.sh"
 					  (layout.bin self)))
@@ -742,22 +742,26 @@ echo \"Core Server Installer tarball is ready: /tmp/$TARBALL \"
 
 (defmethod install :before ((self layout))
   (mapcar #'(lambda (slot)
-	      (ensure-directories-exist (merge-pathnames (s-v slot) (s-v 'root))))
-	  '(bin projects lib var log doc))
+	      (ensure-directories-exist (merge-pathnames (s-v slot) (layout.root self))))
+	  '(bin projects lib var log))
   (ensure-directories-exist (layout.systems self)))
 
 (defmethod install ((self layout)) 
   (read-systems self)
   (checkout-systems self)
   (link-systems self)
+  (ln :source (merge-pathnames #P"core-server/etc" (layout.lib self))
+      :target (layout.root self))
+  (ln :source (merge-pathnames #P"core-server/doc" (layout.lib self))
+      :target (layout.root self))
   (write-templates self)
   (chmod :mode "+x" :path (layout.core-server.sh self))
   (ln :source (merge-pathnames #P"core-server/etc" (layout.lib self))
-      :target (s-v 'root))
+      :target (layout.root self))
   (ln :source (merge-pathnames #P"core-server/src" (layout.lib self))
-      :target (s-v 'root))
+      :target (layout.root self))
   (ln :source (merge-pathnames #P"core-server/doc" (layout.lib self))
-      :target (s-v 'root)))
+      :target (layout.root self)))
 
 (defcommand useradd (shell)
   ((username :host local :initarg :username
@@ -798,7 +802,10 @@ echo \"Core Server Installer tarball is ready: /tmp/$TARBALL \"
   (call-next-method))
 
 (defclass server-layout (layout)
-  ())
+  ()
+  (:default-initargs :server-type :mod-lisp
+    :server-port 3001
+    :server-address "127.0.0.1"))
 
 (defun make-server-layout (root)
   (make-instance 'server-layout
@@ -826,12 +833,8 @@ echo \"Core Server Installer tarball is ready: /tmp/$TARBALL \"
 (defvar +apache-options+ "-D PROXY -D DAV -D DAV_FS -D LISP -D SSL")
 (defvar +sudoers+ "core   ALL= NOPASSWD: /usr/sbin/apache2ctl, /etc/init.d/apache2, /etc/init.d/postfix, /etc/init.d/svscan")
 (defmethod write-templates ((self server-layout))
-  (write-template-sexp (start.lisp :server-type :mod-lisp
-				   :server-port 3001
-				   :server-address "127.0.0.1"
-				   :systems (layout.systems self)) (layout.start.lisp self)) 		       
-  (write-template-string (core-server.sh :start.lisp (layout.start.lisp self))
-			 (layout.core-server.sh self))
+  (write-template-sexp (start.lisp self) (layout.start.lisp self)) 		       
+  (write-template-string (core-server.sh self) (layout.core-server.sh self))
   (write-template-string (emacs.sh self)
 			 (merge-pathnames #P"emacs.sh"
 					  (layout.bin self)))
@@ -844,7 +847,7 @@ echo \"Core Server Installer tarball is ready: /tmp/$TARBALL \"
   (unless (zerop (shell :cmd (whereis "id") :args '("core") :errorp nil))
     (useradd :username "core" :extra-groups '("apache")
 	     :user-group t :create-home t))
-  (chown :user "core" :group "core" :path (s-v 'root) :recursive t)
+  (chown :user "core" :group "core" :path (layout.root self) :recursive t)
   (chown :group "apache" :path "/var/www" :recursive t)
   (chmod :mode "g+w" :path "/var/www" :recursive t)
   (chown :group "apache" :path "/etc/apache2/vhosts.d" :recursive t)
@@ -853,15 +856,15 @@ echo \"Core Server Installer tarball is ready: /tmp/$TARBALL \"
   (handler-bind ((error #'(lambda (e)
 			    (declare (ignorable e))
 			    (shell :cmd (whereis "rm") :args '("/etc/apache2/.core-server")))))
-       (unless (probe-file #P"/etc/apache2/.core-server")
-	 (shell :cmd (whereis "touch") :args '("/etc/apache2/.core-server"))
-	 (with-open-file (s #P"/etc/conf.d/apache2" :direction :output
-			    :if-exists :append)
-	   (format s "APACHE2_OPTS+=\" ~A\"~%" +apache-options+))
-	 (with-open-file (s #P"/etc/apache2/modules.d/666_mod_lisp.conf" :direction :output
-			    :if-exists :supersede)
-	   (format s "~A~%" +apache-config+))
-	 (with-open-file (s #P"/etc/sudoers" :direction :output
-			    :if-exists :append)
-	   (format s "~A~%" +sudoers+))))
+    (unless (probe-file #P"/etc/apache2/.core-server")
+      (shell :cmd (whereis "touch") :args '("/etc/apache2/.core-server"))
+      (with-open-file (s #P"/etc/conf.d/apache2" :direction :output
+			 :if-exists :append)
+	(format s "APACHE2_OPTS+=\" ~A\"~%" +apache-options+))
+      (with-open-file (s #P"/etc/apache2/modules.d/666_mod_lisp.conf" :direction :output
+			 :if-exists :supersede)
+	(format s "~A~%" +apache-config+))
+      (with-open-file (s #P"/etc/sudoers" :direction :output
+			 :if-exists :append)
+	(format s "~A~%" +sudoers+))))
   (call-next-method))
