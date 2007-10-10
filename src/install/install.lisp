@@ -692,11 +692,24 @@ cd $OLDPWD
 exit 0
 " (s-v 'root) (layout.start.lisp self)))
 
+(defmethod emacs.sh ((self layout))
+  (format nil "
+#!/bin/sh
+if [ -z $CORESERVER_HOME ]; then
+  export CORESERVER_HOME=\"~A\"
+fi
+emacs -l $CORESERVER_HOME/etc/emacs/core-server.el
+"
+	  (s-v 'root)))
+
 (defmethod write-templates ((self layout))
   (write-template-sexp (start.lisp :server-type :httpd :systems (layout.systems self))
 		       (layout.start.lisp self)) 		       
   (write-template-string (core-server.sh :start.lisp (layout.start.lisp self))
-			 (layout.core-server.sh self)))
+			 (layout.core-server.sh self))
+  (write-template-string (emacs.sh self)
+			 (merge-pathnames #P"emacs.sh"
+					  (layout.bin self))))
 
 (defmethod install ((self layout))
   (mapcar #'(lambda (slot)
@@ -781,7 +794,10 @@ exit 0
 				   :server-address "127.0.0.1"
 				   :systems (layout.systems self)) (layout.start.lisp self)) 		       
   (write-template-string (core-server.sh :start.lisp (layout.start.lisp self))
-			 (layout.core-server.sh self)))
+			 (layout.core-server.sh self))
+  (write-template-string (emacs.sh self)
+			 (merge-pathnames #P"emacs.sh"
+					  (layout.bin self))))
 
 (defmethod install ((self server-layout))
   ;; FIXmE: debian'da www-data olmali extra-group
