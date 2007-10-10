@@ -78,7 +78,8 @@
 ;;  #<STANDARD-CLASS COMMAND>)
 (defun class-superclasses (class &aux lst)  
   (core-search (cons (find-class class)
-		     (copy-list (sb-mop:class-direct-superclasses (find-class class))))
+		     (copy-list
+		      (sb-mop:class-direct-superclasses (find-class class))))
 	       #'(lambda (atom)
 		   (pushnew atom lst)
 		   nil) 
@@ -91,9 +92,11 @@
 ;;  (:ARG-A 'ARG-A-OVERRIDEN-BY-C #<FUNCTION {BC06195}>))
 (defun class-default-initargs (class &aux lst)
   (core-search (cons (find-class class)
-		     (copy-list (sb-mop:class-direct-superclasses (find-class class))))
+		     (copy-list
+		      (sb-mop:class-direct-superclasses (find-class class))))
 	       #'(lambda (atom)
-		   (let ((args (copy-list (sb-mop:class-direct-default-initargs atom))))
+		   (let ((args (copy-list
+				(sb-mop:class-direct-default-initargs atom))))
 		     (when args (setf lst (append args lst))))
 		   nil)
 	       #'class-successors
@@ -101,10 +104,13 @@
   lst)
 
 (defclass command ()
-  ((input-stream :accessor command.input-stream :initarg :input-stream :initform nil)
-   (output-stream :accessor command.output-stream :initarg :output-stream :initform nil)
+  ((input-stream :accessor command.input-stream :initarg :input-stream
+		 :initform nil)
+   (output-stream :accessor command.output-stream :initarg :output-stream
+		  :initform nil)
    (verbose :accessor command.verbose :initarg :verbose :initform +verbose+)
-   (verbose-stream :accessor command.verbose-stream :initarg :verbose :initform *standard-output*)
+   (verbose-stream :accessor command.verbose-stream :initarg :verbose
+		   :initform *standard-output*)
    (local-args :accessor command.local-args :initarg :local-args :initform '())
    (remote-args :accessor command.remote-args :initarg :remote-args :initform '())))
 
@@ -153,20 +159,25 @@
 ;; 		 (cons (list (car slot-def) (getf (cdr slot-def) :initform)) acc)
 ;; 		 acc))
 	   (local-args (slotz)
-	     (let ((args (append (nreverse (reduce #'local-slot slotz :initial-value nil))
-				 (reduce #'(lambda (acc super)
-					     (append acc (gethash super +command-registry+)))
-					 supers :initial-value nil)))
-		   (super-args (reduce #'append (mapcar #'class-default-initargs supers))))
+	     (let ((args (append
+			  (nreverse (reduce #'local-slot slotz :initial-value nil))
+			  (reduce #'(lambda (acc super)
+				      (append acc (gethash super +command-registry+)))
+				  supers :initial-value nil)))
+		   (super-args
+		    (reduce #'append (mapcar #'class-default-initargs supers))))
  	       (setf args		     
-		     (reduce #'(lambda (acc arg)
-				 (let ((value (cadr (assoc (car arg) super-args :test #'string=))))
-				   (if value
-				       (cons (list (car arg) value) acc)
-				       (cons arg acc))))
+		     (reduce
+		      #'(lambda (acc arg)
+			  (let ((value (cadr (assoc (car arg) super-args
+						    :test #'string=))))
+			    (if value
+				(cons (list (car arg) value) acc)
+				(cons arg acc))))
 			     args :initial-value nil))
 	       (reduce #'(lambda (acc arg)
-			   (let ((value (getf (cdar default-initargs) (->keyword (car arg)))))
+			   (let ((value (getf (cdar default-initargs)
+					      (->keyword (car arg)))))
 			     (if value
 				 (cons (list (car arg) value) acc)
 				 (cons arg acc))))
@@ -278,47 +289,17 @@
      while line
      collect line))
 
-;; node5 home # chown --help
-;; Usage: chown [OPTION]... [OWNER][:[GROUP]] FILE...
-;;   or:  chown [OPTION]... --reference=RFILE FILE...
-;; Change the owner and/or group of each FILE to OWNER and/or GROUP.
-;; With --reference, change the owner and group of each FILE to those of RFILE.
+(defcommand ln (shell)
+  ((source :host local :initform (error "please specify source"))
+   (target :host local :initform (error "please specify target")))
+  (:default-initargs :cmd +ln+))
 
-;;   -c, --changes          like verbose but report only when a change is made
-;;       --dereference      affect the referent of each symbolic link (this is
-;;                          the default), rather than the symbolic link itself
-;;   -h, --no-dereference   affect each symbolic link instead of any referenced
-;;                          file (useful only on systems that can change the
-;;                          ownership of a symlink)
-;;       --from=CURRENT_OWNER:CURRENT_GROUP
-;;                          change the owner and/or group of each file only if
-;;                          its current owner and/or group match those specified
-;;                          here.  Either may be omitted, in which case a match
-;;                          is not required for the omitted attribute.
-;;       --no-preserve-root  do not treat `/' specially (the default)
-;;       --preserve-root    fail to operate recursively on `/'
-;;   -f, --silent, --quiet  suppress most error messages
-;;       --reference=RFILE  use RFILE's owner and group rather than
-;;                          specifying OWNER:GROUP values
-;;   -R, --recursive        operate on files and directories recursively
-;;   -v, --verbose          output a diagnostic for every file processed
+(defmethod run ((self ln))
+  (setf (args self)
+	(cons "-sf"
+	      (cons (s-v 'source)
+		    (cons (s-v 'target) (args self))))))
 
-;; The following options modify how a hierarchy is traversed when the -R
-;; option is also specified.  If more than one is specified, only the final
-;; one takes effect.
-
-;;   -H                     if a command line argument is a symbolic link
-;;                          to a directory, traverse it
-;;   -L                     traverse every symbolic link to a directory
-;;                          encountered
-;;   -P                     do not traverse any symbolic links (default)
-
-;;       --help     display this help and exit
-;;       --version  output version information and exit
-
-;; Owner is unchanged if missing.  Group is unchanged if missing, but changed
-;; to login group if implied by a `:' following a symbolic OWNER.
-;; OWNER and GROUP may be numeric as well as symbolic.
 (defvar +chown+ (whereis "chown"))
 (defcommand chown (shell)
   ((user :host local :initarg :user :initform nil)
@@ -337,22 +318,6 @@
 		  (cons (s-v 'path) (s-v 'args)))))
   (call-next-method))
 
-;; node5 home # chmod --help
-;; Usage: chmod [OPTION]... MODE[,MODE]... FILE...
-;;   or:  chmod [OPTION]... OCTAL-MODE FILE...
-;;   or:  chmod [OPTION]... --reference=RFILE FILE...
-;; Change the mode of each FILE to MODE.
-;;
-;;   -c, --changes           like verbose but report only when a change is made
-;;       --no-preserve-root  do not treat `/' specially (the default)
-;;       --preserve-root     fail to operate recursively on `/'
-;;   -f, --silent, --quiet   suppress most error messages
-;;   -v, --verbose           output a diagnostic for every file processed
-;;       --reference=RFILE   use RFILE's mode instead of MODE values
-;;   -R, --recursive         change files and directories recursively
-;;       --help     display this help and exit
-;;       --version  output version information and exit
-;; Each MODE is of the form `[ugoa]*([-+=]([rwxXst]*|[ugo]))+'.
 (defvar +chmod+ (whereis "chmod"))
 (defcommand chmod (shell)
   ((mode :host local :initarg :mode :initform (error "Please specify mode."))
@@ -388,15 +353,15 @@
 
 (defcommand darcs (shell)
   ((op :host local :initform "get")
-   (repo :host local :initform nil ;;(error "repo can't be nil")
-	 )
-   (target :host local :initform nil ;;	   (error "target can't be nil")
-	   ))
+   (repo :host local :initform nil)
+   (target :host local :initform nil))
   (:default-initargs :cmd +darcs+))
 
 (defmethod run ((self darcs))
   (cond
     ((equal (op self) "get")
+     (if (or (null (repo self)) (null (target self)))
+	 (error "Please specify repo/target."))
      (setf (args self) (list (op self) (repo self) (target self))))
     ((equal (op self) "unpull")
      (setf (args self) (cons (op self) (args self)))))
@@ -603,13 +568,11 @@
     (let ((systems (find-file :name "*.asd")))
       (mapcar #'(lambda (sys)
 		  (unless (search "_darcs" sys)
-		    (shell :cmd +ln+
-			   :args (list "-sf"
-				       (merge-pathnames
+		    (ln :source (merge-pathnames
 					(merge-pathnames (pathname sys)
 							 (layout.lib self))
 					(s-v 'root))
-				       (layout.systems self)))))
+			:target (layout.systems self))))
 	      systems))))
 
 ;; Templates
@@ -626,6 +589,8 @@
 (defmethod start.lisp ((self layout))
   `(progn     
      (in-package :cl-user)
+     (require :sb-posix)
+     (sb-posix:putenv ,(format nil "CORESERVER_HOME=~S" (s-v 'root)))
      (require :asdf)
      (pushnew ,(layout.systems self) asdf:*central-registry* :test #'equal)     
      (asdf:oos 'asdf:load-op :asdf-binary-locations)
@@ -728,8 +693,7 @@ exit 0
 " (s-v 'root) (layout.start.lisp self)))
 
 (defmethod write-templates ((self layout))
-  (write-template-sexp (start.lisp :server-type :httpd
-				   :systems (layout.systems self))
+  (write-template-sexp (start.lisp :server-type :httpd :systems (layout.systems self))
 		       (layout.start.lisp self)) 		       
   (write-template-string (core-server.sh :start.lisp (layout.start.lisp self))
 			 (layout.core-server.sh self)))
@@ -737,45 +701,23 @@ exit 0
 (defmethod install ((self layout))
   (mapcar #'(lambda (slot)
 	      (ensure-directories-exist (merge-pathnames (s-v slot) (s-v 'root))))
-	  '(bin etc projects lib var log doc))
+	  '(bin projects lib var log doc))
   (ensure-directories-exist (layout.systems self))
   (read-systems self)
-;;  (checkout-systems self)
-;;  (link-systems self)
+  (checkout-systems self)
+  (link-systems self)
   (write-templates self)
-  (chmod :mode "+x" :path (layout.core-server.sh self)))
+  (chmod :mode "+x" :path (layout.core-server.sh self))
+  (ln :source (merge-pathnames #P"core-server/etc" (layout.lib self))
+      :target (s-v 'root))
+  (ln :source (merge-pathnames #P"core-server/src" (layout.lib self))
+      :target (s-v 'root))
+  (ln :source (merge-pathnames #P"core-server/doc" (layout.lib self))
+      :target (s-v 'root)))
 
-
-;; Server Layout
-;; Usage: useradd [options] LOGIN
-;; Options:
-;;   -b, --base-dir BASE_DIR       base directory for the new user account
-;;                                 home directory
-;;   -c, --comment COMMENT         set the GECOS field for the new user account
-;;   -d, --home-dir HOME_DIR       home directory for the new user account
-;;   -D, --defaults                print or save modified default useradd
-;;                                 configuration
-;;   -e, --expiredate EXPIRE_DATE  set account expiration date to EXPIRE_DATE
-;;   -f, --inactive INACTIVE       set password inactive after expiration
-;;                                 to INACTIVE
-;;   -g, --gid GROUP               force use GROUP for the new user account
-;;   -G, --groups GROUPS           list of supplementary groups for the new
-;;                                 user account
-;;   -h, --help                    display this help message and exit
-;;   -k, --skel SKEL_DIR           specify an alternative skel directory
-;;   -K, --key KEY=VALUE           overrides /etc/login.defs defaults
-;;   -m, --create-home             create home directory for the new user
-;;                                 account
-;;   -n, --user-group              create a new group with the same name as the
-;;                                 new user
-;;   -o, --non-unique              allow create user with duplicate
-;;                                 (non-unique) UID
-;;   -p, --password PASSWORD       use encrypted password for the new user
-;;                                 account
-;;   -s, --shell SHELL             the login shell for the new user account
-;;   -u, --uid UID                 force use the UID for the new user account
 (defcommand useradd (shell)
-  ((username :host local :initarg :username :initform (error "Username must be provided."))
+  ((username :host local :initarg :username
+				  :initform (error "Username must be provided."))
    (group :host local :initarg :group :initform (error "Group must be provided."))
    (extra-groups :host local :initarg :extra-groups :initform '())
    (home-directory :host local :initarg :home-directory :initform nil)
@@ -832,7 +774,7 @@ exit 0
 </IfModule>
 ")
 (defvar +apache-options+ "-D PROXY -D DAV -D DAV_FS -D LISP -D SSL")
-(defvar +sudoers+ "core   ALL= NOPASSWD: /etc/init.d/apache2, /etc/init.d/postfix, /etc/init.d/svscan")
+(defvar +sudoers+ "core   ALL= NOPASSWD: /usr/sbin/apache2ctl, /etc/init.d/apache2, /etc/init.d/postfix, /etc/init.d/svscan")
 (defmethod write-templates ((self server-layout))
   (write-template-sexp (start.lisp :server-type :mod-lisp
 				   :server-port 3001
