@@ -702,6 +702,28 @@ emacs -l $CORESERVER_HOME/etc/emacs/core-server.el
 "
 	  (s-v 'root)))
 
+(defmethod make-installer.sh ((self layout))
+  (format nil "
+#!/bin/sh
+if [ -z $CORESERVER_HOME ]; then
+   export CORESERVER_HOME=\"~A\"
+fi
+
+TAR=`which tar`
+TE=`which mktemp`
+DIR=`which mkdir`
+CP=`which cp`
+DIR=`$TE -d`
+TARBALL=\"core-server-installer-`date + \"%d-%m-%Y\"`.tar.gz\"
+
+$DIR -p $DIR/core-server-installer;
+cd $DIR;
+$CP $CORESERVER_HO/src/install/* core-server-installer;
+$TAR zcf $TARBALL *
+mv $TARBALL /tmp/
+echo \"Core Server Installer tarball is ready: /tmp/$TARBALL \"
+" (s-v 'root)))
+
 (defmethod write-templates ((self layout))
   (write-template-sexp (start.lisp :server-type :httpd :systems (layout.systems self))
 		       (layout.start.lisp self)) 		       
@@ -709,6 +731,9 @@ emacs -l $CORESERVER_HOME/etc/emacs/core-server.el
 			 (layout.core-server.sh self))
   (write-template-string (emacs.sh self)
 			 (merge-pathnames #P"emacs.sh"
+					  (layout.bin self)))
+  (write-template-string (make-installer.sh self)
+			 (merge-pathnames #P"make-installer.sh"
 					  (layout.bin self))))
 
 (defmethod install ((self layout))
@@ -797,6 +822,9 @@ emacs -l $CORESERVER_HOME/etc/emacs/core-server.el
 			 (layout.core-server.sh self))
   (write-template-string (emacs.sh self)
 			 (merge-pathnames #P"emacs.sh"
+					  (layout.bin self)))
+  (write-template-string (make-installer.sh self)
+			 (merge-pathnames #P"make-installer.sh"
 					  (layout.bin self))))
 
 (defmethod install ((self server-layout))
