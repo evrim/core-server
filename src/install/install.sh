@@ -5,7 +5,7 @@
 # www.core.gen.tr
 
 SBCL=`which sbcl 2> /dev/null`
-REQS="darcs svn cvs wget tar mv rm ln find chmod chown"
+REQS="darcs svn cvs wget tar mv rm ln find chmod chown screen"
 FEATURES=":sb-thread :sb-unicode"
 SYSTEM_REQS="apache2ctl sudo useradd apxs2"
 
