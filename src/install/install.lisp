@@ -717,12 +717,12 @@ fi
 
 TAR=`which tar`
 TEMP=`which mktemp`
-DIR=`which mkdir`
+MKDIR=`which mkdir`
 CP=`which cp`
 DIR=`$TEMP -d`
 TARBALL=\"core-server-installer-`date + \"%d-%m-%Y\"`.tar.gz\"
 
-$DIR -p $DIR/core-server-installer;
+$MKDIR -p $DIR/core-server-installer;
 cd $DIR;
 $CP $CORESERVER_HOME/src/install/* core-server-installer;
 $TAR zcf $TARBALL *
