@@ -491,8 +491,11 @@
    (registry :initform '() :documentation "Systems registry.")
    (root :initarg :root :initform (error "One must specify a root directory"))))
 
-(defun make-layout (root-directory)
-  (make-instance 'layout :root root-directory))
+(defun make-layout (root)
+  (make-instance 'layout
+		 :root (if (pathnamep root)
+			   root
+			   (make-pathname :directory root))))
 
 (defmethod unregister-system ((self layout) (sys sys))
   (setf (s-v 'registry)
@@ -659,6 +662,7 @@ Commands:
 
 EOF
 }
+unset CORESERVER_HOME
 CORESERVER_HOME=\"~A\"
 SBCL=`which sbcl`
 SCREEN=`which screen`
@@ -710,15 +714,15 @@ if [ -z $CORESERVER_HOME ]; then
 fi
 
 TAR=`which tar`
-TE=`which mktemp`
+TEMP=`which mktemp`
 DIR=`which mkdir`
 CP=`which cp`
-DIR=`$TE -d`
+DIR=`$TEMP -d`
 TARBALL=\"core-server-installer-`date + \"%d-%m-%Y\"`.tar.gz\"
 
 $DIR -p $DIR/core-server-installer;
 cd $DIR;
-$CP $CORESERVER_HO/src/install/* core-server-installer;
+$CP $CORESERVER_HOME/src/install/* core-server-installer;
 $TAR zcf $TARBALL *
 mv $TARBALL /tmp/
 echo \"Core Server Installer tarball is ready: /tmp/$TARBALL \"
@@ -736,11 +740,13 @@ echo \"Core Server Installer tarball is ready: /tmp/$TARBALL \"
 			 (merge-pathnames #P"make-installer.sh"
 					  (layout.bin self))))
 
-(defmethod install ((self layout))
+(defmethod install :before ((self layout))
   (mapcar #'(lambda (slot)
 	      (ensure-directories-exist (merge-pathnames (s-v slot) (s-v 'root))))
 	  '(bin projects lib var log doc))
-  (ensure-directories-exist (layout.systems self))
+  (ensure-directories-exist (layout.systems self)))
+
+(defmethod install ((self layout)) 
   (read-systems self)
   (checkout-systems self)
   (link-systems self)
@@ -756,7 +762,7 @@ echo \"Core Server Installer tarball is ready: /tmp/$TARBALL \"
 (defcommand useradd (shell)
   ((username :host local :initarg :username
 				  :initform (error "Username must be provided."))
-   (group :host local :initarg :group :initform (error "Group must be provided."))
+   (group :host local :initarg :group :initform nil)
    (extra-groups :host local :initarg :extra-groups :initform '())
    (home-directory :host local :initarg :home-directory :initform nil)
    (user-group :host local :initarg :user-group :initform nil)
@@ -780,7 +786,10 @@ echo \"Core Server Installer tarball is ready: /tmp/$TARBALL \"
 				 (if (s-v (car item))
 				     (cons (cadr item)
 					   (if (listp (s-v (car item)))
-					       (append (s-v (car item)) acc)
+					       (cons (reduce
+						      #'(lambda (acc i)
+							  (format nil "~A,~A" acc i))
+						      (s-v (car item))) acc)
 					       (cons (s-v (car item)) acc)))
 				     acc))
 			     '((group "-g") (extra-groups "-G") (home-directory "-d")
@@ -791,8 +800,11 @@ echo \"Core Server Installer tarball is ready: /tmp/$TARBALL \"
 (defclass server-layout (layout)
   ())
 
-(defun make-server-layout (root-directory)
-  (make-instance 'server-layout :root root-directory))
+(defun make-server-layout (root)
+  (make-instance 'server-layout
+		 :root (if (pathnamep root)
+			   root
+			   (make-pathname :directory root))))
 
 ;; chown :apache /var/www
 ;; chmod g+w /var/www
@@ -829,10 +841,10 @@ echo \"Core Server Installer tarball is ready: /tmp/$TARBALL \"
 
 (defmethod install ((self server-layout))
   ;; FIXmE: debian'da www-data olmali extra-group
-  (chown :user "core" :group "core" :path (s-v 'root) :recursive t)
   (unless (zerop (shell :cmd (whereis "id") :args '("core") :errorp nil))
-    (useradd :username "core" :group "core" :extra-groups '("core" "apache")
+    (useradd :username "core" :extra-groups '("apache")
 	     :user-group t :create-home t))
+  (chown :user "core" :group "core" :path (s-v 'root) :recursive t)
   (chown :group "apache" :path "/var/www" :recursive t)
   (chmod :mode "g+w" :path "/var/www" :recursive t)
   (chown :group "apache" :path "/etc/apache2/vhosts.d" :recursive t)
