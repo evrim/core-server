@@ -1,15 +1,15 @@
-#!/bin/sh
+#!/bin/bash
 
 # Core-serveR Installation Script - Copyright 2006-2007
 # Author: Evrim Ulu <evrim@core.gen.tr>
 # www.core.gen.tr
 
 SBCL=`which sbcl 2> /dev/null`
-REQS="darcs svn cvs wget tar mv rm ln find chmod chown screen"
+REQS="darcs svn cvs wget tar mv rm ln find chmod chown screen su"
 FEATURES=":sb-thread :sb-unicode"
 SYSTEM_REQS="apache2ctl sudo useradd apxs2"
 
-function check_sbcl {
+check_sbcl() {
     if [ -z $SBCL ]; then
 	echo "+----------------------------------------------------------+"
 	echo "| SBCL is required for Core-Server installation            |"
@@ -22,7 +22,7 @@ function check_sbcl {
     fi
 }
 
-function check_requirement {
+check_requirement() {
     if [ -z `which $1 2> /dev/null` ]; then
 	echo "+----------------------------------------------------------+"
 	echo "| $1 is required for Core-Server installation"
@@ -32,7 +32,7 @@ function check_requirement {
     fi
 }
 
-function check_feature {
+check_feature() {
     e="(if (member $1 *features*) (quit :unix-status 0) (quit :unix-status 1))"
     $SBCL --noinform --no-sysinit --no-userinit --eval "$e" 
     if [ $? -ne 0 ]; then
@@ -44,7 +44,7 @@ function check_feature {
     fi	
 }
 
-function banner {
+banner() {
     echo "+-------------------------------------------------------------------------------+"
     echo "|                   Welcome to [ - Core-serveR - ] Project                      |"
     echo "|                           http://www.core.gen.tr                              |"
@@ -52,7 +52,7 @@ function banner {
     echo
 }
 
-function prologue {
+prologue() {
     banner;
     echo " This program will aid you to install the server base. Please follow the"
     echo " instructions and report any problems to bilgi@core.gen.tr"
@@ -60,13 +60,13 @@ function prologue {
     sleep 3
 }
 
-function usage {
+usage() {
     banner;
     echo " Usage: $0 target-directory"
     exit 1
 }
 
-function epilogue {
+epilogue() {
     echo "+------------------ [ - Core-serveR - ] Installed successfully ---------------+"
     echo "|"
     echo "| Base directory: $1"
