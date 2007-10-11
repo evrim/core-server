@@ -7,7 +7,7 @@
 SBCL=`which sbcl 2> /dev/null`
 REQS="darcs svn cvs wget tar mv rm ln find chmod chown screen su"
 FEATURES=":sb-thread :sb-unicode"
-SYSTEM_REQS="apache2ctl sudo useradd apxs2"
+SYSTEM_REQS="apache2ctl sudo useradd groupadd apxs2"
 
 check_sbcl() {
     if [ -z $SBCL ]; then

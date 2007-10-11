@@ -14,6 +14,17 @@
   (:nicknames :core-server.install))
 
 (in-package #:tr.gen.core.install)
+;; Add distribution based features
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (cond
+    ((probe-file "/etc/pardus-release")
+     (pushnew :pardus *features*))
+    ((probe-file "/etc/gentoo-release")
+     (pushnew :gentoo *features*))
+    ((probe-file "/etc/debian_version")
+     (pushnew :debian *features*))))
+
+#+pardus (error "Sorry, Core-server does not support Pardus.")
 (defvar +verbose+ t "make command executions verbose during installation.")
 (defvar +which+ #P"/usr/bin/which")
 (defparameter +tmp+ (make-pathname :directory '(:absolute "tmp")))
@@ -807,6 +818,15 @@ echo \"Core Server Installer tarball is ready: /tmp/$TARBALL \"
 	   (list (s-v 'username))))
   (call-next-method))
 
+(defcommand groupadd (shell)
+  ((groupname :host local :initarg :groupname
+	      :initform (error "Group name must be provided.")))
+  (:default-initargs :cmd (whereis "groupadd")))
+
+(defmethod run ((self groupadd))
+  (setf (s-v 'args) (append (s-v 'args) (list (s-v 'groupname))))
+  (call-next-method))
+
 (defclass server-layout (layout)
   ()
   (:default-initargs :server-type :mod-lisp
@@ -823,7 +843,40 @@ echo \"Core Server Installer tarball is ready: /tmp/$TARBALL \"
 ;; chmod g+w /var/www
 ;; chown :apache /etc/apache2/vhosts.d
 ;; chmod g+w /etc/apache2/vhosts.d
-(defvar +apache-config+ "
+(defvar +sudoers+ "core   ALL= NOPASSWD: /usr/sbin/apache2ctl, /etc/init.d/apache2, /etc/init.d/postfix, /etc/init.d/svscan")
+(defmethod write-templates ((self server-layout))
+  (write-template-sexp (start.lisp self) (layout.start.lisp self)) 		       
+  (write-template-string (core-server.sh self) (layout.core-server.sh self))
+  (write-template-string (emacs.sh self)
+			 (merge-pathnames #P"emacs.sh"
+					  (layout.bin self)))
+  (write-template-string (make-installer.sh self)
+			 (merge-pathnames #P"make-installer.sh"
+					  (layout.bin self))))
+
+
+(defmethod configure-debian-apache ((self server-layout))
+  (with-open-file (s #P"/etc/apache2/mods-enabled/mod_lisp2.load"
+		     :direction :output :if-exists :supersede)
+    (format s "LoadModule lisp_module /usr/lib/apache2/modules/mod_lisp2.so"))
+  (with-open-file (s #P"/etc/apache2/mods-enabled/mod_lisp2.conf"
+		     :direction :output :if-exists :supersede)
+    (format s "
+        <LocationMatch \"\\.core$\">
+                LispServer  127.0.0.1 3001 \"core-server\"
+                SetHandler core-server
+        </LocationMatch>"))
+  (with-current-directory #P"/etc/apache2/mods-enabled/"
+    (mapcar #'(lambda (atom)
+		(let ((load-file (format nil "../mods-available/~A.load" atom))
+		      (conf-file (format nil "../mods-available/~A.conf" atom)))
+		  (if (probe-file load-file)
+		      (ln :source load-file :target "."))
+		  (if (probe-file conf-file)
+		      (ln :source conf-file  :target "."))))
+	    '("dav" "dav_fs" "proxy" "proxy_http"))))
+
+(defvar +gentoo-apache-config+ "
 <IfDefine LISP>
         <IfModule !mod_lisp2.c>
                 LoadModule lisp_module    modules/mod_lisp2.so
@@ -836,41 +889,42 @@ echo \"Core Server Installer tarball is ready: /tmp/$TARBALL \"
         </LocationMatch>
 </IfModule>
 ")
-(defvar +apache-options+ "-D PROXY -D DAV -D DAV_FS -D LISP -D SSL")
-(defvar +sudoers+ "core   ALL= NOPASSWD: /usr/sbin/apache2ctl, /etc/init.d/apache2, /etc/init.d/postfix, /etc/init.d/svscan")
-(defmethod write-templates ((self server-layout))
-  (write-template-sexp (start.lisp self) (layout.start.lisp self)) 		       
-  (write-template-string (core-server.sh self) (layout.core-server.sh self))
-  (write-template-string (emacs.sh self)
-			 (merge-pathnames #P"emacs.sh"
-					  (layout.bin self)))
-  (write-template-string (make-installer.sh self)
-			 (merge-pathnames #P"make-installer.sh"
-					  (layout.bin self))))
 
+(defvar +gentoo-apache-options+ "-D PROXY -D DAV -D DAV_FS -D LISP -D SSL")
+(defmethod configure-gentoo-apache ((self server-layout))
+  (with-open-file (s #P"/etc/conf.d/apache2" :direction :output :if-exists :append)
+    (format s "APACHE2_OPTS+=\" ~A\"~%" +gentoo-apache-options+))
+  (with-open-file (s #P"/etc/apache2/modules.d/666_mod_lisp.conf"
+		     :direction :output :if-exists :supersede)
+    (format s "~A~%" +gentoo-apache-config+)))
+
+
+;; FIXME: this does add more lines to sudoers when re-run.
 (defmethod install ((self server-layout))
-  ;; FIXmE: debian'da www-data olmali extra-group
-  (unless (zerop (shell :cmd (whereis "id") :args '("core") :errorp nil))
-    (useradd :username "core" :extra-groups '("apache")
-	     :user-group t :create-home t))
-  (chown :user "core" :group "core" :path (layout.root self) :recursive t)
-  (chown :group "apache" :path "/var/www" :recursive t)
-  (chmod :mode "g+w" :path "/var/www" :recursive t)
-  (chown :group "apache" :path "/etc/apache2/vhosts.d" :recursive t)
-  (chmod :mode "g+w" :path "/etc/apache2/vhosts.d" :recursive t)
-  (shell :cmd (whereis "apxs2") :args '("-i" "-c" "mod_lisp2.c"))
-  (handler-bind ((error #'(lambda (e)
-			    (declare (ignorable e))
-			    (shell :cmd (whereis "rm") :args '("/etc/apache2/.core-server")))))
-    (unless (probe-file #P"/etc/apache2/.core-server")
-      (shell :cmd (whereis "touch") :args '("/etc/apache2/.core-server"))
-      (with-open-file (s #P"/etc/conf.d/apache2" :direction :output
-			 :if-exists :append)
-	(format s "APACHE2_OPTS+=\" ~A\"~%" +apache-options+))
-      (with-open-file (s #P"/etc/apache2/modules.d/666_mod_lisp.conf" :direction :output
-			 :if-exists :supersede)
-	(format s "~A~%" +apache-config+))
-      (with-open-file (s #P"/etc/sudoers" :direction :output
-			 :if-exists :append)
-	(format s "~A~%" +sudoers+))))
+  (let ((apache-group #+debian "www-data"
+		      #+gentoo "apache")
+	(apache-vhosts (merge-pathnames
+			#+debian #P"sites-enabled/"
+			#+gentoo #P"vhosts.d/"
+			#P"/etc/apache2/")))
+    (unless (zerop (shell :cmd (whereis "id") :args '("core") :errorp nil))
+      (groupadd :groupname "core")
+      (useradd :username "core" :extra-groups apache-group
+	       :group "core" :create-home t))
+    (chown :user "core" :group "core" :path (layout.root self) :recursive t)
+    (chown :group apache-group :path "/var/www" :recursive t)
+    (chmod :mode "g+w" :path "/var/www" :recursive t)
+    (chown :group apache-group :path apache-vhosts :recursive t)  
+    (chmod :mode "g+w" :path apache-vhosts :recursive t)
+    (shell :cmd (whereis "apxs2") :args '("-i" "-c" "mod_lisp2.c"))
+    (handler-bind ((error #'(lambda (e)
+			      (declare (ignorable e))
+			      (shell :cmd (whereis "rm") :args '("/etc/apache2/.core-server")))))
+      (unless (probe-file #P"/etc/apache2/.core-server")
+	(shell :cmd (whereis "touch") :args '("/etc/apache2/.core-server"))
+	#+debian (configure-debian-apache self)
+	#+gentoo (configure-gentoo-apache self)))
+    (with-open-file (s #P"/etc/sudoers" :direction :output :if-exists :append)
+      (format s "~A~%" +sudoers+)))
   (call-next-method))
+  
