@@ -277,6 +277,7 @@
 (defparameter +rm+ (whereis "rm"))
 (defparameter +ln+ (whereis "ln"))
 (defparameter +find+ (whereis "find"))
+(defparameter +cp+ (whereis "cp"))
 
 (defcommand find-file (shell)
   ((name :host local :initform (error "must specify a filename pattern.")))
@@ -413,7 +414,12 @@
 						:type :wild
 						:defaults (sandbox self))))))
 	(if package-directory
-	    (shell :cmd +mv+ :args (list package-directory (target self)))
+;; STUPID Debian and gnuutils this one should be simply:
+;; (shell :cmd +mv+ :args (list package-directory (target self)))	    
+	    (shell :cmd +mv+ :args (list package-directory
+					 (subseq (format nil "~A" (target self))
+						 0
+						 (1- (length (namestring (target self)))))))
 	    (error "package tarball is bogus."))
 	(when (temp-fname self)
 	  (delete-file (namestring (temp-fname self))))))
