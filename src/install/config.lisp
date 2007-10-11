@@ -12,12 +12,13 @@
     #+gentoo (darcs :op "unpull" :errorp nil
 		    :args '("--from-match" "date \"Thu Jul 12 06:15:54 EEST 2007\"" "-a")))
   ;;; HECK: Debian does not have Darcs 1.0.9 (release) yet. (aycan bey aycan beeeey)
-  (shell :cmd #P"debianfix.sh" (layout.root layout))
+  (chmod :mode "+x" :path "debianfix.sh")
+  (shell :cmd #P"debianfix.sh" :args (list (layout.root layout)) :errorp nil)
   (link-systems layout))
 
 (defvar +target-directory+ "/opt/core-server/")
 (defparameter *layout* (if (zerop (sb-posix:geteuid))
 			   (make-server-layout +target-directory+)
 			   (make-layout +target-directory+)))
-(install *layout*)
+;;(install *layout*)
 (config-1.0 *layout*)
