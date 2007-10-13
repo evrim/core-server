@@ -20,5 +20,5 @@
 (defparameter *layout* (if (zerop (sb-posix:geteuid))
 			   (make-server-layout +target-directory+)
 			   (make-layout +target-directory+)))
-;;(install *layout*)
+(install *layout*)
 (config-1.0 *layout*)
