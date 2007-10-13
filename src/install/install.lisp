@@ -475,10 +475,10 @@
 
 (defmethod fetch ((self sys) &optional path)
   (declare (ignorable path))
-  (format t "+------------------------------------------------------------------------------+~%")
-  (format t "| Checking out system: ~A~3,80@T|~%"
+  (format t "+------------------------------------------------+~%")
+  (format t "| Checking out system: ~A~3,60@T|~%"
 	  (name self))
-  (format t "+------------------------------------------------------------------------------+~%")
+  (format t "+------------------------------------------------+~%")
   (ecase (repo-type self)
     (cvs (cvs :repo (repo self) :module (module self) :target (name self)))
     (darcs (darcs :repo (repo self) :target (target-directory self)
@@ -759,14 +759,14 @@ TEMP=`which mktemp`
 MKDIR=`which mkdir`
 CP=`which cp`
 DIR=`$TEMP -d`
-TARBALL=\"core-server-installer-`date + \"%d-%m-%Y\"`.tar.gz\"
+TARBALL=\"core-server-installer-`date +\"%Y-%m-%d\"`.tar.gz\"
 
 $MKDIR -p $DIR/core-server-installer;
 cd $DIR;
 $CP $CORESERVER_HOME/src/install/* core-server-installer;
 $TAR zcf $TARBALL *
 mv $TARBALL /tmp/
-echo \"Core Server Installer tarball is ready: /tmp/$TARBALL \"
+echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
 " (layout.root self)))
 
 (defmethod write-templates ((self layout))

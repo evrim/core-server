@@ -45,16 +45,16 @@ check_feature() {
 }
 
 banner() {
-    echo "+------------------------------------------------------------------------------+"
-    echo "|                   Welcome to [ - Core-serveR - ] Project                      |"
-    echo "|                           http://www.core.gen.tr                              |"
-    echo "+------------------------------------------------------------------------------+"
+    echo "+-------------------------------------------------------------+"
+    echo "|            Welcome to [ - Core-serveR - ] Project           |"
+    echo "|                   http://www.core.gen.tr                    |"
+    echo "+-------------------------------------------------------------+"
     echo
 }
 
 prologue() {
     banner;
-    echo " This program will aid you to install the server base. 
+    echo "This program will aid you to install the server base." 
     echo "Please follow the instructions and report any problems to"
     echo "bilgi@core.gen.tr"
     echo
@@ -68,15 +68,15 @@ usage() {
 }
 
 epilogue() {
-    echo "+------------------ [ - Core-serveR - ] Installed successfully --------------+"
-    echo "|"
+    echo "+---------- [ - Core-serveR - ] Installed successfully ---------+"
+    echo "|                                                               |"
     echo "| Base directory: $1"
     echo "| Init script: $1/bin/core-server"
     echo "| Init lisp script: $1/bin/start.lisp"
-    echo "|"
+    echo "|                                                               |"
     echo "| To start:  $1/bin/core-server start"
     echo "| To attach: $1/bin/core-server attach"
-    echo "+----------------------------------------------------------------------------+" 
+    echo "+---------------------------------------------------------------+" 
 }
 
 check_sbcl;
@@ -88,7 +88,9 @@ if [ "root" = `whoami` ]; then
     for i in $SYSTEM_REQS; do check_requirement $i; done;
 fi
 
-if [ ! 1 -eq $# ]; then usage; fi;
+if [ ! 1 -eq $# ]; then 
+  usage
+fi
 
 prologue
 echo "+ Compiling installation script. Please wait..."
@@ -108,5 +110,5 @@ if [  $? -eq 111 ]; then
     exit 0
 fi
 
-echo "!! Sorry there is an error occured."
+echo "-- Sorry there is an error occured."
 exit 1
