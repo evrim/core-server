@@ -1,5 +1,5 @@
 - dojo stub
 - / stub
-- start.lisp is fucked up for server installation.
++ start.lisp is ready for server installation.
 - dojo build
-- set CORESERVER_HOME
++ set CORESERVER_HOME:done 4 bin/ scripts.
