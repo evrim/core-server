@@ -83,7 +83,8 @@ string in BIG string."
 (defmethod make-keyword ((sym symbol))
   (intern (symbol-name sym) :keyword))
 
-
+#+nil
+(progn
 (defvar +tr-alphabet+
   "ABCÇDEFGĞHIİJKLMNOÖPQRSŞTUÜVWXYZabcçdefgğhıijklmnoöpqrsştuüvwxyz")
 
@@ -148,3 +149,4 @@ string in BIG string."
 	(lambda (a b)
 	  (funcall test a b))
 	:key key))
+)
