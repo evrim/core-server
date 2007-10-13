@@ -3,3 +3,4 @@
 + start.lisp is ready for server installation.
 - dojo build
 + set CORESERVER_HOME:done 4 bin/ scripts.
++ db->var transition

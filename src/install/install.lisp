@@ -614,7 +614,8 @@
   `(progn     
      (in-package :cl-user)
      (require :sb-posix)
-     (sb-posix:putenv ,(format nil "CORESERVER_HOME=~S" (layout.root self)))
+     (sb-posix:putenv ,(format nil "CORESERVER_HOME=~S"
+			       (namestring (layout.root self))))
      (require :asdf)
      (pushnew ,(layout.systems self) asdf:*central-registry* :test #'equal)     
      (asdf:oos 'asdf:load-op :asdf-binary-locations)
