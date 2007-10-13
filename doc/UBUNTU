@@ -1,0 +1,62 @@
++---Core Server Ubuntu Installation----+
+| Date: 2007-10-13		       |
+| Author: evrim@core.gen.tr	       |
+| Web: http://www.core.gen.tr/	       |
++--------------------------------------+
+
+I have installed from Ubuntu Server CD,
+which comes with edgy.
+
+Unfortunately, 
+edgy does not have
+a threaded apache
+So i've tried to switch 
+to feisty
+
++-----------------------------------------+
+| Userwide installation methodology.      |
++-----------------------------------------+
+# SBCL - Note that version must be > 1.0
+# SBCL <1.0 does not do --dynamic-space-size'ing
+# which makes a server impossible to run.
+apt-get install sbcl
+
+# Dependencies
+apt-get install darcs subversion cvs screen gcc 
+
+# Emacs
+apt-get install emacs-snapshot
+
+# Finally,
+sh ./install.sh /home/core/core-server/
+
++-----------------------------------------+
+| Serverwide installation methodology.    |
++-----------------------------------------+
+#+Only Edgy Upgraders
+# Management
+cd /etc/apt/
+cp sources.list sources.edgy
+cat sources.list |sed -e 's/edgy/feisty/' > sources.feisty
+rm sources.list && \
+ln -s sources.feisty sources.list
+
+# Upgrading
+apt-get update && apt-get dist-upgrade && \
+apt-get install -f
+dpkg --configure -a
+#reboot
+
+#+Feisty Configuration
+# Apache2-threaded-dev
+apt-get install apache2-threaded-dev
+
+#+When trouble
+# Universe is not enough
+echo "deb http://us.arhive.ubuntu.com/ubuntu/ feisty main universe" \
+>> /etc/apt/sources.list
+echo "deb-src http://us.archive.ubuntu.co/ubuntu/ feisty main universe" \
+>> /etc/apt/sources.list
+
+#+++Finally,
+sh ./install.sh /home/core/core-server/
