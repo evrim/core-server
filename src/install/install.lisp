@@ -687,7 +687,7 @@ EOF
 # Indefinitely try to run as core.
 # Recursive.
 WHOAMI=`which whoami`
-CORE=`id core 2> /dev/null`
+CORE=`id core 2&> /dev/null`
 CORESERVER_HOME=\"~A\"
 SU=`which su`
 
