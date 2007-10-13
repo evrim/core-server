@@ -681,6 +681,21 @@ Commands:
 
 EOF
 }
+# Indefinitely try to run as core.
+# Recursive.
+WHOAMI=`which whoami`
+CORE=`id core 2> /dev/null`
+CORESERVER_HOME=\"~A\"
+SU=`which su`
+
+if [ ! -z $CORE ]; then
+   if [ ! `$WHOAMI` = "core" ]; then
+        chmod g+rw `which tty`
+        $SU core -c "$0 $@"
+        exit $?
+   fi
+fi
+
 unset CORESERVER_HOME
 CORESERVER_HOME=\"~A\"
 SBCL=`which sbcl`
@@ -692,12 +707,15 @@ PID=\"~~/core-server.pid\"
 ## go to home directory
 OLDPWD=`pwd`
 cd ~~
-case \"$1\" in
-    start)
-        echo \"Trying to start core-server..\"
+case \"$1\" in)
+    start
+        echo -n \"[ Core-serveR ] starting \"        
         export LANG=tr_TR.UTF-8 LC_ALL=tr_TR.UTF-8
         export CORESERVER_HOME=\"$CORESERVER_HOME\"
-        $SCREEN -c /dev/null -dmS core-server $SBCL --dynamic-space-size $MEMSIZE --load $CONFIGFILE
+        sleep 1
+        echo \"now!\"
+        $SCREEN -c /dev/null -dmS core-server \\
+        $SBCL --dynamic-space-size $MEMSIZE --load $CONFIGFILE
         ;;
     stop)
         echo \"Trying to stop core-server..\"
@@ -713,7 +731,9 @@ case \"$1\" in
 esac
 cd $OLDPWD
 exit 0
-" (layout.root self) (layout.start.lisp self)))
+"
+	(layout.root self)(layout.root self)
+	(layout.start.lisp self)))
 
 (defmethod emacs.sh ((self layout))
   (format nil "
