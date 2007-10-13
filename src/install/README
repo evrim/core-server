@@ -1,0 +1,45 @@
++------ [Core serveR] Installer -------+
+| Date: 2007-10-13                     |
+| Author: evrim@core.gen.tr            |
+| Web: http://www.core.gen.tr/         |
++--------------------------------------+
+
++ REQUIREMENTS
++User Server
+ + darcs
+ + svn
+ + cvs
+ + wget
+ + tar
+ + mv
+ + rm 
+ + ln
+ + find
+ + chmod
+ + chown
+ + screen
+ + su
++System Server
+ + sudo
+ + apache2
+ + apache2ctl
+ + useradd
+ + groupadd
+ + apxs2
+
+See UBUNTU file or http://www.core.gen.tr/projects/core-server/doc/UBUNTU 
+for specific questions.
+
++User Installation
+After you met requirements, do
+  sh ./install.sh ~/core-server/
+
+This would install core-server to your home 
+directory. 
+
++System Wise Installation
+After you met requirements, do
+  sh ./install.sh /home/core/core-server/
+
+This would install core-server to a user
+named core's home directory.
