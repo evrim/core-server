@@ -691,9 +691,9 @@ CORESERVER_HOME=\"~A\"
 SU=`which su`
 
 if [ ! -z $CORE ]; then
-   if [ ! `$WHOAMI` = "core" ]; then
+   if [ ! `$WHOAMI` = \"core\" ]; then
         chmod g+rw `which tty`
-        $SU core -c "$0 $@"
+        $SU core -c \"$0 $@\"
         exit $?
    fi
 fi
