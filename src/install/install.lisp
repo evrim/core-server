@@ -690,9 +690,8 @@ CORE=`id core 2> /dev/null`
 CORESERVER_HOME=\"~A\"
 SU=`which su`
 
-if [ ! -z $CORE ]; then
-   if [ ! `$WHOAMI` = \"core\" ]; then
-        chmod g+rw `which tty`
+if [ ! `$WHOAMI` = \"core\" ] && [ -n \"$CORE\"]; then
+        `which chmod` g+rw `which tty`
         $SU core -c \"$0 $@\"
         exit $?
    fi
@@ -709,8 +708,8 @@ PID=\"~~/core-server.pid\"
 ## go to home directory
 OLDPWD=`pwd`
 cd ~~
-case \"$1\" in)
-    start
+case \"$1\" in
+    start)
         echo -n \"[ Core-serveR ] starting \"        
         export LANG=tr_TR.UTF-8 LC_ALL=tr_TR.UTF-8
         export CORESERVER_HOME=\"$CORESERVER_HOME\"
@@ -948,5 +947,8 @@ echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
 	#+gentoo (configure-gentoo-apache self)))
     (with-open-file (s #P"/etc/sudoers" :direction :output :if-exists :append)
       (format s "~A~%" +sudoers+)))
-  (call-next-method))
+  (call-next-method)
+  (chown :user "core" :group "core" :recursive t
+	 :path (layout.root self)))
+
   
