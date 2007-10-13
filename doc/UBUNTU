@@ -24,7 +24,7 @@ apt-get install sbcl
 # Dependencies
 apt-get install darcs subversion cvs screen gcc 
 
-# Emacs
+# Emacs (optional some say)
 apt-get install emacs-snapshot
 
 # Finally,
