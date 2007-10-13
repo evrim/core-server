@@ -45,17 +45,18 @@ check_feature() {
 }
 
 banner() {
-    echo "+-------------------------------------------------------------------------------+"
+    echo "+------------------------------------------------------------------------------+"
     echo "|                   Welcome to [ - Core-serveR - ] Project                      |"
     echo "|                           http://www.core.gen.tr                              |"
-    echo "+-------------------------------------------------------------------------------+"
+    echo "+------------------------------------------------------------------------------+"
     echo
 }
 
 prologue() {
     banner;
-    echo " This program will aid you to install the server base. Please follow the"
-    echo " instructions and report any problems to bilgi@core.gen.tr"
+    echo " This program will aid you to install the server base. 
+    echo "Please follow the instructions and report any problems to"
+    echo "bilgi@core.gen.tr"
     echo
     sleep 3
 }
@@ -67,7 +68,7 @@ usage() {
 }
 
 epilogue() {
-    echo "+------------------ [ - Core-serveR - ] Installed successfully ---------------+"
+    echo "+------------------ [ - Core-serveR - ] Installed successfully --------------+"
     echo "|"
     echo "| Base directory: $1"
     echo "| Init script: $1/bin/core-server"
@@ -75,7 +76,7 @@ epilogue() {
     echo "|"
     echo "| To start:  $1/bin/core-server start"
     echo "| To attach: $1/bin/core-server attach"
-    echo "+-------------------------------------------------------------------------------+" 
+    echo "+----------------------------------------------------------------------------+" 
 }
 
 check_sbcl;

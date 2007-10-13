@@ -474,10 +474,10 @@
 
 (defmethod fetch ((self sys) &optional path)
   (declare (ignorable path))
-  (format t "+-------------------------------------------------------------------------------+~%")
+  (format t "+------------------------------------------------------------------------------+~%")
   (format t "| Checking out system: ~A~3,80@T|~%"
 	  (name self))
-  (format t "+-------------------------------------------------------------------------------+~%")
+  (format t "+------------------------------------------------------------------------------+~%")
   (ecase (repo-type self)
     (cvs (cvs :repo (repo self) :module (module self) :target (name self)))
     (darcs (darcs :repo (repo self) :target (target-directory self)))
