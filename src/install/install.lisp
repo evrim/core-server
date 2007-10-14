@@ -674,7 +674,7 @@
 help ()
 {
     cat <<EOF
- Usage: core-server.sh command
+ Usage: $0 command
 
 Commands:
 
@@ -703,7 +703,7 @@ SBCL=`which sbcl`
 SCREEN=`which screen`
 MEMSIZE=\"1024\"
 CONFIGFILE=\"~A\"
-PID=\"~~/core-server.pid\"
+PID=\"~Avar/core-server.pid\"
 
 ## go to home directory
 OLDPWD=`pwd`
@@ -716,12 +716,12 @@ case \"$1\" in
         sleep 1
         echo \"now!\"
         $SCREEN -c /dev/null -dmS core-server \\
-        $SBCL --dynamic-space-size $MEMSIZE --load $CONFIGFILE
+        $SBCL --dynamic-space-size $MEMSIZE \\
+        --load $CONFIGFILE
         ;;
     stop)
-        echo \"Trying to stop core-server..\"
+        echo \"[ Core-serveR ] stopping \"
         kill `cat $PID`
-        wait `cat $PID`
         ;;
     attach)
         screen -x core-server
@@ -733,8 +733,8 @@ esac
 cd $OLDPWD
 exit 0
 "
-	(layout.root self)(layout.root self)
-	(layout.start.lisp self)))
+	(layout.root self) (layout.root self)
+	(layout.start.lisp self) (layout.root self)))
 
 (defmethod emacs.sh ((self layout))
   (format nil "
