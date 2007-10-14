@@ -505,6 +505,8 @@
 		   :initarg :swank-encoding)
    (start.lisp :accessor layout.start.lisp :initarg :start.lisp
 	       :initform #P"start.lisp")
+   (end.lisp :accessor layout.end.lisp :initarg :end.lisp
+	     :initform #P"end.lisp")
    (core-server.sh :accessor layout.core-server.sh :initarg :core-server.sh
 		   :initform #P"core-server")
    (registry :initform '() :documentation "Systems registry.")
@@ -548,6 +550,9 @@
 
 (defmethod layout.start.lisp ((self layout))
   (merge-pathnames (s-v 'start.lisp) (layout.etc self)))
+
+(defmethod layout.end.lisp ((self layout))
+  (merge-pathames (s-v 'end.lisp) (layout.etc self)))
 
 (defmethod layout.core-server.sh ((self layout))
   (merge-pathnames (s-v 'core-server.sh) (layout.bin self)))
@@ -609,6 +614,12 @@
   (with-open-file (s pathname :direction :output :if-exists :supersede
 		     :if-does-not-exist :create)
     (format s "~A~%" template)))
+
+(defmethod end.lisp ((self layout))
+  `(progn
+     (in-package :core-server)
+     (stop *server*)
+     (quit 0)))
 
 (defmethod start.lisp ((self layout))
   `(progn     
@@ -769,7 +780,8 @@ echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
 " (layout.root self)))
 
 (defmethod write-templates ((self layout))
-  (write-template-sexp (start.lisp self) (layout.start.lisp self)) 		       
+  (write-template-sexp (start.lisp self) (layout.start.lisp self))
+  (write-template-sexp (end.lisp self) (layout.end.lisp self))
   (write-template-string (core-server.sh self) (layout.core-server.sh self))
   (write-template-string (emacs.sh self)
 			 (merge-pathnames #P"emacs.sh"
@@ -866,7 +878,8 @@ echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
 ;; chmod g+w /etc/apache2/vhosts.d
 (defvar +sudoers+ "core   ALL= NOPASSWD: /usr/sbin/apache2ctl, /etc/init.d/apache2, /etc/init.d/postfix, /etc/init.d/svscan")
 (defmethod write-templates ((self server-layout))
-  (write-template-sexp (start.lisp self) (layout.start.lisp self)) 		       
+  (write-template-sexp (start.lisp self) (layout.start.lisp self))
+  (write-template-sexp (end.lisp self) (layout.end.lisp self))
   (write-template-string (core-server.sh self) (layout.core-server.sh self))
   (write-template-string (emacs.sh self)
 			 (merge-pathnames #P"emacs.sh"
