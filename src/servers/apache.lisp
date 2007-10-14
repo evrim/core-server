@@ -9,15 +9,15 @@
 		   (apache-server.htdocs-pathname server)))
 
 #+pardus
-(defmethod comar ((self apache-server) command)
-  (unwind-protect
-       (sb-ext:run-program +sudo+
-			   (cons "/bin/service" (cons "apache" command)))))
+(defmethod comar ((self apache-server) command)  
+  (sb-ext:run-program +sudo+
+		      (cons "/bin/service" (cons "apache" command))))
 
-(defmethod apachectl ((self apache-server) params)
-  (unwind-protect
-       (sb-ext:run-program +sudo+
-			   (cons (sb-ext::native-namestring (apache-server.apachectl-pathname self)) params))))
+(defmethod apachectl ((self apache-server) params)  
+  (sb-ext:run-program (namestring +sudo+)
+		      (cons (namestring (apache-server.apachectl-pathname self)) 
+			    (cons "--nocolor"
+				  (cons "--quiet" params)))))
 
 (defmethod validate-configuration ((self apache-server))
   (eq 0 (sb-impl::process-exit-code (apachectl self '("configtest")))))

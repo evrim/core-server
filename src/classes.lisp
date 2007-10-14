@@ -118,7 +118,7 @@
 				 (merge-pathnames (make-pathname :directory '(:relative "var" "tinydns"))
 						  (sb-posix:getenv "CORESERVER_HOME"))
 				 (merge-pathnames (make-pathname :directory '(:relative "db" "ns"))
-						  (asdf:component-pathname (asdf:find-system :core-server))))
+						  (asdf:component-pathname (asdf:find-system :core-server)))))
    (ns-root-pathname :accessor name-server.ns-root-pathname :initarg :ns-root-pathname
 		     :initform (make-pathname :directory '(:absolute "service" "tinydns" "root")))
    (ns-compiler-pathname :accessor name-server.ns-compiler-pathname :initarg ns-compiler

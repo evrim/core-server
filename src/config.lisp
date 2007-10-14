@@ -18,3 +18,18 @@
 (defvar +darcs+ #P"/usr/bin/darcs")
 (defvar +git+ #P"/usr/bin/git")
 (defvar +remote-user+ "evrim.ulu")
+
+(defun load-end.lisp (&rest args)
+  (declare (ignore args))
+  (load (merge-pathnames "etc/end.lisp"
+			 (sb-posix:getenv "CORESERVER_HOME"))))
+
+#+sbcl
+(progn
+  (require :sb-posix)
+  (sb-unix::enable-interrupt sb-posix:sigterm #'core-server::load-end.lisp)
+  (with-open-file (s (merge-pathnames "var/core-server.pid"
+				      (sb-posix:getenv "CORESERVER_HOME"))
+		     :direction :output :if-exists :supersede
+		     :if-does-not-exist :create)
+    (format s "~D" (sb-posix:getpid))))
