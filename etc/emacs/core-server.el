@@ -7,7 +7,8 @@
 
 (defun load-el (str)
   "Load the el file in the core-server base directory"
-  (load (concat (getenv "CORESERVER_HOME") "etc/emacs/" str)))
+  (let ((file (concat (concat (getenv "CORESERVER_HOME") "etc/emacs/") str)))
+    (load file)))
 
 ; IBUFFER
 (autoload 'ibuffer "ibuffer" "List buffers." t)
@@ -16,7 +17,7 @@
 
 ;; PAREDIT
 ;;(load-el "paredit-beta.el")
-(load-el "paredit-7.0b4.el")
+;;(load-el "paredit-beta.el")
 
 (autoload 'enable-paredit-mode "paredit" 
   "Minor mode for pseudo-structurally editing Lisp code." t)
@@ -26,9 +27,8 @@
 (show-paren-mode t)
 
 ;; SLIME
-(add-to-list 'load-path (concat 
-			 (getenv "CORESERVER_HOME"
-				 "lib/slime/slime.el")))
+(add-to-list 'load-path (concat (getenv "CORESERVER_HOME") "lib/slime/slime/"))
+(add-to-list 'load-path (concat (getenv "CORESERVER_HOME") "lib/slime/slime/contrib/"))
 (require 'slime)
 (add-hook 'slime-load-hook (lambda () 
 			     (require 'slime-fuzzy)
@@ -51,8 +51,8 @@
 					       'save-and-load-and-compile)))
 
 (slime-setup '(slime-fancy slime-asdf))
-(setq (get 'defmethod/cc 'common-lisp-indent-function) 'lisp-indent-defmethod
-      (get 'defmethod/unit 'common-lisp-indent-function) 'lisp-indent-defmethod)
+;;(setq (get 'defmethod/cc 'common-lisp-indent-function) 'lisp-indent-defmethod
+;;      (get 'defmethod/unit 'common-lisp-indent-function) 'lisp-indent-defmethod)
 
 ;; DARCSUM
 (load-el "darcsum.el")

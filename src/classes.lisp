@@ -114,16 +114,22 @@
 		       #-debian (make-pathname :directory '(:absolute "etc" "init.d") :name "svscan")
 		       #+debian (make-pathname :directory '(:absolute "etc" "init.d") :name "djbdns"))
    (ns-db-pathname :accessor name-server.ns-db-pathname :initarg :ns-db-pathname
-		   :initform (merge-pathnames (make-pathname :directory '(:relative "db" "ns"))
-					      (asdf:component-pathname (asdf:find-system :core-server))))
+		   :initform (if (sb-posix:getenv "CORESERVER_HOME")
+				 (merge-pathnames (make-pathname :directory '(:relative "var" "tinydns"))
+						  (sb-posix:getenv "CORESERVER_HOME"))
+				 (merge-pathnames (make-pathname :directory '(:relative "db" "ns"))
+						  (asdf:component-pathname (asdf:find-system :core-server))))
    (ns-root-pathname :accessor name-server.ns-root-pathname :initarg :ns-root-pathname
 		     :initform (make-pathname :directory '(:absolute "service" "tinydns" "root")))
    (ns-compiler-pathname :accessor name-server.ns-compiler-pathname :initarg ns-compiler
 			 :initform (make-pathname :directory '(:absolute "usr" "bin") :name "tinydns-data"))
    (ns-db :accessor name-server.ns-db :initarg ns-db
 	  :initform (make-instance 'database-server
-				   :directory (merge-pathnames (make-pathname :directory '(:relative "db" "ns"))
-							       (asdf:component-pathname (asdf:find-system :core-server)))
+				   :directory (if (sb-posix:getenv "CORESERVER_HOME")
+						  (merge-pathnames (make-pathname :directory '(:relative "var" "tinydns"))
+								   (sb-posix:getenv "CORESERVER_HOME"))
+						(merge-pathnames (make-pathname :directory '(:relative "db" "ns"))
+								 (asdf:component-pathname (asdf:find-system :core-server)))) 
 				   :model-class 'ns-model)))
   (:default-initargs :name "TinyDNS Server"))
 
@@ -156,8 +162,12 @@
 (defclass ucw-server (server ucw::standard-server)
   ((ucw-db :accessor ucw-server.ucw-db :initarg ucw-db
 	   :initform (make-instance 'database-server
-				    :directory (merge-pathnames (make-pathname :directory '(:relative "db" "ucw"))
-								(asdf:component-pathname (asdf:find-system :core-server)))
+				    :directory
+				    (if (sb-posix:getenv "CORESERVER_HOME")
+					(merge-pathnames (make-pathname :directory '(:relative "var" "ucw"))
+							 (pathname (sb-posix:getenv "CORESERVER_HOME")))
+				      (merge-pathnames (make-pathname :directory '(:relative "db" "ns"))
+						       (asdf:component-pathname (asdf:find-system :core-server)))) 
 				    :model-class 'ucw-model)))
   (:default-initargs :name "Ucw Web Server"
     :backend (ucw::make-backend :mod-lisp
