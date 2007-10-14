@@ -695,7 +695,6 @@ if [ ! `$WHOAMI` = \"core\" ] && [ -n \"$CORE\"]; then
         `which chmod` g+rw `which tty`
         $SU core -c \"$0 $@\"
         exit $?
-   fi
 fi
 
 unset CORESERVER_HOME
