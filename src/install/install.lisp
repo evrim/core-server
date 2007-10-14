@@ -691,6 +691,7 @@ Commands:
 
   start              Start core server.
   stop               Shutdown core server.
+  status             Query for existence
   attach             Attach to screen instance
 
 EOF
@@ -736,6 +737,16 @@ case \"$1\" in
         ;;
     attach)
         screen -x core-server
+        ;;
+    status)
+        PP=`cat $PID`
+        if [ -z \"`/bin/cat /proc/$PP/status`\" ]; then
+            echo \"[ Core-server ] *not* running\"
+            exit 1
+        else 
+            echo \"[ Core-server ] running\"
+            exit 0 
+        fi
         ;;
     *)
         help
