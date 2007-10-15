@@ -1,0 +1,43 @@
++--------------------------------------+
+| Date: 2007-10-15                     |
+| Author: evrim@core.gen.tr            |
+| Web: http://www.core.gen.tr/         |
++--------------------------------------+
+
++-----------------------------------------+
+| Core Depo Configuration                 |
++-----------------------------------------+
+# Remove old SBCL
+pisi remove sbcl
+
+# Repository
+pisi add-repo core http://www.core.gen.tr/projects/core-depo/pisi-index.xml.bz2
+
+# Dependencies
+pisi install darcs subversion cvs screen gcc
+
++-----------------------------------------+
+| Userwide installation methodology.      |
++-----------------------------------------+
+# SBCL - Note that version must be > 1.0
+# SBCL <1.0 does not do --dynamic-space-size'ing
+# which makes a server impossible to run.
+pisi install sbcl
+
+# Emacs (optional some say)
+pisi install emacs
+
+# Finally,
+sh ./install.sh ~/core-server/
+
++-----------------------------------------+
+| Serverwide installation methodology.    |
++-----------------------------------------+
+# SBCL
+pisi install sbcl
+
+# Apache2
+pisi install apache
+
+#+++Finally,
+sh ./install.sh /home/core/core-server/
