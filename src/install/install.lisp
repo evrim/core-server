@@ -806,7 +806,7 @@ echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
 
 (defmethod install ((self layout)) 
   (read-systems self)
-;;  (checkout-systems self)
+  (checkout-systems self)
   (link-systems self)
   (ln :source (merge-pathnames #P"core-server/etc" (layout.lib self))
       :target (layout.root self))
