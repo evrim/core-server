@@ -798,13 +798,14 @@ echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
 			 (merge-pathnames #P"make-installer.sh"
 					  (layout.bin self))))
 
-(defmethod install :before ((self layout))
+(defmethod create-directories ((self layout))
   (mapcar #'(lambda (slot)
 	      (ensure-directories-exist (merge-pathnames (s-v slot) (layout.root self))))
 	  '(bin projects lib var log))
   (ensure-directories-exist (layout.systems self)))
 
 (defmethod install ((self layout)) 
+  (create-directories self)
   (read-systems self)
   (checkout-systems self)
   (link-systems self)
@@ -814,6 +815,7 @@ echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
       :target (layout.root self))
   (write-templates self)
   (chmod :mode "+x" :path (layout.core-server.sh self))
+  (shell :cmd +cp+ :args (list "lib.conf" (layout.etc self)))
   (ln :source (merge-pathnames #P"core-server/etc" (layout.lib self))
       :target (layout.root self))
   (ln :source (merge-pathnames #P"core-server/src" (layout.lib self))
@@ -940,19 +942,44 @@ echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
 		     :direction :output :if-exists :supersede)
     (format s "~A~%" +gentoo-apache-config+)))
 
+(defvar +pardus-mod-proxy-config+ "
+<IfDefine PROXY_HTML>
+  <IfModule !mod_proxy_html.c>
+    LoadFile /usr/lib/libxml2.so
+    LoadModule proxy_html_module    modules/mod_proxy_html.so
+  </IfModule>
+</IfDefine>
+
+<IfModule mod_proxy_html.c>
+
+# See http://apache.webthing.com/mod_proxy_html/ for now :/
+
+</IfModule>
+")
+
+(defmethod configure-pardus-apache ((self server-layout))
+  (with-open-file (s #P"/etc/conf.d/apache2" :direction :output :if-exists :append)
+    (format s "APACHE2_OPTS+=\" ~A\"~%" +gentoo-apache-options+))
+  (with-open-file (s #P"/etc/apache2/modules.d/666_mod_lisp.conf"
+		     :direction :output :if-exists :supersede)
+    (format s "~A~%" +gentoo-apache-config+))
+  (with-open-file (s #P"/etc/apache2/modules.d/27_mod_proxy_html.conf"
+		     :direction :output :if-exists :supersede)
+    (format s "~A~%" +pardus-mod-proxy-config+)))
 
 ;; FIXME: this does add more lines to sudoers when re-run.
 (defmethod install ((self server-layout))
   (let ((apache-group #+debian "www-data"
-		      #+gentoo "apache")
+		      #+(or gentoo pardus) "apache")
 	(apache-vhosts (merge-pathnames
 			#+debian #P"sites-enabled/"
-			#+gentoo #P"vhosts.d/"
-			#P"/etc/apache2/")))
+			#+(or gentoo pardus) #P"vhosts.d/"
+			#P"/etc/apache2/")))			
     (unless (zerop (shell :cmd (whereis "id") :args '("core") :errorp nil))
       (groupadd :groupname "core")
       (useradd :username "core" :extra-groups apache-group
 	       :group "core" :create-home t))
+    (ensure-directories-exist (layout.root self))
     (chown :user "core" :group "core" :path (layout.root self) :recursive t)
     (chown :group apache-group :path "/var/www" :recursive t)
     (chmod :mode "g+w" :path "/var/www" :recursive t)
@@ -965,7 +992,8 @@ echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
       (unless (probe-file #P"/etc/apache2/.core-server")
 	(shell :cmd (whereis "touch") :args '("/etc/apache2/.core-server"))
 	#+debian (configure-debian-apache self)
-	#+gentoo (configure-gentoo-apache self)))
+	#+gentoo (configure-gentoo-apache self)
+	#+pardus (configure-pardus-apache self)))
     (with-open-file (s #P"/etc/sudoers" :direction :output :if-exists :append)
       (format s "~A~%" +sudoers+)))
   (call-next-method)
