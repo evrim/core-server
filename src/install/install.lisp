@@ -24,7 +24,6 @@
     ((probe-file "/etc/debian_version")
      (pushnew :debian *features*))))
 
-#+pardus (error "Sorry, Core-server does not support Pardus.")
 (defvar +verbose+ t "make command executions verbose during installation.")
 (defvar +which+ #P"/usr/bin/which")
 (defparameter +tmp+ (make-pathname :directory '(:absolute "tmp")))
@@ -552,7 +551,7 @@
   (merge-pathnames (s-v 'start.lisp) (layout.etc self)))
 
 (defmethod layout.end.lisp ((self layout))
-  (merge-pathames (s-v 'end.lisp) (layout.etc self)))
+  (merge-pathnames (s-v 'end.lisp) (layout.etc self)))
 
 (defmethod layout.core-server.sh ((self layout))
   (merge-pathnames (s-v 'core-server.sh) (layout.bin self)))
@@ -625,8 +624,6 @@
   `(progn     
      (in-package :cl-user)
      (require :sb-posix)
-     (sb-posix:putenv ,(format nil "CORESERVER_HOME=~S"
-			       (namestring (layout.root self))))
      (require :asdf)
      (pushnew ,(layout.systems self) asdf:*central-registry* :test #'equal)     
      (asdf:oos 'asdf:load-op :asdf-binary-locations)
@@ -703,7 +700,7 @@ CORE=`id core 2&> /dev/null`
 CORESERVER_HOME=\"~A\"
 SU=`which su`
 
-if [ ! `$WHOAMI` = \"core\" ] && [ -n \"$CORE\"]; then
+if [ ! `$WHOAMI 2&> /dev/null` = \"core\" ] && [ -n \"$CORE\"]; then
         `which chmod` g+rw `which tty`
         $SU core -c \"$0 $@\"
         exit $?
@@ -740,7 +737,7 @@ case \"$1\" in
         ;;
     status)
         PP=`cat $PID`
-        if [ -z \"`/bin/cat /proc/$PP/status`\" ]; then
+        if [ -z \"`/bin/cat /proc/$PP/status 2&> /dev/null`\" ]; then
             echo \"[ Core-server ] *not* running\"
             exit 1
         else 
@@ -809,7 +806,7 @@ echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
 
 (defmethod install ((self layout)) 
   (read-systems self)
-  (checkout-systems self)
+;;  (checkout-systems self)
   (link-systems self)
   (ln :source (merge-pathnames #P"core-server/etc" (layout.lib self))
       :target (layout.root self))

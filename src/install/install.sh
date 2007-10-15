@@ -4,6 +4,7 @@
 # Author: Evrim Ulu <evrim@core.gen.tr>
 # www.core.gen.tr
 
+unset CORESERVER_HOME
 SBCL=`which sbcl 2> /dev/null`
 REQS="darcs svn cvs wget tar mv rm ln find chmod chown screen su"
 FEATURES=":sb-thread :sb-unicode"
