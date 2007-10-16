@@ -686,30 +686,42 @@ help ()
 
 Commands:
 
-  start              Start core server.
-  stop               Shutdown core server.
+  start              Start core server
+  stop               Shutdown core server
   status             Query for existence
   attach             Attach to screen instance
 
 EOF
 }
+
+# lookup utility using which, exit if not found
+lookup () {
+  local ret=`which $1`
+  if [ -z $ret ]; then
+      echo \"I couldn't find the utility: $1. Exiting...\"
+      exit 1
+  else
+      echo $ret
+  fi
+}
+
+# run utility using lookup
+runX () { `lookup $1`}
+
 # Indefinitely try to run as core.
 # Recursive.
-WHOAMI=`which whoami`
 CORE=`id core 2&> /dev/null`
 CORESERVER_HOME=\"~A\"
-SU=`which su`
 
-if [ ! `$WHOAMI 2&> /dev/null` = \"core\" ] && [ -n \"$CORE\"]; then
-        `which chmod` g+rw `which tty`
-        $SU core -c \"$0 $@\"
+# if the current user is NOT core and the core id IS present
+if [ ! $(runX whoami) = \"core\" ] && [ -n \"$CORE\"]; then
+        $(lookup chmod) g+rw $(runX tty)
+        $(lookup su) core -c \"$0 $@\"
         exit $?
 fi
 
 unset CORESERVER_HOME
 CORESERVER_HOME=\"~A\"
-SBCL=`which sbcl`
-SCREEN=`which screen`
 MEMSIZE=\"1024\"
 CONFIGFILE=\"~A\"
 PID=\"~Avar/core-server.pid\"
@@ -724,8 +736,8 @@ case \"$1\" in
         export CORESERVER_HOME=\"$CORESERVER_HOME\"
         sleep 1
         echo \"now!\"
-        $SCREEN -c /dev/null -dmS core-server \\
-        $SBCL --dynamic-space-size $MEMSIZE \\
+        $(lookup screen) -c /dev/null -dmS core-server \\
+        $(lookup sbcl) --dynamic-space-size $MEMSIZE \\
         --load $CONFIGFILE
         ;;
     stop)
