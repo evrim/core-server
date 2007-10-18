@@ -22,11 +22,11 @@
                         :components
 			((:file "packages")
                          (:file "helper")
-                         (:file "streams")
-                         (:file "parser")
                          (:file "sockets")
                          (:file "threads")
                          (:file "units")
+                         (:file "streams")
+                         (:file "parser")
                          (:file "prevalence")
                          (:file "config")
                          (:file "method")
