@@ -62,7 +62,8 @@
 ;;; Servers
 (defclass server ()
   ((name :accessor server.name :initarg :name :initform "Dummy Server")
-   (mutex :accessor server.mutex :initarg :mutex :initform (sb-thread:make-mutex :name "Server mutex"))))
+   (mutex :accessor server.mutex :initarg :mutex :initform (sb-thread:make-mutex :name "Server mutex"))
+   (auto-start :accessor server.auto-start :initarg :auto-start :initform nil)))
 
 (defmethod print-object ((self server) stream)
   (print-unreadable-object (self stream :type t :identity t)

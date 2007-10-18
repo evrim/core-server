@@ -84,57 +84,131 @@
 (defmethod me-p ((self local-unit))
   (or (equal (current-thread) (s-v '%thread)) (not (status self))))
 
-(defmethod async-method-call ((self local-unit) method-name &rest args)
-  (let ((me (current-thread)))
-    (send-message self
-		  #'(lambda (unit)
-		      (let ((result (multiple-value-list
-				     (apply method-name unit args))))
-			(thread-send me result))))
-    #'(lambda ()
-	(apply #'values (thread-receive)))))
-
+(defvar +ret+ nil)
 (defmethod async-method-call-with-no-return ((self local-unit) method-name &rest args)
-  (let ((me (current-thread)))
-    (send-message self
-		  #'(lambda (unit)
-		      (apply method-name unit args))))
+  (send-message self #'(lambda (unit)
+			 (apply method-name unit args)))
   (values))
 
+(defmethod async-method-call ((self local-unit) method-name &rest args)
+  (let ((me (current-thread)))    
+    (send-message self
+		  #'(lambda (unit)		      
+		      (block unit-execution 
+			(let ((+ret+ #'(lambda (val)
+					 (format t "funki +ret+~A~%" val)
+					 (thread-send me (list val))
+;; 					 (return-from unit-execution t)
+					 (format t "before run~%")
+					 (run unit)
+					 )))
+			  (let ((result (multiple-value-list
+					 (apply method-name unit args))))
+			    (thread-send me result)))))))
+  #'(lambda ()
+      (apply #'values (thread-receive))))
+
 (defmacro defmethod/unit (name &rest args)
-  (let* ((method-name (intern (format nil "%~:@(~A~)" name)))
-	 (method-keyword (if (keywordp (car args))
-			     (prog1 (car args)
-			       (setq args (cdr args)))))
+  (let* ((method-keyword (if (keywordp (car args))
+			     (prog1 (car args) (setq args (cdr args)))))
 	 (method-body (cdr args))
 	 (method-args (car args))
 	 (arg-names (extract-argument-names method-args :allow-specializers t))
 	 (self (car arg-names)))
-    (cond
-      ((eq method-keyword :async)
-       `(progn
-	  (defmethod ,method-name ,method-args ,@method-body)
-	  (defmethod ,name ,method-args
-	    (if (me-p ,self)
-		(,method-name ,@arg-names)
-		(async-method-call ,self ',method-name ,@(rest arg-names))))))
-      ((eq method-keyword :async-no-return)
-       `(progn
-	  (defmethod ,method-name ,method-args ,@method-body)
-	  (defmethod ,name ,method-args
-	    (if (me-p ,self)
-		(,method-name ,@arg-names)
-		(async-method-call-with-no-return ,self ',method-name ,@(rest arg-names)))
-	    (values))))
-      ((or (null method-keyword) (eq method-keyword :sync))
-       `(progn
-	  (defmethod ,method-name ,method-args ,@method-body)
-	  (defmethod ,name ,method-args
-	    (if (me-p ,self)
-		(,method-name ,@arg-names)
-		(funcall (async-method-call ,self ',method-name ,@(rest arg-names)))))))
-      (t
-       `(defmethod ,method-name ,method-keyword ,method-args ,@method-body)))))
+    `(progn
+       (defmethod ,name ,method-args ,@method-body)
+       ,(cond
+	 ((eq method-keyword :async-no-return)
+	  `(defmethod ,name :around ,method-args
+	     (if (me-p ,self)
+		 (call-next-method)
+		 (async-method-call-with-no-return ,self ',name ,@(rest arg-names)))))
+	 ((eq method-keyword :async)
+	  `(defmethod ,name :around ,method-args
+	     (if (me-p ,self)
+		 (if (null +ret+)
+		     (let ((+ret+ #'(lambda (val)
+				      (return-from ,name val))))
+		       (call-next-method))
+		     (call-next-method))
+		 (async-method-call ,self ',name ,@(rest arg-names)))))	 
+	 ((or (null method-keyword) (eq method-keyword :sync))
+	  `(defmethod ,name :around ,method-args
+	     (if (me-p ,self)
+		 (if (null +ret+)
+		     (let ((+ret+ #'(lambda (val)
+				      (return-from ,name val))))
+		       (call-next-method))
+		     (call-next-method))
+		 (funcall		  
+		  (async-method-call ,self ',name ,@(rest arg-names))))))
+	 (t (error "Keyword you've entered is not a valid, try usual defmethod.")))
+       (warn "defmethod/unit overrides :around method."))))
+
+
+;; (defmethod async-method-call ((self local-unit) method-name &rest args)
+;;   (let ((me (current-thread)))    
+;;     (send-message self
+;; 		  #'(lambda (unit)
+;; 		      (let ((atomic nil))
+;; 			(let* ((+unit-return+ #'(lambda  (val)
+;; 						  (setf atomic t)
+;; 						  (thread-send me (list val))))
+;; 			       (result (multiple-value-list
+;; 					(apply method-name unit args))))			  
+;; 			  (unless atomic				
+;; 			    (thread-send me result))))))
+;;     #'(lambda ()
+;; 	(prog1 (apply #'values (thread-receive))
+;; 	  (cleanup-mailbox me)))))
+
+;; (defmethod async-method-call-with-no-return ((self local-unit) method-name &rest args)
+;;   (let ((me (current-thread)))
+;;     (send-message self
+;; 		  #'(lambda (unit)
+;; 		      (apply method-name unit args))))
+;;   (values))
+
+;; (defmacro defmethod/unit (name &rest args)
+;;   (let* (;;	 (method-name (intern (format nil "%~:@(~A~)" name)))
+;; 	 (method-keyword (if (keywordp (car args))
+;; 			     (prog1 (car args)
+;; 			       (setq args (cdr args)))))
+;; 	 (method-body (cdr args))
+;; 	 (method-args (car args))
+;; 	 (arg-names (extract-argument-names method-args :allow-specializers t))
+;; 	 (self (car arg-names)))
+;;     (cond
+;;       ((eq method-keyword :async)
+;;        `(defmethod ,name ,method-args
+;; 	  (if (me-p ,self)
+;; 	      (funcall #'(lambda ,arg-names
+;; 			   (declare (ignorable ,(car arg-names)))
+;; 			   (block ,name
+;; 			     ,@method-body)) ,@arg-names)
+;; 	      (async-method-call ,self ',name ,@(rest arg-names)))))
+;;       ((eq method-keyword :async-no-return)
+;;        `(defmethod ,name ,method-args
+;; 	  (if (me-p ,self)
+;; 	      (funcall #'(lambda ,arg-names
+;; 			   (declare (ignorable ,(car arg-names)))
+;; 			   (block ,name
+;; 			     ,@method-body)) ,@arg-names)
+;; 	      (async-method-call-with-no-return ,self ',name ,@(rest arg-names)))
+;; 	  (values)))
+;;       ((or (null method-keyword) (eq method-keyword :sync))
+;;        `(defmethod ,name ,method-args
+;; 	  (if (me-p ,self)
+;; 	      (funcall #'(lambda ,arg-names
+;; 			   (declare (ignorable ,(car arg-names)))
+;; 			   (block ,name
+;; 			     (let ((+unit-return+ #'(lambda (val)
+;; 						     (return-from ,name val))))
+;; 			       ,@method-body))) ,@arg-names)
+;; 	      (funcall (apply #'async-method-call ,self ',name
+;; 			      (list ,@(rest arg-names)))))))
+;;       (t
+;;        `(defmethod ,name ,method-keyword ,method-args ,@method-body)))))
 
 ;; (defclass u1 (local-unit)
 ;;   ())

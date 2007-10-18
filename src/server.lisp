@@ -50,3 +50,9 @@
 (defmethod unregister :around ((self server) (app application))
   (call-next-method)
   (setf (application.server app) nil))
+
+(defmethod shared-initialize :after ((self server) slot-names
+				     &rest initargs &key &allow-other-keys)
+  (declare (ignore initargs))
+  (when (s-v 'auto-start)
+    (start self)))

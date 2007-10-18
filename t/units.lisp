@@ -3,19 +3,39 @@
 (defclass test-unit (local-unit)
   ())
 
-(defmethod/unit add-numbers ((self test-unit) &rest numbers)
-  (apply #'+ numbers))
+(defmethod/unit add-two ((self test-unit) no1 no2)
+  (+ no1 no2))
 
-(defvar *u (make-instance 'test-unit))
-(assert (= 6 (add-numbers *u 1 2 3)))
+(defmethod/unit show-me-cps ((self test-unit) arg1)  
+  (funcall +ret+ arg1)
+  'default-return-value)
+
+(defparameter *u (make-instance 'test-unit))
+
+(assert (= 7 (add-two *u 4 3)))
+(assert (null (remove nil
+		      (loop for i from 1 upto 10000
+			   collect (if (eq i (show-me-cps *u i))
+				       nil
+				       i)))))
 (start *s)
-(assert (= 6 (add-numbers *u 1 2 3)))
 
+(assert (= 7 (add-two *u 4 3)))
+(assert (null (remove nil
+		      (loop for i from 1 upto 5000
+			   collect (if (eq i (show-me-cps *u i))
+				       nil
+				       i)))))
 (defun clean-local-units ()
   (mapcar #'(lambda (thread)
 	      (if (equal "Local Unit" (sb-thread::thread-name thread))
 		  (thread-kill thread)))
 	  (core-server::all-threads)))
+
+;; (defmethod/unit add-numbers ((self test-unit) &rest numbers)
+;;   ;;  (apply #'+ numbers)
+;;   numbers)
+;;(assert (= 6 (add-numbers *u 1 2 3)))
 
 ;; (defmethod/unit lightning :async-no-return ((test-unit test-unit) abc def)
 ;;   (list test-unit abc def))

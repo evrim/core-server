@@ -60,3 +60,11 @@
 (defun core-server ()
   (interactive)
   (slime-connect "127.0.0.1" 4005))
+
+(setq speedbar-track-mouse-flag t)
+
+; MOUSE SCROLL
+(mouse-wheel-mode 1)
+
+; SLOPPY FOCUS
+(setq mouse-autoselect-window t)

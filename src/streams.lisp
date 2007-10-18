@@ -440,9 +440,11 @@
        (close-stream ,var))))
 
 (defclass pipe-stream (core-stream)
-  ((%input :accessor pipe-stream.input :initform nil
+  ((%input :accessor pipe-stream.input
+	   :initform (error "Please specify \":input\" stream")
 	   :initarg :input :type core-stream)
-   (%output :accessor pipe-stream.output :initform nil
+   (%output :accessor pipe-stream.output
+	    :initform (error "Please specify \":output\" stream ")
 	    :initarg :output :type core-stream)))
 
 (defmethod peek-stream ((self pipe-stream))
@@ -483,6 +485,55 @@
 
 (defmethod stream-data ((self pipe-stream))
   (stream-data (s-v '%output)))
+
+(defun make-pipe-stream (input output)
+  (make-instance 'pipe-stream :input input :output output))
+
+(defclass core-transformer-stream (local-unit pipe-stream)
+  ((%decoder :accessor transformer.decoder :initarg :decoder
+	     :initform (error "Please specify \":decoder\" function"))
+   (%encoder :accessor transformer.encoder :initarg :encoder :initform nil)
+   (%read-k :initform nil)
+   (%write-k :initform nil))
+  (:default-initargs :auto-start t :name "Transformer Stream"))
+
+(defmethod/unit read-stream ((self core-transformer-stream))  
+  (format t "read-stream transformer, thread:~A~%" (current-thread))
+  (cond
+    ((s-v '%write-k)
+     (format t "gee:~A~%" (s-v '%write-k))
+     (let ((write-k (s-v '%write-k)))
+       (setf (s-v '%write-k) nil
+	     (s-v '%read-k) +ret+)
+       (funcall write-k t)))
+    ((null (s-v '%read-k))
+     (setf (s-v '%read-k) +ret+)
+     (format t "funku dekoder ret:~A~%" +ret+)
+     (prog1 (funcall (s-v '%decoder) self)
+       (setf (s-v '%read-k) nil
+	     (s-v '%write-k) nil)))
+    (t
+     (format t "funku default~%")
+     (read-stream (s-v '%input)))))
+
+(defmethod/unit write-stream ((self core-transformer-stream) c)
+  (flet ((ret (val)
+	   (format t "inside write-stream ret val:~A~%" val)
+	   (return-from write-stream val)))
+    (format t "write-stream transformer, thread:~A~%" (current-thread))
+    (cond
+      ((s-v '%read-k)	 
+       (let ((read-k (s-v '%read-k)))
+	 (setf (s-v '%write-k) #'ret)
+	 (setf (s-v '%read-k) nil)
+	 (funcall read-k c)))
+      (t
+       (write-stream (s-v '%output) c)))))
+
+(defun make-transformer-stream (decoder input
+				&optional (output (make-instance 'core-list-io-stream)))
+  (make-instance 'core-transformer-stream :input input :output output
+		 :decoder decoder))
 
 (defvar +stream-funs+ '(peek-stream read-stream write-stream checkpoint-stream
 		       rewind-stream commit-stream close-stream current-checkpoint))
