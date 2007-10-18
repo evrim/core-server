@@ -16,8 +16,10 @@
 (defmethod apachectl ((self apache-server) params)  
   (sb-ext:run-program (namestring +sudo+)
 		      (cons (namestring (apache-server.apachectl-pathname self)) 
-			    (cons "--nocolor"
-				  (cons "--quiet" params)))))
+			    params
+			    ;; (cons "--nocolor"
+			    ;; (cons "--quiet" params))
+			    )))
 
 (defmethod validate-configuration ((self apache-server))
   (eq 0 (sb-impl::process-exit-code (apachectl self '("configtest")))))

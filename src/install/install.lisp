@@ -706,7 +706,9 @@ lookup () {
 }
 
 # run utility using lookup
-runX () { `lookup $1`}
+runX () { 
+  `lookup $1`
+}
 
 # Indefinitely try to run as core.
 # Recursive.
