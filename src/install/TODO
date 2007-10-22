@@ -4,3 +4,4 @@
 - dojo build
 + set CORESERVER_HOME:done 4 bin/ scripts.
 + db->var transition
+- sudo'ya /usr/bin/find ekle

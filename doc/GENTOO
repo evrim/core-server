@@ -1,0 +1,40 @@
++[Core-serveR] GNU/Gentoo Installation========================================#
+|                                                                             |
+| Date: 2007-10-22                                                            |
+| Author: evrim@core.gen.tr                                                   |
+| Web: http://www.core.gen.tr/                                                |
+|                                                                             |
++=============================================================================#
+
+
++-----------------------------------------+
+| Userwide installation methodology.      |
++-----------------------------------------+
+# Dependencies (use -pv to see what is going to happen)
+emerge -u darcs subversion cvs screen gcc sudo wget
+
+# SBCL
+echo "dev-lisp/sbcl-1.0.10 threads unicode source doc" >> /etc/portage/packages.use
+emerge -u sbcl
+
+# Emacs
+emerge -u emacs
+
++-----------------------------------------+
+| Serverwide installation methodology.    |
++-----------------------------------------+
+
+# Dependencies (use -pv to see what is going to happen)
+emerge -u darcs subversion cvs screen gcc sudo wget
+
+# SBCL
+echo "dev-lisp/sbcl-1.0.10 threads unicode source doc" >> /etc/portage/packages.use
+emerge -u sbcl
+
+# Emacs
+emerge -u emacs
+
+# Apache2 (Be careful not to install Apache 1.x)
+echo "www-servers/apache-2.2.6 threads" >> /etc/portage/packages.use
+emerge -u apache
+

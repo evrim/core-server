@@ -1,45 +1,73 @@
-+------ [Core serveR] Installer -------+
-| Date: 2007-10-13                     |
-| Author: evrim@core.gen.tr            |
-| Web: http://www.core.gen.tr/         |
-+--------------------------------------+
++[Core serveR] GNU/Linux Installer ===========================================#
+|                                                                             |
+| Date: 2007-10-22                                                            |
+| Author: evrim@core.gen.tr                                                   |
+| Web: http://www.core.gen.tr/                                                |
+|                                                                             |
++=============================================================================#
 
-+ REQUIREMENTS
-+User Server
- + darcs
- + svn
- + cvs
- + wget
- + tar
- + mv
- + rm 
- + ln
- + find
- + chmod
- + chown
- + screen
- + su
-+System Server
- + sudo
- + apache2
- + apache2ctl
- + useradd
- + groupadd
- + apxs2
++ INTRODUCTION ===============================================================#
 
-See UBUNTU file or http://www.core.gen.tr/projects/core-server/doc/UBUNTU 
-for specific questions.
+This document will aid you while installing and using [Core-serveR].
 
-+User Installation
++ REQUIREMENTS ===============================================================#
+
+##User Server
+ + darcs - an advanced revision control system, http://darcs.net/
+ + svn - Subversion command line client tool, http://subversion.tigris.org/
+ + cvs - Concurrent Versions System, http://www.nongnu.org/cvs/
+ + wget - The non-interactive network downloader.
+ + tar - The GNU version of the tar archiving utility
+ + mv - move (rename) files
+ + rm - remove files or directories
+ + ln - make links between files
+ + find - search for files in a directory hierarchy
+ + chmod - change the file modes
+ + chown - change the file ownership
+ + screen - screen manager with VT100/ANSI terminal emulation
+ + su - change user ID or become super-user
+
+##System Server
+ + sudo - execute a command as another user
+ + apache2 - Apache Hypertext Transfer Protocol Server
+ + apache2ctl - Apache 2 daemon tool
+ + apxs2 - APache eXtenSion tool
+ + useradd - create a new user or update default new user information
+ + groupadd - create a new group
+
++ SUPPORTED GNU/Linux DISTRIBUTIONS =========================================#
+
+[Core-serveR] currently support several GNU/Linux distributions. The list of
+supported distributions and related installation documentary are as follows:
+
+ + Gentoo - http://www.core.gen.tr/projects/core-server/doc/GENTOO
+ + Ubuntu - http://www.core.gen.tr/projects/core-server/doc/UBUNTU
+ + Pardus - http://www.core.gen.tr/projects/core-server/doc/PARDUS
+
+These documents defines methods that can be used to install and operate the
+server. Copy of those documents can also be found in your server installation
+directory. (ie. "/home/core/core-server/doc/") Please see these documents
+for more informations about your specific distribution.
+
++ INSTALLATION =============================================================#
+
+The following methodology can be used to install the server.
+
+##User Installation
 After you met requirements, do
-  sh ./install.sh ~/core-server/
+  #sh ./install.sh ~/core-server/
 
-This would install core-server to your home 
-directory. 
+This would install core-server to your home directory. 
 
-+System Wise Installation
-After you met requirements, do
-  sh ./install.sh /home/core/core-server/
+##System Wise Installation
+As *root*, after you met requirements,
+ #sh ./install.sh /home/core/core-server/
 
-This would install core-server to a user
-named core's home directory.
+This would install core-server to a user named core's home directory. Note
+that server installation will create a user and a group named "core". This
+used would be used to operate the server. 
+
++ COMMERCIAL SUPPORT =======================================================#
+
+[Core-serveR] is distributed with GNU/GPL2 Public License. For commercial 
+support for your server, please email bilgi@core.gen.tr.

@@ -912,7 +912,7 @@ echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
 ;; chmod g+w /var/www
 ;; chown :apache /etc/apache2/vhosts.d
 ;; chmod g+w /etc/apache2/vhosts.d
-(defvar +sudoers+ "core   ALL= NOPASSWD: /usr/sbin/apache2ctl, /etc/init.d/apache2, /etc/init.d/postfix, /etc/init.d/svscan")
+(defvar +sudoers+ "core   ALL= NOPASSWD: /usr/sbin/apache2ctl, /etc/init.d/apache2, /etc/init.d/postfix, /etc/init.d/svscan, /usr/bin/find, /bin/chmod, /bin/chown")
 (defmethod write-templates ((self server-layout))
   (write-template-sexp (start.lisp self) (layout.start.lisp self))
   (write-template-sexp (end.lisp self) (layout.end.lisp self))
