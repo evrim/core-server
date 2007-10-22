@@ -84,7 +84,7 @@
   `(progn
      (in-package :asdf)
      
-     (defsystem ,(package-keyword self)
+     (asdf::defsystem ,(package-keyword self)
        :description "Core Template Application"
        :version ".1"
        :author ,(web-application.admin-email self)
@@ -106,13 +106,13 @@
        :depends-on ,(serializable-web-application.depends-on self)
        :serial t)
      
-     (defsystem ,(package-test-keyword self)
+     (asdf::defsystem ,(package-test-keyword self)
        :components ((:module :t
 			     :components
 			     ((:file "packages"))))
        :depends-on (,(package-keyword self) :core-server :FiveAM))
 
-     (defmethod perform ((op asdf:test-op) (system (eql (find-system ,(package-keyword self)))))
+     (defmethod perform ((op asdf:test-op) (system (eql (asdf::find-system ,(package-keyword self)))))
        (asdf:oos 'asdf:load-op ,(package-test-keyword self))
        (funcall (intern (string :run!) (string :it.bese.FiveAM)) ,(package-keyword self)))))
 
