@@ -625,7 +625,19 @@
      (in-package :cl-user)
      (require :sb-posix)
      (require :asdf)
-     (pushnew ,(layout.systems self) asdf:*central-registry* :test #'equal)     
+     (pushnew ,(layout.systems self) asdf:*central-registry* :test #'equal)
+
+     (flet ((push-all (systems-dir)
+             (dolist (dir-candidate
+                       (directory (concatenate 'string (namestring systems-dir) "*/")))
+               ;; skip dirs starting with a _
+               (let ((name (car (last (pathname-directory dir-candidate)))))
+                 (unless (equal #\_ (elt name 0))
+                   (pushnew dir-candidate asdf:*central-registry* :test 'equal))))))
+      ;; add projects
+	   (push-all ,(merge-pathnames (layout.projects self) (layout.root self))))
+
+
      (asdf:oos 'asdf:load-op :asdf-binary-locations)
      (setf (symbol-value (find-symbol "*CENTRALIZE-LISP-BINARIES*" (find-package 'asdf)))
 	   t)

@@ -161,6 +161,7 @@
 	 :www-roots (list *wwwroot* *ucw-tal-root*)
 	 :directory *db-location*
 	 :db-auto-start t
+	 :persistent t
 	 :model-class ',(model-class self)
 	 :fqdn ,(web-application.fqdn self)
 	 :admin-email ,(web-application.admin-email self)
