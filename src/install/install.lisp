@@ -922,7 +922,7 @@ echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
     (format s "
         <LocationMatch \"\\.core$\">
                 LispServer  127.0.0.1 3001 \"core-server\"
-                SetHandler core-server
+                SetHandler lisp-handler
         </LocationMatch>"))
   (with-current-directory #P"/etc/apache2/mods-enabled/"
     (mapcar #'(lambda (atom)
@@ -943,7 +943,7 @@ echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
 <IfModule mod_lisp2.c>
         <LocationMatch \"\\.core$\">
                 LispServer  127.0.0.1 3001 \"core-server\"
-                SetHandler core-server
+                SetHandler lisp-handler
         </LocationMatch>
 </IfModule>
 ")
