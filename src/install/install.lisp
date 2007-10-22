@@ -808,6 +808,7 @@ TARBALL=\"core-server-installer-`date +\"%Y-%m-%d\"`.tar.gz\"
 $MKDIR -p $DIR/core-server-installer;
 cd $DIR;
 $CP $CORESERVER_HOME/src/install/* core-server-installer;
+$CP $CORESERVER_HOME/doc/README core-server-installer;
 $TAR zcf $TARBALL *
 mv $TARBALL /tmp/
 echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
