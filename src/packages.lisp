@@ -1,7 +1,9 @@
 (in-package :cl-user)
+(defpackage :tr.gen.core.install)
 (defpackage :tr.gen.core.server
   (:nicknames :core-server)
-  (:use :common-lisp :iterate :cl-prevalence :yaclml :arnesi :ucw :sb-bsd-sockets :bordeaux-threads)
+  (:use :common-lisp :iterate :cl-prevalence :yaclml :arnesi
+	:ucw :sb-bsd-sockets :bordeaux-threads :tr.gen.core.install)
   (:shadowing-import-from #:ucw #:start)
   (:shadowing-import-from #:swank #:send #:receive #:accept-connection)
   (:shadowing-import-from #:arnesi #:name #:body #:self)
@@ -59,23 +61,23 @@
    #:quoted-printable!
    #:base64?
    #:base64!
-   ;;;; header symbol
+;;;; header symbol
    #:quoted-printable
    ;; rfc 2046
-   ;;;; classes and methods
+;;;; classes and methods
    #:mime
    #:mime.headers
    #:top-level-media
    #:mime.data
    #:composite-level-media
    #:mime.children
-   ;;;; utilities
+;;;; utilities
    #:mimes?
    #:make-top-level-media
    #:make-composite-level-media
    #:mime-search
    #:mime.header
-   ;;;; header symbols
+;;;; header symbols
    #:content-type
    ;; rfc 2388
    #:rfc2388-mimes?
@@ -111,7 +113,7 @@
    #:http-request.entity-headers
    #:http-response.headers
    #:http-response.status-code
-   ;;; helpers
+;;; helpers
    ;; request
    #:http-accept?
    #:http-accept-charset?
@@ -413,4 +415,6 @@
    #:core-search
    #:string-search
    #:integer-search
+   ;; The server itself
+   *server*
    ))

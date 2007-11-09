@@ -38,7 +38,7 @@
          `(setq ,var (read-stream ,stream)))))
 
 ;;;-----------------------------------------------------------------------------
-;;; Type Definitions
+;;; Type Definitions - Hackish macros since CL doesn't have Mr. Curry.
 ;;;-----------------------------------------------------------------------------
 (defmacro defatom (name args &rest body)
   "Match definition macro that provides a common lexical environment for matchers."

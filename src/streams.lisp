@@ -67,6 +67,9 @@
 (defgeneric close-stream (core-stream)
   (:documentation "close stream, clear buffers"))
 
+(defgeneric return-stream (core-stream)
+  (:documentation "stagnate data out of the stream"))
+
 (defgeneric core-streamp (core-stream)
   (:method ((stream core-stream)) t)
   (:method ((stream t)) nil))
@@ -112,7 +115,7 @@
 (defclass core-vector-io-stream (%core-vector-stream)
   ())
 
-(defmethod stream-data ((self core-vector-io-stream))
+(defmethod return-stream ((self core-vector-io-stream))  
   (s-v '%octets))
 
 (defmethod peek-stream ((self core-vector-io-stream))
@@ -129,6 +132,8 @@
 	  (push-atom c (s-v '%buffer)))
       (incf (the fixnum (s-v '%index)))
       c)))
+
+(defmethod write-stream ((self core-vector-io-stream) (c (eql nil))) nil)
 
 (defmethod write-stream ((self core-vector-io-stream) atom)
   (if (transactionalp self)
@@ -187,7 +192,7 @@
 			:element-type '(unsigned-byte 8)
 			:displaced-to octets)))))
 
-(defmethod stream-data ((self core-string-io-stream))
+(defmethod return-stream ((self core-string-io-stream))
   (octets-to-string (s-v '%octets) (s-v 'external-format)))
 
 ;;;-----------------------------------------------------------------------------
@@ -245,6 +250,8 @@
 	    (push-atom read (s-v '%read-buffer))
 	    (incf (the fixnum (s-v '%read-index))))
 	  read))))
+
+(defmethod write-stream ((self core-fd-io-stream) (c (eql nil))) nil)
 
 (defmethod write-stream ((self core-fd-io-stream) atom)
   (if (transactionalp self)
@@ -312,7 +319,7 @@
    (%index :initform 0 :type fixnum)	;; current index   
    (%buffer :initform '())))
 
-(defmethod stream-data ((self core-list-io-stream))
+(defmethod return-stream ((self core-list-io-stream))
   (s-v '%list))
 
 (defmethod close-stream ((self core-list-io-stream))
@@ -332,6 +339,8 @@
 	  (push c (s-v '%buffer)))
       (incf (the fixnum (s-v '%index)))
       c)))
+
+(defmethod write-stream ((self core-list-io-stream) (c (eql nil))) nil)
 
 (defmethod write-stream ((self core-list-io-stream) atom)
   (if (transactionalp self)
@@ -408,7 +417,7 @@
 	    :initial-value nil)
     o))
 
-(defmethod stream-data ((self core-object-io-stream))
+(defmethod return-stream ((self core-object-io-stream))
   (list-to-object (s-v '%list) (s-v '%clazz)))
 
 (defun make-core-stream (target &rest args)
@@ -483,8 +492,8 @@
   (close-stream (s-v '%output))
   (close-stream (s-v '%input)))
 
-(defmethod stream-data ((self pipe-stream))
-  (stream-data (s-v '%output)))
+(defmethod return-stream ((self pipe-stream))
+  (return-stream (s-v '%output)))
 
 (defun make-pipe-stream (input output)
   (make-instance 'pipe-stream :input input :output output))

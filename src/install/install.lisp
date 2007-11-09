@@ -11,7 +11,19 @@
 (require :sb-posix)
 (defpackage :tr.gen.core.install
   (:use :cl)
-  (:nicknames :core-server.install))
+  (:nicknames :core-server.install)
+  (:export
+   #:command
+   #:shell
+;   #:darcs
+   #:svn
+   #:tarball
+   #:defcommand
+   #:find-file
+   #:ln
+   #:chmod
+   #:cvs
+   #:useradd))
 
 (in-package #:tr.gen.core.install)
 ;; Add distribution based features
@@ -242,6 +254,12 @@
 	  (run self)))
       (exit-code self)))
 
+(defmethod wait-process ((self shell))
+  (progn
+    (sb-ext:process-wait (process self))
+    (setf (exit-code self) (sb-ext::process-exit-code (process self)))
+    (check-exit-code self)))
+
 (defmethod run ((self shell))
   (flet ((filter-arg (arg)
 	   (cond
@@ -259,10 +277,7 @@
 			      :output (if (s-v 'verbose) t :stream)
 			      :error :output))
     (if (wait self)
-	(progn
-	  (sb-ext:process-wait (process self))
-	  (setf (exit-code self) (sb-ext::process-exit-code (process self)))
-	  (check-exit-code self))
+	(wait-process self) 
 	(values))))
 
 (defcommand which (shell)

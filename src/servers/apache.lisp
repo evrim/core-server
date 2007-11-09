@@ -4,9 +4,9 @@
   (merge-pathnames (make-pathname :name (web-application.fqdn self) :type *apache-default-config-extenstion*)
 		   (apache-server.vhosts.d-pathname server)))
 
-(defmethod apache-web-application.docroot-pathname ((self apache-web-application) (server apache-server))
+(defmethod apache-web-application.docroot-pathname ((self apache-web-application) &optional (server nil))
   (merge-pathnames (make-pathname :directory (list :relative (web-application.fqdn self)))
-		   (apache-server.htdocs-pathname server)))
+		   (apache-server.htdocs-pathname (or server (application.server self)))))
 
 #+pardus
 (defmethod comar ((self apache-server) command)  
