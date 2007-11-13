@@ -7,7 +7,10 @@ import System.IO
 import System.Environment
 import System.Console.GetOpt
 import System.Exit
- 
+
+---
+--- Usage: xmltr <id> <input> <output>
+---
 main :: IO ()
 main
     = do
