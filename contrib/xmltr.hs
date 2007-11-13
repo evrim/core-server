@@ -7,10 +7,7 @@ import System.IO
 import System.Environment
 import System.Console.GetOpt
 import System.Exit
-
---
--- Usage: xmltr <id> <input> <output>
---
+ 
 main :: IO ()
 main
     = do
@@ -34,11 +31,11 @@ cmdlineOpts argv
  
 application:: Attributes -> String -> String -> String -> String -> IOSArrow b Int
 application al id src dst text
-    = readDocument (al ++ [(a_parse_html, v_1)]) src
+    = readDocument ([(a_parse_html, v_1)]) src
       >>>
-      processChildren (addContent id text `when` isElem)  -- (1)
+      processTopDown (addContent id text `when` isElem)
       >>>
-      writeDocument (al ++ [(a_output_html, v_1), (a_indent, v_1), (a_output_encoding, utf8), (a_remove_whitespace, v_1)]) dst
+      writeDocument [(a_output_html, v_0), (a_indent, v_1), (a_remove_whitespace, v_1), (a_output_encoding, utf8)] dst
       >>>
       getErrStatus
  
@@ -57,4 +54,4 @@ addContent id text =
             >>> 
             isA (\x -> x == id)
       insertContent
-          = replaceChildren (constA text >>> hread)
+          = replaceChildren (readString [(a_encoding, utf8), (a_parse_html, v_1), (a_validate, v_0)] text >>> getChildren)
