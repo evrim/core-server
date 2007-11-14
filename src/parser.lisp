@@ -129,8 +129,8 @@
   
 (eval-when (:compile-toplevel :load-toplevel :execute)  
   (defun compile-parser-grammar (stream-var form
-				      &optional (match-func 'match/stream)
-				      (match-type-func 'match-type/stream))
+				 &optional (match-func 'match/stream)
+				 (match-type-func 'match-type/stream))
     (labels
 	((compile1 (form &optional (continue nil))
 	   (cond
@@ -176,10 +176,10 @@
 		 `(not (do () ((not ,(compile1 `(:and ,@(cdr form)))))))) 
 		((:if)
 		 `(prog1 ,continue
-		     (if ,(cadr form) 
-			 ,(compile1 (caddr form))			 
-			 ,(if (cadddr form)
-			      (compile1 (cadddr form))))))
+		    (if ,(cadr form) 
+			,(compile1 (caddr form))			 
+			,(if (cadddr form)
+			     (compile1 (cadddr form))))))
 		((:cond)
 		 `(prog1 ,continue
 		    (cond
@@ -251,16 +251,20 @@
 		((:current)
 		 `(progn (describe ,stream-var) ,continue))
 		(t
-		 (if (gethash (car form) +parser-rules+)
-		     (if (< (length (cdr form)) 1)
-			 `(,(gethash (car form) +parser-rules+) ,stream-var)
-			 `(multiple-value-setq ,(cdr form) (,(gethash (car form) +parser-rules+) ,stream-var)))
-		     (error "No rule associated with:~A" (car form)))))) 
-	     (t
-	      `(,match-func ,stream-var ,form))))
-	 (compiled-subexprs (form &optional (continue t))
-	   (mapcar #'(lambda (f) (compile1 f continue)) (cdr form))))
-      (compile1 form))))
+		 (if (< (length (cdr form)) 1)
+		     `(,(intern (symbol-name (car form))) ,stream-var)
+		     `(multiple-value-setq ,(cdr form) 
+			(,(intern (symbol-name (car form))) ,stream-var))))))
+;; 		 (if (gethash (car form) +parser-rules+)
+;; 		     (if (< (length (cdr form)) 1)
+;; 			 `(,(gethash (car form) +parser-rules+) ,stream-var)
+;; 			 `(multiple-value-setq ,(cdr form) (,(gethash (car form) +parser-rules+) ,stream-var)))
+;; 		     (error "No rule associated with:~A" (car form))))))
+	   (t
+	    `(,match-func ,stream-var ,form))))
+      (compiled-subexprs (form &optional (continue t))
+			 (mapcar #'(lambda (f) (compile1 f continue)) (cdr form))))
+    (compile1 form))))
 
 ;;;-----------------------------------------------------------------------------
 ;;; Rules
