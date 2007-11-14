@@ -83,6 +83,20 @@ string in BIG string."
 (defmethod make-keyword ((sym symbol))
   (intern (symbol-name sym) :keyword))
 
+(defun escape-parenscript (string)
+  (core-server::return-stream   
+   (let ((input (make-core-stream string))
+	 (output (make-core-stream "")))
+     (do ((peek (read-stream input) (read-stream input)))
+	 ((null peek) output)
+       (cond
+	 ((> peek 127) (core-server::byte! output peek))
+	 ((not (alpha-char-p (code-char peek)))
+	  (progn
+	    (core-server::char! output #\%)
+	    (core-server::hex-value! output peek)))	 	 
+	 (t (core-server::byte! output peek)))))))
+
 #+nil
 (progn
 (defvar +tr-alphabet+

@@ -114,6 +114,7 @@
    #:http-response.headers
    #:http-response.status-code
 ;;; helpers
+   #:escape-parenscript
    ;; request
    #:http-accept?
    #:http-accept-charset?
