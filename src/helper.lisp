@@ -58,6 +58,7 @@
       (decode-universal-time time)
     (declare (ignore tz dst-p))
     (case mode
+      (:short (format nil "~2,'0d/~2,'0d ~2,'0d:~2,'0d" month day hour minute))
       (:long (format nil "~2,'0d ~a ~d ~a, ~2,'0d:~2,'0d:~2,'0d"
 		     day (nth (decf month) (rest (assoc lang +month-names+)))
 		     year (nth day-of-week (rest (assoc lang +day-names+))) hour minute second))
