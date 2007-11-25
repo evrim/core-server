@@ -7,6 +7,7 @@
   (:shadowing-import-from #:ucw #:start)
   (:shadowing-import-from #:swank #:send #:receive #:accept-connection)
   (:shadowing-import-from #:arnesi #:name #:body #:self)
+  (:import-from #:cl-prevalence #:get-directory)
   (:export 
    ;; Threads
    #:thread-mailbox

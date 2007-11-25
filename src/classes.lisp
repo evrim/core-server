@@ -98,13 +98,14 @@
   (:default-initargs :file-extension "sexp"
     :serializer #'cl-prevalence::serialize-sexp
     :deserializer #'cl-prevalence::deserialize-sexp
+    :directory nil
     :name "Guarded Prevalence Database Server"))
 
 (defmethod print-object ((self database-server) stream)
   (print-unreadable-object (self stream :type t :identity t)
     (format stream "Prevalence Database is~A running on: \"~A\"."
 	    (if (status self) "" " *not*")
-	    (cl-prevalence::get-directory self))))
+	    (get-directory self))))
 
 (defclass standard-model-class ()
   ((creation-date :accessor standard-model-class.creation-date :initarg :creation-date :initform nil)))

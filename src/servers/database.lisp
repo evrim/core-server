@@ -1,7 +1,7 @@
 (in-package :tr.gen.core.server)
 
 (defun start-prevalence-system (system)
-  (with-slots (directory) system
+  (let ((directory (get-directory system)))    
     (ensure-directories-exist directory)
     (setf (cl-prevalence::get-snapshot system)
 	  (merge-pathnames (make-pathname :name (cl-prevalence::get-snapshot-filename system) 
