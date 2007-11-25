@@ -355,6 +355,20 @@
 	       (:collect c value))
 	 (:return (octets-to-string value :utf-8)))))
 
+(defrule split-by-line (c (acc (make-accumulator)) lst)
+  (:zom (:or (:and #\Newline (:do (push acc lst)
+				  (setq acc (make-accumulator))))
+	     (:and (:type octet? c) (:collect c acc))))
+  (:return lst))
+
+(defrule split-by-space (c (acc (make-accumulator)) lst)
+  (:lwsp?)
+  (:zom (:or (:and #\Space (:do (push acc lst)
+				(setq acc (make-accumulator))))
+	     (:and (:type octet? c) (:collect c acc))))
+  (:do (if (> (length acc) 0 ) (push acc lst)))
+  (:return (reverse lst)))
+
 (defun byte! (stream byte)
   (write-stream stream byte))
 
