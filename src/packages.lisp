@@ -3,13 +3,11 @@
 (defpackage :tr.gen.core.server
   (:nicknames :core-server)
   (:use :common-lisp :cl-prevalence :yaclml :arnesi
-	:ucw :sb-bsd-sockets :tr.gen.core.install)
-  (:shadowing-import-from #:ucw #:start #:response #:request #:context #:make-new-session)
+	:sb-bsd-sockets :tr.gen.core.install)
   (:shadowing-import-from #:swank #:send #:receive #:accept-connection)
   (:shadowing-import-from #:arnesi #:name #:body #:self)
   (:import-from #:cl-prevalence #:get-directory)
   (:import-from #:swank #:make-lock)
-  (:import-from #:log5 #:defcategory #:log-for #:stream-sender #:start-sender)
   (:export 
    ;; Threads
    #:thread-mailbox
