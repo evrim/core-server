@@ -72,7 +72,7 @@
                          (:module :services
                                   :components
                                   ((:file "whois"))))))
-  :depends-on (:cl-prevalence :sb-bsd-sockets)
+  :depends-on (:cl-prevalence :sb-bsd-sockets :yaclml :arnesi)
   :serial t)
 
 (defmethod perform :after ((o t) (c (eql (find-system :core-server))))
