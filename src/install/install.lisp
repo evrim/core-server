@@ -659,10 +659,9 @@
      ;;     (setf asdf:*source-to-target-mappings* '((#p"/opt/sbcl/lib/sbcl/" nil)))
      ;;     /usr/share/sbcl-source/-> debian     
      (defun build-core-server ()
-       (require :ucw+)
+       (require :swank)
        (require :core-server)
        (require :core)
-       (require :swank)
        ;;       (require :dojo-stub)
        (values))
 
@@ -737,18 +736,6 @@ runX () {
   `lookup $1`
 }
 
-# Indefinitely try to run as core.
-# Recursive.
-CORE=`id core 2&> /dev/null`
-CORESERVER_HOME=\"~A\"
-
-# if the current user is NOT core and the core id IS present
-if [ ! $(runX whoami) = \"core\" ] && [ -n \"$CORE\"]; then
-        $(lookup chmod) g+rw $(runX tty)
-        $(lookup su) core -c \"$0 $@\"
-        exit $?
-fi
-
 unset CORESERVER_HOME
 CORESERVER_HOME=\"~A\"
 MEMSIZE=\"1024\"
@@ -793,8 +780,7 @@ esac
 cd $OLDPWD
 exit 0
 "
-	(layout.root self) (layout.root self)
-	(layout.start.lisp self) (layout.root self)))
+	(layout.root self) (layout.start.lisp self) (layout.root self)))
 
 (defmethod emacs.sh ((self layout))
   (format nil "
@@ -923,6 +909,98 @@ echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
 		 :root (if (pathnamep root)
 			   root
 			   (make-pathname :directory root))))
+
+(defmethod core-server.sh ((self server-layout))
+  (format nil "#!/bin/bash
+help ()
+{
+    cat <<EOF
+ Usage: $0 command
+
+Commands:
+
+  start              Start core server
+  stop               Shutdown core server
+  status             Query for existence
+  attach             Attach to screen instance
+
+EOF
+}
+
+# lookup utility using which, exit if not found
+lookup () {
+  local ret=`which $1`
+  if [ -z $ret ]; then
+      echo \"I couldn't find the utility: $1. Exiting...\"
+      exit 1
+  else
+      echo $ret
+  fi
+}
+
+# run utility using lookup
+runX () { 
+  `lookup $1`
+}
+
+# Indefinitely try to run as core.
+# Recursive.
+CORE=`id core 2&> /dev/null`
+CORESERVER_HOME=\"~A\"
+
+# if the current user is NOT core and the core id IS present
+if [ ! $(runX whoami) = \"core\" ] && [ -n \"$CORE\"]; then
+        $(lookup chmod) g+rw $(runX tty)
+        $(lookup su) core -c \"$0 $@\"
+        exit $?
+fi
+
+unset CORESERVER_HOME
+CORESERVER_HOME=\"~A\"
+MEMSIZE=\"1024\"
+CONFIGFILE=\"~A\"
+PID=\"~Avar/core-server.pid\"
+
+## go to home directory
+OLDPWD=`pwd`
+cd ~~
+case \"$1\" in
+    start)
+        echo -n \"[ Core-serveR ] starting \"        
+        export LANG=tr_TR.UTF-8 LC_ALL=tr_TR.UTF-8
+        export CORESERVER_HOME=\"$CORESERVER_HOME\"
+        sleep 1
+        echo \"now!\"
+        $(lookup screen) -c /dev/null -dmS core-server \\
+        $(lookup sbcl) --dynamic-space-size $MEMSIZE \\
+        --load $CONFIGFILE
+        ;;
+    stop)
+        echo \"[ Core-serveR ] stopping \"
+        kill `cat $PID`
+        ;;
+    attach)
+        screen -x core-server
+        ;;
+    status)
+        PP=`cat $PID`
+        if [ -z \"`/bin/cat /proc/$PP/status 2&> /dev/null`\" ]; then
+            echo \"[ Core-server ] *not* running\"
+            exit 1
+        else 
+            echo \"[ Core-server ] running\"
+            exit 0 
+        fi
+        ;;
+    *)
+        help
+        ;;
+esac
+cd $OLDPWD
+exit 0
+"
+	(layout.root self) (layout.root self)
+	(layout.start.lisp self) (layout.root self)))
 
 ;; chown :apache /var/www
 ;; chmod g+w /var/www
