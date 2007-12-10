@@ -678,8 +678,8 @@
 
      (defun load-core-server ()
        (defclass core-server ,(if (eq (layout.server-type self) :mod-lisp)
-				  `(apache-server ucw-server)
-				  `(ucw-server))
+				  `(apache-server http-server)
+				  `(http-server))
 	 ()
 	 (:default-initargs :name "Core-serveR"
 	   :backend (funcall (find-symbol "MAKE-BACKEND" (find-package 'ucw))
