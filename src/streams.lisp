@@ -544,6 +544,128 @@
   (make-instance 'core-transformer-stream :input input :output output
 		 :decoder decoder))
 
+(defclass core-cps-stream (core-stream)
+  ((%k :initform nil)
+   (%continuations :initform '())))
+
+(defmethod copy-core-stream ((self core-cps-stream))
+  (let ((s (make-instance 'core-cps-stream)))
+    (setf (slot-value s '%k) (s-v '%k)
+	  (slot-value s '%continuations) (copy-list (s-v '%continuations)))
+    s))
+
+(defmethod transactionalp ((self core-cps-stream))
+  (not (null (s-v '%k))))
+
+(defmethod current-k ((self core-cps-stream))
+  (s-v '%k))
+
+(defmethod/cc checkpoint-stream/cc ((self core-cps-stream) k)
+  (if (transactionalp self)
+      (push (s-v '%k) (s-v '%continuations)))
+
+  (setf (s-v '%k) (lambda (&optional values)
+		    (setf (s-v '%k) (pop (s-v '%continuations)))
+		    (kall k values)))
+  (format t "checkpoint:~D~%" (length (s-v '%continuations)))
+  (length (s-v '%continuations)))
+
+(defmethod/cc rewind-stream/cc ((self core-cps-stream) &optional values)
+  (if (not (transactionalp self))
+      -1
+      (apply (s-v '%k) (ensure-list values))))
+
+;; (defmethod/cc rewind-stream/cc ((self core-cps-stream) &optional values)
+;;   (break "rewinding~%")
+;;   (setf *konts* (s-v '%continuations))
+;;   (if (not (transactionalp self))
+;;       -1
+;;       (progn
+;; 	(format t "rewind:~D~%" (1- (length (s-v '%continuations))))
+;; 	(acond	 
+;; 	 ((pop (s-v '%continuations))
+;;  	  (let ((current (s-v '%k)))
+;;  	    (setf (s-v '%k) it)
+;; 	    (format t "kalling:~A, k is :~A" current (s-v '%k))
+;;  	    (apply #'kall current values)))
+;; 	 ((s-v '%k)
+;; 	  (setf (s-v '%k) nil)
+;; 	  (format t "K is :~A" (s-v '%k))
+;; 	  (apply #'kall it values))
+;; 	 (t
+;; 	  (break "y00"))
+;; 	 ))
+;;       ))
+
+(defun escape (&rest values)
+  (funcall (apply (arnesi::toplevel-k) values))
+  (break "You should not see this, call/cc must be escaped already."))
+
+(defmethod/cc commit-stream/cc ((self core-cps-stream) &optional value)
+  (describe self)
+  (if (not (transactionalp self))
+      -1
+      (progn
+	(format t "commit:~D~%" (length (s-v '%continuations)))
+	;;	(setf (s-v '%k) (pop (s-v '%continuations)))
+	(escape value))))
+
+(defclass core-cps-io-stream (core-cps-stream core-vector-io-stream)
+  ())
+
+;; (defmethod/cc checkpoint-stream/cc ((self core-cps-stream))
+;;   (let/cc k
+;;     (if (transactionalp self)
+;; 	(push k (s-v '%continuations)))
+    
+;;     (setf (s-v '%k) k)
+;;     (kall k (checkpoint-stream self))))
+
+;; (defmethod/cc rewind-stream/cc ((self core-cps-stream))
+;;   (if (not (transactionalp self))
+;;       -1
+;;       (progn
+;; 	(acond
+;; 	 ((pop (s-v '%continuations))
+;; 	  (setf (s-v '%k) it)	  
+;; 	  (kall it (rewind-stream self)))
+;; 	 ((s-v '%k)
+;; 	  (setf (s-v '%k) nil)	  
+;; 	  (kall it (rewind-stream self)))))))
+
+;; (defmethod/cc commit-stream/cc ((self core-cps-stream))
+;;   (if (not (transactionalp self))
+;;       -1
+;;       (prog1 (commit-stream self)
+;; 	(setf (s-v '%k) (pop (s-v '%continuations))))))
+
+(defclass core-cps-string-io-stream (core-string-io-stream core-cps-stream)
+  ())
+
+(defclass core-cps-fd-io-stream (core-cps-stream core-fd-io-stream)
+  ())
+
+(defclass core-cps-file-io-stream (core-cps-stream core-file-io-stream)
+  ())
+
+(defclass core-cps-list-io-stream (core-cps-stream core-list-io-stream)
+  ())
+
+(defclass core-cps-object-io-stream (core-cps-stream core-object-io-stream)
+  ())
+
+(defun make-core-cps-stream (target &rest args)
+  (apply #'make-instance
+	 (append
+	  (etypecase target
+	    (string (list 'core-cps-string-io-stream :string target))
+	    (pathname (list 'core-cps-file-io-stream :file target))
+	    (array (list 'core-cps-vector-io-stream :octets target))
+	    (sb-sys::fd-stream (list 'core-cps-fd-io-stream :stream target))
+	    (list (list 'core-cps-list-io-stream :list target))
+	    (standard-object (list 'core-cps-object-io-stream :object target)))
+	  args)))
+
 (defvar +stream-funs+ '(peek-stream read-stream write-stream checkpoint-stream
 		       rewind-stream commit-stream close-stream current-checkpoint))
 

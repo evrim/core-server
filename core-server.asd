@@ -35,12 +35,29 @@
                          (:file "application")
                          (:file "server")
                          (:file "search")
+                         (:module :rfc
+                                  :serial t
+                                  :components
+                                  ((:file "2109") ;;cookie
+                                   (:file "2396") ;;uri
+                                   (:file "822")  ;;text messages
+                                   (:file "2617") ;;http auth
+                                   (:file "2616") ;;http
+                                   (:file "2045") ;;mime-part1
+                                   (:file "2046") ;;mime-part2
+                                   (:file "2388") ;;multpart/form-data
+                                   )) ;;http
                          (:module :applications
                                   :components
                                   ((:file "ucw")
                                    (:file "serializable-application")
                                    (:file "darcs")
-                                   (:file "git")))
+                                   (:file "git")
+                                   (:file "http")))
+                         (:module :peers
+                                  :components
+                                  ((:file "peer")
+                                   (:file "http")))
                          (:module :servers
                                   :components
                                   ((:file "database")
@@ -51,37 +68,11 @@
                                    (:file "core")
                                    (:file "ticket")
                                    (:file "socket")
-                                   ;; (:module :web
-;;                                             :components
-;;                                             ((:module :backend
-;;                                                        :components
-;;                                                        ((:file "accept")
-;;                                                         (:file "common")
-;;                                                         (:file "httpd")
-;;                                                         (:file "multithread-httpd")
-;;                                                         (:file "mod-lisp")))))
-                                   ))
-                         (:module :rfc
-                                  :serial t
-                                  :components 
-                                  ((:file "2109") ;;cookie
-                                   (:file "2396") ;;uri
-                                   (:file "822")  ;;text messages
-                                   (:file "2617") ;;http auth
-                                   (:file "2616") ;;http
-                                   (:file "2045") ;;mime-part1
-                                   (:file "2046") ;;mime-part2
-                                   (:file "2388") ;;multpart/form-data
-                                   )) ;;http
-                         (:module :peers
-                                  :components
-                                  ((:file "peer")
-                                   (:file "http")
-                                   ))
+                                   (:file "http")))
                          (:module :services
                                   :components
                                   ((:file "whois"))))))
-  :depends-on (:bordeaux-threads :iterate :cl-prevalence :ucw :sb-bsd-sockets)
+  :depends-on (:cl-prevalence :sb-bsd-sockets :log5)
   :serial t)
 
 (defmethod perform :after ((o t) (c (eql (find-system :core-server))))
@@ -116,7 +107,7 @@
                                      ;; (:file "ucw")
                                      ;; (:file "core")
                                      )))
-  :depends-on (:bordeaux-threads :core-server :rt))
+  :depends-on (:core-server :rt))
 
 ;; (defmethod perform ((op asdf:test-op) (system (eql (find-system :core-server))))
 ;;   (asdf:oos 'asdf:load-op :core-server.test)

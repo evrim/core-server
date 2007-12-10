@@ -48,3 +48,31 @@
 		  (equal (read-stream s) #.(char-code #\B))
 		  (equal (core-server::char! s #\X) #.(char-code #\X))))))
   t)
+
+;; (deftest test-cps-stream  
+;;     (with-call/cc
+;;       (let ((s (core-server::make-core-cps-stream ""))
+;; 	    (a 0))
+;; 	(checkpoint-stream/cc s)
+;; 	(if (zerop a)
+;; 	    (progn (setq a 1) (rewind-stream/cc s))
+;; 	    (progn (core-server::string! s "test1") (commit-stream/cc s)))
+;; 	(core-server::return-stream s)))
+;;   "test1")
+(defun test-cps-stream ()
+  (let* ((ret1 123)
+	 (ret0 321)
+	 (s (with-call/cc
+	     (let ((s (make-instance 'core-cps-stream)))
+	       (if (not (eq ret0 (let/cc k
+				   (checkpoint-stream/cc s k)			 
+				   (if (not (eq ret1 (let/cc k
+						       (checkpoint-stream/cc s k)
+						       (describe s)
+						       (commit-stream/cc s s))))
+				       (error "failed cps stream")
+				       (commit-stream/cc s s)))))
+		   (error "failed cps stream")
+		   s)))))
+    (describe (with-call/cc (rewind-stream/cc s ret1)))
+    (describe (with-call/cc (rewind-stream/cc s ret0)))))

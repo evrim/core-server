@@ -139,7 +139,7 @@
        (:and (:seq "no-transform") (:return (cons 'no-transform nil)))
        (:and (:seq "only-if-cached") (:return (cons 'only-if-cached nil)))))
 
-(defvar +htt-cache-response-directives+
+(defvar +http-cache-response-directives+
   '(public private no-cache no-store no-transform must-revalidate
     proxy-revalidate max-age s-maxage))
 
@@ -546,8 +546,7 @@
   (:zom (:and (:http-media-range? type subtype params)
 	      (:do (push (list type subtype params) accept))
 	      (:zom (:not #\,) (:type http-header-name?))) 
-	(:zom (:type space?))
-	(:lwsp?))
+	(:zom (:type space?)))
   (:return accept))
 
 ;; Http Language
@@ -827,27 +826,31 @@
 ;; => ((BROWSER . SEAMONKEY) (MOZ-VER (5 0)) (OS . "Linux i686") (REVISION (1 8 1 2)) (VERSION (1 1 1)))
 ;; oldmoz: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.7.13) Gecko/20060522
 ;; => ((BROWSER . MOZILLA) (MOZ-VER (5 0)) (OS . "Linux i686") (REVISION (1 7 13)))
+;; iceweasel: Mozilla/5.0 (X11; U; Linux x86_64; en-US; rv:1.8.1.8) Gecko/20071004 Iceweasel/2.0.0.8 (Debian-2.0.0.8-1)
+;; =>
 (defrule gecko-user-agent? (moz-ver version os c browser revision)
   (:seq "Mozilla/") (:version? moz-ver) (:lwsp?) #\(
   (:checkpoint
-   (:user-agent-token?) (:user-agent-token?) 
-   (:do (setq os (make-accumulator))) (:user-agent-token? os)
-   (:user-agent-token?) (:lwsp?) (:seq "rv:") (:version? revision)
-   #\) (:lwsp?) (:zom (:type http-header-name?))
-   (:or (:checkpoint
-	 (:lwsp?)
-	 (:do (setq browser (make-accumulator)))
-	 (:zom (:not #\/) (:type visible-char? c) (:collect c browser))
-	 (:version? version)
-	 (:return (list (cons 'browser (intern (string-upcase browser)))
-			(list 'moz-ver moz-ver)
-			(cons 'os os)
-			(list 'revision revision)
-			(list 'version version))))	
-	(:return (list (cons 'browser 'mozilla)
-		       (list 'moz-ver moz-ver)
-		       (cons 'os os)
-		       (list 'revision revision))))))
+    (:user-agent-token?) (:user-agent-token?) 
+    (:do (setq os (make-accumulator))) (:user-agent-token? os)
+    (:user-agent-token?) (:lwsp?) (:seq "rv:") (:version? revision)
+    #\) (:lwsp?) (:zom (:type http-header-name?))
+    (:or (:checkpoint
+	   (:lwsp?)
+	   (:do (setq browser (make-accumulator)))
+	   (:zom (:not #\/) (:type visible-char? c) (:collect c browser))
+	   (:version? version)
+	   (:zom (:type http-header-value?)) ;; eat rest
+	   (:return (list (cons 'browser (intern (string-upcase browser)))
+			  (list 'moz-ver moz-ver)
+			  (cons 'os os)
+			  (list 'revision revision)
+			  (list 'version version))))	
+	 (:and (:zom (:type http-header-value?)) ;; eat rest
+	  (:return (list (cons 'browser 'mozilla)
+			 (list 'moz-ver moz-ver)
+			 (cons 'os os)
+			 (list 'revision revision)))))))
 
 ;; opera:  Opera/9.21 (X11; Linux i686; U; en)
 ;; => ((BROWSER . OPERA) (VERSION (9 21)) (OS . "Linux i686"))
@@ -1068,7 +1071,8 @@
 	       (list type subtype))))
 
 ;; http-content-type! :: (string string . string)
-;; ex: '("text" "html" . (("charset" . "UTF-8") ...))
+;; ex: '("text" "html" ("charset" . "UTF-8") ...)
+;; or: '("text" "javascript" ("charset" "UTF-8") ..)
 (defun http-content-type! (stream typesubtype-charset-cons)
   (string! stream (car typesubtype-charset-cons))
   (char! stream #\/)
@@ -1077,7 +1081,9 @@
 	      (char! stream #\;)
 	      (string! stream (car item))
 	      (char! stream #\=)
-	      (string! stream (cdr item)))
+	      (if (listp (cdr item))
+		  (string! stream (cadr item))
+		  (string! stream (cdr item))))
 	  (cddr typesubtype-charset-cons) :initial-value nil))
 
 ;; 14.21 Expires
@@ -1184,9 +1190,10 @@
 ;;;-----------------------------------------------------------------------------
 (defclass http-request (http-message)
   ((method :accessor http-request.method)
-   (uri :accessor http-request.uri)
+   (uri :accessor http-request.uri :initarg :uri)
    (headers :accessor http-request.headers :initform '())
-   (entity-headers :accessor http-request.entity-headers :initform '())))
+   (entity-headers :accessor http-request.entity-headers :initform '())
+   (stream :accessor http-request.stream :initform nil :initarg :stream)))
 
 (defrule http-request-first-line? (method uri proto)
   (:http-method? method) (:lwsp?) (:uri? uri) (:lwsp?)
@@ -1214,19 +1221,17 @@
 (defrule rfc2616-request-headers? (c method uri version key value header gh rh eh uh)
   (:http-request-first-line? method uri version)
   (:lwsp?)
-  (:zom (:or
-	 (:and (:http-general-header? header) (:do (push header gh)))		    
-	 (:and (:http-request-header? header) (:do (push header rh)))
-	 (:and (:http-entity-header? header) (:do (push header eh)))
-	 (:and (:do (setq key (make-accumulator)))
-	       (:type http-header-name? c) (:collect c key)
-	       (:zom (:type http-header-name? c) (:collect c key))
-	       (:or (:and #\: (:zom (:type space?)))
-		    (:and (:zom (:type space?)) (:crlf?)))
-	       (:do (setq value (make-accumulator :byte)))
-	       (:zom (:type http-header-value? c) (:collect c value))
-	       (:do (push (cons key value) uh))))
-	(:zom (:type space?))
+  (:zom (:or (:and (:http-general-header? header) (:do (push header gh)))		    
+	     (:and (:http-request-header? header) (:do (push header rh)))
+	     (:and (:http-entity-header? header) (:do (push header eh)))
+	     (:and (:do (setq key (make-accumulator)))
+		   (:type http-header-name? c) (:collect c key)
+		   (:zom (:type http-header-name? c) (:collect c key))
+		   (:or (:and #\: (:zom (:type space?)))
+			(:and (:zom (:type space?)) (:crlf?)))
+		   (:do (setq value (make-accumulator :byte)))
+		   (:zom (:type http-header-value? c) (:collect c value))
+		   (:do (push (cons key value) uh)))) 	
 	(:crlf?)
 	(:checkpoint
 	 (:crlf?)
@@ -1234,55 +1239,48 @@
 			  (nreverse rh) (nreverse eh) (nreverse uh))))))
 
 (defrule mod-lisp-request-headers? (c header mlh gh rh eh key value uh)
-  (:and (:mod-lisp-header? header) (:do (push header mlh)) (:crlf?)
-	     (:zom (:or (:and (:http-general-header? header) (:do (push header gh)))
-			(:and (:http-request-header? header) (:do (push header rh)))
-			(:and (:http-entity-header? header) (:do (push header eh)))
-			(:and (:mod-lisp-header? header) (:do (push header mlh)))
-			(:and (:do (setq key (make-accumulator)))
-			      (:type http-header-name? c) (:collect c key)
-			      (:zom (:type http-header-name? c) (:collect c key))
-			      (:or (:and #\: (:zom (:type space?)))
-				   (:crlf?))
-			      (:do (setq value (make-accumulator :byte)))
-			      (:zom (:type http-header-value? c) (:collect c value))
-			      (:do (push (cons key value) uh))))
-		   (:crlf?)
-		   (:checkpoint
-		    (:seq "end")
-		    (:return (values  (cadr (assoc 'method mlh)) ;;method
-				      (cadr (assoc 'url mlh)) ;; uri
-				      (cadadr (assoc 'server-protocol mlh)) ;; version
-				      (nreverse gh) (nreverse rh)
-				      (nreverse eh) (nreverse uh)
-				      (nreverse mlh)))))))
+  (:mod-lisp-header? header) (:do (push header mlh)) (:crlf?)
+  (:zom (:or (:and (:http-general-header? header) (:do (push header gh)))
+	     (:and (:http-request-header? header) (:do (push header rh)))
+	     (:and (:http-entity-header? header) (:do (push header eh)))
+	     (:and (:mod-lisp-header? header) (:do (push header mlh)))
+	     (:and (:do (setq key (make-accumulator)))
+		   (:type http-header-name? c) (:collect c key)
+		   (:zom (:type http-header-name? c) (:collect c key))
+		   (:or (:and #\: (:zom (:type space?)))
+			(:crlf?))
+		   (:do (setq value (make-accumulator :byte)))
+		   (:zom (:type http-header-value? c) (:collect c value))
+		   (:do (push (cons key value) uh))))
+	(:crlf?)
+	(:checkpoint
+	  (:seq "end")
+	  (:return (values  (cadr (assoc 'method mlh))	      ;;method
+			    (cadr (assoc 'url mlh))	      ;; uri
+			    (cadadr (assoc 'server-protocol mlh)) ;; version
+			    (nreverse gh) (nreverse rh)
+			    (nreverse eh) (nreverse uh)
+			    (nreverse mlh))))))
 
 (defrule http-request-headers? (method uri version gh rh eh uh mlh)
   (:or (:and (:rfc2616-request-headers? method uri version gh rh eh uh)
-	     (:return (values method uri version gh rh eh uh)))
+	     (:return (values 'http method uri version gh rh eh uh)))
        (:and (:mod-lisp-request-headers? method uri version gh rh eh uh mlh)
-	     (:return (values method uri version gh (append rh mlh) eh uh)))))
+	     (:return (values 'mod-lisp method uri version gh (append rh mlh) eh uh)))))
 
 (defrule x-www-form-urlencoded? (query)
   (:query? query) (:return query))
 
-;; (defrule http-request? (method uri version gh rh eh uh mlh)
-;;   (:http-request-headers? method uri version gh rh eh uh mlh)
-;;   (:if eh
-;;        (:do (let ((content-type (cadr (assoc 'content-type eh))))
-;; 	      (cond
-;; 		((and (string= 'multipart (string-upcase (car content-type)))
-;; 		      (string= 'form-data (string-upcase (cadr content-type))))
-;; 		 (:) (values method uri version gh rh eh uh mlh))
-;; 		((and (string= 'application (string-upcase (car content-type)))
-;; 		      (string= 'x-www-form-urlencoded (string-upcase (cadr content-type))))
-;; 		 ))))))
 ;;;-----------------------------------------------------------------------------
 ;;; HTTP RESPONSE
 ;;;-----------------------------------------------------------------------------
 (defclass http-response (http-message)
-  ((headers :accessor http-response.headers :initform '())
-   (status-code :accessor http-response.status-code :initform (make-status-code 200))))
+  ((response-headers :accessor http-response.response-headers
+		     :initarg :response-headers :initform '())
+   (status-code :accessor http-response.status-code :initform (make-status-code 200))
+   (entity-headers :accessor http-response.entity-headers :initform '()
+		   :initarg :entity-headers)
+   (stream :accessor http-response.stream :initform nil :initarg :stream)))
 
 (defmacro defhttp-header-render (name format header-list) 
   (let ((hname (gensym)))
@@ -1305,6 +1303,27 @@
 (defhttp-header-render http-response-header! "HTTP-~A!" +http-response-headers+)
 (defhttp-header-render http-entity-header! "HTTP-~A!" +http-entity-headers+)
 ;; (defhttp-header-render mod-lisp-header! "MOD-LISP-HTTP-~A!" +mod-lisp-response-headers+)
+
+(defmacro defmod-lisp-header-render (name format header-list) 
+  (let ((hname (gensym)))
+    `(defun ,name (stream hdr)
+       (funcall (let ((,hname (car hdr)))
+		  (cond
+		    ,@(mapcar #'(lambda (h)
+				  `((eql ,hname ',h)
+				    (progn
+				      (symbol! stream ',h)
+				      (char! stream #\Newline)
+				      (function ,(intern (format nil format h))))))
+			      (eval header-list))
+		    (t (error (format nil "Unknown header name: ~A" (car hdr))))))
+		stream (cdr hdr))
+       (char! stream #\Newline))))
+
+(defmod-lisp-header-render mod-lisp-general-header! "HTTP-~A!" +http-general-headers+)
+(defmod-lisp-header-render mod-lisp-response-header! "HTTP-~A!" +http-response-headers+)
+(defmod-lisp-header-render mod-lisp-entity-header! "HTTP-~A!" +http-entity-headers+)
+;; (defmod-lisp-header-render mod-lisp-header! "MOD-LISP-HTTP-~A!" +mod-lisp-response-headers+)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter *status-codes*
@@ -1364,7 +1383,7 @@
   (string! stream (cdr status-code))
   (char! stream #\Newline))
 
-(defun http-response! (stream response)
+(defun http-response-headers! (stream response)
   ;; Status-Line
   (status-code! stream
 		(http-message.version response)
@@ -1378,12 +1397,41 @@
   (reduce #'(lambda (acc item)
 	      (declare (ignorable acc))
 	      (http-response-header! stream item))
-	  (http-response.headers response) :initial-value nil)
+	  (http-response.response-headers response) :initial-value nil)
   ;; entity headers
   (reduce #'(lambda (acc item)
 	      (declare (ignorable acc))
 	      (http-entity-header! stream item))
-	  (http-message.entities response) :initial-value nil))
+	  (http-response.entity-headers response) :initial-value nil))
+
+(defun mod-lisp-status-code! (stream version status-code)
+  (declare (ignore version))
+  (string! stream "Status")
+  (char! stream #\Newline)
+  (fixnum! stream (car status-code))
+  (char! stream #\ )
+  (string! stream (cdr status-code))
+  (char! stream #\Newline))
+
+(defun mod-lisp-response-headers! (stream response)
+  (mod-lisp-status-code! stream
+			 (http-message.version response)
+			 (http-response.status-code response))
+  ;; general headers
+  (reduce #'(lambda (acc item)
+	      (declare (ignorable acc))
+	      (mod-lisp-general-header! stream item))
+	  (http-message.general-headers response) :initial-value nil)
+  ;; response headers
+  (reduce #'(lambda (acc item)
+	      (declare (ignorable acc))
+	      (mod-lisp-response-header! stream item))
+	  (http-response.response-headers response) :initial-value nil)
+  ;; entity headers
+  (reduce #'(lambda (acc item)
+	      (declare (ignorable acc))
+	      (mod-lisp-entity-header! stream item))
+	  (http-response.entity-headers response) :initial-value nil))
 
 ;;;-----------------------------------------------------------------------------
 ;;; MOD-LISP REQUEST

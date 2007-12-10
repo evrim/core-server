@@ -4,7 +4,7 @@
 ;;; INDIVISIBLE WORKING UNITS
 ;;;-----------------------------------------------------------------------------
 (defclass unit (server)
-  ())
+  ((name :accessor unit.name :initarg :name :initform "Core-serveR Unit")))
 
 (defgeneric run (unit)
   (:documentation "Run method to make this unit work.")
@@ -43,7 +43,7 @@
 	   (let ((message (receive-message self)))
 	     (cond
 	       ((eq message 'shutdown)
-		(format t "Shutting down unit:~A~%" self)
+;;		(format t "Shutting down unit:~A~%" self)
 		(return-from run (values)))
 	       ((functionp message)
 		(funcall message self))
@@ -59,7 +59,8 @@
 ;;; LOCAL UNITS a.k.a. THREADS
 ;;;-----------------------------------------------------------------------------
 (defclass local-unit (standard-unit)
-  ((%thread :initform nil :documentation "Local thread that this unit runs.")))
+  ((%thread :initform nil :documentation "Local thread that this unit runs."))
+  (:default-initargs :name "Core-serveR Local Unit"))
 
 (defmethod send-message ((self local-unit) message &optional (target nil))
   (thread-send (or target (s-v '%thread)) message))
@@ -71,7 +72,7 @@
   (if (not (status self))      
       (prog1 t
 	(setf (s-v '%thread)
-	      (thread-spawn #'(lambda () (run self)) :name "Local Unit")))
+	      (thread-spawn #'(lambda () (run self)) :name (unit.name self))))
       nil))
 
 (defmethod stop ((self local-unit))

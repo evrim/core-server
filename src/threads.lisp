@@ -6,7 +6,7 @@
 
 (declaim (type hash-table *thread-mailboxes*))
 
-(defvar *thread-mailbox-lock* (make-lock "Thread Mailbox Lock")
+(defvar *thread-mailbox-lock* (make-lock :name "Thread Mailbox Lock")
   "Lock for manipulating *thread-mailboxes*")
 (defvar *thread-mailboxes* (make-hash-table :test #'eq :weakness :value)
   "A global place to store thread mailboxes")
@@ -20,6 +20,16 @@
 ;; TODO: not portable
 (defun thread-alive-p (thread)
   (sb-thread:thread-alive-p thread))
+
+;; TODO: not portable
+(defmethod threadp ((thread t))
+  nil)
+
+(defmethod threadp ((object sb-thread:thread))
+  t)
+
+(defmethod make-thread (function &key name)
+  (sb-thread:make-thread function :name name))
 
 ;; TODO: not portable
 (defun find-thread-mailbox (thread)

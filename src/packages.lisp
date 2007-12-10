@@ -2,12 +2,14 @@
 (defpackage :tr.gen.core.install)
 (defpackage :tr.gen.core.server
   (:nicknames :core-server)
-  (:use :common-lisp :iterate :cl-prevalence :yaclml :arnesi
-	:ucw :sb-bsd-sockets :bordeaux-threads :tr.gen.core.install)
-  (:shadowing-import-from #:ucw #:start)
+  (:use :common-lisp :cl-prevalence :yaclml :arnesi
+	:ucw :sb-bsd-sockets :tr.gen.core.install)
+  (:shadowing-import-from #:ucw #:start #:response #:request #:context #:make-new-session)
   (:shadowing-import-from #:swank #:send #:receive #:accept-connection)
   (:shadowing-import-from #:arnesi #:name #:body #:self)
   (:import-from #:cl-prevalence #:get-directory)
+  (:import-from #:swank #:make-lock)
+  (:import-from #:log5 #:defcategory #:log-for #:stream-sender #:start-sender)
   (:export 
    ;; Threads
    #:thread-mailbox
@@ -26,12 +28,24 @@
    #:write-stream
    #:close-stream
    #:core-streamp
+   #:return-stream
+   #:checkpoint-stream/cc
+   #:rewind-stream/cc
+   #:commit-stream/cc
    ;; [Stream Types]
    #:core-vector-io-stream
    #:core-string-io-stream
    #:core-fd-io-stream
    #:core-file-io-stream
+   #:pipe-stream
+   #:core-transformer-stream
+   #:core-cps-stream
+   #:core-cps-string-io-stream
+   #:core-cps-fd-io-stream
+   #:core-cps-file-io-stream
+   #:make-transformer-stream
    #:make-core-stream
+   #:make-cps-stream
    ;; Stream Helpers
    #:with-core-stream
    ;; sockets
@@ -92,6 +106,7 @@
    #:uri.paths
    #:uri.queries
    #:uri.fragments
+   #:uri.query
    #:urip
    #:make-uri
    #:uri?

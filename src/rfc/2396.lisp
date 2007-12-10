@@ -304,6 +304,9 @@
   (:method ((uri uri)) t)
   (:method ((uri t)) t))
 
+(defmethod uri.query ((uri uri) name)
+  (cdr (assoc name (uri.queries uri) :test #'equal)))
+
 (defun make-uri (&key scheme username password server port paths queries
 		      fragments)
   (make-instance 'uri

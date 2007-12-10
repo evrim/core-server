@@ -1,5 +1,13 @@
 (in-package :tr.gen.core.server)
 
+(defun any (lambda list)
+  "i wonder why missing."
+  (reduce #'(lambda (acc atom)
+	      (aif (funcall lambda atom)
+		   (return-from any it)
+		   acc))
+	  list :initial-value nil))
+
 (defmacro s-v (slot-name)
   "slot-value self slot-name"
   `(slot-value self ,slot-name))

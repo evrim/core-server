@@ -68,3 +68,9 @@
 
 ; SLOPPY FOCUS
 (setq mouse-autoselect-window t)
+
+
+; Indent 
+(setf (get 'defmethod/cc 'common-lisp-indent-function) 'lisp-indent-defmethod)
+(setf (get 'defmethod/unit 'common-lisp-indent-function) 'lisp-indent-defmethod)
+
