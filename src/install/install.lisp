@@ -643,21 +643,26 @@
      (pushnew ,(layout.systems self) asdf:*central-registry* :test #'equal)
 
      (flet ((push-all (systems-dir)
-             (dolist (dir-candidate
-                       (directory (concatenate 'string (namestring systems-dir) "*/")))
-               ;; skip dirs starting with a _
-               (let ((name (car (last (pathname-directory dir-candidate)))))
-                 (unless (equal #\_ (elt name 0))
-                   (pushnew dir-candidate asdf:*central-registry* :test 'equal))))))
-      ;; add projects
-	   (push-all ,(merge-pathnames (layout.projects self) (layout.root self))))
+	      (dolist (dir-candidate
+			(directory (concatenate 'string (namestring systems-dir) "*/")))
+		;; skip dirs starting with a _
+		(let ((name (car (last (pathname-directory dir-candidate)))))
+		  (unless (equal #\_ (elt name 0))
+		    (pushnew dir-candidate asdf:*central-registry* :test 'equal))))))
+       ;; add projects
+       (push-all ,(merge-pathnames (layout.projects self) (layout.root self))))
 
 
      (asdf:oos 'asdf:load-op :asdf-binary-locations)
      (setf (symbol-value (find-symbol "*CENTRALIZE-LISP-BINARIES*" (find-package 'asdf)))
 	   t)
      ;;     (setf asdf:*source-to-target-mappings* '((#p"/opt/sbcl/lib/sbcl/" nil)))
-     ;;     /usr/share/sbcl-source/-> debian     
+     ;;     /usr/share/sbcl-source/-> debian
+
+     ;; Set Environment
+     (if (null (sb-posix:getenv "CORESERVER_HOME"))
+	 (sb-posix:putenv (format nil "CORESERVER_HOME=~A" (layout.root self))))
+     
      (defun build-core-server ()
        (require :swank)
        (require :yaclml) ;; TODO: overlaps with cl-prevalence :xml package.
