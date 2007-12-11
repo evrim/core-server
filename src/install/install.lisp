@@ -686,7 +686,7 @@
 				  `(apache-server http-server)
 				  `(http-server))
 	 ()
-	 (:default-initargs :name "Core-serveR"))
+	 (:default-initargs :name "Core-serveR" :port 8080))
 
        (defvar *server* (make-instance 'core-server))
        (start *server*)
