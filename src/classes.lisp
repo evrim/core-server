@@ -29,9 +29,10 @@
 					     (asdf:component-pathname (asdf:find-system :core-server)))
 		  :documentation "Skeleton Pathname which is copied to htdoc directory. setq nil no to.")))
 
-(defclass ucw-web-application (web-application ucw:modular-application)
+(defclass ucw-web-application (web-application) ;; ucw:modular-application
   ((persistent :accessor ucw-web-application.persistent :initarg :persistent :initform nil))
-  (:default-initargs :debug-on-error t))
+  ;; (:default-initargs :debug-on-error t)
+  )
 
 (defclass serializable-web-application (web-application)
   ((sources :accessor serializable-web-application.sources
@@ -49,9 +50,9 @@
 				(make-pathname :directory '(:relative "templates"))
 				(make-pathname :directory '(:relative "db"))))
    (use :accessor serializable-web-application.use :initarg :use
-	:initform (list :common-lisp :ucw :core-server :cl-prevalence :arnesi :yaclml))
+	:initform (list :common-lisp :core-server :cl-prevalence :arnesi :yaclml)) ;; :ucw
    (depends-on :accessor serializable-web-application.depends-on :initarg :depends-on
-	       :initform (list :arnesi :core-server :ucw))))
+	       :initform (list :arnesi :core-server)))) ;; :ucw
 
 (defclass darcs-application (serializable-web-application)
   ())
@@ -161,7 +162,7 @@
 (defclass ucw-model ()
   ((applications :accessor ucw-model.applications :initarg :applications :initform (make-hash-table :test #'equal))))
 
-(defclass ucw-server (server ucw::standard-server)
+(defclass ucw-server (server) ;; ucw::standard-server
   ((ucw-db :accessor ucw-server.ucw-db :initarg ucw-db
 	   :initform (make-instance 'database-server
 				    :directory
@@ -172,9 +173,10 @@
 						       (asdf:component-pathname (asdf:find-system :core-server)))) 
 				    :model-class 'ucw-model)))
   (:default-initargs :name "Ucw Web Server"
-    :backend (ucw::make-backend :mod-lisp
-				:host "127.0.0.1"
-				:port 3001)))
+    ;; :backend (ucw::make-backend :mod-lisp
+;; 				:host "127.0.0.1"
+;; 				:port 3001)
+    ))
 
 (defclass email-server (server)
   ())

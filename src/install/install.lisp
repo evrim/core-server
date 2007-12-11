@@ -660,6 +660,7 @@
      ;;     /usr/share/sbcl-source/-> debian     
      (defun build-core-server ()
        (require :swank)
+       (require :yaclml) ;; TODO: overlaps with cl-prevalence :xml package.
        (require :core-server)
        (require :core)
        ;;       (require :dojo-stub)
@@ -680,11 +681,7 @@
 				  `(apache-server http-server)
 				  `(http-server))
 	 ()
-	 (:default-initargs :name "Core-serveR"
-	   :backend (funcall (find-symbol "MAKE-BACKEND" (find-package 'ucw))
-			     ,(layout.server-type self)
-			     :host ,(layout.server-address self)
-			     :port ,(layout.server-port self))))
+	 (:default-initargs :name "Core-serveR"))
 
        (defvar *server* (make-instance 'core-server))
        (start *server*)

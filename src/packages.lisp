@@ -2,7 +2,7 @@
 (defpackage :tr.gen.core.install)
 (defpackage :tr.gen.core.server
   (:nicknames :core-server)
-  (:use :common-lisp :cl-prevalence :yaclml :arnesi
+  (:use :common-lisp :cl-prevalence :yaclml :arnesi :cl-ppcre
 	:sb-bsd-sockets :tr.gen.core.install)
   (:shadowing-import-from #:swank #:send #:receive #:accept-connection)
   (:shadowing-import-from #:arnesi #:name #:body #:self)

@@ -49,10 +49,10 @@
                                    )) ;;http
                          (:module :applications
                                   :components
-                                  ((:file "ucw")
-                                   (:file "serializable-application")
-                                   (:file "darcs")
-                                   (:file "git")
+                                  (;; (:file "ucw")
+                                   ;; (:file "serializable-application")
+;;                                    (:file "darcs")
+;;                                    (:file "git")
                                    (:file "http")))
                          (:module :peers
                                   :components
@@ -64,7 +64,7 @@
                                    (:file "dns")
                                    (:file "apache")
                                    (:file "postfix")
-                                   (:file "ucw")
+                                   ;;(:file "ucw")
                                    (:file "core")
                                    (:file "ticket")
                                    (:file "socket")
@@ -72,7 +72,7 @@
                          (:module :services
                                   :components
                                   ((:file "whois"))))))
-  :depends-on (:cl-prevalence :sb-bsd-sockets :yaclml :arnesi)
+  :depends-on (:cl-prevalence :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad :yaclml)
   :serial t)
 
 (defmethod perform :after ((o t) (c (eql (find-system :core-server))))
