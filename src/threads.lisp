@@ -6,10 +6,23 @@
 
 (declaim (type hash-table *thread-mailboxes*))
 
-(defvar *thread-mailbox-lock* (make-lock :name "Thread Mailbox Lock")
+(defvar *thread-mailbox-lock* (make-lock "Thread Mailbox Lock")
   "Lock for manipulating *thread-mailboxes*")
 (defvar *thread-mailboxes* (make-hash-table :test #'eq :weakness :value)
   "A global place to store thread mailboxes")
+
+;; (defmethod make-condition-variable ()
+;;   (sb-thread:make-waitqueue))
+
+;; (defmethod condition-wait ((condition-variable sb-thread:waitqueue)
+;; 			   (lock sb-thread:mutex))
+;;   (sb-thread:condition-wait condition-variable lock))
+
+;; (defmethod condition-notify ((condition-variable sb-thread:waitqueue))
+;;   (sb-thread:condition-notify condition-variable))
+
+;; (defmethod thread-yield ()
+;;   (sb-thread:release-foreground))
 
 (defstruct (thread-mailbox (:conc-name mailbox.))
   thread
@@ -19,24 +32,32 @@
 
 ;; TODO: not portable
 (defun thread-alive-p (thread)
-  (sb-thread:thread-alive-p thread))
+  (swank::thread-alive-p thread))
 
 ;; TODO: not portable
-(defmethod threadp ((thread t))
-  nil)
+;; (defmethod threadp ((thread t))
+;;   nil)
 
-(defmethod threadp ((object sb-thread:thread))
-  t)
+;; (defmethod threadp ((object sb-thread:thread))
+;;   t)
 
-(defun current-thread ()
-  sb-thread::*current-thread*)
+;; (defun current-thread ()
+;;   (swank::current-thread))
 
-(defmethod make-thread (function &key name)
-  (sb-thread:make-thread function :name name))
+;; (defmethod make-thread (function &key name)
+;;   (swank::spawn function :name name))
+
+;; (defmethod destroy-thread ((thread sb-thread:thread))
+;;   (sb-thread:terminate-thread thread))
 
 ;; TODO: not portable
 (defun find-thread-mailbox (thread)
   (gethash (sb-thread::thread-os-thread thread) *thread-mailboxes*))
+
+;; (defmacro with-lock-held ((lock) &body body)
+;;   `(swank::call-with-lock-held ,lock
+;; 			       (lambda ()
+;; 				 ,@body)))
 
 ;; TODO: not portable
 (defun thread-mailbox (thread)

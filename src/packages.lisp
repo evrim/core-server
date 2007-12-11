@@ -3,11 +3,10 @@
 (defpackage :tr.gen.core.server
   (:nicknames :core-server)
   (:use :common-lisp :cl-prevalence :yaclml :arnesi :cl-ppcre
-	:sb-bsd-sockets :tr.gen.core.install)
+	:sb-bsd-sockets :tr.gen.core.install :bordeaux-threads)
   (:shadowing-import-from #:swank #:send #:receive #:accept-connection)
   (:shadowing-import-from #:arnesi #:name #:body #:self)
   (:import-from #:cl-prevalence #:get-directory)
-  (:import-from #:swank #:make-lock)
   (:export 
    ;; Threads
    #:thread-mailbox
