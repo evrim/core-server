@@ -72,7 +72,8 @@
                          (:module :services
                                   :components
                                   ((:file "whois"))))))
-  :depends-on (:bordeaux-threads :cl-prevalence :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad :yaclml)
+  :depends-on (:bordeaux-threads :cl-prevalence :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad :yaclml
+                                 :parenscript)
   :serial t)
 
 (defmethod perform :after ((o t) (c (eql (find-system :core-server))))
