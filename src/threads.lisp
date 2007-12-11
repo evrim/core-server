@@ -28,6 +28,9 @@
 (defmethod threadp ((object sb-thread:thread))
   t)
 
+(defun current-thread ()
+  sb-thread::*current-thread*)
+
 (defmethod make-thread (function &key name)
   (sb-thread:make-thread function :name name))
 
