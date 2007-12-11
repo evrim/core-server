@@ -19,9 +19,17 @@
        (push n result))))
 
 (defun load-file-into-string (pathname)
-  (iter (for l in-file pathname using #'read-line)
-	(reducing l by #'(lambda (acc elem)
-			   (concatenate 'string acc elem (format nil "~%"))))))
+  (reduce #'(lambda (acc atom)
+	      (concatenate 'string acc atom (format nil "~%")))
+	  (with-open-file (s pathname :direction :input)
+	    (loop
+	       for line = (read-line s nil 'end)
+	       until (eq line 'end)
+	       collect line)) :initial-value "")
+  ;; (iter (for l in-file pathname using #'read-line)
+  ;; 	(reducing l by #'(lambda (acc elem)
+  ;; 			   (concatenate 'string acc elem (format nil "~%")))))
+  )
 
 (defun fix-apache-permissions (pathname)
   (sb-ext:run-program +sudo+ (cons (namestring +chown+)

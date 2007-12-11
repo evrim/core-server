@@ -27,6 +27,6 @@
       (error "Ticket with this hash already exists!")))
 
 (defmethod generate-tickets ((server ticket-server) amount type)
-  (iter (for i from 1 to amount)
-	(let ((hash (funcall (ticket-server.hash-fun server) (ticket-model.tickets (model (ticket-server.db server))))))
-	  (execute (ticket-server.db server) (make-transaction 'tx-add-ticket hash type)))))
+  (dotimes (i amount)
+    (let ((hash (funcall (ticket-server.hash-fun server) (ticket-model.tickets (model (ticket-server.db server))))))
+      (execute (ticket-server.db server) (make-transaction 'tx-add-ticket hash type)))))
