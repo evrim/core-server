@@ -661,7 +661,7 @@
 
      ;; Set Environment
      (if (null (sb-posix:getenv "CORESERVER_HOME"))
-	 (sb-posix:putenv (format nil "CORESERVER_HOME=~A" (layout.root self))))
+	 (sb-posix:putenv ,(format nil "CORESERVER_HOME=~A" (layout.root self))))
      
      (defun build-core-server ()
        (require :swank)
