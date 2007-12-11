@@ -219,6 +219,11 @@
    items)
   nil)
 
+(deftag <:js (&body body)
+  `(<:ai
+    (js::js*
+     ,@body)))
+
 ;; (defun print-+k+ ()
 ;;   (loop for i in +k+
 ;;        for j from 0
