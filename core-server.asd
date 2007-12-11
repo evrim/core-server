@@ -50,9 +50,9 @@
                          (:module :applications
                                   :components
                                   (;; (:file "ucw")
-                                   ;; (:file "serializable-application")
-;;                                    (:file "darcs")
-;;                                    (:file "git")
+                                   (:file "serializable-application")
+                                   (:file "darcs")
+                                   (:file "git")
                                    (:file "http")))
                          (:module :peers
                                   :components
@@ -64,7 +64,7 @@
                                    (:file "dns")
                                    (:file "apache")
                                    (:file "postfix")
-                                   ;;(:file "ucw")
+                                   (:file "logger")
                                    (:file "core")
                                    (:file "ticket")
                                    (:file "socket")

@@ -51,7 +51,7 @@
    (continuations :reader continuations :initform (make-hash-table :test #'equal)) 
    (timestamp :accessor timestamp :initform (get-universal-time))))
 
-(defun make-new-http-session ()
+(defun make-new-session ()
   (make-instance 'http-session))
 
 (defclass http-context (core-cps-stream)
@@ -82,7 +82,7 @@
 (defmethod session ((self http-context))
   (let ((s (slot-value self 'session)))
     (if (null s)
-	(setf s (make-new-http-session)
+	(setf s (make-new-session)
 	      (slot-value self 'session) s
 	      (gethash (id s) (application.sessions (application self))) s)
 	(setf (timestamp s) (get-universal-time)))

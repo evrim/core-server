@@ -311,17 +311,11 @@
    #:apache-server.refresh
    #:apache-server.destroy
 
-   ;; [UnCommonWeb]
-   ;; classes
-   #:ucw-server
-   #:ucw-web-application
-   ;; API
-   #:ucw-server-fqdns
-   #:current-application
-   #:current-window
-   #:current-session
-   #:find-ucw-application
-   
+   ;; [Logger]
+   #:logger-server
+   #:log-me
+   #:log-me-raw
+
    ;; [Database]
    ;; classes
    #:database-server
@@ -423,6 +417,29 @@
    #:record
    #:put
    #:push-all
+   ;; [HTTP Application]
+   #:http-application
+   #:find-session
+   #:find-continuation
+   #:defurl
+   #:register-url
+   #:unregister-url
+   #:find-url
+   #:http-session
+   #:make-new-session
+   #:http-context
+   #:make-new-context
+   #:copy-context
+   #:session
+   #:send/suspend
+   #:function/hash
+   #:action/hash
+   #:function/url
+   #:action/url
+   #:aswer
+   #:dispatch
+   #:kontinue
+   #:test-url
    ;; [Helpers]
    #:make-keyword
    ;; [Search]

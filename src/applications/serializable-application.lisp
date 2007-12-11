@@ -110,16 +110,17 @@
        :components ((:module :t
 			     :components
 			     ((:file "packages"))))
-       :depends-on (,(package-keyword self) :core-server :FiveAM))
+       :depends-on (,(package-keyword self) :core-server :rt))
 
      (defmethod perform ((op asdf:test-op) (system (eql (asdf::find-system ,(package-keyword self)))))
        (asdf:oos 'asdf:load-op ,(package-test-keyword self))
-       (funcall (intern (string :run!) (string :it.bese.FiveAM)) ,(package-keyword self)))))
+       ;; (funcall (intern (string :run!) (string :it.bese.FiveAM)) ,(package-keyword self))
+       )))
 
 (defmethod src/packages ((self serializable-web-application))
   `(progn
      (in-package :cl-user)
-     (defpackage ,(package-keyword self t)       
+     (defpackage ,(package-keyword self t)
        (:nicknames ,(package-keyword self))
        (:use ,@(serializable-web-application.use self))
        (:import-from #:yaclml #:file-system-generator)
@@ -145,23 +146,19 @@
   `(progn
      (in-package ,(package-keyword self))
      (defvar *wwwroot* (make-project-path ,(symbol-name (package-keyword self)) "wwwroot"))
-     (defvar *talroot* (make-project-path ,(symbol-name (package-keyword self)) "templates"))
-     (defvar *db-location* (make-project-path ,(symbol-name (package-keyword self)) "db"))
-     (defclass ,(application-class self) (ucw-web-application
+     
+     (defvar *db-location* (merge-pathnames
+			    (make-pathname :directory '(:relative "var" ,(web-application.fqdn self) "db"))
+			    (sb-posix:getenv (string-upcase "CORESERVER_HOME"))))
+     (defclass ,(application-class self) (http-application
 					  apache-web-application
 					  database-server
-					  cookie-session-application-module
-					  ajax-application-module
+					  logger-server
 					  serializable-web-application)
        ()
        (:default-initargs
-	:tal-generator (make-instance 'yaclml::file-system-generator
-				      :cachep t
-				      :root-directories (list *wwwroot* *ucw-tal-root*))
-	 :www-roots (list *wwwroot* *ucw-tal-root*)
 	 :directory *db-location*
 	 :db-auto-start t
-	 :persistent t
 	 :model-class ',(model-class self)
 	 :fqdn ,(web-application.fqdn self)
 	 :admin-email ,(web-application.admin-email self)
@@ -171,17 +168,18 @@
 	 :directories ',(serializable-web-application.directories self)
 	 :use ',(serializable-web-application.use self)
 	 :depends-on ',(serializable-web-application.depends-on self)
-	 :dispatchers (cons (make-instance 'regexp-dispatcher :url-string "^index.*$"
-					   :handler (lambda ()
-						      (arnesi::with-call/cc
-							(let ((self nil))
-							  (with-request-params nil (context.request *context*)
-							    (call 'main-window))))))
-			    (ucw::standard-dispatchers))))
+	 ;; :dispatchers (cons (make-instance 'regexp-dispatcher :url-string "^index.*$"
+;; 					   :handler (lambda ()
+;; 						      (arnesi::with-call/cc
+;; 							(let ((self nil))
+;; 							  (with-request-params nil (context.request *context*)
+;; 							    (call 'main-window))))))
+;; 			    (ucw::standard-dispatchers))
+	 ))
      (defvar *app* (make-instance ',(application-class self)))
-     (defun register-me (server)
+     (defun register-me (&optional (server *server*))
        (core-server::register server *app*))
-     (defun unregister-me (server)
+     (defun unregister-me (&optional (server *server*))
        (core-server::unregister server *app*))))
 
 (defmethod src/security ((self serializable-web-application))
@@ -191,13 +189,14 @@
 (defmethod src/ui/main ((self serializable-web-application))
   `(progn
      (in-package ,(package-keyword self))
-     (defun header ()
-       (<:h1 "Header"))
-     (defun footer ()
-       (<:h1 "Footer"))
-     (defcomponent main-window (ajax-window)
-       ())
-     (defmethod render ((self main-window))
-       (<:div :id "header" (header))
-       (<:div :id "body" (<:h1 "Hi, i'm a template *core* application."))
-       (<:div :id "footer" (footer)))))
+     ;; (defun header ()
+;;        (<:h1 "Header"))
+;;      (defun footer ()
+;;        (<:h1 "Footer"))
+;;      (defcomponent main-window (ajax-window)
+;;        ())
+;;      (defmethod render ((self main-window))
+;;        (<:div :id "header" (header))
+;;        (<:div :id "body" (<:h1 "Hi, i'm a template *core* application."))
+;;        (<:div :id "footer" (footer)))
+     ))
