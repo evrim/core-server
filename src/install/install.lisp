@@ -1004,6 +1004,76 @@ exit 0
 	(layout.root self) (layout.root self)
 	(layout.start.lisp self) (layout.root self)))
 
+(defmethod start.lisp ((self server-layout))
+  `(progn     
+     (in-package :cl-user)
+     (require :sb-posix)
+     (require :asdf)
+     (pushnew ,(layout.systems self) asdf:*central-registry* :test #'equal)
+
+     (flet ((push-all (systems-dir)
+	      (dolist (dir-candidate
+			(directory (concatenate 'string (namestring systems-dir) "*/")))
+		;; skip dirs starting with a _
+		(let ((name (car (last (pathname-directory dir-candidate)))))
+		  (unless (equal #\_ (elt name 0))
+		    (pushnew dir-candidate asdf:*central-registry* :test 'equal))))))
+       ;; add projects
+       (push-all ,(merge-pathnames (layout.projects self) (layout.root self))))
+
+
+     (asdf:oos 'asdf:load-op :asdf-binary-locations)
+     (setf (symbol-value (find-symbol "*CENTRALIZE-LISP-BINARIES*" (find-package 'asdf)))
+	   t)
+     ;;     (setf asdf:*source-to-target-mappings* '((#p"/opt/sbcl/lib/sbcl/" nil)))
+     ;;     /usr/share/sbcl-source/-> debian
+
+     ;; Set Environment
+     (if (null (sb-posix:getenv "CORESERVER_HOME"))
+	 (sb-posix:putenv ,(format nil "CORESERVER_HOME=~A" (layout.root self))))
+     
+     (defun build-core-server ()
+       (require :swank)
+       (require :yaclml) ;; TODO: overlaps with cl-prevalence :xml package.
+       (require :core-server)
+       (require :core)
+       ;;       (require :dojo-stub)
+       (values))
+
+     (build-core-server)
+     (in-package :core-server)
+     
+     (defun swank ()
+       (setf (symbol-value (find-symbol "*CODING-SYSTEM*" (find-package 'swank)))
+	     ,(layout.swank-encoding self))
+       (funcall (find-symbol "CREATE-SERVER" (find-package 'swank))
+		:port ,(layout.swank-port self) :dont-close t)
+       (values))
+
+     (defun load-core-server ()
+       (defclass core-server ,(if (eq (layout.server-type self) :mod-lisp)
+				  `(apache-server http-server)
+				  `(http-server))
+	 ()
+	 (:default-initargs :name "Core-serveR"))
+
+       (defvar *server* (make-instance 'core-server))
+       (start *server*)
+       (if (status *server*)
+	   (progn
+	     ;;	     (funcall (find-symbol "REGISTER-ME" (find-package 'dojo-stub)) *server*)
+	     (terpri)
+	     (describe *server*)
+	     (write-line "Server started!")
+	     (terpri))
+	   (progn
+	     (terpri)
+	     (write-line "Unable to start server.")
+	     (terpri))))
+     
+     (swank)
+     (load-core-server)))
+
 ;; chown :apache /var/www
 ;; chmod g+w /var/www
 ;; chown :apache /etc/apache2/vhosts.d
