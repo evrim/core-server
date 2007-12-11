@@ -27,10 +27,10 @@
        (:http-auth-scheme? val))
   (:return (cons attr val)))
 
-(defun http-auth-param! (acons)
-  (string! stream (car cons))
+(defun http-auth-param! (stream acons)
+  (string! stream (car acons))
   (char! stream #\=)
-  (quoted! stream (cdr cons)))
+  (quoted! stream (cdr acons)))
 
 ;; http-challenge? :: stream -> (cons string ((attrstr . valstr) ...))
 (defrule http-challenge? (scheme params param)
