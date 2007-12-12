@@ -69,8 +69,22 @@
 ; SLOPPY FOCUS
 (setq mouse-autoselect-window t)
 
+;; proper indentation
+(setf *core-server-methods* '(defmethod/cc
+			      defmethod/unit
+			      defmethod/local
+			      defmethod/remote))
 
-; Indent 
-(setf (get 'defmethod/cc 'common-lisp-indent-function) 'lisp-indent-defmethod)
-(setf (get 'defmethod/unit 'common-lisp-indent-function) 'lisp-indent-defmethod)
+(setf *core-server-functions* '(defun/cc))
 
+(defun cl-indent (sym indent) ;; by Pierpaolo Bernardi
+  (put sym 'common-lisp-indent-function
+       (if (symbolp indent)
+	   (get indent 'common-lisp-indent-function)
+	   indent)))
+
+(dolist (i *core-server-methods*)
+  (cl-indent i 'defmethod))
+
+(dolist (i *core-server-functions*)
+  (cl-indent i 'defun))
