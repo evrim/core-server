@@ -80,6 +80,63 @@
 		     year (nth day-of-week (rest (assoc lang +day-names+))) hour minute second))
       (t (format nil "~2,'0d/~2,'0d/~d ~2,'0d:~2,'0d" day month year hour minute)))))
 
+(defun time->ymd (time)
+  (multiple-value-bind (second minute hour day month year day-of-week dst-p tz)
+      (decode-universal-time time)
+    (declare (ignore tz dst-p))
+    (format nil "~d-~2,'0d-~2,'0d" year month day)))
+
+(defun time->dmy (time)
+  (multiple-value-bind (second minute hour day month year day-of-week dst-p tz)
+      (decode-universal-time time)
+    (declare (ignore tz dst-p))
+    (format nil "~2,'0d-~2,'0d-~d" day month year)))
+
+(defun time->hm (time)
+  (multiple-value-bind (second minute hour day month year day-of-week dst-p tz)
+      (decode-universal-time time)
+    (declare (ignore tz dst-p))
+    (format nil "~2,'0d:~2,'0d" hour minute)))
+
+(defun hm->time (hm-str)
+  (cond
+    ((null hm-str) nil)
+    (t (let ((val (cl-ppcre:split #\: hm-str)))
+	 (apply #'encode-universal-time
+		(append (cons 0 (reverse (loop for i from 0 upto 1
+					    collect (parse-integer (nth i val) :junk-allowed t))))
+			(list 1 1 0)))))))
+
+;; given seconds, return hours as string
+(defun seconds->hours (seconds)
+  (let* ((second-minute 60)
+         (second-hour (* second-minute 60))
+         (second-day (* second-hour 24))
+         (second-month (* second-day 30.4368499))
+         (second-year (* second-month 12))
+         (year (truncate seconds second-year))
+         (month (truncate (decf seconds (* year second-year)) second-month))
+         (day (truncate (decf seconds (* month second-month)) second-day))
+         (hour (truncate (decf seconds (* day second-day)) second-hour))
+         (minute (truncate (decf seconds (* hour second-hour)) second-minute))
+         (second (truncate (decf seconds (* minute second-minute)) 1)))
+    (declare (ignorable second-minute) (ignorable second))
+    (format nil "~D:~D:~D" day hour minute)))
+
+(defun ymd->time (ymd)
+  (cond
+    ((null ymd) nil)
+    (t (apply #'encode-universal-time
+	      (append (list 0 0 0)
+		      (mapcar #'(lambda (i)
+				  (parse-integer i :junk-allowed t))
+			      (reverse (cl-ppcre:split #\- ymd))))))))
+
+(defun combine-date-time (date time)
+  (multiple-value-bind (s1 min1 h1 d1 m1 y1 day-of-week-1 dst1 tz1) (decode-universal-time date)
+    (multiple-value-bind (s2 min2 h2 d2 m2 y2 day-of-week-2 dst2 tz2) (decode-universal-time time)
+      (encode-universal-time s2 min2 h2 d1 m1 y1))))
+
 (defun string-replace-all (old new big)
   "Replace all occurences of OLD string with NEW
 string in BIG string."

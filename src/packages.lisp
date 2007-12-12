@@ -3,9 +3,9 @@
 (defpackage :tr.gen.core.server
   (:nicknames :core-server)
   (:use :common-lisp :cl-prevalence :yaclml :arnesi :cl-ppcre
-	:sb-bsd-sockets :tr.gen.core.install :bordeaux-threads)
+	:sb-bsd-sockets :tr.gen.core.install :bordeaux-threads :js)
   (:shadowing-import-from #:swank #:send #:receive #:accept-connection)
-  (:shadowing-import-from #:arnesi #:name #:body #:self)
+  (:shadowing-import-from #:arnesi #:name #:body #:self #:new)
   (:import-from #:cl-prevalence #:get-directory)
   (:export 
    ;; Threads

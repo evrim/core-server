@@ -1,5 +1,9 @@
 (in-package :core-server)
 
+(defvar *dojo-url* "/dojo/dojo.js")
+(js:defjsmacro $ (name)
+  `(document.get-element-by-id ,name))
+
 (eval-always
   (defclass test-application (http-application)
     ()))
@@ -20,9 +24,9 @@
 
 (defun/cc navigation ()
   (<:ul
-   (<:li (<:a :href (function/url ()
+   (<:li (<:a :href (action/url ()
 		      (answer :menu1)) "menu1"))
-   (<:li (<:a :href (function/url ()
+   (<:li (<:a :href (action/url ()
 		      (answer :menu2)) "menu2"))))
 
 (defun/cc settings (name)
@@ -103,7 +107,7 @@
 (defun/cc print-number (number)
   (send/suspend
     (<:html
-;;     (<:head (<:script :src *dojo-url* :type "text/javascript"))
+;     (<:head (<:script :src *dojo-url* :type "text/javascript"))
      (<:body
       (<:div
        (<:p (<:ah number)))))))

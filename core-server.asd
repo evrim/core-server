@@ -35,6 +35,7 @@
                          (:file "application")
                          (:file "server")
                          (:file "search")
+                         (:file "mop")
                          (:module :rfc
                                   :serial t
                                   :components
@@ -71,7 +72,11 @@
                                    (:file "http")))
                          (:module :services
                                   :components
-                                  ((:file "whois"))))))
+                                  ((:file "whois")))
+                         (:module :web
+                                  :component
+                                  ((:file "macros")
+                                   (:file "component"))))))
   :depends-on (:bordeaux-threads :cl-prevalence :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad :yaclml
                                  :parenscript)
   :serial t)

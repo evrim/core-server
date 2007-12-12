@@ -69,12 +69,10 @@
 		 :response response
 		 :session session))
 
-(defmethod copy-context ((self http-context) request response)
+(defmethod copy-context ((self http-context))
   (let ((s (copy-core-stream self)))
     (change-class s (find-class 'http-context))
-    (setf (slot-value s 'request) request
-	  (slot-value s 'response) response
-	  (slot-value s 'application) (s-v 'application)
+    (setf (slot-value s 'application) (s-v 'application)
 	  (slot-value s 'session) (s-v 'session)
 	  (slot-value s 'continuation) (s-v 'continuation))
     s))
@@ -99,19 +97,20 @@
        ;;     (commit-stream/cc +context+ (rets +context+))
 ;;       (describe +context+)
        (escape (returns +context+))
-       (break "send/suspend commit failed."))
+       (break "send/suspend failed."))
 ;;     (describe +context+)
      ))
 
 (defmacro function/hash (parameters &body body)
   (with-unique-names (context kont name)
-    `(let ((,context +context+)
-	   (,name (format nil "fun-~A" (random-string 3))))
+    `(let ((,name (format nil "fun-~A" (random-string 3)))
+	   (,context (copy-context +context+)))
        (let ((,kont (lambda (request reponse &optional ,@(mapcar #'car parameters))
-		      (let ((+context+ (copy-context ,context request response)))
-			(with-query ,(mapcar #'(lambda (param) (reverse (cons (car param) (reverse param))))
-					     parameters) request
-			  ,@body)))))
+		     (let ((+context+ ,context))
+		       (setf (request +context+) request (response +context+) response)
+		       (with-query ,(mapcar #'(lambda (param) (reverse (cons (car param) (reverse param))))
+					    parameters) request
+			 ,@body)))))
 	 (prog1 ,name	   
 	   (setf (gethash ,name (continuations (session ,context))) ,kont)
 	   (pushnew (cons ,name (lambda ,(mapcar #'car parameters)
@@ -123,12 +122,10 @@
 (defmacro action/hash (parameters &body body)
   (with-unique-names (context kont)
     (let ((name (format nil "act-~A" (random-string 8))))
-      `(let ((,context (copy-context +context+ nil nil)))
+      `(let ((,context (copy-context +context+)))
 	 (let ((,kont (lambda (request reponse &optional ,@(mapcar #'car parameters))
-			(let ((+context+ ,context ;;				(copy-context ,context request response)
-				))
-			  (setf (request +context+) request
-				(response +context+) response)
+			(let ((+context+ ,context))
+			  (setf (request +context+) request (response +context+) response)
 			  (with-query ,(mapcar #'(lambda (param) (reverse (cons (car param) (reverse param))))
 					       parameters) request
 			    ,@body)))))
@@ -152,7 +149,10 @@
 	   +continuation-query-name+ (action/hash ,parameters ,@body)))
 
 (defmacro answer (&rest values)
-  `(let ((values (list ,@values)))
+  `(progn
+;;      (mapcar #'(lambda (ret)
+;; 		 (remhash (car ret) (continuations (session +context+))))
+;; 	     (returns +context+))
      ;; (rewind-stream/cc +context+ (list ,@values))
      (apply #'kall (continuation +context+) (list ,@values))))
 

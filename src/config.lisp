@@ -1,5 +1,11 @@
 (in-package :tr.gen.core.server)
 
+(eval-always
+  (when (null (sb-posix:getenv "CORESERVER_HOME"))
+    (error "CORESERVER_HOME environment variable is unset. Can't continue.")))
+
+;; +Global Configurations
+
 ;;;; you must add your use to your /etc/sudoers
 ;;;; file with visudo like:
 ;;;; evrim   ALL= NOPASSWD: ALL
@@ -18,6 +24,23 @@
 (defvar +darcs+ #P"/usr/bin/darcs")
 (defvar +git+ #P"/usr/bin/git")
 (defvar +remote-user+ "evrim.ulu")
+
+;; +Web Related Configurations
+(defvar +dojo-url+ "/dojo/dojo.js")
+(defvar +fckeditor-url+ "/fckeditor/")
+(defvar +default-extension+ ".core")
+
+;;; below images are inserted when a field is valid/invalid which
+;;; is decided by series of form-field validators.
+(defparameter *valid-field-image* "/dojo/demos/widget/Mail/ok.gif")
+(defparameter *invalid-field-image* "/dojo/demos/widget/Mail/cancel.gif")
+(defparameter *validation-css* "/* Validator Stylesheets */
+span.valid {color: #000;} 
+span.invalid {color: #cf2229; font-weight: bold;} 
+span.invalid img {height:20px; width: 20px;}
+span.valid img {height:20px; width: 20px;} 
+span.valid, span.invalid {margin-left: 1px;}
+")
 
 (defun load-end.lisp (&rest args)
   (declare (ignore args))
