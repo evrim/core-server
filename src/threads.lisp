@@ -32,7 +32,7 @@
 
 ;; TODO: not portable
 (defun thread-alive-p (thread)
-  (swank::thread-alive-p thread))
+  (sb-thread:thread-alive-p thread))
 
 ;; TODO: not portable
 ;; (defmethod threadp ((thread t))
@@ -96,7 +96,10 @@
 
 (defun thread-spawn (fn &key name)
   "Make a new thread with the given function and name. Returns a thread."
-  (make-thread #'(lambda () (funcall (the function fn)) (cleanup-mailbox)) :name name))
+  (make-thread #'(lambda ()
+		   (unwind-protect (funcall (the function fn))
+		     (cleanup-mailbox)))
+	       :name name))
 
 (defun thread-kill (thread)
   "Destroy thread and cleanup it's mailbox"

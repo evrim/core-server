@@ -74,20 +74,21 @@
                                   :components
                                   ((:file "whois")))
                          (:module :web
-                                  :component
+                                  :components
                                   ((:file "macros")
-                                   (:file "component"))))))
+                                   ;; (:file "component")
+                                   )))))
   :depends-on (:bordeaux-threads :cl-prevalence :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad :yaclml
                                  :parenscript)
   :serial t)
 
 (defmethod perform :after ((o t) (c (eql (find-system :core-server))))
-  (when (and (find-package :tr.gen.core.install)
-             (not (null (sb-posix:getenv "CORESERVER_HOME"))))
-    (load (concatenate 'string (sb-posix:getenv "CORESERVER_HOME")
+ (when (and (find-package :tr.gen.core.install)
+              (not (null (sb-posix:getenv "CORESERVER_HOME"))))
+     (load (concatenate 'string (sb-posix:getenv "CORESERVER_HOME")
                        "/src/install/install.lisp"))
-    (load (concatenate 'string (sb-posix:getenv "CORESERVER_HOME")
-                       "/src/commands/hxpath.lisp"))))
+     (load (concatenate 'string (sb-posix:getenv "CORESERVER_HOME")
+                        "/src/commands/hxpath.lisp"))))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :core-server))))
   (in-package :core-server))

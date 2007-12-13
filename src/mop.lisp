@@ -2,7 +2,7 @@
 
 ;; Standard successors
 (defun class-successors (class)
-  (if (eq class (find-class 'command))
+  (if (eq class (find-class class))
       nil
       (sb-mop:class-direct-superclasses class)))
 
