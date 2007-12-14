@@ -394,7 +394,9 @@
    #:time->string
    #:+day-names+
    #:+month-names+
-
+   #:take
+   #:drop
+   
    ;; [Serializable Application]
    #:serializable-web-application
    ;; [Darcs Web Application]

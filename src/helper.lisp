@@ -18,6 +18,12 @@
      (dotimes (n ,how-many (nreverse result))
        (push n result))))
 
+(defun drop (n lst)
+  (subseq lst n))
+
+(defun take (n lst)
+  (subseq lst 0 n))
+
 (defun load-file-into-string (pathname)
   (reduce #'(lambda (acc atom)
 	      (concatenate 'string acc atom (format nil "~%")))
