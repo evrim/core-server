@@ -1200,7 +1200,7 @@
   (:http-protocol? proto) (:return (values method uri (cadr proto))))
 
 (defmacro defhttp-header-parser (name format header-list)
-  `(defrule ,name (stub)    
+  `(defrule ,name (stub)
      (:or ,@(nreverse
 	     (reduce #'(lambda (acc atom)
 			 (cons

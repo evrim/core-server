@@ -23,9 +23,9 @@
 (deftest-parse version? "1.2.3.4" '(1 2 3 4))
 (deftest-parse quoted? "\"Here we go\"" "Here we go")
 
-(deftest-write char! stream-data #\A :result "A")
-(deftest-write string! stream-data "Hello, world!")
-(deftest-write fixnum! stream-data 343 :result "343")
-(deftest-write quoted! stream-data "Hello, world!" :result "\"Hello, world!\"")
-(deftest-write quoted-fixnum! stream-data 343 :result "\"343\"")
+(deftest-write char! return-stream #\A :result "A")
+(deftest-write string! return-stream "Hello, world!")
+(deftest-write fixnum! return-stream 343 :result "343")
+(deftest-write quoted! return-stream "Hello, world!" :result "\"Hello, world!\"")
+(deftest-write quoted-fixnum! return-stream 343 :result "\"343\"")
 

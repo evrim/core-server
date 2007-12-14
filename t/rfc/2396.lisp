@@ -13,7 +13,7 @@
 							   (cons "y" "2"))))
 	  (cstream (make-core-stream "")))
       (uri! cstream uri-o)
-      (equal uri-s  (core-server::stream-data cstream)))
+      (equal uri-s  (return-stream cstream)))
   t)
 
 (deftest stream-to-uri

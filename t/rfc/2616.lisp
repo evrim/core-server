@@ -1,8 +1,8 @@
 (in-package :tr.gen.core.server.test)
 
 (deftest http-media-range?
-    (with-core-stream (s "text/html; q=0.8; a=test")
-      (equal (list "text" "html" '(("a" . "test") ("q" . 0.8)))
+    (with-core-stream (s "text/html; q=0.8; a=test;level=2")
+      (equal (list "text" "html" '(("level" . "2") ("a" . "test") ("q" . 0.8)))
 	     (multiple-value-list (core-server::http-media-range? s))))
   t)
 
@@ -12,8 +12,7 @@
 
 ;; ACCEPT
 (deftest http-accept?
-    (with-core-stream (s "text/*;q=0.3, text/html;q=0.7, text/html;level=1,
-                          text/html;level=2;q=0.4, */*;q=0.5")
+    (with-core-stream (s "text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, */*;q=0.5")
       (equal (http-accept? s)
 	     '(("*" "*" (("q" . 0.5)))
 	       ("text" "html" (("q" . 0.4) ("level" . "2")))
@@ -198,7 +197,7 @@ cam=\"foo\"")
 (deftest http-accept-ranges!
     (with-core-stream (s "")
       (http-accept-ranges! s "bytes")
-      (equal (core-server::stream-data s)
+      (equal (return-stream s)
 	     "bytes"))
   t)
 
@@ -206,7 +205,7 @@ cam=\"foo\"")
 (deftest http-age!
     (with-core-stream (s "")
       (http-age! s 12)
-      (equal (core-server::stream-data s)
+      (equal (return-stream s)
 	     "12"))
   t)
 
@@ -214,11 +213,11 @@ cam=\"foo\"")
 (deftest http-etag!
     (and (with-core-stream (s "")
 	   (http-etag! s '("test" . t))
-	   (equal (core-server::stream-data s)
+	   (equal (return-stream s)
 		  "W/\"test\""))
 	 (with-core-stream (s "")
 	   (http-etag! s '("wotest"))
-	   (equal (core-server::stream-data s)
+	   (equal (return-stream s)
 		  "\"wotest\"")))
   t)
 
@@ -231,7 +230,7 @@ cam=\"foo\"")
 				  :server "127.0.0.1"
 				  :port 8080
 				  :paths '(("test") ("me") ("up.html"))))
-      (equal (core-server::stream-data s)
+      (equal (return-stream s)
 	     "http://john:foo@127.0.0.1:8080/test/me/up.html"))
   t)
 
@@ -239,7 +238,7 @@ cam=\"foo\"")
 (deftest http-proxy-authenticate!
     (with-core-stream (s "")
       (http-proxy-authenticate! s '("Digest" . (("attribute1" . "value1") ("attr2" . "val2"))))
-      (equal (core-server::stream-data s)
+      (equal (return-stream s)
 	     "Digest attribute1=\"value1\",
 attr2=\"val2\""))
   t)
@@ -248,7 +247,7 @@ attr2=\"val2\""))
 (deftest http-retry-after!
     (with-core-stream (s "")
       (http-retry-after! s (encode-universal-time 0 20 6 1 1 2008))
-      (equal (core-server::stream-data s)
+      (equal (return-stream s)
 	     "Tue, 01 Feb 2008 04:20:00 GMT"))
   t)
 
@@ -256,7 +255,7 @@ attr2=\"val2\""))
 (deftest http-server!
     (with-core-stream (s "")
       (http-server! s "(CORE-SERVER . (0 2))")
-      (equal (core-server::stream-data s)
+      (equal (return-stream s)
 	     "(CORE-SERVER . (0 2))"))
   t)
 
@@ -264,17 +263,17 @@ attr2=\"val2\""))
 (deftest http-vary!
     (and (with-core-stream (s "")
 	   (http-vary! s '())
-	   (equal (core-server::stream-data s) "*"))
+	   (equal (return-stream s) "*"))
 	 (with-core-stream (s "")
 	   (http-vary! s '("Free" "Software"))
-	   (equal (core-server::stream-data s) "Free,Software")))
+	   (equal (return-stream s) "Free,Software")))
   t)
 
 ;; WWW-AUTHENTICATE
 (deftest http-www-authenticate!
     (with-core-stream (s "")
       (http-www-authenticate! s '("digest" . (("mac" . "0E:F0:FF:FF:FF:00") ("cam" . "foo"))))
-      (equal (core-server::stream-data s)
+      (equal (return-stream s)
 	     "digest mac=\"0E:F0:FF:FF:FF:00\",
 cam=\"foo\""))
   t)
@@ -303,16 +302,16 @@ cam=\"foo\""))
     ;;cache-responses
     (and (with-core-stream (s "")
 	   (http-cache-control! s 'PUBLIC)
-	   (equal (core-server::stream-data s)
-		  "PUBLIC"))
+	   (equal (return-stream s)
+		  "public"))
 	 (with-core-stream (s "")
 	   (http-cache-control! s '(NO-CACHE . ("extension" . "value")))
-	   (equal (core-server::stream-data s)
-		  "NO-CACHE,extension=\"value\""))
+	   (equal (return-stream s)
+		  "no-cache,extension=\"value\""))
 	 (with-core-stream (s "")
 	   (http-cache-control! s '(PRIVATE . ("here" . "Iam")))
-	   (equal (core-server::stream-data s)
-		  "PRIVATE,here=\"Iam\"")))
+	   (equal (return-stream s)
+		  "private,here=\"Iam\"")))
   t)
 
 ;; CONNECTION
@@ -324,8 +323,8 @@ cam=\"foo\""))
 (deftest http-connection!
     (with-core-stream (s "")
       (http-connection! s 'CLOSE)
-      (equal (core-server::stream-data s)
-	     "CLOSE"))
+      (equal (return-stream s)
+	     "close"))
     t)
 
 ;; DATE
@@ -337,7 +336,7 @@ cam=\"foo\""))
 (deftest http-date!
     (with-core-stream (s "")
       (http-date! s (encode-universal-time 0 20 6 1 1 2008))
-      (equal (core-server::stream-data s)
+      (equal (return-stream s)
 	     "Tue, 01 Feb 2008 04:20:00 GMT"))
   t)
 
@@ -357,11 +356,11 @@ cam=\"foo\""))
 (deftest http-pragma!
     (and (with-core-stream (s "")
 	   (http-pragma! s '(NO-CACHE))
-	   (equal (core-server::stream-data s)
-		  "NO-CACHE"))
+	   (equal (return-stream s)
+		  "no-cache"))
 	 (with-core-stream (s "")
 	   (http-pragma! s '("name" . "val"))
-	   (equal (core-server::stream-data s)
+	   (equal (return-stream s)
 		  "name=val")))
   t)
 
@@ -375,7 +374,7 @@ cam=\"foo\""))
 (deftest http-trailer!
     (with-core-stream (s "")
       (http-trailer! s '("Content-Type, Cache-Control, Server"))
-      (equal (core-server::stream-data s)
+      (equal (return-stream s)
 	     "Content-Type, Cache-Control, Server"))
   t)
 
@@ -392,11 +391,11 @@ cam=\"foo\""))
 (deftest http-transfer-encoding!
     (and (with-core-stream (s "")
 	   (http-transfer-encoding! s '((CHUNKED)))
-	   (equal (core-server::stream-data s)
-		  "CHUNKED"))
+	   (equal (return-stream s)
+		  "chunked"))
 	 (with-core-stream (s "")
 	   (http-transfer-encoding! s '(("token" . (("attr" . "val") ("attr2" . "val2")))))
-	   (equal (core-server::stream-data s)
+	   (equal (return-stream s)
 		  "token;attr=\"val\";attr2=\"val2\"")))
   t)
 
@@ -412,7 +411,7 @@ cam=\"foo\""))
     (with-core-stream (s "")
       (http-upgrade! s '(("RTA" . "x11") ("IRC" . "6.9")
 			 ("SHTTP" . "1.3") ("HTTP" . "2.0")))
-      (equal (core-server::stream-data s)
+      (equal (return-stream s)
 	     "RTA/x11, IRC/6.9, SHTTP/1.3, HTTP/2.0"))
   t)
 
@@ -430,7 +429,7 @@ cam=\"foo\""))
       (http-via! s '((("HTTP" . "1.1") ("core.gen.tr" . 80) "core server site")
 		     ((NIL . "1.1") ("nasa") NIL)
 		     ((NIL . "1.0") ("cgrid") "asd")))
-      (equal (core-server::stream-data s)
+      (equal (return-stream s)
 	     "HTTP/1.1 core.gen.tr:80 (core server site), 1.1 nasa , 1.0 cgrid (asd)"))
   t)
 
@@ -444,7 +443,7 @@ cam=\"foo\""))
 (deftest http-warning!
     (with-core-stream (s "")
       (http-warning! s '((199 ("www.core.gen.tr" . 80) "warn text" 3408142800)))
-      (equal (core-server::stream-data s) 
+      (equal (return-stream s) 
 	     "199 www.core.gen.tr:80 \"warn text\" \"Tue, 01 Feb 2008 02:20:00 GMT\""))
   t)
 
@@ -456,12 +455,12 @@ cam=\"foo\""))
 	      `((CACHE-CONTROL . "private")
 		(DATE . ,date)
 		(CONNECTION . CLOSE)))
-	(setf (http-response.headers response)
+	(setf (http-response.response-headers response)
 	      `((SERVER . "(CORE-SERVER . (0 2))")))
 	(setf (http-message.entities response)
 	      `((CONTENT-TYPE . ("text" "html" . (("charset" . "UTF-8"))))))
 	(http-response! s response)
-	(equal (core-server::stream-data s)
+	(equal (return-stream s)
 	       "HTTP/1.1 200 OK
 CACHE-CONTROL: private
 DATE: Tue, 01 Feb 2008 04:20:00 GMT

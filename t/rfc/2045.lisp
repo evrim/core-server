@@ -12,7 +12,7 @@
     (let ((cstream (make-core-stream "")))
       (quoted-printable! cstream "A\"=0A= 43&%##430xF00F
  A AAAAAAAAAAAAAAAAABBB")
-      (equal (core-server::stream-data cstream)
+      (equal (return-stream cstream)
 	     "A\"=3D0A=3D=2043&%##430xF00F=0A=20A=20AAAAAAAAAAAAAAAAABBB")
       )
     t)

@@ -124,7 +124,7 @@
    #:http-request.uri
    #:http-request.headers
    #:http-request.entity-headers
-   #:http-response.headers
+   #:http-response.response-headers
    #:http-response.status-code
 ;;; helpers
    #:escape-parenscript

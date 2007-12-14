@@ -10,7 +10,7 @@
       ;; write to stream
       (cookie! cstream cookie-o)
       ;; read from stream and compare
-      (string= (core-server::stream-data cstream) cookie-s))
+      (string= (return-stream cstream) cookie-s))
   ;; expected result
   t)
 
