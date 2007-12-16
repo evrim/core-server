@@ -44,7 +44,8 @@
 ;;;-----------------------------------------------------------------------------
 (defclass core-stream ()
   ((%checkpoints :initform '()) ;; checkpoints list as (index #(buffer))
-   (%current :initform -1 :type fixnum))) ;; current checkpoint
+   (%current :initform -1 :type fixnum) ;; current checkpoint
+   (%max-read :initform nil)))
 
 (defgeneric read-stream (core-stream)
   (:documentation "read byte"))
@@ -218,11 +219,21 @@
      (length (s-v '%read-buffer))))
 
 (defmethod %peek-stream ((self core-fd-io-stream))
-  (if (< (the fixnum (s-v '%peek)) 0)
-      (let ((peeked (read-byte (s-v '%stream) nil nil)))	
-	(setf (s-v '%peek) (or peeked -1))
-	peeked)
-      (s-v '%peek)))
+  (cond
+    ((and (s-v '%max-read) (> (the fixnum (s-v '%max-read)) 0))
+     (prog1 (if (< (the fixnum (s-v '%peek)) 0)
+		 (let ((peeked (read-byte (s-v '%stream) nil nil)))	
+		   (setf (s-v '%peek) (or peeked -1))
+		   peeked)
+		 (s-v '%peek))
+       (decf (s-v '%max-read))))
+    ((s-v '%max-read) nil)
+    (t
+     (if (< (the fixnum (s-v '%peek)) 0)
+	  (let ((peeked (read-byte (s-v '%stream) nil nil)))	
+	    (setf (s-v '%peek) (or peeked -1))
+	    peeked)
+	  (s-v '%peek)))))
 
 (defmethod %read-stream ((self core-fd-io-stream))
   (let ((peeked (%peek-stream self)))

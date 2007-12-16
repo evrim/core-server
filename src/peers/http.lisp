@@ -13,19 +13,29 @@
 	(let ((request (make-instance 'http-request :stream stream)))
 	  (let ((content-type (cadr (assoc 'content-type entity-headers))))
 	    (cond
-	      ((and (string= 'multipart (string-upcase (car content-type)))
-		    (string= 'form-data (string-upcase (cadr content-type))))
-	       (describe content-type)
+	      ;; content-type = '("multipart" "form-data")
+	      ((and (string-equal "multipart" (car content-type))
+		    (string-equal "form-data" (cadr content-type)))
 	       (setf (http-message.entities request)
 		     (rfc2388-mimes? stream
-		      (cdr
-		       (assoc "boundary" (caddr content-type) :test #'string=)))) ())
-	      ((and (string= 'application (string-upcase (car content-type)))
-		    (string= 'x-www-form-urlencoded (string-upcase (cadr content-type))))
-	       (setf (uri.queries uri) (append (uri.queries uri)
-					       (x-www-form-urlencoded? stream))))
-	      ((not (null content-type))
-	       (error "unknown content-type:~A" (cadr (assoc 'content-type entity-headers))))))
+				     (cdr
+				      (assoc "boundary" (caddr content-type) :test #'string=)))))
+	      ;; content-type = '("application" "x-www-form-urlencoded")
+	      ((and (string-equal "application" (car content-type))
+		    (string-equal "x-www-form-urlencoded" (string-upcase (cadr content-type))))
+
+	       ;; special parsing for non terminating fixed length str
+	       (let* ((content-length (cadr (assoc 'content-length entity-headers))))
+		 (lwsp? stream)
+		 (setf (slot-value stream '%max-read) content-length)
+		 (setf (uri.queries uri) (append (uri.queries uri)
+						 (x-www-form-urlencoded? stream)))
+		 (describe (list 'uriqueries (uri.queries uri)))))
+	      ;; if content-type = other, then continue...
+;;; 	      ((null content-type) (error "Content type nil:~S~%" request))
+;;; 	      ((not (null content-type))
+;;; 	       (error "unknown content-type:~A~%" (cadr (assoc 'content-type entity-headers))))
+	      ))
 	  (setf (http-message.general-headers request) general-headers
 		(http-message.unknown-headers request) unknown-headers
 		(http-request.headers request) request-headers
@@ -33,14 +43,12 @@
 		(http-request.uri request) uri
 		(http-request.method request) method
 		(http-message.version request) version)
-;;	  (describe request)
-;;	  (describe uri)
 	  (mapcar #'(lambda (mime)
 		      (describe mime)
 		      (when (mime.data mime)
 			(describe (octets-to-string
 				   (mime.data mime) :iso-8859-9)))) (http-message.entities request))
-;;	  (describe (mime-part.data (nth 3 (http-message.entities request))))
+	  ;;	  (describe (mime-part.data (nth 3 (http-message.entities request))))
 	  request))))
 
 (defmethod render-http-headers ((self http-peer) stream response)  
