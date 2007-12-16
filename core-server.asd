@@ -76,8 +76,8 @@
                          (:module :web
                                   :components
                                   ((:file "macros")
-                                   ;; (:file "component")
-                                   )))))
+                                   (:file "json")
+                                   (:file "component"))))))
   :depends-on (:bordeaux-threads :cl-prevalence :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad :yaclml
                                  :parenscript)
   :serial t)
