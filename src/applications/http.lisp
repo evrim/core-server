@@ -105,11 +105,11 @@
   (with-unique-names (context kont name)
     `(let ((,name (format nil "fun-~A" (random-string 3)))
 	   (,context (copy-context +context+)))
-       (let ((,kont (lambda (request reponse &optional ,@(mapcar #'car parameters))
+       (let ((,kont (lambda (http-request http-response &optional ,@(mapcar #'car parameters))
 		     (let ((+context+ ,context))
-		       (setf (request +context+) request (response +context+) response)
+		       (setf (request +context+) http-request (response +context+) http-response)
 		       (with-query ,(mapcar #'(lambda (param) (reverse (cons (car param) (reverse param))))
-					    parameters) request
+					    parameters) (request +context+)
 			 ,@body)))))
 	 (prog1 ,name	   
 	   (setf (gethash ,name (continuations (session ,context))) ,kont)
@@ -117,17 +117,17 @@
 				  (apply ,kont
 					 (make-instance 'http-request :uri (make-instance 'uri))
 					 (make-response) (list ,@(mapcar #'car parameters)))))
-		    (returns ,context)))))))
+		    (returns +context+)))))))
 
 (defmacro action/hash (parameters &body body)
   (with-unique-names (context kont)
     (let ((name (format nil "act-~A" (random-string 8))))
       `(let ((,context (copy-context +context+)))
-	 (let ((,kont (lambda (request reponse &optional ,@(mapcar #'car parameters))
+	 (let ((,kont (lambda (http-request http-response &optional ,@(mapcar #'car parameters))
 			(let ((+context+ ,context))
-			  (setf (request +context+) request (response +context+) response)
+			  (setf (request +context+) http-request (response +context+) http-response)
 			  (with-query ,(mapcar #'(lambda (param) (reverse (cons (car param) (reverse param))))
-					       parameters) request
+					       parameters) (request +context+)
 			    ,@body)))))
 	   (prog1 ,name
 	     (unless (gethash ,name (continuations (session ,context)))
@@ -136,7 +136,7 @@
 				    (apply ,kont
 					   (make-instance 'http-request :uri (make-instance 'uri))
 					   (make-response) (list ,@(mapcar #'car parameters)))))
-		      (returns ,context))))))))
+		      (returns +context+))))))))
 
 (defmacro function/url (parameters &body body)
   `(format nil "?~A=~A&~A=~A"
@@ -155,6 +155,18 @@
 ;; 	     (returns +context+))
      ;; (rewind-stream/cc +context+ (list ,@values))
      (apply #'kall (continuation +context+) (list ,@values))))
+
+(defun/cc javascript/suspend (lambda)
+  (send/suspend    
+    (setf (cdr (assoc 'content-type (http-response.entity-headers (response +context+))))
+	  '("text" "javascript" ("charset" "UTF-8")))
+    (funcall lambda)))
+
+(defun/cc json/suspend (lambda)
+  (send/suspend    
+    (setf (cdr (assoc 'content-type (http-response.entity-headers (response +context+))))
+	  '("text" "json" ("charset" "UTF-8")))
+    (funcall lambda)))
 
 (defmethod dispatch ((self http-application) (request http-request) (response http-response))
   (let ((session (gethash (uri.query (http-request.uri request) +session-query-name+)
@@ -177,8 +189,8 @@
 (defun kontinue (&rest args)
   (if (functionp (car args))
       (apply (car args)
-	     (make-instance 'http-request :uri (make-instance 'uri))
-	     (make-response) (rest args))
+	     (cons (make-instance 'http-request :uri (make-instance 'uri))
+		   (cons (make-response) (rest args))))
       (destructuring-bind (number result &rest parameters) args
 	  (let ((fun (cdr (nth number result))))
 	    (if (null fun)

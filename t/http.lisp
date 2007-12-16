@@ -1,8 +1,6 @@
 (in-package :core-server)
 
 (defvar *dojo-url* "/dojo/dojo.js")
-(js:defjsmacro $ (name)
-  `(document.get-element-by-id ,name))
 
 (eval-always
   (defclass test-application (http-application)
@@ -43,12 +41,6 @@
 	      (return false)))
 	  (<:ah "Neym:") (<:input :type "text" :value name :name "dekst")
 	  (<:input :type "submit" :value "kaydit")))
-
-(defun/cc javascript (lambda)
-  (send/suspend    
-    (setf (cdr (assoc 'content-type (http-response.entity-headers (response +context+))))
-	  '("text" "javascript" ("charset" "UTF-8")))
-    (funcall lambda)))
 
 (defun/cc window (&optional (b0dy #'greeting))
   (format t "into the window~%")
