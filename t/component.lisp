@@ -18,7 +18,7 @@
   (:default-initargs :local-slot nil :mocal-slot (list "core" "cok" "pis" "core")))
 
 (defmethod/local mocal-method ((self test-component))
-  (list 1 2 (list 3 "hobaa")))
+  (list 1 2 (list 3 "aytek")))
 
 (defmethod/local local-method ((self test-component) local-arg1)
   (list "local-method-result" local-arg1))
@@ -37,6 +37,21 @@
 				      ;; :remote-slot (list "a" "b" "c")
 				      ))))
      (<:body
-      "body"))))
+      (<:div :id "hobaa"
+	     (<:script :type "text/javascript"
+		(<:js
+		 `(progn
+		    (dojo.debug "gee:" this)
+		    (dojo.add-on-load
+		     (lambda ()
+		       (dojo.debug "gee1:" this)))))))))))
 
 ;;(with-call/cc (apply (function bir) (list (make-instance 'window))))
+
+;;; (<:html
+;;;  (<:body
+;;;   (<:div :component (test-component :remote-slto (list 1 2 3))
+;;; 	 (<:script :type "text/javascript"
+;;; 	    (<:js
+;;; 	     `(replace this (send/component (make-instance 'test-component)))))
+;;; 	 dsahjdaskjdhas)))

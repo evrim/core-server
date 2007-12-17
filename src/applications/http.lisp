@@ -234,7 +234,7 @@
 (deftag <:js (&body body)
   `(<:ai
     (js::js*
-     ,@body)))
+     ,@body) ~%))
 
 ;; (defun print-+k+ ()
 ;;   (loop for i in +k+

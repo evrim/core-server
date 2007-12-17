@@ -7,6 +7,7 @@
   (:shadowing-import-from #:swank #:send #:receive #:accept-connection)
   (:shadowing-import-from #:arnesi #:name #:body #:self #:new)
   (:import-from #:cl-prevalence #:get-directory)
+  (:import-from #:arnesi #:fdefinition/cc)
   (:export 
    ;; Threads
    #:thread-mailbox
@@ -442,6 +443,21 @@
    #:dispatch
    #:kontinue
    #:test-url
+   ;; [HTTP Component Framework]
+   #:dojo-javascript-stack
+   #:dojo
+   #:defcomponent
+   #:defmethod/local
+   #:defmethod/remote
+   #:send/component
+   #:send/ctor
+   #:+component-registry+
+   ;; [DOm Components]
+   #:dom-element
+   #:css-class
+   #:tag
+   #:id
+   #:div-element   
    ;; [Helpers]
    #:make-keyword
    ;; [Search]

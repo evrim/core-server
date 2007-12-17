@@ -11,11 +11,27 @@
 (eval-when (:execute :compile-toplevel)
   (defvar +component-registry+ (make-hash-table :test #'equal)))
 
-(defun local-methods-of-class (name)
-  (getf (gethash name +component-registry+) :local-methods))
+(defun local-methods-of-class (name)  
+  (let ((lst))
+    (mapcar (lambda (atom)
+	      (pushnew atom lst))
+	    (reduce #'append
+		    (mapcar (lambda (atom)
+			      (getf (gethash (class-name atom) +component-registry+) :local-methods))
+			    (cons (find-class name) (class-superclasses (find-class name))))
+		    :initial-value nil))
+    lst))
 
 (defun remote-methods-of-class (name)
-  (getf (gethash name +component-registry+) :remote-methods))
+  (let ((lst))
+    (mapcar (lambda (atom)
+	      (pushnew atom lst))
+	    (reduce #'append
+		    (mapcar (lambda (atom)
+			      (getf (gethash (class-name atom) +component-registry+) :remote-methods))
+			    (cons (find-class name) (class-superclasses (find-class name))))
+		    :initial-value nil))
+    lst))
 
 (defun local-slots-of-class (name)
   (getf (gethash name +component-registry+) :local-args))
@@ -24,16 +40,18 @@
   (getf (gethash name +component-registry+) :remote-args))
 
 (defun proxy-method-name (name)
-  (intern (string-upcase (format nil "~A-proxy" name))))
+  (intern (string-upcase (format nil "~A-proxy" name)) (find-package :core-server)))
 
 (defun proxy-getter-name (name)
-  (intern (string-upcase (format nil "get-~A" name))))
+  (intern (string-upcase (format nil "get-~A" name)) (find-package :core-server)))
 
 (defun proxy-setter-name (name)
-  (intern (string-upcase (format nil "set-~A" name))))
+  (intern (string-upcase (format nil "set-~A" name)) (find-package :core-server)))
 
 (defun client-type-for-slot (name slot)
-  (cdr (assoc slot (getf (gethash name +component-registry+) :client-types))))
+  (any #'(lambda (atom)
+	   (cdr (assoc slot (getf (gethash (class-name atom) +component-registry+) :client-types))))
+       (cons (find-class name) (class-superclasses (find-class name)))))
 
 (defun add-local-method-for-class (name method-name)
   (setf (getf (gethash name +component-registry+) :local-methods)
@@ -52,6 +70,7 @@
   `(progn
      (defgeneric/cc ,name (,class-name ,@args))
      (defgeneric/cc ,(proxy-method-name name) (,class-name))
+     (export ',(proxy-method-name name))
      (defmethod/cc ,(proxy-method-name name) ((,self ,class-name))
        `(lambda ,',args
 	  (return
@@ -78,6 +97,7 @@
     `(progn       
        (defgeneric/cc ,name (,class-name ,@args))
        (defgeneric/cc ,(proxy-method-name name) (,class-name))
+       (export ',(proxy-method-name name))
        (defmethod/cc ,(proxy-method-name name) ((,self ,class-name))	      
 	 `(lambda ,',arg-names
 	    ,',(cons 'progn body)))
@@ -139,12 +159,15 @@
 					     (proxy-method-name method)) self) acc)))
 		     (remote-methods-of-class class-name)
 		     :initial-value nil)))
-      (<:js
-       `(defun ,class-name ()	  
-	  (setf this.prototype (create ;; ,@(local-slots)
-				,@(remote-slots)
-				,@(local-methods) ,@(remote-methods)))
-	  (return this.prototype))))))
+      (send/ctor self (remote-slots) (local-methods) (remote-methods)))))
+
+(defmethod/cc send/ctor ((self component) remote-slots local-methods remote-methods)
+  (<:js
+   `(defun ,(class-name (class-of self)) ()	  
+      (setf this.prototype (create ;; ,@(local-slots)
+			    ,@remote-slots
+			    ,@local-methods ,@remote-methods))
+      (return this.prototype))))
 
 (defmacro defcomponent (name supers slots &rest default-initargs)
   (labels ((clazz-name (name)
@@ -271,6 +294,68 @@
 			(return (slot-value this ',(car slot))))))
 		 (remote-args slots)))))
 
+(defun/cc dojo-0.4 (&optional base-url)
+  (<:js
+   `(progn
+      (dojo.require "dojo.debug.console")
+      (dojo.require "dojo.io.*")
+      (dojo.require "dojo.json")
+      ,(if base-url
+	   `(setf base-url ,base-url)
+	   `(setf base-url ""))
+      (defun rest (arr)
+	(let ((temp (*array.reverse arr)))
+	  (*array.pop temp)
+	  (return (*array.reverse temp))))
+      (defun funcall (url parameters)
+	(let (result)
+	  (debug "server.funcall " url)
+	  (when (dojo.lang.is-object parameters)
+	    (doeach (param parameters)
+		    (setf (slot-value parameters param)
+			  (serialize (slot-value parameters param)))))
+	  (dojo.io.bind
+	   (create :url (+ base-url url)
+		   :mime-type "text/plain"
+		   :sync t
+		   :content parameters
+		   :load (lambda (type json http args)
+			   (setf result (eval (+ "{" json "}"))))
+		   :error (lambda (type err http args)
+			    (throw (+ "Funcall error: " url ", " err)))))
+	  (return result)))
+      (defun serialize (value)
+	(return (dojo.json.serialize value))))))
+
+(defun/cc dojo-1.0 (&optional base-url)
+  (<:js
+   `(progn
+      ,(if base-url
+	   `(setf base-url ,base-url)
+	   `(setf base-url ""))
+      (defun funcall (url parameters)
+	(let (result)
+	  (debug "server.funcall " url)
+	  (when (dojo.is-object parameters)
+	    (doeach (param parameters)
+		    (setf (slot-value parameters param)
+			  (serialize (slot-value parameters param)))))
+	  (dojo.xhr-get
+	   (create :url (+ base-url url)
+		   :handle-as "text"
+		   :sync t
+		   :timeout 10
+		   :content parameters
+		   :load (lambda (json args)
+			   (setf result (eval (+ "{" json "}"))))
+		   :error (lambda (err args)
+			    (throw (+ "Funcall error: " url ", " err)))))
+	  (return result)))
+      (defun serialize (value)
+	(return (dojo.to-json value))))))
+
+(defun dojo (&rest args)
+  (apply #'dojo-1.0 args))
 
 (defun/cc dojo-javascript-stack ()
   (<:script :type "text/javascript"
@@ -279,28 +364,4 @@
 			 :prevent-back-button-fix false))))      
   (<:script :src "/dojo-build/dojo.js" :type "text/javascript")
   (<:script :type "text/javascript"
-     (<:js
-      `(progn
-	 (defun rest (arr)
-	   (let ((temp (*array.reverse arr)))
-	     (*array.pop temp)
-	     (return (*array.reverse temp))))
-	 (defun funcall (url parameters)
-	   (let (result)
-	     (debug "server.funcall " url)
-	     (when (dojo.lang.is-object parameters)
-	       (doeach (param parameters)
-		       (setf (slot-value parameters param)
-			     (serialize (slot-value parameters param)))))
-	     (dojo.io.bind
-	      (create :url url
-		      :mime-type "text/plain"
-		      :sync t
-		      :content parameters
-		      :load (lambda (type json http args)
-			      (setf result (eval (+ "{" json "}"))))
-		      :error (lambda (type err http args)
-			       (throw (+ "Funcall error: " url ", " err)))))
-	     (return result)))
-	 (defun serialize (value)
-	   (return (dojo.json.serialize value)))))))
+     (dojo)))

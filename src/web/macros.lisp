@@ -1,5 +1,11 @@
 (in-package :core-server)
 
+(defmacro with-yaclml-output-to-string (&body body)
+  `(let ((*yaclml-stream* (make-core-stream ""))
+	 (*yaclml-indent* nil))
+     ,@body
+     (return-stream *yaclml-stream*)))
+
 ;; JS Macros
 (defjsmacro $ (id)
   `(document.get-element-by-id ,id))
@@ -10,8 +16,13 @@
 (defjsmacro dj_debug (&rest rest)
   `(dojo.debug ,@rest))
 
+;; Dojo 0.4
 (defjsmacro debug (&rest rest)
   `(dojo.debug ,@rest))
+
+;; Dojo 1.0
+(defjsmacro debug (&rest rest)
+  `(console.debug ,@rest))
 
 (defjsmacro $$ (id)
   `(dojo.widget.by-id ,id))
