@@ -219,21 +219,17 @@
      (length (s-v '%read-buffer))))
 
 (defmethod %peek-stream ((self core-fd-io-stream))
-  (cond
-    ((and (s-v '%max-read) (> (the fixnum (s-v '%max-read)) 0))
-     (prog1 (if (< (the fixnum (s-v '%peek)) 0)
-		 (let ((peeked (read-byte (s-v '%stream) nil nil)))	
-		   (setf (s-v '%peek) (or peeked -1))
-		   peeked)
-		 (s-v '%peek))
-       (decf (s-v '%max-read))))
-    ((s-v '%max-read) nil)
-    (t
-     (if (< (the fixnum (s-v '%peek)) 0)
-	  (let ((peeked (read-byte (s-v '%stream) nil nil)))	
-	    (setf (s-v '%peek) (or peeked -1))
-	    peeked)
-	  (s-v '%peek)))))
+  (flet ((peek ()
+	   (let ((peeked (read-byte (s-v '%stream) nil nil)))	
+	     (setf (s-v '%peek) (or peeked -1))
+	     peeked)))
+    (if (< (the fixnum (s-v '%peek)) 0)
+	(cond
+	  ((and (s-v '%max-read) (> (the fixnum (s-v '%max-read)) 0))
+	   (prog1 (peek) (decf (s-v '%max-read))))
+	  ((s-v '%max-read) nil)	
+	  (t (peek)))      
+	(s-v '%peek))))
 
 (defmethod %read-stream ((self core-fd-io-stream))
   (let ((peeked (%peek-stream self)))

@@ -5,32 +5,38 @@
   (:default-initargs :name "Http Peer Handling Unit"))
 
 (defmethod parse-request ((self http-peer) stream)
+;;;   (do ((a (read-stream stream) (read-stream stream)))
+;;; 	((null a) nil)
+;;;       (format t "~A" (code-char a)))
+;;;     (break)
   (multiple-value-bind (peer-type method uri version general-headers
 				  request-headers entity-headers unknown-headers)
       (http-request-headers? stream)
     (setf (http-peer.peer-type self) peer-type)
     (if method
 	(let ((request (make-instance 'http-request :stream stream)))
-	  (let ((content-type (cadr (assoc 'content-type entity-headers))))
+	  (let ((content-type (cadr (assoc 'content-type entity-headers)))
+		(content-length (cadr (assoc 'content-length entity-headers))))
+	    ;; set max-read to content-length for termination
+	    (setf (slot-value stream '%max-read) content-length)
 	    (cond
 	      ;; content-type = '("multipart" "form-data")
 	      ((and (string-equal "multipart" (car content-type))
-		    (string-equal "form-data" (cadr content-type)))
+		    (string-equal "form-data" (cadr content-type))
+		    content-length)
 	       (setf (http-message.entities request)
 		     (rfc2388-mimes? stream
 				     (cdr
 				      (assoc "boundary" (caddr content-type) :test #'string=)))))
 	      ;; content-type = '("application" "x-www-form-urlencoded")
 	      ((and (string-equal "application" (car content-type))
-		    (string-equal "x-www-form-urlencoded" (string-upcase (cadr content-type))))
+		    (string-equal "x-www-form-urlencoded" (string-upcase (cadr content-type)))
+		    content-length)
 
-	       ;; special parsing for non terminating fixed length str
-	       (let* ((content-length (cadr (assoc 'content-length entity-headers))))
-		 (lwsp? stream)
-		 (setf (slot-value stream '%max-read) content-length)
-		 (setf (uri.queries uri) (append (uri.queries uri)
-						 (x-www-form-urlencoded? stream)))
-		 (describe (list 'uriqueries (uri.queries uri)))))
+	       ;; special parsing for non terminating fixed length str 
+	       (setf (slot-value stream '%max-read) content-length)
+	       (setf (uri.queries uri) (append (uri.queries uri)
+					       (x-www-form-urlencoded? stream))))
 	      ;; if content-type = other, then continue...
 ;;; 	      ((null content-type) (error "Content type nil:~S~%" request))
 ;;; 	      ((not (null content-type))
@@ -43,11 +49,15 @@
 		(http-request.uri request) uri
 		(http-request.method request) method
 		(http-message.version request) version)
-	  (mapcar #'(lambda (mime)
-		      (describe mime)
-		      (when (mime.data mime)
-			(describe (octets-to-string
-				   (mime.data mime) :iso-8859-9)))) (http-message.entities request))
+	  ;;; (mapcar #'(lambda (mime)
+;;; 		      (describe mime)
+;;; 		      (when (and (mime.filename mime) (mime.data mime))
+;;; 			(with-core-stream (stream (pathname (concatenate 'string "/tmp/" (mime.filename mime)))) 
+;;; 			  (describe (length (mime.data mime)))
+;;; 			  (reduce #'(lambda (s a)
+;;; 				      (prog1 s (write-stream s a)))
+;;; 				  (mime.data mime) :initial-value stream))))
+;;; 		  (http-message.entities request))
 	  ;;	  (describe (mime-part.data (nth 3 (http-message.entities request))))
 	  request))))
 
