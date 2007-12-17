@@ -38,6 +38,12 @@
 	      (car (reverse (assoc 'disposition (mime.headers mime) :test #'string-equal)))
 	      :test #'string-equal)))
 
+(defmethod mime.serialize ((mime mime) path)
+  (with-core-stream (s path)
+    (reduce #'(lambda (stream atom)
+		(prog1 stream (write-stream stream atom)))
+	    (mime.data mime) :initial-value s)))
+
 (defclass top-level-media (mime)
   ((data :accessor mime.data :initarg :data :initform nil)))
 
