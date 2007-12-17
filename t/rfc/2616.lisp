@@ -469,3 +469,12 @@ SERVER: (CORE-SERVER . (0 2))
 CONTENT-TYPE: text/html;charset=UTF-8
 ")))
   t)
+
+(deftest x-www-form-urlencoded?
+    (with-core-stream (s "username=kazim&password=sananelazim&email=kazim%40patates.com&Sent=sent")
+      (equal (core-server::x-www-form-urlencoded? s)
+	     '(("username" . "kazim")
+	       ("password" . "sananelazim") 
+	       ("email" . "kazim@patates.com")
+	       ("Sent" . "sent"))))
+  t)
