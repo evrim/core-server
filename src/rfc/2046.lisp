@@ -28,6 +28,16 @@
 				      (mime.headers mime))))
   value)
 
+(defmethod mime.filename ((mime mime))
+  (cdr (assoc 'filename
+	      (car (reverse (assoc 'disposition (mime.headers mime) :test #'string-equal)))
+	      :test #'string-equal)))
+
+(defmethod mime.name ((mime mime))
+  (cdr (assoc 'name
+	      (car (reverse (assoc 'disposition (mime.headers mime) :test #'string-equal)))
+	      :test #'string-equal)))
+
 (defclass top-level-media (mime)
   ((data :accessor mime.data :initarg :data :initform nil)))
 
