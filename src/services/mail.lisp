@@ -35,12 +35,12 @@
   (eq 354 (default-smtp-response? sock)))
 
 (defclass mail-sender (local-unit)
-  ((from :accessor from :initarg :from)
-   (server :accessor server :initarg :server)
-   (port :accessor port :initarg :port :initform 25)))
+  ((from :accessor mail-sender.from :initarg :from)
+   (server :accessor mail-sender.server :initarg :server)
+   (port :accessor mail-sender.port :initarg :port :initform 25)))
 
-(defmethod/unit send-message :async-no-return ((self mail-sender) rcpt message)
-  (let* ((sock (connect (server self) (port self))))
+(defmethod/unit sendmail :async-no-return ((self mail-sender) rcpt message)
+  (let* ((sock (connect (mail-sender.server self) (mail-sender.port self))))
     ;; TODO: how to program atomically dependent steps in here?
     (and
      (prog1
@@ -50,7 +50,7 @@
        (finish-output (slot-value sock '%stream)))
      (prog1
 	 (action-ok? sock) 
-       (string! sock (format nil "MAIL FROM: ~A" (from self)))
+       (string! sock (format nil "MAIL FROM: ~A" (mail-sender.from self)))
        (char! sock #\Newline)
        (finish-output (slot-value sock '%stream)))
      (prog1

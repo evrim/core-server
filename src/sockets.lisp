@@ -30,7 +30,6 @@
 						  :buffering :full))
             peer)))
 
-
 (defun connect (server-host server-port
 		&key (element-type '(unsigned-byte 8)) (protocol :tcp))  
   (let ((socket (make-instance 'inet-socket :type :stream :protocol protocol)))

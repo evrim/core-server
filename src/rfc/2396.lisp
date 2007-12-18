@@ -40,7 +40,8 @@
 		(:collect c key))
 	  (:type reserved?)
 	  (:zom (:or (:type unreserved? c)
-		     (:escaped? c))
+		     (:escaped? c)
+		     (:and #\+ (:do (setq c #.(char-code #\Space)))))
 		(:collect c val))
 	  (:do (push (cons key val) queries)
 	       (setf key (make-accumulator)
@@ -278,8 +279,8 @@
 ;;       relativeURI   = ( net_path | abs_path | rel_path ) [ "?" query ]
 (defrule relative-uri? (path query authority)
   (:or (:net_path? path authority) (:abs_path? path) (:rel_path? path))
-  (:checkpoint #\? (:query? query) (:commit))
-  (:return (values path query authority)))
+  (:or  (:and #\? (:query? query) (:return (values path query authority)))
+	(:return (values path nil authority))))
 
 ;;       absoluteURI   = scheme ":" ( hier_part | opaque_part )
 (defrule absolute-uri? (scheme path query authority)

@@ -72,7 +72,8 @@
                                    (:file "http")))
                          (:module :services
                                   :components
-                                  ((:file "whois")))
+                                  ((:file "whois")
+                                   (:file "mail")))
                          (:module :web
                                   :components
                                   ((:file "macros")

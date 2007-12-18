@@ -6,9 +6,9 @@
 
 (defmethod parse-request ((self http-peer) stream)
 ;;;   (do ((a (read-stream stream) (read-stream stream)))
-;;; 	((null a) nil)
-;;;       (format t "~A" (code-char a)))
-;;;     (break)
+;;;       ((null a) nil)
+;;;     (format t "~A" (code-char a)))
+;;;   (break)
   (multiple-value-bind (peer-type method uri version general-headers
 				  request-headers entity-headers unknown-headers)
       (http-request-headers? stream)
@@ -49,7 +49,7 @@
 		(http-request.uri request) uri
 		(http-request.method request) method
 		(http-message.version request) version)
-	  ;;; (mapcar #'(lambda (mime)
+;;; (mapcar #'(lambda (mime)
 ;;; 		      (describe mime)
 ;;; 		      (when (and (mime.filename mime) (mime.data mime))
 ;;; 			(with-core-stream (stream (pathname (concatenate 'string "/tmp/" (mime.filename mime)))) 

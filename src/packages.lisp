@@ -464,6 +464,17 @@
    #:core-search
    #:string-search
    #:integer-search
+   ;; [Mail-Sender]
+   #:mail-sender
+   #:mail-sender.from
+   #:mail-sender.server
+   #:mail-sender.port
+   #:sendmail
+   ;; [parser]
+   #:string!
+   #:char!
+   #:fixnum!
+   #:quoted-printable!
    ;; The server itself
    *server*
    ))
