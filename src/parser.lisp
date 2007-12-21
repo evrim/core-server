@@ -359,6 +359,11 @@
 	       (:collect c value))
 	 (:return (octets-to-string value :utf-8)))))
 
+(defrule parse-line? (c (acc (make-accumulator)))
+  (:zom (:or (:and #\Newline (:return acc))
+	     (:and (:type octet? c) (:collect c acc))))
+  (:return acc))
+
 (defrule split-by-line (c (acc (make-accumulator)) lst)
   (:zom (:or (:and #\Newline (:do (push acc lst)
 				  (setq acc (make-accumulator))))

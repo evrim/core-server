@@ -73,7 +73,8 @@
                          (:module :services
                                   :components
                                   ((:file "whois")
-                                   (:file "mail")))
+                                   (:file "mail")
+                                   (:file "filesystem")))
                          (:module :web
                                   :components
                                   ((:file "macros")

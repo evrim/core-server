@@ -473,6 +473,14 @@
    #:mail-sender.server
    #:mail-sender.port
    #:sendmail
+   #:make-mail
+   ;; [filesystem]
+   #:filesystem
+   #:filesystem.label
+   #:filesystem.root
+   #:readfile
+   #:writefile
+   #:ls
    ;; [parser]
    #:string!
    #:char!

@@ -51,3 +51,5 @@
   (if (log-stream self)
       t
       nil))
+
+;;; (defparameter *logger* (make-instance 'logger-server :log-stream *standard-output*))
