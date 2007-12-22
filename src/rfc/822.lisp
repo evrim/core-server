@@ -75,7 +75,6 @@
   (:collect c value)
   (:zom (:or (:type qtext? c)
 	     (:quoted-pair? c))
-	(:debug)
 	(:collect c value))
   #\"
   (:return value))
