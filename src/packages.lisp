@@ -447,6 +447,9 @@
    #:dojo-javascript-stack
    #:dojo
    #:defcomponent
+   #:local
+   #:remote
+   #:both
    #:defmethod/local
    #:defmethod/remote
    #:send/component
