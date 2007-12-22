@@ -32,26 +32,30 @@
 ;;       query         = *uric
 ;; NOTE: this rule parses queries and return a list of key value cons
 
+(defrule query-key? (c (key (make-accumulator)))  
+  (:oom (:or (:escaped? c) (:type unreserved? c))
+	(:collect c key))
+  (:return key))
+
+(defrule query-value? (c (val (make-accumulator :byte)))
+  (:oom (:or (:escaped? c)
+	     (:type unreserved? c)	     
+	     (:and #\+ (:do (setq c #.(char-code #\Space)))))
+	(:collect c val))
+  (:return (octets-to-string val :utf-8)))
+
 (eval-when (:load-toplevel :compile-toplevel :execute)
-  (defrule query? ((key (make-accumulator))
-		   (val (make-accumulator)) c (queries '()))
-    (:zom (:zom (:or (:type unreserved? c)
-		     (:escaped? c))
-		(:collect c key))
-	  (:type reserved?)
-	  (:zom (:or (:type unreserved? c)
-		     (:escaped? c)
-		     (:and #\+ (:do (setq c #.(char-code #\Space)))))
-		(:collect c val))
-	  (:do (push (cons key val) queries)
-	       (setf key (make-accumulator)
-		     val (make-accumulator)))
+  (defrule query? (key val c (queries '()))
+    (:zom (:query-key? key)
+	  (:type reserved? c)
+	  (:query-value? val)
+	  (:do (push (cons key val) queries))
 	  (:type reserved?))
     (:return (nreverse queries))))
 
 ;;       fragment      = *uric
 (defrule fragment? (q)
-  (:and (:query? q) (:return q)))
+  (:query? q) (:return q))
 
 ;;       scheme        = alpha *( alpha | digit | "+" | "-" | "." )
 (defatom scheme-specials? ()
@@ -271,10 +275,11 @@
        (:and (:opaque_part? path) (:return (list path)))))
 
 ;;       hier_part     = ( net_path | abs_path ) [ "?" query ]
-(defrule hier_part? (path authority query)
+(defrule hier_part? (path authority query key)
   (:or (:net_path? path authority) (:abs_path? path))
   (:checkpoint #\? (:query? query) (:commit))
-  (:return (values path query authority)))
+  (:checkpoint #\# (:query-key? key) (:commit))
+  (:return (values path query authority key)))
 
 ;;       relativeURI   = ( net_path | abs_path | rel_path ) [ "?" query ]
 (defrule relative-uri? (path query authority)
@@ -283,13 +288,13 @@
 	(:return (values path nil authority))))
 
 ;;       absoluteURI   = scheme ":" ( hier_part | opaque_part )
-(defrule absolute-uri? (scheme path query authority)
+(defrule absolute-uri? (scheme path query authority fragment)
   (:scheme? scheme)
   #\:  
-  (:or (:and (:hier_part? path query authority)
-	     (:return (values scheme authority path query)))
+  (:or (:and (:hier_part? path query authority fragment)
+	     (:return (values scheme authority path query fragment)))
        (:and (:opaque_part? path)
-	     (:return (values scheme nil (list path) nil)))))
+	     (:return (values scheme nil (list path) nil nil)))))
 
 (defclass uri ()
   ((scheme :accessor uri.scheme :initarg :scheme :initform nil)
@@ -322,11 +327,8 @@
 
 ;;       URI-reference = [ absoluteURI | relativeURI ] [ "#" fragment ]
 (defrule uri? (fragment scheme path query authority)
-  (:or (:absolute-uri? scheme authority path query)
+  (:or (:absolute-uri? scheme authority path query fragment)
        (:relative-uri? path query authority))
-  (:checkpoint   
-   #\# (:fragment? fragment)
-   (:commit))
   (:return (make-uri
 	    :scheme scheme
 	    :server (car authority)
@@ -335,7 +337,7 @@
 	    :password (cadr (caddr authority))
 	    :paths path
 	    :queries query
-	    :fragments fragment)))
+	    :fragments (cons fragment nil))))
 
 (defconstant +uri-path-seperator+ #\/)
 (defconstant +uri-segment-seperator+ #\;)
