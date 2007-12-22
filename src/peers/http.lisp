@@ -5,10 +5,6 @@
   (:default-initargs :name "Http Peer Handling Unit"))
 
 (defmethod parse-request ((self http-peer) stream)
-;;;   (do ((a (read-stream stream) (read-stream stream)))
-;;;       ((null a) nil)
-;;;     (format t "~A" (code-char a)))
-;;;   (break)
   (multiple-value-bind (peer-type method uri version general-headers
 				  request-headers entity-headers unknown-headers)
       (http-request-headers? stream)
@@ -17,13 +13,15 @@
 	(let ((request (make-instance 'http-request :stream stream)))
 	  (let ((content-type (cadr (assoc 'content-type entity-headers)))
 		(content-length (cadr (assoc 'content-length entity-headers))))
-	    ;; set max-read to content-length for termination
-	    (setf (slot-value stream '%max-read) content-length)
 	    (cond
 	      ;; content-type = '("multipart" "form-data")
 	      ((and (string-equal "multipart" (car content-type))
 		    (string-equal "form-data" (cadr content-type))
-		    content-length)
+		    (> content-length 0))
+	       ;; eat lineer whayt spaces.
+	       (lwsp? stream)
+	       ;; set max-read to content-length for termination
+	       (setf (slot-value stream '%max-read) (1- content-length))
 	       (setf (http-message.entities request)
 		     (rfc2388-mimes? stream
 				     (cdr
@@ -31,17 +29,13 @@
 	      ;; content-type = '("application" "x-www-form-urlencoded")
 	      ((and (string-equal "application" (car content-type))
 		    (string-equal "x-www-form-urlencoded" (string-upcase (cadr content-type)))
-		    content-length)
-
-	       ;; special parsing for non terminating fixed length str 
-	       (setf (slot-value stream '%max-read) content-length)
-	       (setf (uri.queries uri) (append (uri.queries uri)
-					       (x-www-form-urlencoded? stream))))
-	      ;; if content-type = other, then continue...
-;;; 	      ((null content-type) (error "Content type nil:~S~%" request))
-;;; 	      ((not (null content-type))
-;;; 	       (error "unknown content-type:~A~%" (cadr (assoc 'content-type entity-headers))))
-	      ))
+		    (>  content-length 0))
+	       ;; eat lineer whayt spaces.
+	       (lwsp? stream)
+	       ;; set max-read to content-length for termination	       
+	       (setf (slot-value stream '%max-read) (1- content-length))
+      	       (setf (uri.queries uri) (append (uri.queries uri)
+					       (x-www-form-urlencoded? stream))))))
 	  (setf (http-message.general-headers request) general-headers
 		(http-message.unknown-headers request) unknown-headers
 		(http-request.headers request) request-headers
@@ -49,6 +43,8 @@
 		(http-request.uri request) uri
 		(http-request.method request) method
 		(http-message.version request) version)
+	  request))))
+
 ;;; (mapcar #'(lambda (mime)
 ;;; 		      (describe mime)
 ;;; 		      (when (and (mime.filename mime) (mime.data mime))
@@ -59,7 +55,6 @@
 ;;; 				  (mime.data mime) :initial-value stream))))
 ;;; 		  (http-message.entities request))
 	  ;;	  (describe (mime-part.data (nth 3 (http-message.entities request))))
-	  request))))
 
 (defmethod render-http-headers ((self http-peer) stream response)  
   (checkpoint-stream stream)
@@ -113,8 +108,7 @@
       (<:html
        (<:body
 	(<:ah "An error occured."))))
-    (commit-stream stream)
-    (close-stream stream)))
+    (commit-stream stream)))
 
 (defmethod/unit handle-stream :async-no-return ((self http-peer) stream address)		
   (restart-case
@@ -124,7 +118,8 @@
 	  (if request
 	      (let ((response (eval-request self request)))
 		(if response		  
-		    (render-response self stream response))))))
+		    (render-response self stream response))))
+	  (close-stream stream)))
     (fail () :report "Give up evaluating request"
 	  (render-error self stream))
     (retry () :report "Retry evaluating request"
