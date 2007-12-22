@@ -1238,20 +1238,19 @@
 	 (:return (values method uri version (nreverse gh)
 			  (nreverse rh) (nreverse eh) (nreverse uh))))))
 
-(defrule mod-lisp-request-headers? (c header mlh gh rh eh key value uh)
+(defrule http-unknown-header? ((key (make-accumulator)) (value (make-accumulator :byte)) c)
+  (:oom (:type http-header-name? c) (:collect c key))
+  (:or (:and #\: (:zom (:type space?))) (:crlf?))
+  (:oom (:type http-header-value? c) (:collect c value))
+  (:return (cons key value)))
+
+(defrule mod-lisp-request-headers? (header mlh gh rh eh uh)
   (:mod-lisp-header? header) (:do (push header mlh)) (:crlf?)
   (:zom (:or (:and (:http-general-header? header) (:do (push header gh)))
 	     (:and (:http-request-header? header) (:do (push header rh)))
 	     (:and (:http-entity-header? header) (:do (push header eh)))
 	     (:and (:mod-lisp-header? header) (:do (push header mlh)))
-	     (:and (:do (setq key (make-accumulator)))
-		   (:type http-header-name? c) (:collect c key)
-		   (:zom (:type http-header-name? c) (:collect c key))
-		   (:or (:and #\: (:zom (:type space?)))
-			(:crlf?))
-		   (:do (setq value (make-accumulator :byte)))
-		   (:zom (:type http-header-value? c) (:collect c value))
-		   (:do (push (cons key value) uh))))
+	     (:and (:http-unknown-header? header) (:do (push header uh))))
 	(:crlf?)
 	(:checkpoint
 	  (:seq "end")
@@ -1260,7 +1259,13 @@
 			    (cadadr (assoc 'server-protocol mlh)) ;; version
 			    (nreverse gh) (nreverse rh)
 			    (nreverse eh) (nreverse uh)
-			    (nreverse mlh))))))
+			    (nreverse mlh)))))
+  (:return (values  (cadr (assoc 'method mlh))	    ;;method
+		    (cadr (assoc 'url mlh))	    ;; uri
+		    (cadadr (assoc 'server-protocol mlh)) ;; version
+		    (nreverse gh) (nreverse rh)
+		    (nreverse eh) (nreverse uh)
+		    (nreverse mlh))))
 
 (defrule http-request-headers? (method uri version gh rh eh uh mlh)
   (:or (:and (:rfc2616-request-headers? method uri version gh rh eh uh)
