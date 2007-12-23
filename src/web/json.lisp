@@ -55,7 +55,8 @@
   (prog1 stream
     (ecase b
       (true (string! stream "true"))
-      (false (string! stream "false")))))
+      (false (string! stream "false"))
+      (t (string! stream "true")))))
 
 (defrule json-array? (val lst)
   (:lwsp?) #\[ (:lwsp?)

@@ -488,4 +488,8 @@
    #:quoted-printable!
    ;; The server itself
    *server*
+   ;; Javascript
+   #:true
+   #:false
+   #:undefined
    ))
