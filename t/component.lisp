@@ -13,12 +13,8 @@
 
 (defcomponent test-component ()
   ((local-slot :host local :client-type array)
-   (mocal-slot :host local :client-type object)
-   (remote-slot :host remote :initform (list "removt" "defim" "mesine") :client-type array))
-  (:default-initargs :local-slot nil :mocal-slot (list "core" "cok" "pis" "core")))
-
-(defmethod/local mocal-method ((self test-component))
-  (list 1 2 (list 3 "aytek")))
+   (remote-slot :host remote :initform (list "value0" "value1" "value2") :client-type array))
+  (:default-initargs :local-slot nil))
 
 (defmethod/local local-method ((self test-component) local-arg1)
   (list "local-method-result" local-arg1))
@@ -30,28 +26,19 @@
   (send/suspend
     (<:html
      (<:head
-      (dojo-javascript-stack)      
+      (<:script :src "/dojo/dojo/dojo.js" :type "text/javascript")
       (<:script :type "text/javascript"
-       (send/component (make-instance 'test-component
-				      :local-slot (list 1 2 3)
-				      ;; :remote-slot (list "a" "b" "c")
-				      ))))
+	 (dojo-1.0 "test.core")
+         (send/component (make-instance 'test-component
+					:local-slot (list 1 2 3)))))
      (<:body
       (<:div :id "hobaa"
 	     (<:script :type "text/javascript"
 		(<:js
 		 `(progn
-		    (dojo.debug "gee:" this)
 		    (dojo.add-on-load
 		     (lambda ()
-		       (dojo.debug "gee1:" this)))))))))))
-
-;;(with-call/cc (apply (function bir) (list (make-instance 'window))))
-
-;;; (<:html
-;;;  (<:body
-;;;   (<:div :component (test-component :remote-slto (list 1 2 3))
-;;; 	 (<:script :type "text/javascript"
-;;; 	    (<:js
-;;; 	     `(replace this (send/component (make-instance 'test-component)))))
-;;; 	 dsahjdaskjdhas)))
+		       (debug "Starting.." this)
+		       (let ((component (new (test-component))))
+			 (debug (+ "Result of local-method:" (component.local-method "local-method-arg1")))
+			 (debug (+ "Result of remote-method:" (component.remote-method "remote-method-arg1"))))))))))))))
