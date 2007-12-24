@@ -1,31 +1,16 @@
 (in-package :tr.gen.core.server.test)
 
-(defmacro deftest-parse (name string result)
-  `(deftest ,name
-       (let ((cs (make-core-stream ,string)))
-	 (equal ,result
-		(funcall (function ,(intern (symbol-name name) :core-server)) cs)))
-     t))
+(deftest-parser crlf? core-server::crlf? (format nil "~%") t)
+(deftest-parser lwsp? core-server::lwsp? (format nil "~t") t)
+(deftest-parser hex-value? core-server::hex-value? "FA" 250)
+(deftest-parser escaped? core-server::escaped? "%fa" 250)
+(deftest-parser digit-value? core-server::digit-value? "4" 4)
+(deftest-parser fixnum? core-server::fixnum? "424142" 424142)
+(deftest-parser version? core-server::version? "1.2.3.4" '(1 2 3 4))
+(deftest-parser quoted? core-server::quoted? "\"Here we go\"" "Here we go")
 
-(defmacro deftest-write (writer reader value &key result)
-  `(deftest ,writer
-       (let ((cs (make-core-stream "")))
-	 (funcall (function ,(intern (symbol-name writer) :core-server)) cs ,value)
-	 (equal ,(if result result value) (funcall (function ,(intern (symbol-name reader) :core-server)) cs)))
-     t))
-
-(deftest-parse crlf? (format nil "~%") t)
-(deftest-parse lwsp? (format nil "~t") t)
-(deftest-parse hex-value? "FA" 250)
-(deftest-parse escaped? "%fa" 250)
-(deftest-parse digit-value? "4" 4)
-(deftest-parse fixnum? "424142" 424142)
-(deftest-parse version? "1.2.3.4" '(1 2 3 4))
-(deftest-parse quoted? "\"Here we go\"" "Here we go")
-
-(deftest-write char! return-stream #\A :result "A")
-(deftest-write string! return-stream "Hello, world!")
-(deftest-write fixnum! return-stream 343 :result "343")
-(deftest-write quoted! return-stream "Hello, world!" :result "\"Hello, world!\"")
-(deftest-write quoted-fixnum! return-stream 343 :result "\"343\"")
-
+(deftest-render char! core-server::char! #\A "A")
+(deftest-render string! core-server::string! "Hello, world!" "Hello, world!")
+(deftest-render fixnum! core-server::fixnum! 343 "343")
+(deftest-render quoted! core-server::quoted! "Hello, world!" "\"Hello, world!\"")
+(deftest-render quoted-fixnum! core-server::quoted-fixnum! 343 "\"343\"")

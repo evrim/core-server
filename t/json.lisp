@@ -1,59 +1,49 @@
-(in-package :core-server)
-(defmacro test-return (stream &body body)
-  `(let ((,stream (make-core-stream "")))
-     ,@body
-     (return-stream ,stream)))
+(in-package :tr.gen.core.server.test)
 
 ;; JSON String
-(assert (equal "hobaa" (json-string? (make-core-stream "hobaa"))))
-(assert (equal "hobaa" (json-string? (make-core-stream "\"hobaa\""))))
+(deftest-parser json-string?-plain core-server::json-string? "hobaa" "hobaa")
+(deftest-parser json-string?-quoted core-server::json-string? "\"hobaa\"" "hobaa")
 
-(assert (equal "\"hobaa\"" (test-return s (json-string! s "hobaa"))))
+(deftest-render json-string!-plain core-server::json-string! "hobaa" "\"hobaa\"")
 
 ;; JSON Number
-(assert (equal 123 (json-number? (make-core-stream "123"))))
-(assert (equal 37 (json-number? (make-core-stream "37.3000"))))
-(assert (equal -37 (json-number? (make-core-stream "-37.3000"))))
+(deftest-parser json-number?-integer core-server::json-number? "123" 123)
+(deftest-parser json-number?-integer core-server::json-number? "37.3000" 37)
+(deftest-parser json-number?-integer core-server::json-number? "-37.3000" -37)
+(deftest-parser json-number?-integer core-server::json-number? "123" 123)
+(deftest-parser json-number?-integer core-server::json-number? "123" 123)
 
-(assert (equal "123" (test-return s (json-number! s 123))))
-(assert (equal "1.23222e12" (test-return s (json-number! s 123.222e10))))
+(deftest-render json-number!-integer core-server::json-number! 123 "123")
+(deftest-render json-number!-float core-server::json-number! 123.2222e10 "1.232222e12")
 
-;; JSON Boolean
-(assert (equal 'true (json-boolean? (make-core-stream "true"))))
-(assert (equal 'false (json-boolean? (make-core-stream "false"))))
+;;; ;; JSON Boolean
+(deftest-parser json-boolean?-true core-server::json-boolean? "true" 'true)
+(deftest-parser json-boolean?-false core-server::json-boolean? "false" 'false)
 
-(assert (equal "true" (test-return s (json-boolean! s 'true))))
-(assert (equal "true" (test-return s (json-boolean! s t))))
-(assert (equal "false" (test-return s (json-boolean! s 'false))))
+(deftest-render json-boolean!-t core-server::json-boolean! t "true")
+(deftest-render json-boolean!-true core-server::json-boolean! 'true "true")
+(deftest-render json-boolean!-false core-server::json-boolean! 'false "false")
 
-;; JSON Primitive
-(assert (equal 12334 (json-primitive? (make-core-stream "12334"))))
-(assert (equal 'true (json-primitive? (make-core-stream "true"))))
-(assert (equal 'undefined (json-primitive? (make-core-stream "undefined"))))
-(assert (equal 'null (json-primitive? (make-core-stream "null"))))
-(assert (equal "hobaa" (json-primitive? (make-core-stream "hobaa"))))
+;;; ;; JSON Array
+(deftest-parser json-array?-nums core-server::json-array? "[1,2,3]" '(1 2 3))
+(deftest-parser json-array?-strings core-server::json-array? "[\"core\", \"gen\", \"tr\"]" '("core" "gen" "tr"))
+(deftest-parser json-array?-bools core-server::json-array? "[true, false, undefined]" '(true false undefined))
 
-(assert (equal "undefined" (test-return s (json-primitive! s 'undefined))))
-(assert (equal "null" (test-return s (json-primitive! s 'null))))
-(assert (equal "true" (test-return s (json-primitive! s 'true))))
-(assert (equal "false" (test-return s (json-primitive! s 'false))))
+(deftest-render json-array!-nums core-server::json-array! '(1 2 3) "[ 1 , 2 , 3 ]")
+(deftest-render json-array!-strings core-server::json-array! '("core" "gen" "tr") "[ \"core\" , \"gen\" , \"tr\" ]")
+(deftest-render json-array!-bools core-server::json-array! '(undefined true false) "[ undefined , true , false ]")
 
-;; JSON Array
-(assert (equal (list 1 2 3) (json-array? (make-core-stream "[ 1,2,3 ]"))))
-(assert (equal (list "a" "b" "c") (json-array? (make-core-stream "[ \"a\", \"b\", \"c\" ]"))))
-(assert (equal (list 'true 'false 'undefined)
-	       (json-array? (make-core-stream "[ true, false, undefined ]"))))
+;;; ;; JSON Object
+(deftest-parser json-object?-proplist (lambda (stream) (hash-to-alist (core-server::json-object? stream))) "{ a: 1, b:2, c: 3 }" '(("a" . 1) ("b" . 2) ("c" . 3)))
 
-(assert (equal "[ 1 , 2 , 3 ]" (test-return s (json-array! s (list 1 2 3)))))
+(deftest-render json-object!-proplist core-server::json-object!
+  (arnesi::build-hash-table '(:test equal)
+			    '(("abc" 1)
+			      ("def" 2)
+			      ("hij" 3)))
+  "{ \"abc\": 1 \"def\": 2 \"hij\": 3 }")
 
-;; JSON Object
-(assert (equal (list (cons 'a 1) (cons 'b 2) (cons 'c 3))
-	       (json-object? (make-core-stream "{ a: 1, b:2,c: 3 }"))))
-
-(assert (equal "{ \"abc\":1 \"def\":2 \"hij\":3 }"
-	       (test-return s (json-object! s '(("abc" . 1) ("def" . 2) ("hij" . 3))))))
-
-;; RFC Test Data
+;;; ;; RFC Test Data
 (defvar +json-test1+ "
 {
       \"Image\": {
@@ -70,11 +60,9 @@
 }
 ")
 
-(assert (equal '((IMAGE (WIDTH . 800) (HEIGHT . 600) (TITLE . "View from 15th Floor")
-		  (THUMBNAIL (URL . "http://www.example.com/image/481989943") (HEIGHT . 125)
-		   (WIDTH . "100"))
-		  (IDS 116 943 234 38793)))
-	       (json-object? (make-core-stream +json-test1+))))
+(deftest-parser json-rfc-test1? (lambda (stream) (caar (hash-to-alist (core-server::json-object? stream))))
+  +json-test1+
+  "Image")
 
 (defvar +json-test2+
   "
@@ -101,12 +89,22 @@
       }
    ]")
 
-(assert (equal '(((PRECISION . "zip") (LATITUDE . 37) (LONGITUDE . -122)
-		 (ADDRESS . NULL) (CITY . "SAN FRANCISCO") (STATE . "CA")
-		 (ZIP . "94107") (COUNTRY . "US"))
-		((PRECISION . "zip") (LATITUDE . 37) (LONGITUDE . -122)
-		 (ADDRESS . NULL) (CITY . "SUNNYVALE") (STATE . "CA") (ZIP . "94085")
-		 (COUNTRY . "US")))
-	       (json-array? (make-core-stream +json-test2+))))
-
-(describe (json? (make-core-stream "{\"a\":1,\"b\":2,\"c\":3}")))
+(deftest-parser json-rfc-test2? (lambda (stream)
+				  (mapcar #'hash-to-alist (core-server::json-array? stream)))
+  +json-test2+
+  '((("precision" . "zip")
+     ("Latitude" . 37)
+     ("Longitude" . 122) 
+     ("Address" . NULL)
+     ("City" . "SAN FRANCISCO")
+     ("State" . "CA") 
+     ("Zip" . "94107")
+     ("Country" . "US")) 
+    (("precision" . "zip")
+     ("Latitude" . 37)
+     ("Longitude" . 122) 
+     ("Address" . NULL)
+     ("City" . "SUNNYVALE")
+     ("State" . "CA")
+     ("Zip" . "94085")
+     ("Country" . "US"))))

@@ -99,10 +99,12 @@
   :components ((:module :t
                         :serial t
 			:components ((:file "packages")
+                                     (:file "test-harness")
                                      (:file "postfix")
                                      (:file "parser")
                                      (:file "streams")
                                      (:file "sockets")
+                                     (:file "json")
                                      (:module :rfc
                                               :components ((:file "2109")
                                                            (:file "2396")
