@@ -124,7 +124,8 @@
        (:nicknames ,(package-keyword self))
        (:use ,@(serializable-web-application.use self))
        (:import-from #:yaclml #:file-system-generator)
-       (:shadowing-import-from #:cl-prevalence #:name))))
+       (:shadowing-import-from #:cl-prevalence #:name)
+       (:shadowing-import-from #:arnesi #:new))))
 
 (defmethod src/model ((self serializable-web-application))  
   `(progn

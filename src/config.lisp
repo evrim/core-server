@@ -26,8 +26,8 @@
 (defvar +remote-user+ "evrim.ulu")
 
 ;; +Web Related Configurations
-(defvar +dojo-url+ "/dojo/dojo.js")
-(defvar +fckeditor-url+ "/fckeditor/")
+(defvar +dojo-path+ "/dojo/dojo/")
+(defvar +fckeditor-path+ "/fckeditor/")
 (defvar +default-extension+ ".core")
 
 ;;; below images are inserted when a field is valid/invalid which
