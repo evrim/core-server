@@ -3,35 +3,32 @@
 ;; Component Procotol
 (defclass component ()
   ((local-args :accessor component.local-args :initarg :local-args :initform '())
-   (remote-args :accessor component.remote-args :initarg :remote-args :initform '())))
+   (remote-args :accessor component.remote-args :initarg :remote-args :initform '())
+   (application :accessor application :initarg :application :initform nil)))
+
+(defmethod application ((self component))
+  (or (s-v 'application) (application +context+)))
 
 (defgeneric/cc send/component (component)
   (:documentation "Send component to remote."))
 
-(eval-when (:execute :compile-toplevel)
+(eval-when (:execute :compile-toplevel :load-toplevel)
   (defvar +component-registry+ (make-hash-table :test #'equal)))
 
-(defun local-methods-of-class (name)  
+(defun methods-of-class (name type)
   (let ((lst))
     (mapcar (lambda (atom)
 	      (pushnew atom lst))
 	    (reduce #'append
 		    (mapcar (lambda (atom)
-			      (getf (gethash (class-name atom) +component-registry+) :local-methods))
+			      (getf (gethash (class-name atom) +component-registry+) type))
 			    (cons (find-class name) (class-superclasses (find-class name))))
 		    :initial-value nil))
     lst))
 
-(defun remote-methods-of-class (name)
-  (let ((lst))
-    (mapcar (lambda (atom)
-	      (pushnew atom lst))
-	    (reduce #'append
-		    (mapcar (lambda (atom)
-			      (getf (gethash (class-name atom) +component-registry+) :remote-methods))
-			    (cons (find-class name) (class-superclasses (find-class name))))
-		    :initial-value nil))
-    lst))
+(defun local-methods-of-class (name) (methods-of-class name :local-methods))
+
+(defun remote-methods-of-class (name) (methods-of-class name :remote-methods))
 
 (defun local-slots-of-class (name)
   (getf (gethash name +component-registry+) :local-args))
@@ -70,7 +67,7 @@
   `(progn
      (defgeneric/cc ,name (,class-name ,@args))
      (defgeneric/cc ,(proxy-method-name name) (,class-name))
-     (export ',(proxy-method-name name))
+;;     (export ',(proxy-method-name name))
      (defmethod/cc ,(proxy-method-name name) ((,self ,class-name))
        `(lambda ,',args
 	  (return
@@ -97,7 +94,7 @@
     `(progn       
        (defgeneric/cc ,name (,class-name ,@args))
        (defgeneric/cc ,(proxy-method-name name) (,class-name))
-       (export ',(proxy-method-name name))
+;;       (export ',(proxy-method-name name))
        (defmethod/cc ,(proxy-method-name name) ((,self ,class-name))	      
 	 `(lambda ,',arg-names
 	    ,',(cons 'progn body)))
@@ -163,11 +160,12 @@
 
 (defmethod/cc send/ctor ((self component) remote-slots local-methods remote-methods)
   (<:js
-   `(defun ,(class-name (class-of self)) ()	  
-      (setf this.prototype (create ;; ,@(local-slots)
-			    ,@remote-slots
-			    ,@local-methods ,@remote-methods))
-      (return this.prototype))))
+   `(setf ,(class-name (class-of self))
+	  (lambda ()
+	    (setf this.prototype (create ;; ,@(local-slots)
+				  ,@remote-slots
+				  ,@local-methods ,@remote-methods))
+	    (return this.prototype)))))
 
 (defmacro defcomponent (name supers slots &rest default-initargs)
   (labels ((clazz-name (name)
@@ -181,14 +179,11 @@
 	       (t
 		(clazz-name (format nil "~A" name)))))
 	   (filter-slot (slot-def)
-	     (when (or (eq 'local (getf (cdr slot-def) :host))
-		       (eq 'both (getf (cdr slot-def) :host)))	       
+	     (when (or (eq 'local (getf (cdr slot-def) :host)) (eq 'both (getf (cdr slot-def) :host)))
 	       (unless (getf (cdr slot-def) :initarg)
-		 (setf (getf (cdr slot-def) :initarg)
-		       (make-keyword (car slot-def)))))
+		 (setf (getf (cdr slot-def) :initarg) (make-keyword (car slot-def)))))
 	     (unless (getf (cdr slot-def) :accessor)
-	       (setf (getf (cdr slot-def) :accessor)
-		     (car slot-def)))
+	       (setf (getf (cdr slot-def) :accessor) (car slot-def)))
 	     (remf (cdr slot-def) :host)
 	     (remf (cdr slot-def) :client-type)
 	     slot-def)
@@ -198,8 +193,7 @@
 		 (cons (list (car slot-def) (getf (cdr slot-def) :initform)) acc)
 		 acc))
 	   (local-slot (acc slot-def)
-	     (if (or (eq (getf (cdr slot-def) :host) 'local)
-		     (eq (getf (cdr slot-def) :host) 'both))
+	     (if (or (eq (getf (cdr slot-def) :host) 'local) (eq (getf (cdr slot-def) :host) 'both))
 		 (cons (list (car slot-def) (getf (cdr slot-def) :initform)) acc)
 		 acc))
 	   (local-args (slotz)
@@ -214,15 +208,13 @@
  	       (setf args		     
 		     (reduce
 		      #'(lambda (acc arg)
-			  (let ((value (cadr (assoc (car arg) super-args
-						    :test #'string=))))
+			  (let ((value (cadr (assoc (car arg) super-args :test #'string=))))
 			    (if value
 				(cons (list (car arg) value) acc)
 				(cons arg acc))))
-			     args :initial-value nil))
+		      args :initial-value nil))
 	       (reduce #'(lambda (acc arg)
-			   (let ((value (getf (cdar default-initargs)
-					      (make-keyword (car arg)))))
+			   (let ((value (getf (cdar default-initargs) (make-keyword (car arg)))))
 			     (if value
 				 (cons (list (car arg) value) acc)
 				 (cons arg acc))))
@@ -244,7 +236,7 @@
 			    (if value
 				(cons (list (car arg) value) acc)
 				(cons arg acc))))
-			     args :initial-value nil))
+		      args :initial-value nil))
 	       (reduce #'(lambda (acc arg)
 			   (let ((value (getf (cdar default-initargs)
 					      (make-keyword (car arg)))))
@@ -270,69 +262,61 @@
     (setf (getf (gethash name +component-registry+) :local-args) (local-args slots)
 	  (getf (gethash name +component-registry+) :remote-args) (remote-args slots)
 	  (getf (gethash name +component-registry+) :client-types) (mapcar #'client-type slots))
-    `(prog1       
-       (defclass ,(gen-class name t) (,@supers component)
-	 ,(mapcar #'filter-slot (copy-tree slots))
-	 (:default-initargs ,@(filter-default-initargs (car default-initargs)))
-	 ,@(cdr default-initargs))
-       (defun/cc ,(intern (string-upcase name)) (&key ,@(local-args slots))
-	 (send/component
-	  (apply #'make-instance ',(gen-class name t) (list ,@(function-key-args slots)))))
-       ,@(mapcar (lambda (slot)
-		   `(progn
-		      (defmethod/local ,(proxy-getter-name (car slot)) ((self ,(gen-class name t)))
-			(slot-value self ',(car slot)))
-		      (defmethod/local ,(proxy-setter-name (car slot)) ((self ,(gen-class name t)) value)
-			(setf (slot-value self ',(car slot)) value))))
-		 (local-args slots))
-       ,@(mapcar (lambda (slot)
-		   `(progn
-		      (defmethod/remote ,(proxy-getter-name (car slot)) ((self ,(gen-class name t)))
-			(return (slot-value this ',(car slot))))
-		      (defmethod/remote ,(proxy-setter-name (car slot)) ((self ,(gen-class name t)) value)			
-			(setf (slot-value this ',(car slot)) value)
-			(return (slot-value this ',(car slot))))))
-		 (remote-args slots)))))
+    `(eval-when (:compile-toplevel :execute :load-toplevel)
+       (prog1 
+	   (defclass ,name (,@supers component)
+	     ,(mapcar #'filter-slot (copy-tree slots))
+	     (:default-initargs ,@(filter-default-initargs (car default-initargs)))
+	     ,@(cdr default-initargs))
+	 (defun/cc ,(intern (string-upcase name)) (&key ,@(local-args slots))
+	   (send/component
+	    (apply #'make-instance ',name (list ,@(function-key-args slots)))))
+	 ,@(mapcar (lambda (slot)
+		     `(progn
+			(defmethod/local ,(proxy-getter-name (car slot)) ((self ,name))
+			  (slot-value self ',(car slot)))
+			(defmethod/local ,(proxy-setter-name (car slot)) ((self ,name) value)
+			  (setf (slot-value self ',(car slot)) value))))
+		   (local-args slots))
+	 ,@(mapcar (lambda (slot)
+		     `(progn
+			(defmethod/remote ,(proxy-getter-name (car slot)) ((self ,name))
+			  (return (slot-value this ',(car slot))))
+			(defmethod/remote ,(proxy-setter-name (car slot)) ((self ,name) value)			
+			  (setf (slot-value this ',(car slot)) value)
+			  (return (slot-value this ',(car slot))))))
+		   (remote-args slots))))))
 
-(defun/cc dojo-0.4 (&optional base-url)
+(defun/cc dojo (&optional base-url (debug t))
   (<:js
    `(progn
-      (dojo.require "dojo.debug.console")
-      (dojo.require "dojo.io.*")
-      (dojo.require "dojo.json")
-      ,(if base-url
-	   `(setf base-url ,base-url)
-	   `(setf base-url ""))
-      (defun rest (arr)
-	(let ((temp (*array.reverse arr)))
-	  (*array.pop temp)
-	  (return (*array.reverse temp))))
-      (defun funcall (url parameters)
-	(let (result)
-	  (debug "server.funcall " url)
-	  (when (dojo.lang.is-object parameters)
-	    (doeach (param parameters)
-		    (setf (slot-value parameters param)
-			  (serialize (slot-value parameters param)))))
-	  (dojo.io.bind
-	   (create :url (+ base-url url)
-		   :mime-type "text/plain"
-		   :sync t
-		   :content parameters
-		   :load (lambda (type json http args)
-			   (setf result (eval (+ "{" json "}"))))
-		   :error (lambda (type err http args)
-			    (throw (+ "Funcall error: " url ", " err)))))
-	  (return result)))
-      (defun serialize (value)
-	(return (dojo.json.serialize value))))))
-
-(defun/cc dojo-1.0 (&optional base-url)
-  (<:js
-   `(progn
-      ,(if base-url
-	   `(setf base-url ,base-url)
-	   `(setf base-url ""))
+      (defun load-javascript (url)
+	  (let ((request nil))
+	    (cond
+	      (window.*x-m-l-http-request ;; Gecko
+	       (setf request (new (*x-m-l-http-request))))
+	      (window.*active-x-object ;; Internettin Explorer
+	       (try (setf request (new (*active-x-object "Msxml2.XMLHTTP")))
+		    (:catch (error)
+		      (setf request (new (*active-x-object "Microsoft.XMLHTTP")))))))
+	    (if (= null request)
+		(throw (new (*error "Cannot Load Javascript, -core-server 1.0"))))
+	    (setf req request)
+	    (request.open "GET" url false)
+	    (request.send null)
+	    (if (= 200 request.status)
+		(return (eval (+ "{" request.response-text "}"))))
+	    (return nil)))
+      (when (= "undefined" (typeof dojo))
+	(setf dj-config (create :base-url ,+dojo-path+ :is-debug ,debug))      
+	(dolist (src (array "bootstrap.js" "loader.js" "hostenv_browser.js" "loader_xd.js"))	
+	  (load-javascript (+ ,+dojo-path+ "_base/_loader/" src)))
+	(load-javascript (+ ,+dojo-path+ "_base.js")))
+      (setf base-url ,(if (and +context+ base-url)
+			  (format nil "/~A/~A"
+				  (web-application.fqdn (application +context+))
+				  base-url)))
+      (defun serialize (value) (return (dojo.to-json value)))
       (defun funcall (url parameters)
 	(let (result)
 	  (debug "server.funcall " url)
@@ -340,28 +324,15 @@
 	    (doeach (param parameters)
 		    (setf (slot-value parameters param)
 			  (serialize (slot-value parameters param)))))
-	  (dojo.xhr-get
+	  (dojo.xhr-post
 	   (create :url (+ base-url url)
 		   :handle-as "text"
 		   :sync t
 		   :timeout 10
 		   :content parameters
 		   :load (lambda (json args)
+;;			   (debug json)
 			   (setf result (eval (+ "{" json "}"))))
 		   :error (lambda (err args)
-			    (throw (+ "Funcall error: " url ", " err)))))
-	  (return result)))
-      (defun serialize (value)
-	(return (dojo.to-json value))))))
-
-(defun dojo (&rest args)
-  (apply #'dojo-1.0 args))
-
-(defun/cc dojo-javascript-stack ()
-  (<:script :type "text/javascript"
-    (<:js `(setf dj-config
-		 (create :is-debug t
-			 :prevent-back-button-fix false))))      
-  (<:script :src "/dojo-build/dojo.js" :type "text/javascript")
-  (<:script :type "text/javascript"
-     (dojo)))
+			    (throw (new (*error (+ "Funcall error: " url ", " err)))))))
+	  (return result))))))
