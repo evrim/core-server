@@ -431,10 +431,13 @@
    #:http-session
    #:make-new-session
    #:http-context
+   #:+context+
    #:make-new-context
    #:copy-context
    #:session
    #:send/suspend
+   #:javascript/suspend
+   #:json/suspend
    #:function/hash
    #:action/hash
    #:function/url
@@ -460,7 +463,11 @@
    #:css-class
    #:tag
    #:id
-   #:div-element   
+   #:div-element
+   ;; [HTTP Components]
+   #:fckeditor-component
+   #:toaster-component
+   #:login-component
    ;; [Helpers]
    #:make-keyword
    ;; [Search]

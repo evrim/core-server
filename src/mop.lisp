@@ -10,7 +10,7 @@
 ;; (#<STANDARD-CLASS C> #<STANDARD-CLASS B> #<STANDARD-CLASS A>
 ;;  #<STANDARD-CLASS COMMAND>)
 (defun class-superclasses (class &aux lst)
-  (let ((class (if (stringp class) (find-class class) class)))
+  (let ((class (if (symbolp class) (find-class class) class)))
     (core-search (cons class (copy-list (sb-mop:class-direct-superclasses class)))
 		 #'(lambda (atom) (pushnew atom lst) nil) 
 		 #'class-successors
