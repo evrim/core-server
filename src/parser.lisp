@@ -288,7 +288,7 @@
 	       nil)))))))
 
 (defrule crlf? ()
-  (:or (:and #\Return #\Newline)
+  (:or (:checkpoint #\Return #\Newline (:commit))
        #\Newline)
   (:return t))
 
@@ -314,12 +314,19 @@
 ;;       escaped       = "%" hex hex
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defrule escaped? (hex)  
-    (:and #\% (:hex-value? hex) (:return hex))))
+    (:and #\% (:hex-value? hex) (:return hex)))
+  (defrule utf-escaped? (f1 f2 f3 f4)
+    (:sci "%u")    
+    (:type hex? f1)  (:type hex? f2) (:type hex? f3) (:type hex? f4)
+    (:do (describe (list f1 f2 f3 f4)))
+    (:return 
+	     ;;	     (+ (- f1 48) (* 8 (- f2 48)) (* 16 (- f3 48)) (* 32 (- f4 48)))
+      (with-input-from-string (s (format nil "#x~C~C~C~C" (code-char f1) (code-char f2) (code-char f3) (code-char f4)))
+	 (read s)))))
 
 (defrule digit-value? (d)
   (:and (:type digit? d)
 	(:return (- (the (unsigned-byte 8) d) 48))))
-
 
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defrule fixnum? ((acc (make-accumulator)) c)
@@ -341,7 +348,11 @@
     (:zom #\. (:fixnum? d) (:do (push d version)))
     (:return (nreverse version))))
 
-(defrule quoted? ((value (make-accumulator :byte)) c)
+(defrule escaped-string? (c (acc (make-accumulator :byte)))
+  (:oom (:escaped? c) (:collect c acc))
+  (:return acc))
+
+(defrule quoted? ((value (make-accumulator :byte)) c b)
   (:or
    (:and
     #\"
@@ -351,10 +362,12 @@
 		  (:do (push-atom #\" value))
 		  (:commit)))
 	   (:and #\" (:return (octets-to-string value :utf-8)))
-	   (:and (:or (:escaped? c)
+	   (:and (:or (:and (:utf-escaped? b c) (:collect b value))
+		      (:escaped? c)
  		      (:type (or visible-char? space?) c))		 
 		 (:collect c value)))))
-   (:and (:zom (:or (:escaped? c)
+   (:and (:zom (:or (:and (:utf-escaped? b c) (:collect b value))
+		    (:escaped? c)
 		    (:type (or visible-char? space?) c))
 	       (:collect c value))
 	 (:return (octets-to-string value :utf-8)))))
