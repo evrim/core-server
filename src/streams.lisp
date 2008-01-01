@@ -314,7 +314,7 @@
 	  (open (getf initargs :file)
 		:direction :io
 		:element-type '(unsigned-byte 8)
-		:if-exists :supersede
+		:if-exists :overwrite
 		:if-does-not-exist :create
 		:external-format :utf8))))
 
