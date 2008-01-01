@@ -6,8 +6,8 @@
 ;; JSon Protocol Data Types
 (defrule json-string? (q c acc)
   (:checkpoint (:seq "\"\"") (:return 'null)) ;; -hek.
-  (:or (:and (:quoted-string? q) (:return q))
-       (:and (:do (setq acc (make-accumulator)))
+  (:or (:and (:quoted? q) (:return q))
+       (:and (:do (setq acc (make-accumulator :byte)))
 	     (:type (or visible-char? space?) c)
 	     (:collect c acc)
 	     (:zom (:type (or visible-char? space?) c)
@@ -71,9 +71,9 @@
 (defmethod json-array! ((stream core-stream) sequence)
   (flet ((primitive! (s p)
 	   (prog1 s
-		  (string! s " ,")
-		  (char! s #\Space)
-		  (json! s p))))
+	     (string! s " ,")
+	     (char! s #\Space)
+	     (json! s p))))
     (prog1 stream
       (string! stream "[ ")
       (reduce #'primitive! (rest sequence)
@@ -88,10 +88,10 @@
   (:return acc))
 
 (defmethod json-key! ((stream core-stream) (key string))
-  (json-string! stream key))
+  (prog1 stream (json-string! stream key)))
 
 (defmethod json-key! ((stream core-stream) (key symbol))
-  (symbol! stream key))
+  (prog1 stream (symbol! stream key)))
 
 (defrule json-object? (key value (object (make-hash-table)))
   (:lwsp?) #\{ (:lwsp?)
@@ -124,17 +124,18 @@
 	     (:return value))))
 
 (defmethod json! ((stream core-stream) something)
-  (etypecase something
-    (null (string! stream "null"))
-    (hash-table (json-object! stream something))
-    (list (json-array! stream something))
-    (string (json-string! stream something))
-    (number (json-number! stream something))
-    (symbol
-     (ecase something
-       ((or true false) (json-boolean! stream something))           
-       (undefined (string! stream "undefined"))
-       (null (string! stream "null"))))))
+  (prog1 stream
+    (etypecase something
+      (null (string! stream "null"))
+      (hash-table (json-object! stream something))
+      (list (json-array! stream something))
+      (string (json-string! stream something))
+      (number (json-number! stream something))
+      (symbol
+       (ecase something
+	 ((or true false) (json-boolean! stream something))           
+	 (undefined (string! stream "undefined"))
+	 (null (string! stream "null")))))))
 
 
 (defun json-serialize (object)
