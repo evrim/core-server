@@ -76,12 +76,18 @@
                                    (:file "mail")
                                    (:file "filesystem")))
                          (:module :web
+                                  :serial t
                                   :components
                                   ((:file "macros")
                                    (:file "json")
-                                   (:file "component"))))))
-  :depends-on (:bordeaux-threads :cl-prevalence :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad :yaclml
-                                 :parenscript)
+                                   (:file "component")
+                                   (:module :components
+                                            :components
+                                            ((:file "toaster")
+                                             (:file "fckeditor")
+                                             (:file "login"))))))))
+  :depends-on (:bordeaux-threads :cl-prevalence :sb-bsd-sockets
+                                 :arnesi :cl-ppcre :cl-fad :yaclml :parenscript)
   :serial t)
 
 (defmethod perform :after ((o t) (c (eql (find-system :core-server))))
