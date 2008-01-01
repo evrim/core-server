@@ -275,11 +275,12 @@
        (:and (:opaque_part? path) (:return (list path)))))
 
 ;;       hier_part     = ( net_path | abs_path ) [ "?" query ]
-(defrule hier_part? (path authority query key)
+(defrule hier_part? (path authority query fragment)
   (:or (:net_path? path authority) (:abs_path? path))
-  (:checkpoint #\? (:query? query) (:commit))
-  (:checkpoint #\# (:query-key? key) (:commit))
-  (:return (values path query authority key)))
+  (:zom (:or (:and #\? (:query? query))
+	     (:and #\# (:or ;;			(:query? fragment)
+			    (:query-key? fragment)))))
+  (:return (values path query authority fragment)))
 
 ;;       relativeURI   = ( net_path | abs_path | rel_path ) [ "?" query ]
 (defrule relative-uri? (path query authority)
