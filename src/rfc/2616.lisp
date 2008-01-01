@@ -1230,7 +1230,7 @@
 		   (:or (:and #\: (:zom (:type space?)))
 			(:and (:zom (:type space?)) (:crlf?)))
 		   (:do (setq value (make-accumulator :byte)))
-		   (:zom (:type http-header-value? c) (:collect c value))
+		   (:zom (:type http-header-value? c) (:collect c value)) 
 		   (:do (push (cons key value) uh)))) 	
 	(:crlf?)
 	(:checkpoint
@@ -1248,7 +1248,7 @@
   (:mod-lisp-header? header) (:do (push header mlh)) (:crlf?)
   (:zom (:or (:and (:http-general-header? header) (:do (push header gh)))
 	     (:and (:http-request-header? header) (:do (push header rh)))
-	     (:and (:http-entity-header? header) (:do (push header eh)))
+	     (:and (:http-entity-header? header) (:do (push header eh)))	     
 	     (:and (:mod-lisp-header? header) (:do (push header mlh)))
 	     (:and (:http-unknown-header? header) (:do (push header uh))))
 	(:crlf?)
@@ -1275,6 +1275,24 @@
 
 (defrule x-www-form-urlencoded? (query)
   (:query? query) (:return query))
+
+(defun trace-http-headers ()
+  (mapcar (lambda (header)
+	    (eval `(trace ,(intern (format nil "HTTP-~A?" header)))))
+	  (append +http-general-headers+ +http-request-headers+
+		  +http-entity-headers+))
+  (mapcar (lambda (header)	    
+	    (eval `(trace ,(intern (format nil "MOD-LISP-HTTP-~A?" header)))))
+	  +mod-lisp-request-headers+))
+
+(defun untrace-http-headers ()
+  (mapcar (lambda (header)
+	    (eval `(untrace ,(intern (format nil "HTTP-~A?" header)))))
+	  (append +http-general-headers+ +http-request-headers+
+		  +http-entity-headers+))
+  (mapcar (lambda (header)	    
+	    (eval `(untrace ,(intern (format nil "MOD-LISP-HTTP-~A?" header)))))
+	  +mod-lisp-request-headers+))
 
 ;;;-----------------------------------------------------------------------------
 ;;; HTTP RESPONSE
@@ -1801,6 +1819,60 @@ Connection
 Keep-Alive
 end
 ")
+
+(defvar *ie-modlisp-urlencoded*
+  "server-protocol
+HTTP/1.1
+method
+POST
+url
+/coretal/js.core?s=dGLvrnRW&k=act-sGcKrhFB
+content-type
+application/x-www-form-urlencoded
+content-length
+43
+server-ip-addr
+10.0.0.1
+server-ip-port
+80
+remote-ip-addr
+10.0.0.103
+script-filename
+/var/www/coretal/js.core
+remote-ip-port
+1117
+server-id
+core-server
+server-baseversion
+Apache/2.2.6
+modlisp-version
+1.3.1
+modlisp-major-version
+2
+Accept
+*/*
+Accept-Language
+tr
+Referer
+http://10.0.0.1/coretal/#
+Content-Type
+application/x-www-form-urlencoded
+UA-CPU
+x86
+Accept-Encoding
+gzip, deflate
+User-Agent
+Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; .NET CLR 1.1.4322; .NET CLR 2.0.50727; .NET CLR 3.0.04506.30)
+Host
+10.0.0.1
+Content-Length
+43
+Connection
+Keep-Alive
+Cache-Control
+no-cache
+end
+username=%22admin%22&password=%22c0r3t4l%22")
 
 (defvar *ie-http-headers* "GET / HTTP/1.1
 Accept: image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*
