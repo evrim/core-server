@@ -574,7 +574,7 @@ echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
 (defcommand groupadd (shell)
   ((groupname :host local :initarg :groupname
 	      :initform (error "Group name must be provided.")))
-  (:default-initargs :cmd (whereis "groupadd")))
+  (:default-initargs :cmd (whereis "groupadd") :errorp nil))
 
 (defmethod run ((self groupadd))
   (setf (s-v 'args) (append (s-v 'args) (list (s-v 'groupname))))
