@@ -13,7 +13,7 @@
 ; IBUFFER
 (autoload 'ibuffer "ibuffer" "List buffers." t)
 (global-set-key (kbd "C-x C-b") 'ibuffer)
-(column-number-mode)
+;;(column-number-mode)
 
 ;; PAREDIT
 ;;(load-el "paredit-beta.el")
