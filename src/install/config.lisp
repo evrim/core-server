@@ -1,4 +1,4 @@
-(in-package #:tr.gen.core.install)
+(in-package :core-server)
 
 (defun config-1.0 (layout)  
   ;; (with-current-directory (merge-pathnames #P"rfc2388/"

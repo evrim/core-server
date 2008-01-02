@@ -96,7 +96,7 @@ fi
 prologue
 echo "+ Compiling installation script. Please wait..."
 echo 
-TARGET="(defparameter tr.gen.core.install::+target-directory+ \"$1\")"
+TARGET="(defparameter core-server::+target-directory+ \"$1\")"
 $SBCL --noinform \
   --noprint \
   --no-sysinit \
