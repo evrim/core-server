@@ -177,7 +177,7 @@ string in BIG string."
 	    (core-server::hex-value! output peek)))	 	 
 	 (t (core-server::byte! output peek)))))))
 
-#+sb-unicode
+#+nil
 (progn
   (defvar +tr-alphabet+
     "ABCÇDEFGĞHIİJKLMNOÖPQRSŞTUÜVWXYZabcçdefgğhıijklmnoöpqrsştuüvwxyz")
