@@ -9,24 +9,24 @@
 ;;;; you must add your use to your /etc/sudoers
 ;;;; file with visudo like:
 ;;;; evrim   ALL= NOPASSWD: ALL
-(defvar +sudo+ #P"/usr/bin/sudo")
+(defvar +sudo+ (whereis "sudo"))
 (defvar *apache-default-config-extenstion* "conf")
-(defvar +cp+ #-debian #P"/usr/bin/cp" #+debian #P"/bin/cp")
-(defvar +chown+ #-debian #P"/usr/bin/chown" #+debian #P"/bin/chown")
-(defvar +chmod+ #-debian #P"/usr/bin/chmod" #+debian #P"/bin/chmod")
+(defvar +cp+ (whereis "cp"))
+(defvar +chown+ (whereis "chown"))
+(defvar +chmod+ (whereis "chmod"))
 (defvar +apache-user+ #-debian "apache" #+debian "www-data")
 (defvar +apache-group+ #-debian "apache" #+debian "www-data")
-(defvar +find+ #P"/usr/bin/find")
-(defvar +rm+ #-debian #P"/usr/bin/rm" #+debian #P"/bin/rm")
-(defvar +mkdir+ #-debian #P"/usr/bin/mkdir" #+debian #P"/bin/mkdir")
-(defvar +postmap+ #P"/usr/sbin/postmap")
-(defvar +sed+ #-debian #P"/usr/bin/sed" #+debian #P"/bin/sed")
-(defvar +darcs+ #P"/usr/bin/darcs")
-(defvar +git+ #P"/usr/bin/git")
+(defvar +find+ (whereis "find"))
+(defvar +rm+ (whereis "rm"))
+(defvar +mkdir+ (whereis "mkdir"))
+(defvar +postmap+ #P"/usr/sbin/postmap") ;;can't be found on all.
+(defvar +sed+ (whereis "sed"))
+(defvar +darcs+ (whereis "darcs"))
+(defvar +git+ #P"/usr/bin/git") ;; can't be found on all
 (defvar +remote-user+ "evrim.ulu")
 
 ;; +Web Related Configurations
-(defvar +dojo-path+ "/dojo/dojo/")
+(defvar +dojo-path+ "/dojo/")
 (defvar +fckeditor-path+ "/fckeditor/")
 (defvar +default-extension+ ".core")
 

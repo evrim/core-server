@@ -28,15 +28,15 @@
                          (:file "streams")
                          (:file "parser")
                          (:file "prevalence")
+                         (:file "search")
+                         (:file "mop")
+                         (:file "command")
                          (:file "config")
                          (:file "method")
                          (:file "classes")
                          (:file "protocol")
                          (:file "application")
                          (:file "server")
-                         (:file "search")
-                         (:file "mop")
-                         (:file "command")
                          (:module :rfc
                                   :serial t
                                   :components
