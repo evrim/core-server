@@ -157,8 +157,9 @@ string in BIG string."
 		       new
 		       (subseq big (+ i oldlen))))))
 
-(defmethod make-keyword ((str string))
-  (intern (string-upcase str) :keyword))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defmethod make-keyword ((str string))
+    (intern (string-upcase str) :keyword)))
 
 (defmethod make-keyword ((sym symbol))
   (intern (symbol-name sym) :keyword))

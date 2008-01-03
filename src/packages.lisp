@@ -389,6 +389,7 @@
    ;; API
    #:whois
    ;; Helpers
+   #:make-keyword
    #:with-current-directory
    #:make-project-path
    #:with-current-directory
