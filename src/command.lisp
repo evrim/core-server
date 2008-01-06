@@ -4,17 +4,16 @@
 (defvar +which+ #P"/usr/bin/which")
 (defparameter +tmp+ (make-pathname :directory '(:absolute "tmp")))
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
- (defclass command ()
-   ((input-stream :accessor command.input-stream :initarg :input-stream
+(defclass command ()
+  ((input-stream :accessor command.input-stream :initarg :input-stream
+		 :initform nil)
+   (output-stream :accessor command.output-stream :initarg :output-stream
 		  :initform nil)
-    (output-stream :accessor command.output-stream :initarg :output-stream
-		   :initform nil)
-    (verbose :accessor command.verbose :initarg :verbose :initform +verbose+)
-    (verbose-stream :accessor command.verbose-stream :initarg :verbose
-		    :initform *standard-output*)
-    (local-args :accessor command.local-args :initarg :local-args :initform '())
-    (remote-args :accessor command.remote-args :initarg :remote-args :initform '()))))
+   (verbose :accessor command.verbose :initarg :verbose :initform +verbose+)
+   (verbose-stream :accessor command.verbose-stream :initarg :verbose
+		   :initform *standard-output*)
+   (local-args :accessor command.local-args :initarg :local-args :initform '())
+   (remote-args :accessor command.remote-args :initarg :remote-args :initform '())))
 
 (defgeneric render (command)
   (:documentation "Send the command to remote."))
@@ -55,11 +54,11 @@
 		     (eq (getf (cdr slot-def) :host) 'both))
 		 (cons (list (car slot-def) (getf (cdr slot-def) :initform)) acc)
 		 acc))
-;; 	   (remote-slot (acc slot-def)
-;; 	     (if (or (eq (getf (cdr slot-def) :host) 'remote)
-;; 		     (eq (getf (cdr slot-def) :host) 'both))
-;; 		 (cons (list (car slot-def) (getf (cdr slot-def) :initform)) acc)
-;; 		 acc))
+	   ;; 	   (remote-slot (acc slot-def)
+	   ;; 	     (if (or (eq (getf (cdr slot-def) :host) 'remote)
+	   ;; 		     (eq (getf (cdr slot-def) :host) 'both))
+	   ;; 		 (cons (list (car slot-def) (getf (cdr slot-def) :initform)) acc)
+	   ;; 		 acc))
 	   (local-args (slotz)
 	     (let ((args (append
 			  (nreverse (reduce #'local-slot slotz :initial-value nil))
@@ -77,7 +76,7 @@
 			    (if value
 				(cons (list (car arg) value) acc)
 				(cons arg acc))))
-			     args :initial-value nil))
+		      args :initial-value nil))
 	       (reduce #'(lambda (acc arg)
 			   (let ((value (getf (cdar default-initargs)
 					      (make-keyword (car arg)))))
@@ -85,8 +84,8 @@
 				 (cons (list (car arg) value) acc)
 				 (cons arg acc))))
 		       args :initial-value nil)))
-;; 	   (remote-args (slotz)
-;; 	     (nreverse (reduce #'remote-slot slotz :initial-value nil)))
+	   ;; 	   (remote-args (slotz)
+	   ;; 	     (nreverse (reduce #'remote-slot slotz :initial-value nil)))
 	   (function-key-args (slotz)
 	     (reduce #'(lambda (acc slot-def)			 
 			 (cons (make-keyword (car slot-def))
@@ -99,17 +98,17 @@
 					   (eq item :remote-args))
 				       acc
 				       (cons item acc)))
-			       lst :initial-value nil))))
-    (setf (gethash name +command-registry+) (local-args slots))
-    `(progn       
-       (eval-when (:compile-toplevel :load-toplevel :execute)
-	(defclass ,(gen-class name t) (,@supers command)
-	  ,(mapcar #'filter-slot (copy-tree slots))
-	  (:default-initargs ,@(filter-default-initargs (car default-initargs)))
-	  ,@(cdr default-initargs)))
+			       lst :initial-value nil))))    
+    `(progn
        (defun ,(intern (string-upcase name)) (&key ,@(local-args slots))
 	 (run (apply #'make-instance ',(gen-class name t)
-		     (list ,@(function-key-args slots))))))))
+		     (list ,@(function-key-args slots)))))
+       (eval-when (:compile-toplevel :load-toplevel :execute)
+	 (setf (gethash ',name +command-registry+) ',(local-args slots))       
+	 (defclass ,(gen-class name t) (,@supers command)
+	   ,(mapcar #'filter-slot (copy-tree slots))
+	   (:default-initargs ,@(filter-default-initargs (car default-initargs)))
+	   ,@(cdr default-initargs))))))
 
 (defcommand shell ()
   ((cmd :host local :initform (error "State shell cmd."))
@@ -321,13 +320,13 @@
 				 (make-pathname :name :wild
 						:type :wild
 						:defaults (sandbox self))))))
-	(if package-directory
-;; STUPID Debian and gnuutils this one should be simply:
-;; (shell :cmd +mv+ :args (list package-directory (target self)))	    
-	    (shell :cmd +mv+ :args (list package-directory
-					 (subseq (format nil "~A" (target self))
-						 0
-						 (1- (length (namestring (target self)))))))
-	    (error "package tarball is bogus."))
-	(when (temp-fname self)
-	  (delete-file (namestring (temp-fname self))))))
+    (if package-directory
+	;; STUPID Debian and gnuutils this one should be simply:
+	;; (shell :cmd +mv+ :args (list package-directory (target self)))	    
+	(shell :cmd +mv+ :args (list package-directory
+				     (subseq (format nil "~A" (target self))
+					     0
+					     (1- (length (namestring (target self)))))))
+	(error "package tarball is bogus."))
+    (when (temp-fname self)
+      (delete-file (namestring (temp-fname self))))))
