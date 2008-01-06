@@ -62,9 +62,10 @@
 	      (remove method-name
 		      (getf (gethash name +component-registry+) :remote-methods)))))
 
-(defmacro defmethod/local (name ((self class-name) &rest args) &body body)  
-  (add-local-method-for-class class-name name)
+(defmacro defmethod/local (name ((self class-name) &rest args) &body body)    
   `(progn
+     (eval-when (:compile-toplevel :load-toplevel :execute)
+       (add-local-method-for-class ',class-name ',name))
      (defgeneric/cc ,name (,class-name ,@args))
      (defgeneric/cc ,(proxy-method-name name) (,class-name))
 ;;     (export ',(proxy-method-name name))
@@ -89,9 +90,10 @@
      (defmethod/cc ,name ((,self ,class-name) ,@args) ,@body)))
 
 (defmacro defmethod/remote (name ((self class-name) &rest args) &body body)
-  (let ((arg-names (arnesi:extract-argument-names args :allow-specializers t)))
-    (add-remote-method-for-class class-name name)    
-    `(progn       
+  (let ((arg-names (arnesi:extract-argument-names args :allow-specializers t)))    
+    `(progn
+       (eval-when (:compile-toplevel :load-toplevel :execute)
+	 (add-remote-method-for-class ',class-name ',name))
        (defgeneric/cc ,name (,class-name ,@args))
        (defgeneric/cc ,(proxy-method-name name) (,class-name))
 ;;       (export ',(proxy-method-name name))
@@ -258,34 +260,33 @@
 				       (cons item acc)))
 			       lst :initial-value nil)))
 	   (client-type (slot)
-	     (cons (car slot) (or (getf (cdr slot) :client-type) 'primitive))))
-    (setf (getf (gethash name +component-registry+) :local-args) (local-args slots)
-	  (getf (gethash name +component-registry+) :remote-args) (remote-args slots)
-	  (getf (gethash name +component-registry+) :client-types) (mapcar #'client-type slots))
-    `(eval-when (:compile-toplevel :execute :load-toplevel)
-       (prog1 
-	   (defclass ,name (,@supers component)
-	     ,(mapcar #'filter-slot (copy-tree slots))
-	     (:default-initargs ,@(filter-default-initargs (car default-initargs)))
-	     ,@(cdr default-initargs))
-	 (defun/cc ,(intern (string-upcase name)) (&key ,@(local-args slots))
-	   (send/component
-	    (apply #'make-instance ',name (list ,@(function-key-args slots)))))
-	 ,@(mapcar (lambda (slot)
-		     `(progn
-			(defmethod/local ,(proxy-getter-name (car slot)) ((self ,name))
-			  (slot-value self ',(car slot)))
-			(defmethod/local ,(proxy-setter-name (car slot)) ((self ,name) value)
-			  (setf (slot-value self ',(car slot)) value))))
-		   (local-args slots))
-	 ,@(mapcar (lambda (slot)
-		     `(progn
-			(defmethod/remote ,(proxy-getter-name (car slot)) ((self ,name))
-			  (return (slot-value this ',(car slot))))
-			(defmethod/remote ,(proxy-setter-name (car slot)) ((self ,name) value)			
-			  (setf (slot-value this ',(car slot)) value)
-			  (return (slot-value this ',(car slot))))))
-		   (remote-args slots))))))
+	     (cons (car slot) (or (getf (cdr slot) :client-type) 'primitive))))    
+    `(prog1
+       (eval-when (:compile-toplevel :load-toplevel :execute)
+	 (setf (getf (gethash ',name +component-registry+) :local-args) ',(local-args slots)
+	       (getf (gethash ',name +component-registry+) :remote-args) ',(remote-args slots)
+	       (getf (gethash ',name +component-registry+) :client-types) ',(mapcar #'client-type slots))
+	 (defclass ,name (,@supers component)
+	   ,(mapcar #'filter-slot (copy-tree slots))
+	   (:default-initargs ,@(filter-default-initargs (car default-initargs)))
+	   ,@(cdr default-initargs)))
+       (defun/cc ,(intern (string-upcase name)) (&key ,@(local-args slots))
+	 (send/component (apply #'make-instance ',name (list ,@(function-key-args slots)))))
+       ,@(mapcar (lambda (slot)
+		   `(progn
+		      (defmethod/local ,(proxy-getter-name (car slot)) ((self ,name))
+			(slot-value self ',(car slot)))
+		      (defmethod/local ,(proxy-setter-name (car slot)) ((self ,name) value)
+			(setf (slot-value self ',(car slot)) value))))
+		 (local-args slots))
+       ,@(mapcar (lambda (slot)
+		   `(progn
+		      (defmethod/remote ,(proxy-getter-name (car slot)) ((self ,name))
+			(return (slot-value this ',(car slot))))
+		      (defmethod/remote ,(proxy-setter-name (car slot)) ((self ,name) value)			
+			(setf (slot-value this ',(car slot)) value)
+			(return (slot-value this ',(car slot))))))
+		 (remote-args slots)))))
 
 (defun/cc dojo (&optional base-url (debug t))
   (<:js
