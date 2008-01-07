@@ -37,6 +37,10 @@
                          (:file "protocol")
                          (:file "application")
                          (:file "server")
+                         (:module :commands
+                                  :serial t
+                                  :components
+                                  ((:file "hxpath")))
                          (:module :rfc
                                   :serial t
                                   :components
@@ -91,15 +95,6 @@
                                  :arnesi :cl-ppcre :cl-fad :yaclml :parenscript)
   :serial t)
 
-(defmethod perform :after ((o t) (c (eql (find-system :core-server))))
- ;; (when (and (find-package :tr.gen.core.install)
-;;               (not (null (sb-posix:getenv "CORESERVER_HOME"))))
-;;      (load (concatenate 'string (sb-posix:getenv "CORESERVER_HOME")
-;;                        "/src/install/install.lisp"))
-;;      (load (concatenate 'string (sb-posix:getenv "CORESERVER_HOME")
-;;                         "/src/commands/hxpath.lisp")))
- )
-
 (defmethod perform :after ((o load-op) (c (eql (find-system :core-server))))
   (in-package :core-server))
 
@@ -113,6 +108,7 @@
                                      (:file "streams")
                                      (:file "sockets")
                                      (:file "json")
+                                     (:file "units")
                                      (:module :rfc
                                               :components ((:file "2109")
                                                            (:file "2396")

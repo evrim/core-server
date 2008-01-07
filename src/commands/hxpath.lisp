@@ -1,13 +1,8 @@
-(in-package :tr.gen.core.install)
+(in-package :tr.gen.core.server)
 
-(defparameter +hxpath+ (merge-pathnames #P"bin/HXPath"
-					(pathname (sb-posix:getenv "CORESERVER_HOME"))))
-
-(import 'core-server::defrule)
-(import 'core-server::lwsp?)
-(import 'core-server::quoted?)
-(import 'core-server::octet?)
-(import 'core-server::make-core-stream)
+(defparameter +hxpath+
+  (merge-pathnames #P"bin/HXPath"
+		   (pathname (sb-posix:getenv "CORESERVER_HOME"))))
 
 (defrule hxpath? (expr c (acc (core-server::make-accumulator)))
   (:checkpoint
