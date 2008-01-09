@@ -2,7 +2,7 @@
 (defpackage :tr.gen.core.install)
 (defpackage :tr.gen.core.server
   (:nicknames :core-server)
-  (:use :common-lisp :cl-prevalence :yaclml :arnesi :cl-ppcre
+  (:use :common-lisp :cl-prevalence :arnesi :cl-ppcre
 	:sb-bsd-sockets :tr.gen.core.install :bordeaux-threads :js)
   (:shadowing-import-from #:swank #:send #:receive #:accept-connection)
   (:shadowing-import-from #:arnesi #:name #:body #:self #:new)
@@ -44,14 +44,21 @@
    #:make-transformer-stream
    #:make-core-stream
    #:make-cps-stream
-   ;; Stream Helpers
+   ;; [Stream Helpers]
    #:with-core-stream
-   ;; sockets
+   ;; [Sockets]
    #:resolve-hostname
    #:make-server
    #:close-server
    #:accept
    #:connect
+   ;; [Units]
+   #:unit
+   #:standard-unit
+   #:local-unit
+   #:me-p
+   #:defmethod/unit
+   #:run
    ;; rfc 2109
    #:cookie
    #:cookie.name
@@ -501,3 +508,17 @@
    #:false
    #:undefined
    ))
+
+(defpackage :tr.gen.core.server.html
+  (:nicknames :< :core-server.html)
+  (:use :core-server)
+  (:export #:ai #:ah #:js #:a #:abbr #:acronym #:address #:area #:b
+  #:base #:bdo #:big #:blockquote #:body #:br #:button #:caption
+  #:cite #:code #:col #:colgroup #:dd #:del #:dfn #:div #:dl #:dt #:em 
+  #:embed #:fieldset #:form #:frame #:frameset #:h1 #:h2 #:h3 #:h4
+  #:h5 #:h6 #:head #:hr #:html #:i #:iframe #:img #:input #:ins #:kbd
+  #:label #:legend #:li #:link #:map #:meta #:noframes #:noscript
+  #:object #:ol #:optgroup #:option #:p #:param #:pre #:q #:samp
+  #:script #:select #:small #:span #:strong #:style #:sub #:sup
+  #:table #:tbody #:td #:textarea #:tfoot #:th #:thead #:title #:tr
+  #:tt #:ul #:var))

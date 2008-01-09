@@ -170,18 +170,16 @@
 	    (return this.prototype)))))
 
 (defmacro defcomponent (name supers slots &rest default-initargs)
-  (labels ((clazz-name (name)
-	     (intern (string-upcase (format nil "~A" name))))
-	   (gen-class (name &optional direction)
-	     (case direction
-	       ((to view send)
-		(clazz-name (format nil "~A-~A" name 'send)))
-	       ((from form receive)
-		(clazz-name (format nil "~A-~A" name 'receive)))
-	       (t
-		(clazz-name (format nil "~A" name)))))
+  (labels ((class-default-initargs (class)
+	     (getf (gethash class +component-registry+) :default-initargs))
+	   (class-superclasses (class)
+	     (cons class
+		   (reduce #'append
+			   (mapcar #'class-superclasses
+				   (getf (gethash class +component-registry+) :supers)))))
 	   (filter-slot (slot-def)
-	     (when (or (eq 'local (getf (cdr slot-def) :host)) (eq 'both (getf (cdr slot-def) :host)))
+	     (when (or (eq 'local (getf (cdr slot-def) :host))
+		       (eq 'both  (getf (cdr slot-def) :host)))
 	       (unless (getf (cdr slot-def) :initarg)
 		 (setf (getf (cdr slot-def) :initarg) (make-keyword (car slot-def)))))
 	     (unless (getf (cdr slot-def) :accessor)
@@ -190,12 +188,13 @@
 	     (remf (cdr slot-def) :client-type)
 	     slot-def)
 	   (remote-slot (acc slot-def)
-	     (if (or (eq (getf (cdr slot-def) :host) 'remote)
-		     (eq (getf (cdr slot-def) :host) 'both))
+	     (if (or (eq 'remote (getf (cdr slot-def) :host))
+		     (eq 'both   (getf (cdr slot-def) :host)))
 		 (cons (list (car slot-def) (getf (cdr slot-def) :initform)) acc)
 		 acc))
 	   (local-slot (acc slot-def)
-	     (if (or (eq (getf (cdr slot-def) :host) 'local) (eq (getf (cdr slot-def) :host) 'both))
+	     (if (or (eq 'local (getf (cdr slot-def) :host))
+		     (eq 'both  (getf (cdr slot-def) :host)))
 		 (cons (list (car slot-def) (getf (cdr slot-def) :initform)) acc)
 		 acc))
 	   (local-args (slotz)
@@ -204,13 +203,16 @@
 			  (reduce #'(lambda (acc super)
 				      (append acc (getf (gethash super +component-registry+)
 							:local-args)))
-				  supers :initial-value nil)))
+				  (reduce #'append (mapcar #'class-superclasses supers))
+				  :initial-value nil)))
 		   (super-args
 		    (reduce #'append (mapcar #'class-default-initargs supers))))
- 	       (setf args		     
+	       (setf args		     
 		     (reduce
 		      #'(lambda (acc arg)
-			  (let ((value (cadr (assoc (car arg) super-args :test #'string=))))
+			  (let ((value ;; (cadr (assoc (car arg) super-args :test #'string=))
+				 (getf super-args (make-keyword (car arg)))
+				  ))
 			    (if value
 				(cons (list (car arg) value) acc)
 				(cons arg acc))))
@@ -227,14 +229,16 @@
 			  (reduce #'(lambda (acc super)
 				      (append acc (getf (gethash super +component-registry+)
 							:remote-args)))
-				  supers :initial-value nil)))
+				  (reduce #'append (mapcar #'class-superclasses supers))
+				  :initial-value nil)))
 		   (super-args
 		    (reduce #'append (mapcar #'class-default-initargs supers))))
- 	       (setf args		     
+	       (setf args		     
 		     (reduce
 		      #'(lambda (acc arg)
-			  (let ((value (cadr (assoc (car arg) super-args
-						    :test #'string=))))
+			  (let ((value ;; (cadr (assoc (car arg) super-args :test #'string=))
+				 (getf super-args (make-keyword (car arg)))
+				  ))
 			    (if value
 				(cons (list (car arg) value) acc)
 				(cons arg acc))))
@@ -262,14 +266,16 @@
 	   (client-type (slot)
 	     (cons (car slot) (or (getf (cdr slot) :client-type) 'primitive))))    
     `(prog1
-       (eval-when (:compile-toplevel :load-toplevel :execute)
-	 (setf (getf (gethash ',name +component-registry+) :local-args) ',(local-args slots)
-	       (getf (gethash ',name +component-registry+) :remote-args) ',(remote-args slots)
-	       (getf (gethash ',name +component-registry+) :client-types) ',(mapcar #'client-type slots))
-	 (defclass ,name (,@supers component)
-	   ,(mapcar #'filter-slot (copy-tree slots))
-	   (:default-initargs ,@(filter-default-initargs (car default-initargs)))
-	   ,@(cdr default-initargs)))
+	 (eval-when (:compile-toplevel :load-toplevel :execute)
+	   (setf (getf (gethash ',name +component-registry+) :supers) ',supers
+		 (getf (gethash ',name +component-registry+) :default-initargs) ',(cdar default-initargs)
+		 (getf (gethash ',name +component-registry+) :local-args) ',(local-args slots)
+		 (getf (gethash ',name +component-registry+) :remote-args) ',(remote-args slots)
+		 (getf (gethash ',name +component-registry+) :client-types) ',(mapcar #'client-type slots))
+	   (defclass ,name (,@supers component)
+	     ,(mapcar #'filter-slot (copy-tree slots))
+	     (:default-initargs ,@(filter-default-initargs (car default-initargs)))
+	     ,@(cdr default-initargs)))
        (defun/cc ,(intern (string-upcase name)) (&key ,@(local-args slots))
 	 (send/component (apply #'make-instance ',name (list ,@(function-key-args slots)))))
        ,@(mapcar (lambda (slot)

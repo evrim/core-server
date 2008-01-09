@@ -459,7 +459,8 @@ cam=\"foo\""))
 	      `((SERVER . "(CORE-SERVER . (0 2))")))
 	(setf (http-message.entities response)
 	      `((CONTENT-TYPE . ("text" "html" . (("charset" . "UTF-8"))))))
-	(http-response! s response)
+	(core-server::http-response-headers! s response)
+	(describe (return-stream s))
 	(equal (return-stream s)
 	       "HTTP/1.1 200 OK
 CACHE-CONTROL: private
@@ -478,3 +479,376 @@ CONTENT-TYPE: text/html;charset=UTF-8
 	       ("email" . "kazim@patates.com")
 	       ("Sent" . "sent"))))
   t)
+
+(defvar *http-request*
+  "POST /ee.gee HTTP/1.0
+Host: localhost:3010
+Accept: text/html, text/plain, application/vnd.sun.xml.writer, application/vnd.sun.xml.writer.global, application/vnd.stardivision.writer, application/vnd.stardivision.writer-global, application/x-starwriter, application/vnd.sun.xml.writer.template
+Accept: application/msword, application/vnd.sun.xml.calc, application/vnd.stardivision.calc, application/x-starcalc, application/vnd.sun.xml.calc.template, application/excel, application/msexcel, application/vnd.ms-excel, application/x-msexcel
+Accept: application/vnd.sun.xml.impress, application/vnd.stardivision.impress, application/vnd.stardivision.impress-packed, application/x-starimpress, application/vnd.sun.xml.impress.template, application/powerpoint, application/mspowerpoint
+Accept: application/vnd.ms-powerpoint, application/x-mspowerpoint, application/vnd.sun.xml.draw, application/vnd.stardivision.draw, application/x-stardraw, application/vnd.sun.xml.draw.template, application/vnd.sun.xml.math
+Accept: application/vnd.stardivision.math, application/x-starmath, text/sgml, */*;q=0.01
+Accept-Encoding: gzip, compress
+Accept-Language: en
+Pragma: no-cache
+Cache-Control: no-cache
+User-Agent: Lynx/2.8.5rel.5 libwww-FM/2.14 SSL-MM/1.4.1 OpenSSL/0.9.7j
+Content-type: multipart/form-data; boundary=LYNX
+Content-length: 395
+
+--LYNX
+")
+
+(defparameter *req-data* "gee=gee123&abuzer1=bas+bakalim&abuzer2=&abuzer3=&notparsed=gee&")
+
+(defparameter *mod-lisp-req2*
+  "server-protocol
+HTTP/1.1
+method
+POST
+url
+/%C4%B1gee.gee
+content-type
+application/x-www-form-urlencoded
+content-length
+48
+server-ip-addr
+127.0.0.1
+server-ip-port
+80
+remote-ip-addr
+127.0.0.1
+script-filename
+/var/www/localhost/htdocs/gee.gee
+remote-ip-port
+50692
+server-id
+evrim
+User-Agent
+Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1) Gecko/20061010 Firefox/2.0
+Host
+localhost
+Accept
+text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+Accept-Language
+tr,en;q=0.7,en-us;q=0.3
+Accept-Encoding
+gzip,deflate
+Accept-Charset
+ISO-8859-9,utf-8;q=0.7,*;q=0.7
+Keep-Alive
+300
+Connection
+keep-alive
+Cache-Control
+max-age=0
+Content-Type
+application/x-www-form-urlencoded
+Content-Length
+48
+end
+gee=gee123&abuzer1=bas+bakalim&abuzer2=&abuzer3=")
+
+(defparameter *mod-lisp-req*
+  "server-protocol
+HTTP/1.1
+method
+POST
+url
+/%C4%B1gee.gee
+content-type
+application/x-www-form-urlencoded
+content-length
+48
+server-ip-addr
+127.0.0.1
+server-ip-port
+80
+remote-ip-addr
+127.0.0.1
+script-filename
+/var/www/localhost/htdocs/gee.gee
+remote-ip-port
+50692
+server-id
+evrim
+server-baseversion
+Apache/2.0.58
+modlisp-version
+1.3.1
+modlisp-major-version
+2
+User-Agent
+Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1) Gecko/20061010 Firefox/2.0
+Host
+localhost
+Accept
+text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+Accept-Language
+tr,en;q=0.7,en-us;q=0.3
+Accept-Encoding
+gzip,deflate
+Accept-Charset
+ISO-8859-9,utf-8;q=0.7,*;q=0.7
+Keep-Alive
+300
+Connection
+keep-alive
+Cache-Control
+max-age=0
+Content-Type
+application/x-www-form-urlencoded
+Content-Length
+48
+end
+gee=gee123&abuzer1=bas+bakalim&abuzer2=&abuzer3=")
+
+(defparameter *multipart/form-data*
+  "-----------------------------180841493794515451098915474
+Content-Disposition: form-data; name=\"ıgee\"
+
+gee123ýþi
+-----------------------------180841493794515451098915474
+Content-Disposition: form-data; name=\"abuzer1\"
+
+bas bakalim
+-----------------------------180841493794515451098915474
+Content-Disposition: form-data; name=\"abuzer2\"; filename=\"a.html\"
+Content-Type: text/html
+
+<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">
+<html
+  ><body
+      ><form action=\"http://localhost/ıgee.gee\" method=\"POST\"
+	  enctype=\"multipart/form-data\" 
+	        ><input name=\"ıgee\" type=\"text\" value=\"gee123\"
+			      /><input type=\"submit\" name=\"abuzer1\" value=\"bas bakalim\">
+				  <input type=\"file\" name=\"abuzer2\">
+				  <input type=\"file\" name=\"abuzer3\">
+				  </form
+				      ></body
+					    ></html
+						>
+
+-----------------------------180841493794515451098915474
+Content-Disposition: form-data; name=\"abuzer3\"; filename=\"\"
+Content-Type: application/octet-stream
+
+
+-----------------------------180841493794515451098915474--
+")
+
+(defparameter *ie-mod-lisp-headers* "server-protocol
+HTTP/1.1
+method
+GET
+url
+/eben.gee
+server-ip-addr
+10.0.0.10
+server-ip-port
+80
+remote-ip-addr
+10.0.0.11
+script-filename
+/var/www/localhost/htdocs/eben.gee
+remote-ip-port
+1035
+server-id
+evrim
+server-baseversion
+Apache/2.0.58
+modlisp-version
+1.3.1
+modlisp-major-version
+2
+Accept
+image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*
+Accept-Language
+tr
+Accept-Encoding
+gzip, deflate
+Accept-Charset
+iso-8859-5, unicode-1-1;q=0.8
+Accept-Ranges
+bytes
+Age
+341274938794237
+Allow
+GET, HEAD, PUT
+User-Agent
+Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)
+Host
+10.0.0.10
+Connection
+Keep-Alive
+end
+")
+
+(defvar *ie-modlisp-urlencoded*
+  "server-protocol
+HTTP/1.1
+method
+POST
+url
+/coretal/js.core?s=dGLvrnRW&k=act-sGcKrhFB
+content-type
+application/x-www-form-urlencoded
+content-length
+43
+server-ip-addr
+10.0.0.1
+server-ip-port
+80
+remote-ip-addr
+10.0.0.103
+script-filename
+/var/www/coretal/js.core
+remote-ip-port
+1117
+server-id
+core-server
+server-baseversion
+Apache/2.2.6
+modlisp-version
+1.3.1
+modlisp-major-version
+2
+Accept
+*/*
+Accept-Language
+tr
+Referer
+http://10.0.0.1/coretal/#
+Content-Type
+application/x-www-form-urlencoded
+UA-CPU
+x86
+Accept-Encoding
+gzip, deflate
+User-Agent
+Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; .NET CLR 1.1.4322; .NET CLR 2.0.50727; .NET CLR 3.0.04506.30)
+Host
+10.0.0.1
+Content-Length
+43
+Connection
+Keep-Alive
+Cache-Control
+no-cache
+end
+username=%22admin%22&password=%22c0r3t4l%22")
+
+(defvar *ie-http-headers* "GET / HTTP/1.1
+Accept: image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*
+Accept-Language: tr
+Accept-Encoding: gzip, deflate
+User-Agent: Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)
+Host: 10.0.0.10:3011
+Connection: Keep-Alive
+
+")
+
+(defparameter *ie-http-form* "POST /ee.gee HTTP/1.1
+Accept: image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*
+Referer: http://10.0.0.10/a.html
+Accept-Language: tr
+Content-Type: multipart/form-data; boundary=---------------------------7d728030200f0
+Accept-Encoding: gzip, deflate
+User-Agent: Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)
+Host: 10.0.0.10:3010
+Content-Length: 646
+Connection: Keep-Alive
+Cache-Control: no-cache   
+
+                                       
+-----------------------------7d728030200f0
+Content-Disposition: form-data; name=\"gee\"
+                                       
+gee123                                 
+-----------------------------7d728030200f0
+Content-Disposition: form-data; name=\"abuzer1\"
+                                       
+bas bakalim                            
+-----------------------------7d728030200f0
+Content-Disposition: form-data; name=\"abuzer2\"; filename=\"C:\Documents and Settings\Administrator\Desktop\a.txt\"              
+Content-Type: text/plain               
+                                       
+ayim ben                               
+-----------------------------7d728030200f0
+Content-Disposition: form-data; name=\"abuzer3\"; filename=\"C:\Documents and Settings\Administrator\Desktop\b.txt\"              
+Content-Type: text/plain               
+                                       
+beyim ben                              
+-----------------------------7d728030200f0--
+")
+
+(defvar *ie-modlisp-form* "server-protocol
+HTTP/1.1
+method
+POST
+url
+/eeg.gee
+content-type
+multipart/form-data; boundary=---------------------------7d72ec11200f0
+content-length
+644
+server-ip-addr
+10.0.0.10
+server-ip-port
+80
+remote-ip-addr
+10.0.0.11
+script-filename
+/var/www/localhost/htdocs/eeg.gee
+remote-ip-port
+1056
+server-id
+evrim
+server-baseversion
+Apache/2.0.58
+modlisp-version
+1.3.1
+modlisp-major-version
+2
+Accept
+image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*
+Referer
+http://10.0.0.10/a.html
+Accept-Language
+tr
+Content-Type
+multipart/form-data; boundary=---------------------------7d72ec11200f0
+Accept-Encoding
+gzip, deflate
+User-Agent
+Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)
+Host
+10.0.0.10
+Content-Length
+644
+Connection
+Keep-Alive
+Cache-Control
+no-cache
+end
+-----------------------------7d72ec11200f0
+Content-Disposition: form-data; name=\"gee\"
+
+gee123
+-----------------------------7d72ec11200f0
+Content-Disposition: form-data; name=\"abuzer1\"
+
+bas bakalim
+-----------------------------7d72ec11200f0
+Content-Disposition: form-data; name=\"abuzer2\"; filename=\"C:\Documents and Settings\Administrator\Desktop\a.txt\"
+Content-Type: text/plain
+
+ayim ben
+-----------------------------7d72ec11200f0
+Content-Disposition: form-data; name=\"abuzer3\"; filename=\"C:\Documents and Settings\Administrator\Desktop\b.txt\"
+Content-Type: text/plain
+
+beyim ben
+-----------------------------7d72ec11200f0--
+")

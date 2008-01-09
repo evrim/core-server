@@ -7,10 +7,10 @@
   (setf (http-response.status-code response) (make-status-code 404))
   (rewind-stream (http-response.stream response))
   (checkpoint-stream (http-response.stream response))
-  (with-yaclml-stream (http-response.stream response)
+  (with-html-output (http-response.stream response)
     (<:html
      (<:body
-      (<:ah "Core-serveR - URL Not Found"))))
+      "Core-serveR - URL Not Found")))
   response)
 
 (defmethod eval-request ((self custom-http-peer) (request http-request))

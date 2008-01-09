@@ -42,10 +42,11 @@
 ;;;-----------------------------------------------------------------------------
 ;;; Stream Definitions
 ;;;-----------------------------------------------------------------------------
-(defclass core-stream ()
-  ((%checkpoints :initform '()) ;; checkpoints list as (index #(buffer))
-   (%current :initform -1 :type fixnum) ;; current checkpoint
-   (%max-read :initform nil)))
+(eval-when (:compile-toplevel :execute :load-toplevel)
+  (defclass core-stream ()
+    ((%checkpoints :initform '()) ;; checkpoints list as (index #(buffer))
+     (%current :initform -1 :type fixnum) ;; current checkpoint
+     (%max-read :initform nil))))
 
 (defgeneric read-stream (core-stream)
   (:documentation "read byte"))
@@ -99,6 +100,18 @@
 	((= -1 i) nil)
       (commit-stream self)))
   (call-next-method))
+
+;;;-----------------------------------------------------------------------------
+;;; Standard Output Workarounds
+;;;-----------------------------------------------------------------------------
+(eval-when (:compile-toplevel :execute :load-toplevel)
+  (defclass core-standard-output (core-stream)
+    ())
+
+  (defmethod write-stream ((self core-standard-output) atom)
+    (princ (code-char atom) *standard-output*))
+
+  (defvar *core-output* (make-instance 'core-standard-output)))
 
 ;;;-----------------------------------------------------------------------------
 ;;; Vector Stream

@@ -345,7 +345,6 @@
      
      (defun build-core-server ()
        (require :swank)
-       (require :yaclml) ;; TODO: overlaps with cl-prevalence :xml package.
        (require :core-server)
        (require :core)
        ;;       (require :dojo-stub)
@@ -491,6 +490,7 @@ TARBALL=\"core-server-installer-`date +\"%Y-%m-%d\"`.tar.gz\"
 $MKDIR -p $DIR/core-server-installer;
 cd $DIR;
 $CP $CORESERVER_HOME/src/install/* core-server-installer;
+$CP $CORESERVER_HOME/src/command.lisp core-server-installer;
 $CP $CORESERVER_HOME/doc/README core-server-installer;
 $TAR zcf $TARBALL *
 mv $TARBALL /tmp/
@@ -714,7 +714,6 @@ exit 0
      
      (defun build-core-server ()
        (require :swank)
-       (require :yaclml) ;; TODO: overlaps with cl-prevalence :xml package.
        (require :core-server)
        (require :core)
        ;;       (require :dojo-stub)

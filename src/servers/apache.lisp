@@ -48,9 +48,8 @@
 					       :type "html"
 					       :directory (list :relative (web-application.fqdn app)))
 				(apache-server.htdocs-pathname self))))
-      (with-open-file (s redirector-pathname
-			 :direction :output :if-exists :supersede :if-does-not-exist :create)
-	(it.bese.yaclml:with-yaclml-stream s	  
+      (with-core-stream (s redirector-pathname)
+	(with-html-output s	  
 	  (<:html
 	   (<:head
 	    (<:meta :http--equiv "Refresh"

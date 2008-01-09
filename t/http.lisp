@@ -161,3 +161,17 @@
 
 (defurl *app* "graph.core" ()
   (ana-sayfa))
+
+(defurl *app* "form.core" ()
+  (send/suspend
+    (<:html
+     (<:head)
+     (<:body
+      (<:form :action (action/url ((f1 "f1") (f2 "f2"))
+			(setf *a (request +context+))
+			(break (request +context+))
+			(break (list f1 f2)))
+	      :method "POST" :enctype "multipart/form-data"
+	      (<:input :type "text" :name "f1" :value "f1-value")
+	      (<:input :type "file" :name "f2")
+	      (<:input :type "submit" :value "Gonder Bakalim"))))))

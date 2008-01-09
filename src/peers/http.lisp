@@ -104,10 +104,7 @@
     (checkpoint-stream stream)
     (setf (http-response.status-code response) (make-status-code 200))
     (render-headers self stream response)
-    (with-yaclml-stream stream
-      (<:html
-       (<:body
-	(<:ah "An error occured."))))
+    (with-html-output stream (<:html (<:body "An error occured.")))
     (commit-stream stream)))
 
 (defmethod/unit handle-stream :async-no-return ((self http-peer) stream address)		
