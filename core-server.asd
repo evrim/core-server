@@ -37,6 +37,7 @@
                          (:file "protocol")
                          (:file "application")
                          (:file "server")
+                         (:file "html")
                          (:module :commands
                                   :serial t
                                   :components
@@ -92,7 +93,7 @@
                                              (:file "fckeditor")
                                              (:file "login"))))))))
   :depends-on (:bordeaux-threads :cl-prevalence :sb-bsd-sockets
-                                 :arnesi :cl-ppcre :cl-fad :yaclml :parenscript)
+                                 :arnesi :cl-ppcre :cl-fad :parenscript)
   :serial t)
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :core-server))))
