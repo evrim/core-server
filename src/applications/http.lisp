@@ -215,31 +215,31 @@
 ;;)
 
 ;; Override YACLmL
-(defun yaclml::emit-princ (&rest items)
-  "Princ items to *yaclml-stream*"
-  (mapc #'(lambda (item)
-	    (awhen (and item (yaclml::string-value-of item))
-	      (if (typep *yaclml-stream* 'core-stream)
-		  (string! *yaclml-stream* it)
-		  (princ it *yaclml-stream*))))
-   items)
-  nil)
+;; (defun yaclml::emit-princ (&rest items)
+;;   "Princ items to *yaclml-stream*"
+;;   (mapc #'(lambda (item)
+;; 	    (awhen (and item (yaclml::string-value-of item))
+;; 	      (if (typep *yaclml-stream* 'core-stream)
+;; 		  (string! *yaclml-stream* it)
+;; 		  (princ it *yaclml-stream*))))
+;;    items)
+;;   nil)
 
-(defun emit-html (&rest items)
-  "Like EMIT-PRINC but escapes html chars in item."
-  (mapc
-   #'(lambda (item)
-       (awhen (and item (yaclml::string-value-of item))
-	 (if (typep *yaclml-stream* 'core-stream)
-	     (string! *yaclml-stream* (escape-as-html it))
-	     (princ (escape-as-html it) *yaclml-stream*))))
-   items)
-  nil)
+;; (defun emit-html (&rest items)
+;;   "Like EMIT-PRINC but escapes html chars in item."
+;;   (mapc
+;;    #'(lambda (item)
+;;        (awhen (and item (yaclml::string-value-of item))
+;; 	 (if (typep *yaclml-stream* 'core-stream)
+;; 	     (string! *yaclml-stream* (escape-as-html it))
+;; 	     (princ (escape-as-html it) *yaclml-stream*))))
+;;    items)
+;;   nil)
 
-(deftag <:js (&body body)
-  `(<:ai
-    (js::js*
-     ,@body) ~%))
+;; (deftag <:js (&body body)
+;;   `(<:ai
+;;     (js::js*
+;;      ,@body) ~%))
 
 ;; (defun print-+k+ ()
 ;;   (loop for i in +k+
