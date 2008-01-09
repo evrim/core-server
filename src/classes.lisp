@@ -50,7 +50,7 @@
 				(make-pathname :directory '(:relative "templates"))
 				(make-pathname :directory '(:relative "db"))))
    (use :accessor serializable-web-application.use :initarg :use
-	:initform (list :common-lisp :core-server :cl-prevalence :arnesi :yaclml :js)) ;; :ucw
+	:initform (list :common-lisp :core-server :cl-prevalence :arnesi :js)) ;; :ucw ;;yaclml
    (depends-on :accessor serializable-web-application.depends-on :initarg :depends-on
 	       :initform (list :arnesi :core-server :parenscript)))) ;; :ucw
 
