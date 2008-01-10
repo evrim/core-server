@@ -46,11 +46,11 @@
 
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defrule query? (key val c (queries '()))
-    (:zom (:query-key? key)
+    (:oom (:query-key? key)
 	  (:type reserved? c)
-	  (:query-value? val)
+	  (:checkpoint (:query-value? val) (:commit))
 	  (:do (push (cons key val) queries))
-	  (:type reserved?))
+	  (:checkpoint (:type reserved?) (:commit)))
     (:return (nreverse queries))))
 
 ;;       fragment      = *uric
@@ -275,11 +275,12 @@
        (:and (:opaque_part? path) (:return (list path)))))
 
 ;;       hier_part     = ( net_path | abs_path ) [ "?" query ]
-(defrule hier_part? (path authority query fragment)
+(defrule hier_part? (val path authority query fragment)
   (:or (:net_path? path authority) (:abs_path? path))
-  (:zom (:or (:and #\? (:query? query))
-	     (:and #\# (:or ;;			(:query? fragment)
-			    (:query-key? fragment)))))
+  (:zom (:and #\? (:query? val) (:do (setq query val)))
+	(:and #\#
+	      (:or (:query? val) (:query-key? val))
+	      (:do (setq fragment val))))
   (:return (values path query authority fragment)))
 
 ;;       relativeURI   = ( net_path | abs_path | rel_path ) [ "?" query ]
@@ -338,7 +339,7 @@
 	    :password (cadr (caddr authority))
 	    :paths path
 	    :queries query
-	    :fragments (cons fragment nil))))
+	    :fragments fragment)))
 
 (defconstant +uri-path-seperator+ #\/)
 (defconstant +uri-segment-seperator+ #\;)
@@ -386,6 +387,23 @@
 		  (char! stream +uri-query-seperator+)
 		  (query! stream fragment))
 	      (cdr fragments)))))
+
+(defparameter +uri-parsers+
+  '(query-key? query-value? query? uric? fragment? scheme-specials? scheme?
+    pchar-special? pchar? param? segment? path-segments? reg_name-specials?
+    reg_name? rel_segment-specials? rel_segment? ipv4address? port? toplabel?
+    domainlabel? hostname? host? hostport? userinfo-specials? userinfo? server?
+    authority? abs_path? rel_path? net_path? uric_no_slash-special? uric_no_slash?
+    opaque_part? path? hier_part? relative-uri? absolute-uri? uri?))
+
+(defun trace-uri-parsers ()
+  (mapcar #'(lambda (parser)
+	      (eval `(trace ,parser))) +uri-parsers+))
+
+(defun untrace-uri-parsers ()
+  (mapcar #'(lambda (parser)
+	      (eval `(untrace ,parser)))
+	   +uri-parsers+))
 
 #|
 (defparameter *u (make-uri :scheme "http" :username "evrim"
