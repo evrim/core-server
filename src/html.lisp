@@ -110,6 +110,15 @@
 
 (defparameter +indentation-increment+ 1)
 
+(defmethod dom-element! ((stream core-stream) (element t) &optional (indentation 0))
+  (declare (ignore indentation))
+;;  (break element)
+  element)
+
+(defmethod dom-element! ((stream core-stream) (element string) &optional (indentation 0))
+  (declare (ignore indentation))
+  (string! stream element))
+
 (defmethod dom-element! ((stream core-stream) (element dom-element) &optional (indentation 0))
   (flet ((indent ()
 	   (dotimes (i indentation)
@@ -153,7 +162,7 @@
 		  (attributes element))
 	,@(mapcar (lambda (child)
 		    (if (stringp child)
-			`(elem.append-child ,child)
+			`(elem.append-child (document.create-text-node ,child))
 			`(elem.append-child ,(dom2js child))))
 		  (children element))
 	(return elem)))))
@@ -176,8 +185,9 @@
   `(list ,@body))
 
 (defmacro <:js (&body body)
-  `(with-html-output (http-response.stream (response +context+))
-     (js:js* ,@body)))
+  `(prog1 (with-html-output (http-response.stream (response +context+))
+	    (js:js* ,@body))
+     (char! (http-response.stream (response +context+)) #\Newline)))
 
 (defmacro with-html-output (stream &body body)
   (with-unique-names (element)

@@ -75,8 +75,8 @@
       (render-mod-lisp-headers self stream response)
       (render-http-headers self stream response)))
 
-(defun make-response ()
-  (let ((response (make-instance 'http-response :stream (make-core-stream ""))))
+(defun make-response (&optional (stream (make-core-stream "")))
+  (let ((response (make-instance 'http-response :stream stream)))
     (setf (http-message.general-headers response)
 	  (list (cons 'date (get-universal-time))
 		(list 'pragma 'no-cache)
@@ -105,7 +105,8 @@
     (setf (http-response.status-code response) (make-status-code 200))
     (render-headers self stream response)
     (with-html-output stream (<:html (<:body "An error occured.")))
-    (commit-stream stream)))
+    (commit-stream stream)
+    (close-stream stream)))
 
 (defmethod/unit handle-stream :async-no-return ((self http-peer) stream address)		
   (restart-case

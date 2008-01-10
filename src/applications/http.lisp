@@ -210,7 +210,7 @@
      (funcall (find-url ,application (caar (uri.paths uri)))
 	      (make-new-context ,application
 				(make-instance 'http-request :uri uri)
-				(make-response)
+				(make-response *core-output*)
 				nil))))
 ;;)
 

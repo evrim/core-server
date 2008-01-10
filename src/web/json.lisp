@@ -131,6 +131,7 @@
       (list (json-array! stream something))
       (string (json-string! stream something))
       (number (json-number! stream something))
+      (dom-element (string! stream (js:js* (dom2js something))))
       (symbol
        (ecase something
 	 ((or true false) (json-boolean! stream something))           

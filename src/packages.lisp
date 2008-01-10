@@ -30,6 +30,8 @@
    #:checkpoint-stream/cc
    #:rewind-stream/cc
    #:commit-stream/cc
+   ;; [Standard Output Wrapper]
+   #:*core-output*
    ;; [Stream Types]
    #:core-vector-io-stream
    #:core-string-io-stream
