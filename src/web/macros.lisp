@@ -1,11 +1,5 @@
 (in-package :core-server)
 
-(defmacro with-yaclml-output-to-string (&body body)
-  `(let ((*yaclml-stream* (make-core-stream ""))
-	 (*yaclml-indent* nil))
-     ,@body
-     (return-stream *yaclml-stream*)))
-
 ;; JS Macros
 (defjsmacro $ (id)
   `(document.get-element-by-id ,id))
@@ -43,3 +37,9 @@
 ;;       `(dojo.add-on-load
 ;; 	(lambda ()
 ;; 	  ,@body))))
+
+;; (defmacro with-yaclml-output-to-string (&body body)
+;;   `(let ((*yaclml-stream* (make-core-stream ""))
+;; 	 (*yaclml-indent* nil))
+;;      ,@body
+;;      (return-stream *yaclml-stream*)))

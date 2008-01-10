@@ -77,10 +77,8 @@
 		(let ,(mapcar (lambda (arg) `(,arg (json-deserialize ,arg))) args)
 		  (json/suspend
 		   (lambda ()
-		     (if (typep *yaclml-stream* 'core-stream)
-			 (json! *yaclml-stream* (apply (symbol-function ',name) (list ,self ,@args)))
-			 (format *yaclml-stream* "~A"
-				 (test-return s (json! s (apply (symbol-function ',name) (list ,self ,@args))))))))))
+		     (json! (http-response.stream (response +context+))
+			    (apply (symbol-function ',name) (list ,self ,@args)))))))
 	     ,',(if args		    
 		    (cons 'create (reduce #'append
 					  (mapcar (lambda (arg)

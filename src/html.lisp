@@ -176,7 +176,8 @@
   `(list ,@body))
 
 (defmacro <:js (&body body)
-  `(js:js* ,@body))
+  `(with-html-output (http-response.stream (response +context+))
+     (js:js* ,@body)))
 
 (defmacro with-html-output (stream &body body)
   (with-unique-names (element)

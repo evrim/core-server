@@ -7,7 +7,7 @@
   (throw (new (*error "Please implement authenticate method."))))
 
 (defmethod/local render-login-form ((self login-component))
-  (with-yaclml-output-to-string
+  (with-html-output (http-response.stream (response +context+))
     (<:form :action "#" :id "login-form"
 ;;	    :onsubmit "return false;"
 ;;	    :onsubmit "return trg.authenticate(this.username.value, this.password.value);"

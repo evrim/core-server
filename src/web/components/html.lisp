@@ -30,5 +30,5 @@
   (:default-initargs :tag "div"))
 
 (defmethod/local render ((self div-element))
-  (with-yaclml-output-to-string
+  (with-html-output (http-response.stream (response +context+))
     (<:div "hobaaa")))

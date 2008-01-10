@@ -18,7 +18,7 @@
 	(path (caar (uri.paths (http-request.uri request)))))
     (if (any #'(lambda (app)
 		 (when (string= path (web-application.fqdn app))
-		   (with-yaclml-stream (http-response.stream response)
+		   (with-html-output (http-response.stream response)
 		     (dispatch app request response))))
 	     (server.applications (peer.server self)))
 	response

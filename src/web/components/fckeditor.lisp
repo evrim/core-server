@@ -4,7 +4,7 @@
   ())
 
 (defmethod/local fck-editor-config-url ((self fckeditor-component))
-  (action/url ()    
+  (action/url ()
     (<:js
      `(setf (aref *f-c-k-config.*toolbar-sets "CoreDefault")
 	    (array
