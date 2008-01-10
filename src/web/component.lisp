@@ -15,7 +15,7 @@
 (eval-when (:execute :compile-toplevel :load-toplevel)
   (defvar +component-registry+ (make-hash-table :test #'equal)))
 
-(defun methods-of-class (name type)
+(defun reduce-class-tree (name type)
   (let ((lst))
     (mapcar (lambda (atom)
 	      (pushnew atom lst))
@@ -26,15 +26,15 @@
 		    :initial-value nil))
     lst))
 
-(defun local-methods-of-class (name) (methods-of-class name :local-methods))
+(defun local-methods-of-class (name) (reduce-class-tree name :local-methods))
 
-(defun remote-methods-of-class (name) (methods-of-class name :remote-methods))
+(defun remote-methods-of-class (name) (reduce-class-tree name :remote-methods))
 
 (defun local-slots-of-class (name)
-  (getf (gethash name +component-registry+) :local-args))
+  (reduce-class-tree name :local-args))
 
 (defun remote-slots-of-class (name)
-  (getf (gethash name +component-registry+) :remote-args))
+  (reduce-class-tree name :remote-args))
 
 (defun proxy-method-name (name)
   (intern (string-upcase (format nil "~A-proxy" name)) (find-package :core-server)))
@@ -68,7 +68,6 @@
        (add-local-method-for-class ',class-name ',name))
      (defgeneric/cc ,name (,class-name ,@args))
      (defgeneric/cc ,(proxy-method-name name) (,class-name))
-;;     (export ',(proxy-method-name name))
      (defmethod/cc ,(proxy-method-name name) ((,self ,class-name))
        `(lambda ,',args
 	  (return
@@ -94,7 +93,6 @@
 	 (add-remote-method-for-class ',class-name ',name))
        (defgeneric/cc ,name (,class-name ,@args))
        (defgeneric/cc ,(proxy-method-name name) (,class-name))
-;;       (export ',(proxy-method-name name))
        (defmethod/cc ,(proxy-method-name name) ((,self ,class-name))	      
 	 `(lambda ,',arg-names
 	    ,',(cons 'progn body)))
@@ -139,7 +137,7 @@
 					(slot-value self slot)))
 				   acc)))
 		     (reverse (mapcar #'car (remote-slots-of-class class-name)))
-		     :initial-value nil))	   
+		     :initial-value nil))
 	   (local-methods ()
 	     (reduce (lambda (acc method)
 		       (cons (make-keyword method)
