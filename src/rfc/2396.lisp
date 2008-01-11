@@ -275,12 +275,16 @@
        (:and (:opaque_part? path) (:return (list path)))))
 
 ;;       hier_part     = ( net_path | abs_path ) [ "?" query ]
+;; TODO: Fix parser -evrim
+;; http://www.core.gen.tr/#index
+;; http://www.core.gen.tr/?#index
+;; http://www.core.gen.tr/?eben#index
 (defrule hier_part? (val path authority query fragment)
-  (:or (:net_path? path authority) (:abs_path? path))
-  (:zom (:and #\? (:query? val) (:do (setq query val)))
-	(:and #\#
-	      (:or (:query? val) (:query-key? val))
-	      (:do (setq fragment val))))
+  (:or (:net_path? path authority) (:abs_path? path))  
+  (:zom (:or (:and #\? (:query? val) (:do (setq query val)))
+	     (:and #\# 
+		   (:or (:query? val) (:query-key? val))
+		   (:do (setq fragment val)))))
   (:return (values path query authority fragment)))
 
 ;;       relativeURI   = ( net_path | abs_path | rel_path ) [ "?" query ]

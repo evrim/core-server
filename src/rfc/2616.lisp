@@ -85,7 +85,7 @@
 ;;;-----------------------------------------------------------------------------
 ;;; 4.5 HTTP GENERAL HEADERS
 ;;;-----------------------------------------------------------------------------
-(eval-when (:compile-toplevel :execute)
+(eval-when (:load-toplevel :compile-toplevel :execute)
   (defvar +http-general-headers+
     '(CACHE-CONTROL CONNECTION DATE PRAGMA TRAILER TRANSFER-ENCODING UPGRADE VIA 
       WARNING))) ;; len=9
@@ -473,7 +473,7 @@
 ;;;-----------------------------------------------------------------------------
 ;;; 5.3 HTTP REQUEST HEADERS
 ;;;-----------------------------------------------------------------------------
-(eval-when ( :compile-toplevel :execute)
+(eval-when (:load-toplevel :compile-toplevel :execute)
   (defvar +http-request-headers+
     '(ACCEPT ACCEPT-CHARSET ACCEPT-ENCODING ACCEPT-LANGUAGE AUTHORIZATION
       EXPECT FROM HOST IF-MATCH IF-MODIFIED-SINCE IF-NONE-MATCH IF-RANGE
@@ -942,7 +942,7 @@
 ;;;-----------------------------------------------------------------------------
 ;;; 7.1 HTTP ENTITY HEADERS
 ;;;-----------------------------------------------------------------------------
-(eval-when ( :compile-toplevel :execute)
+(eval-when (:load-toplevel :compile-toplevel :execute)
   (defvar +http-entity-headers+ 
     '(ALLOW CONTENT-ENCODING CONTENT-LANGUAGE CONTENT-LENGTH CONTENT-LOCATION
       CONTENT-MD5 CONTENT-RANGE CONTENT-TYPE EXPIRES LAST-MODIFIED))) ;; len=10
@@ -1095,7 +1095,7 @@
 ;;;-----------------------------------------------------------------------------
 ;;; MODLISP REQUEST HEADERS
 ;;;-----------------------------------------------------------------------------
-(eval-when (:compile-toplevel :execute)
+(eval-when (:compile-toplevel :execute :load-toplevel)
   (defvar +mod-lisp-request-headers+
     '(url method remote-ip-addr remote-ip-port server-ip-addr server-ip-port
       server-protocol script-filename ssl-session-id server-id
