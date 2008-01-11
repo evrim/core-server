@@ -16,8 +16,8 @@
 ;;(column-number-mode)
 
 ;; PAREDIT
-;;(load-el "paredit-beta.el")
-(load-el "paredit-7.0b4.el")
+(load-el "paredit-beta.el")
+;;(load-el "paredit-7.0b4.el")
 
 (autoload 'enable-paredit-mode "paredit" 
   "Minor mode for pseudo-structurally editing Lisp code." t)
@@ -57,9 +57,10 @@
 ;; DARCSUM
 (load-el "darcsum.el")
 
-(defun core-server ()
+(defun core ()
   (interactive)
-  (slime-connect "127.0.0.1" 4005))
+  (slime-connect "127.0.0.1" 4005)
+  (slime-repl-set-package "core-server"))
 
 (setq speedbar-track-mouse-flag t)
 
@@ -88,3 +89,25 @@
 
 (dolist (i *core-server-functions*)
   (cl-indent i 'defun))
+
+; Function to run Tidy HTML parser on buffer
+; NOTE: this requires external Tidy program
+(defun tidy-buffer ()
+  "Run Tidy HTML parser on current buffer."
+  (interactive)
+  (if (get-buffer "tidy-errs") (kill-buffer "tidy-errs"))
+  (shell-command-on-region (point-min) (point-max)
+                           ;;"tidy -f /tmp/tidy-errs -asxhtml -q -utf8 -i -wrap 72 -c"
+                           "tidy -f /tmp/tidy-errs -asxhtml --doctype transitional --char-encoding utf8 --output-encoding utf8 --add-xml-decl y --indent-attributes y --gnu-emacs y --tidy-mark n -q -utf8 -i -w 0" t)
+  (find-file-other-window "/tmp/tidy-errs")
+  (other-window 1)
+  (delete-file "/tmp/tidy-errs")
+  (message "buffer tidy'ed"))
+
+(define-skeleton coretal-insert-link
+  "Make a dynamic link"
+  "Link text: "
+  '(progn 
+     (setq anchor (skeleton-read "Page anchor:"))
+     (setq page-name (buffer-name (current-buffer))))
+  "<a href=\"" page-name "#" anchor "\" onclick=\"return coretal.loadPage('" anchor "');\">" str "</a>")
