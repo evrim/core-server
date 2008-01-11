@@ -24,6 +24,7 @@ echo $CORESERVER_HOME
 $MKDIR -p $DIR/core-server-installer;
 cd $DIR;
 $CP $CORESERVER_HOME/src/install/* core-server-installer;
+$CP $CORESERVER_HOME/src/command.lisp core-server-installer;
 $CP $CORESERVER_HOME/doc/README core-server-installer;
 $TAR zcf $TARBALL *
 mv $TARBALL /tmp/
