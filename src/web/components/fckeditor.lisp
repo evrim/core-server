@@ -11,104 +11,111 @@
     "mid" "mov" "mp3" "mp4" "mpc" "mpeg" "mpg" "png" "qt"
     "ram" "rm" "rmi" "rmvb" "swf" "tif" "tiff" "wav" "wma" "wmv"))
 
-(defun/cc handle-fck-browse (path publish-path)  
-  (labels ((send-error (number &optional message)
-	     (<:ai "<Error number=\"" number "\"")
-	     (if message (<:ai "text=\"" message "\""))
-	     (<:ai "/>" ~%))
-	   (folder-pathname (folder)
-	     (merge-pathnames			      
-	      (make-pathname :directory (list :relative folder))
-	      (make-pathname :directory (pathname-directory (pathname path)))))
-	   (files-by-extensions (folder-pathname exts)
-	     (reduce #'(lambda (acc atom)
-			 (append
-			  (directory
-			   (pathname
-			    (format nil "~A*.~A" folder-pathname atom)))
-			  acc))
-		     exts :initial-value nil)) 
-	   (files (folder-pathname type)
-	     (<:ai "<Files>" ~%)
-	     (mapcar #'(lambda (file)
-			 (when (pathname-name file)
-			   (<:ai "<File name=\""
-				 (pathname-name file) "." (pathname-type file)
-				 "\" size=\"" (round
-					       (/ (sb-posix:stat-size (sb-posix:stat file))
-						  1000))
-				 "\" url=\"" publish-path)
-			   (mapcar #'(lambda (path)
-				       (<:ai path "/"))
-				   (set-difference
-				    (pathname-directory file)
-				    (pathname-directory (pathname path))
-				    :test #'equal))
-			   (<:ai (pathname-name file) "." (pathname-type file) "\"/>" ~%)))		     		     
-		     (cond
-		       ((equal type "Flash") (files-by-extensions folder-pathname +fck-flash-extensions+))
-		       ((equal type "Image") (files-by-extensions folder-pathname +fck-image-extensions+))
-		       ((equal type "Media") (files-by-extensions folder-pathname +fck-media-extensions+))
-		       (t (directory (pathname (format nil "~A*.*" folder-pathname))))))
-	     (<:ai "</Files>" ~%))
-	   (folders (folder-pathname)	       
-	     (<:ai "<Folders>" ~%)
-	     (mapcar #'(lambda (dir)
-			 (<:ai "<Folder name=\""
-			       (car (reverse (pathname-directory dir))) "\"/>" ~%))
-		     (directory
-		      (make-pathname :directory (pathname-directory folder-pathname)
-				     :name :wild)))
-	     (<:ai "</Folders>" ~%))
-	   (create-folder (folder new-folder)
-	     (let ((new-folder (make-pathname :directory (append (pathname-directory folder)
-								 (list new-folder)))))
-	       (if (probe-file new-folder)
-		   (send-error 101)
-		   (progn
-		     (ensure-directories-exist new-folder)
-		     (if (not (probe-file new-folder))
-			 (send-error 102))))))
-	   (create-file (folder file)
-	     ;; (setf (get-header (context.response *context*) "Content-Type") "text/html; charset=utf-8")
-;; 	     (if (rfc2388:mime-part-p file)		 
-;; 		 (progn
-;; 		   (save-mime-file
-;; 		    file
-;; 		    (make-pathname :directory (pathname-directory folder)
-;; 				   :name (pathname-name (pathname (get-mime-filename file)))
-;; 				   :type (pathname-type (pathname (get-mime-filename file)))))
-;; 		   (<:script
-;; 		    (<:js `(window.parent.*on-upload-completed 0 "" ,(get-mime-filename file) ""))))
-;; 		 (<:script
-;; 		  (<:js `(window.parent.*on-upload-completed 1 "" "" "Error."))))
-;; 	     (flush-request-response *context*)
-	     (format t "creating file:~A in folder:~A" file folder)
-	     (return-from handle-fck-browse nil)))
-    (with-query ((command "Command") (type "Type")) (request +context+)      
-      (if (equal command "FileUpload")
-	  (with-query ((folder "CurrentFolder") (file "NewFile")) (request +context+)
-	    (create-file (folder-pathname folder) file)))
+;; TODO: fix this shit!
+(defun/cc handle-fck-browse (path publish-path)
+  (let ((stream (http-response.stream (response +context+))))
+    (labels ((send-error (number &optional message)
+	       (string! stream (format nil "<Error number=\"~A\"" number))
+	       (if message (format nil "text=\"~A\"" message))
+	       (string! stream (format nil "/>~%")))
+	     (folder-pathname (folder)
+	       (merge-pathnames			      
+		(make-pathname :directory (list :relative folder))
+		(make-pathname :directory (pathname-directory (pathname path)))))
+	     (files-by-extensions (folder-pathname exts)
+	       (reduce #'(lambda (acc atom)
+			   (append
+			    (directory
+			     (pathname
+			      (format nil "~A*.~A" folder-pathname atom)))
+			    acc))
+		       exts :initial-value nil)) 
+	     (files (folder-pathname type)
+	       (string! stream (format nil "<Files>~%"))
+	       (mapcar #'(lambda (file)
+			   (when (pathname-name file)
+			     (string! stream
+				      (concatenate 'string
+						   "<File name=\""
+						   (pathname-name file) "." (pathname-type file)
+						   "\" size=\"" (format nil "~D"
+									(round
+									 (/ (sb-posix:stat-size (sb-posix:stat file))
+									    1000)))
+						   "\" url=\"" publish-path))
+			     (mapcar #'(lambda (path)
+					 (string! stream (concatenate 'string path "/")))
+				     (set-difference
+				      (pathname-directory file)
+				      (pathname-directory (pathname path))
+				      :test #'equal))
+			     (string! stream
+				      (concatenate 'string (pathname-name file) "." (pathname-type file) "\"/>" ~%))))
+		       (cond
+			 ((equal type "Flash") (files-by-extensions folder-pathname +fck-flash-extensions+))
+			 ((equal type "Image") (files-by-extensions folder-pathname +fck-image-extensions+))
+			 ((equal type "Media") (files-by-extensions folder-pathname +fck-media-extensions+))
+			 (t (directory (pathname (format nil "~A*.*" folder-pathname))))))
+	       (string! stream (concatenate 'string "</Files>" ~%)))
+	     (folders (folder-pathname)	       
+	       (string! stream (concatenate 'string "<Folders>" ~%))
+	       (mapcar #'(lambda (dir)
+			   (string! stream (concatenate 'string "<Folder name=\""
+							(car (reverse (pathname-directory dir))) "\"/>" ~%)))
+		       (directory
+			(make-pathname :directory (pathname-directory folder-pathname)
+				       :name :wild)))
+	       (string! stream (concatenate 'string "</Folders>" ~%)))
+	     (create-folder (folder new-folder)
+	       (let ((new-folder (make-pathname :directory (append (pathname-directory folder)
+								   (list new-folder)))))
+		 (if (probe-file new-folder)
+		     (send-error 101)
+		     (progn
+		       (ensure-directories-exist new-folder)
+		       (if (not (probe-file new-folder))
+			   (send-error 102))))))
+	     (create-file (folder file)
+	       ;; (setf (get-header (context.response *context*) "Content-Type") "text/html; charset=utf-8")
+	       ;; 	     (if (rfc2388:mime-part-p file)		 
+	       ;; 		 (progn
+	       ;; 		   (save-mime-file
+	       ;; 		    file
+	       ;; 		    (make-pathname :directory (pathname-directory folder)
+	       ;; 				   :name (pathname-name (pathname (get-mime-filename file)))
+	       ;; 				   :type (pathname-type (pathname (get-mime-filename file)))))
+	       ;; 		   (<:script
+	       ;; 		    (<:js `(window.parent.*on-upload-completed 0 "" ,(get-mime-filename file) ""))))
+	       ;; 		 (<:script
+	       ;; 		  (<:js `(window.parent.*on-upload-completed 1 "" "" "Error."))))
+	       ;; 	     (flush-request-response *context*)
+	       (format t "creating file:~A in folder:~A" file folder)
+	       (return-from handle-fck-browse nil)))
+      (with-query ((command "Command") (type "Type")) (request +context+)      
+	(if (equal command "FileUpload")
+	    (with-query ((folder "CurrentFolder") (file "NewFile")) (request +context+)
+	      (create-file (folder-pathname folder) file)))
       
-      (xml/suspend
-       (lambda ()
-	 (<:ai "<?xml version=\"1.0\" encoding=\"utf-8\" ?>" ~%
-	       "<Connector command=\"" command "\" resourceType=\"" type "\">" ~%)
+	(xml/suspend
+	 (lambda ()	   
+	   (string! stream (format nil "<?xml version=\"1.0\" encoding=\"utf-8\" ?>~%
+<Connector command=\"~A\" resourceType=\"~A\">~%" command type))
 
-      ;;      (describe (context.request *context*))
-	 (with-query ((folder "CurrentFolder")) (request +context+)
-	   (<:ai "<CurrentFolder path=\"" folder "\" url=\"\"/>" ~%)
-	   (cond
-	     ((equal command "GetFolders")	   
-	      (folders (folder-pathname folder)))
-	     ((equal command "GetFoldersAndFiles")	   
-	      (folders (folder-pathname folder))
-	      (files (folder-pathname folder) type))
-	     ((equal command "CreateFolder")
-	      (with-query ((new-folder "NewFolderName")) (request +context+)
-		(create-folder (folder-pathname folder) new-folder)))
-	     (t (send-error 1 "Error.")))
-	   (<:ai "</Connector>")))))))
+	   ;;      (describe (context.request *context*))
+	     
+	   (with-query ((folder "CurrentFolder")) (request +context+)
+	     (string! stream (format nil "<CurrentFolder path=\"~A\" url=\"\"/>~%" folder))
+	     (cond
+	       ((equal command "GetFolders")	   
+		(folders (folder-pathname folder)))
+	       ((equal command "GetFoldersAndFiles")	   
+		(folders (folder-pathname folder))
+		(files (folder-pathname folder) type))
+	       ((equal command "CreateFolder")
+		(with-query ((new-folder "NewFolderName")) (request +context+)
+		  (create-folder (folder-pathname folder) new-folder)))
+	       (t (send-error 1 "Error.")))
+	     (string! stream "</Connector>"))))))))
 
 (defcomponent fckeditor-component ()
   ())
