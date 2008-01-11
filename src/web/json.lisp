@@ -12,7 +12,7 @@
 	     (:collect c acc)
 	     (:zom (:type (or visible-char? space?) c)
 		   (:collect c acc))
-	     (:return acc))))
+	     (:return (octets-to-string acc :utf-8)))))
 
 (defmethod json-string! ((stream core-stream) (s string))
   (prog1 stream (quoted! stream s)))
