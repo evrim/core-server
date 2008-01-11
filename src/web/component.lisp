@@ -290,7 +290,11 @@
 			(return (slot-value this ',(car slot))))))
 		 (remote-args slots)))))
 
-(defun/cc dojo (&optional base-url (debug t))
+(defun/cc dojo (&optional base-url (debug nil)
+		(css '("/dijit/themes/dijit.css"
+		       "/dijit/themes/tundra/tundra.css"
+		       "/dojox/widget/Toaster/Toaster.css"
+		       "http://node1.core.gen.tr/coretal/style/coretal.css")))
   (<:js
    `(progn
       (defun load-javascript (url)
@@ -310,15 +314,28 @@
 	    (if (= 200 request.status)
 		(return (eval (+ "{" request.response-text "}"))))
 	    (return nil)))
-      (when (= "undefined" (typeof dojo))
-	(setf dj-config (create :base-url ,+dojo-path+ :is-debug ,debug))      
-	(dolist (src (array "bootstrap.js" "loader.js" "hostenv_browser.js" "loader_xd.js"))	
-	  (load-javascript (+ ,+dojo-path+ "_base/_loader/" src)))
-	(load-javascript (+ ,+dojo-path+ "_base.js")))
-      (setf base-url ,(if (and +context+ base-url)
-			  (format nil "/~A/~A"
-				  (web-application.fqdn (application +context+))
-				  base-url)))
+      (defun load-css (url)
+	(let ((link (document.create-element "link")))
+	  (setf link.href url
+		link.rel "stylesheet"
+		link.type "text/css")
+	  (.append-child (aref (document.get-elements-by-tag-name "head") 0)
+			 link)
+	  (return link)))
+      (defun init-core-server ()      
+	(when (= "undefined" (typeof dojo))
+	  (setf dj-config (create :base-url ,+dojo-path+ :is-debug ,debug))      
+	  (dolist (src (array "bootstrap.js" "loader.js" "hostenv_browser.js" "loader_xd.js"))	
+	    (load-javascript (+ ,+dojo-path+ "_base/_loader/" src)))
+	  (load-javascript (+ ,+dojo-path+ "_base.js")))
+	(setf base-url ,(if (and +context+ base-url)
+			    (format nil "/~A/~A"
+				    (web-application.fqdn (application +context+))
+				    base-url)))
+	,@(mapcar (lambda (c) `(load-css ,c)) css)
+	(dojo.add-on-load
+	 (lambda ()
+	   (setf document.body.class-name (+ document.body.class-name " tundra")))))
       (defun serialize (value) (return (dojo.to-json value)))
       (defun funcall (url parameters)
 	(let (result)
@@ -338,4 +355,5 @@
 			   (setf result (eval (+ "{" json "}"))))
 		   :error (lambda (err args)
 			    (throw (new (*error (+ "Funcall error: " url ", " err)))))))
-	  (return result))))))
+	  (return result)))
+      (init-core-server))))
