@@ -468,6 +468,11 @@
 	  (progn ,@body)
        (close-stream ,var))))
 
+(defmacro with-core-stream/cc ((var val) &body body)
+  `(let ((,var (make-core-stream ,val)))
+     (prog1 (progn ,@body)
+       (close-stream ,var))))
+
 (defclass pipe-stream (core-stream)
   ((%input :accessor pipe-stream.input
 	   :initform (error "Please specify \":input\" stream")

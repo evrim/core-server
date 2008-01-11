@@ -48,6 +48,8 @@
    #:make-cps-stream
    ;; [Stream Helpers]
    #:with-core-stream
+   #:with-core-stream/cc
+   #:with-html-output
    ;; [Sockets]
    #:resolve-hostname
    #:make-server
