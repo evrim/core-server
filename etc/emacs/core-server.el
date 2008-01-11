@@ -16,8 +16,8 @@
 ;;(column-number-mode)
 
 ;; PAREDIT
-(load-el "paredit-beta.el")
-;;(load-el "paredit-7.0b4.el")
+;;(load-el "paredit-beta.el")
+(load-el "paredit-7.0b4.el")
 
 (autoload 'enable-paredit-mode "paredit" 
   "Minor mode for pseudo-structurally editing Lisp code." t)
