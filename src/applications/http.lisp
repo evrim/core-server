@@ -173,6 +173,12 @@
 	  '("text" "json" ("charset" "UTF-8")))
     (funcall lambda)))
 
+(defun/cc xml/suspend (lambda)
+  (send/suspend    
+    (setf (cdr (assoc 'content-type (http-response.entity-headers (response +context+))))
+	  '("text" "xml" ("charset" "UTF-8")))
+    (funcall lambda)))
+
 (defmethod dispatch ((self http-application) (request http-request) (response http-response))
   (let ((session (gethash (uri.query (http-request.uri request) +session-query-name+)
 			  (application.sessions self))))

@@ -450,6 +450,7 @@
    #:send/suspend
    #:javascript/suspend
    #:json/suspend
+   #:xml/suspend
    #:function/hash
    #:action/hash
    #:function/url
