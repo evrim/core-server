@@ -179,7 +179,24 @@
 	  '("text" "xml" ("charset" "UTF-8")))
     (funcall lambda)))
 
+(defmethod gc ((self http-application))
+  (let* ((session-timeout (* 10 60 1000))
+	 (sessions (application.sessions self)))
+    ;; bu gc her dispatch'te mi caliscak?
+    ;; %40 ihtimalle calisabilir
+
+    ;; tell me who is expired!
+    (mapc (rcurry #'remhash sessions)
+	  (let (expired)
+	    (maphash #'(lambda (k v)
+			 (when (> (- (get-universal-time) (timestamp v)) session-timeout) (push k expired)))
+		     sessions)
+	    expired))))
+
 (defmethod dispatch ((self http-application) (request http-request) (response http-response))
+  (when (> (random 100) 40)
+    (gc self))
+
   (let ((session (gethash (uri.query (http-request.uri request) +session-query-name+)
 			  (application.sessions self))))
     (acond
