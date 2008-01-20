@@ -45,10 +45,11 @@
 						   "\" url=\"" publish-path))
 			     (mapcar #'(lambda (path)
 					 (string! stream (concatenate 'string path "/")))
-				     (set-difference
-				      (pathname-directory file)
-				      (pathname-directory (pathname path))
-				      :test #'equal))
+				     (reverse
+				      (set-difference
+				       (pathname-directory file)
+				       (pathname-directory (pathname path))
+				       :test #'equal)))
 			     (string! stream
 				      (concatenate 'string (pathname-name file) "." (pathname-type file) "\"/>" ~%))))
 		       (cond
