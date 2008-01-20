@@ -193,9 +193,9 @@
 ;;                     | "May" | "Jun" | "Jul" | "Aug"
 ;;                     | "Sep" | "Oct" | "Nov" | "Dec"
 (defun find-rfc1123-month (str)
-  (position (string-downcase str) '("jan" "feb" "mar" "apr" "may" "jun" "jul"
-				    "aug" "sep" "oct" "nov" "dec")
-	    :test #'equal))
+  (1+ (position (string-downcase str) '("jan" "feb" "mar" "apr" "may" "jun" "jul"
+					"aug" "sep" "oct" "nov" "dec")
+		:test #'equal)))
 
 ;; Sun, 06 Nov 1994 08:49:37 GmT  ; RFC 822, updated by RFC 1123
 (defrule rfc1123-date? ((acc (make-accumulator)) c
@@ -1278,6 +1278,7 @@
 	  +mod-lisp-request-headers+))
 
 (defun untrace-http-headers ()
+  (untrace http-request-first-line?)
   (mapcar (lambda (header)
 	    (eval `(untrace ,(intern (format nil "HTTP-~A?" header)))))
 	  (append +http-general-headers+ +http-request-headers+
