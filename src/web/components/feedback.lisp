@@ -3,7 +3,7 @@
 (defcomponent feedback-component (toaster-component)
   ((feedback-id :accessor feedback-id :host remote :initform "feedback")
    (greeting-text :accessor greeting-text :host remote
-		  :initform "Please give us feedback to improve our site.")
+		  :initform "Please give us feedback to improve our site. Click here to enter.")
    (thank-text :accessor thank-text :host remote
 	       :initform "Thank you for giving us feedback.")))
 
@@ -36,4 +36,4 @@
 	    input.onfocus (dojo.hitch this
 				      (lambda ()					
 					(if (= (this.get-greeting-text) input.value)
-					    (setf input.value nil))))))))
+					    (setf input.value ""))))))))
