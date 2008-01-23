@@ -29,11 +29,6 @@
 					     (asdf:component-pathname (asdf:find-system :core-server)))
 		  :documentation "Skeleton Pathname which is copied to htdoc directory. setq nil no to.")))
 
-(defclass ucw-web-application (web-application) ;; ucw:modular-application
-  ((persistent :accessor ucw-web-application.persistent :initarg :persistent :initform nil))
-  ;; (:default-initargs :debug-on-error t)
-  )
-
 (defclass serializable-web-application (web-application)
   ((sources :accessor serializable-web-application.sources
 	    :initarg :sources
@@ -158,25 +153,6 @@
 
 (defclass ns-host (ns-record)
   ())
-
-(defclass ucw-model ()
-  ((applications :accessor ucw-model.applications :initarg :applications :initform (make-hash-table :test #'equal))))
-
-(defclass ucw-server (server) ;; ucw::standard-server
-  ((ucw-db :accessor ucw-server.ucw-db :initarg ucw-db
-	   :initform (make-instance 'database-server
-				    :directory
-				    (if (sb-posix:getenv "CORESERVER_HOME")
-					(merge-pathnames (make-pathname :directory '(:relative "var" "ucw"))
-							 (pathname (sb-posix:getenv "CORESERVER_HOME")))
-				      (merge-pathnames (make-pathname :directory '(:relative "db" "ns"))
-						       (asdf:component-pathname (asdf:find-system :core-server)))) 
-				    :model-class 'ucw-model)))
-  (:default-initargs :name "Ucw Web Server"
-    ;; :backend (ucw::make-backend :mod-lisp
-;; 				:host "127.0.0.1"
-;; 				:port 3001)
-    ))
 
 (defclass email-server (server)
   ())

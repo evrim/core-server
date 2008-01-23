@@ -30,14 +30,18 @@
 		    (return-from find-continuation (values it session))))
 	   (application.sessions self)))
 
+(defmacro with-context (context &body body)
+  `(with-call/cc
+     (let ((+context+ ,context))
+       (declare (special +context+))
+       ,@body)))
+
 (defmacro defurl (application regexp-url queries &body body)
   `(register-url ,application ,regexp-url
 		 (lambda (context)
-		   (with-call/cc
-		     (let ((+context+ context))
-		       (declare (special +context+))
+		   (with-context context
 		       (with-query ,queries (request +context+)
-			 ,@body))))))
+			 ,@body)))))
 
 (defmethod register-url ((self http-application) regexp-url lambda)  
   (setf (application.urls self)

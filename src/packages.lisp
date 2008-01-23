@@ -432,10 +432,17 @@
    #:record
    #:put
    #:push-all
+   ;; [HTTP Server]
+   #:find-application
+   #:register
+   #:unregister
+   
    ;; [HTTP Application]
    #:http-application
    #:find-session
    #:find-continuation
+   #:with-context ;; helper for defurl
+   #:with-query ;; helper macro
    #:defurl
    #:register-url
    #:unregister-url
@@ -460,7 +467,6 @@
    #:kontinue
    #:test-url
    ;; [HTTP Component Framework]
-   #:dojo-javascript-stack
    #:dojo
    #:defcomponent
    #:local
@@ -481,6 +487,7 @@
    #:fckeditor-component
    #:toaster-component
    #:login-component
+   #:feedback-component
    ;; [Helpers]
    #:make-keyword
    ;; [Search]

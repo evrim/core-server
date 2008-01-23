@@ -91,7 +91,8 @@
                                             :components
                                             ((:file "toaster")
                                              (:file "fckeditor")
-                                             (:file "login"))))))))
+                                             (:file "login")
+                                             (:file "feedback"))))))))
   :depends-on (:bordeaux-threads :cl-prevalence :sb-bsd-sockets
                                  :arnesi :cl-ppcre :cl-fad :parenscript)
   :serial t)

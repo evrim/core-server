@@ -185,9 +185,11 @@
   `(list ,@body))
 
 (defmacro <:js (&body body)
-  `(prog1 (with-html-output (http-response.stream (response +context+))
-	    (js:js* ,@body))
-     (char! (http-response.stream (response +context+)) #\Newline)))
+  (with-unique-names (output)
+    `(let ((,output (if +context+ (http-response.stream (response +context+)) *core-output*)))
+       (prog1 (with-html-output ,output
+		(js:js* ,@body))
+	 (char! ,output #\Newline)))))
 
 (defmacro with-html-output (stream &body body)
   (with-unique-names (element)
