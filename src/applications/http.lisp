@@ -45,8 +45,8 @@
 
 (defmethod register-url ((self http-application) regexp-url lambda)  
   (setf (application.urls self)
-	(cons (list regexp-url (cl-ppcre:create-scanner regexp-url) lambda)
-	      (unregister-url self regexp-url))))
+	(append (unregister-url self regexp-url)
+		(list (list regexp-url (cl-ppcre:create-scanner regexp-url) lambda)))))
 
 (defmethod unregister-url ((self http-application) regexp-url)
   (setf (application.urls self)
