@@ -303,9 +303,7 @@
 	      (window.*x-m-l-http-request ;; Gecko
 	       (setf request (new (*x-m-l-http-request))))
 	      (window.*active-x-object ;; Internettin Explorer
-	       (try (setf request (new (*active-x-object "Msxml2.XMLHTTP")))
-		    (:catch (error)
-		      (setf request (new (*active-x-object "Microsoft.XMLHTTP")))))))
+	       (setf request (new (*active-x-object "Microsoft.XMLHTTP")))))
 	    (if (= null request)
 		(throw (new (*error "Cannot Load Javascript, -core-server 1.0"))))
 	    (setf req request)
@@ -313,7 +311,7 @@
 	    (request.send null)
 	    (if (= 200 request.status)
 		(return (eval (+ "{" request.response-text "}"))))
-	    (return nil)))
+	    (throw (new (*error (+ "Cannot load javascript:" url " -core-server 1.0"))))))
       (defun load-css (url)
 	(let ((link (document.create-element "link")))
 	  (setf link.href url
