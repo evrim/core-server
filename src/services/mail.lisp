@@ -58,11 +58,11 @@
 ;; we schedule a queue processor.
 
 (defclass mail-sender (logger-server)
-  ((username :accessor mail-sender.username :initarg :username :initform (error "mail-sender username must be defined.")
+  ((username :accessor mail-sender.username :initarg :mail-username :initform (error "mail-sender username must be defined.")
 	     :documentation "Username for connecting to mail server")
-   (password :accessor mail-sender.password :initarg :password :initform nil
+   (password :accessor mail-sender.password :initarg :mail-password :initform nil
 	     :documentation "Password for connecting to mail server")
-   (server :accessor mail-sender.server :initarg :server :initform (error "mail-sender server must be defined.")
+   (server :accessor mail-sender.server :initarg :mail-server :initform (error "mail-sender server must be defined.")
 	   :documentation "mail server hostname")
    (mail-port :accessor mail-sender.port :initarg :mail-port :initform 25
 	      :documentation "mail server port")
