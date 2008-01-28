@@ -49,7 +49,7 @@
 				:type "log")
 		 :direction :output
 		 :element-type '(unsigned-byte 8)
-		 :if-exists :supersede
+		 :if-exists :append
 		 :if-does-not-exist :create
 		 :external-format :utf8)))))
 
@@ -62,5 +62,4 @@
 
 (defmethod status ((self logger-server))
   (if (log-stream self)
-      t
-      nil))
+      t))
