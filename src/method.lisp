@@ -27,6 +27,12 @@
 			   (make-method ,primary)))
 	  primary))))
 
+(defparameter *sysv* '(start stop status))
+(defun trace-sysv (&optional (sysv *sysv*))
+  (mapcar (lambda (s) (eval `(trace ,s))) sysv))
+(defun untrace-sysv (&optional (sysv *sysv*))
+  (mapcar (lambda (s) (eval `(untrace ,s))) sysv))
+
 ;;     (let ((form (if (or before after (rest primary))
 ;; 		    `(multiple-value-prog1
 ;; 			 (progn ,@(call-methods before)

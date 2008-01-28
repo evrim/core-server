@@ -42,34 +42,31 @@
   (eq 235 (default-smtp-response? sock)))
 
 (defclass mail-sender (logger-server)
-  ((username :accessor mail-sender.username :initarg :username)
-   (password :accessor mail-sender.password :initarg :password)
-   (server :accessor mail-sender.server :initarg :server)
-   (port :accessor mail-sender.port :initarg :port :initform 25)
+  ((username :accessor mail-sender.username :initarg :username :initform (error "mail-sender username must be defined."))
+   (password :accessor mail-sender.password :initarg :password :initform nil)
+   (server :accessor mail-sender.server :initarg :server :initform (error "mail-sender server must be defined."))
+   (mail-port :accessor mail-sender.port :initarg :mail-port :initform 25)
    (queue :accessor mail-sender.queue :initarg :queue :initform (make-instance 'queue))
    (queue-lock :accessor mail-sender.queue-lock :initarg :queue-lock :initform (sb-thread::make-mutex))
    (timer :accessor mail-sender.timer :initarg :timer :initform nil)
-   (interval :accessor mail-sender.interval :initarg :interval :initform 300))
+   (interval :accessor mail-sender.interval :initarg :interval :initform 8))
   (:default-initargs :name "mail sender"))
-
-(defprint-object (self mail-sender)
-  (format t "server: ~A, port: ~D" (mail-sender.server self) (mail-sender.port self)))
 
 (defclass envelope ()
   ((recipient :accessor envelope.recipient :initarg :recipient)
    (subject :accessor envelope.subject :initarg :subject)
    (text :accessor envelope.text :initarg :text :initform nil)))
 
-(defmethod/unit process-queue ((self mail-sender) socket)
+(defmethod/unit %process-queue ((self mail-sender) socket)
   (sb-thread::with-recursive-lock ((mail-sender.queue-lock self))
     (aif (dequeue (mail-sender.queue self))
 	 (progn 
 	   (%sendmail self it socket)
-	   (process-queue self socket))
+	   (%process-queue self socket))
 	 nil)))
 
 ;; write a function that acquires a lock and starts sending mails
-(defmethod/unit process :async-no-return ((self mail-sender))
+(defmethod/unit %process :async-no-return ((self mail-sender))
   (when (< 0 (queue-count (mail-sender.queue self)))
     (smsg self (format nil "Connecting ~A:~D." (mail-sender.server self) (mail-sender.port self)))
     (aif (connect (mail-sender.server self) (mail-sender.port self)) 
@@ -84,7 +81,10 @@
 	   ;; 250 node2.core.gen.tr
 	   (action-ok? it)
 	   (smsg self (format nil "Got HELO from ~A." (mail-sender.server self)))
-	   (process-queue self it)
+	   ;; 235 2.0.0 OK Authenticated
+	   (if (mail-sender.password self)
+	       (auth-plain self it))
+	   (%process-queue self it)
 	   ;; close conn
 	   (close-stream it)
 	   (smsg self "Connection closed."))
@@ -141,33 +141,35 @@
     (char! s #\Newline)
     (return-stream s)))
 
-(defmethod/unit auth-plain ((self mail-sender))
+;; TODO: fox authentication
+(defmethod/unit auth-plain ((self mail-sender) socket)
   (smsg self "Sending AUTH")
-  (let ((s (s-v '%socket)))
-    (string! s "AUTH PLAIN ")
-    (and
-     (auth-start? s)
-     (base64! s (mail-sender.username self))
-     (auth-start? s)
-     (base64! s (mail-sender.password self)))
-    (char! s #\Newline)
-    (let ((res (parse-line? s)))
-      (smsg self (format nil "got response \"~A\"" res)))))
+  (string! socket "AUTH PLAIN ")
+  (and
+   (auth-start? socket)
+   (base64! socket (mail-sender.username self))
+   (auth-start? socket)
+   (base64! socket (mail-sender.password self)))
+  (char! socket #\Newline)
+  (let ((res (parse-line? socket)))
+    (smsg self (format nil "got response \"~A\"" res))))
 
 (defmethod start ((self mail-sender))
-  (setf (mail-sender.timer self) (make-timer (lambda () (process self)) :name "mail-service" ))
+  (unless (mail-sender.timer self) 
+    (setf (mail-sender.timer self)
+	  (make-timer (lambda ()
+			(%process self))
+		      :name "mail-sender")))
   (schedule-timer (mail-sender.timer self)
-		  (mail-sender.interval self)))
+		  (mail-sender.interval self)
+		  :repeat-interval (mail-sender.interval self)))
 
 (defmethod stop ((self mail-sender))
   (unschedule-timer (mail-sender.timer self)))
 
-;; (defmethod/unit log-me ((self mail-sender) tag msg)
-;;   (format t "~A:~A" tag msg))
-
 (defun smsg (msender text)
   (log-me msender 'smtp (format nil "~A: ~A~%" (unit.name msender) text)))
-
+ 
 (defparameter *test-mails*
   (list
    (make-instance 'envelope
@@ -182,6 +184,9 @@
 		  :recipient "aycan@core.gen.tr"
 		  :subject "third mail (3)"
 		  :text "number three (3)")))
+
+(defmethod/unit sendmail :async-no-return ((self mail-sender) recipient subject text)
+  (enqueue (mail-sender.queue self) (apply #'make-instance 'envelope (list :recipient recipient :subject subject :text text))))
 
 ;;; sample mail conversation
 ;;;
