@@ -8,6 +8,7 @@
   (:shadowing-import-from #:arnesi #:name #:body #:self #:new)
   (:import-from #:cl-prevalence #:get-directory)
   (:import-from #:arnesi #:fdefinition/cc)
+  (:import-from #:sb-ext #:make-timer #:schedule-timer #:unschedule-timer #:timer)
   (:export 
    ;; Threads
    #:thread-mailbox

@@ -1,6 +1,5 @@
 (in-package :tr.gen.core.server)
 
-
 ;;; TODO: use auth whenever needed.
 
 ;;;;
@@ -48,7 +47,9 @@
    (server :accessor mail-sender.server :initarg :server)
    (port :accessor mail-sender.port :initarg :port :initform 25)
    (queue :accessor mail-sender.queue :initarg :queue :initform (make-instance 'queue))
-   (queue-lock :accessor mail-sender.queue-lock :initarg :queue-lock :initform (sb-thread::make-mutex)))
+   (queue-lock :accessor mail-sender.queue-lock :initarg :queue-lock :initform (sb-thread::make-mutex))
+   (timer :accessor mail-sender.timer :initarg :timer :initform nil)
+   (interval :accessor mail-sender.interval :initarg :interval :initform 300))
   (:default-initargs :name "mail sender"))
 
 (defprint-object (self mail-sender)
@@ -152,6 +153,14 @@
     (char! s #\Newline)
     (let ((res (parse-line? s)))
       (smsg self (format nil "got response \"~A\"" res)))))
+
+(defmethod start ((self mail-sender))
+  (setf (mail-sender.timer self) (make-timer (lambda () (process self)) :name "mail-service" ))
+  (schedule-timer (mail-sender.timer self)
+		  (mail-sender.interval self)))
+
+(defmethod stop ((self mail-sender))
+  (unschedule-timer (mail-sender.timer self)))
 
 ;; (defmethod/unit log-me ((self mail-sender) tag msg)
 ;;   (format t "~A:~A" tag msg))
