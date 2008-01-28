@@ -12,7 +12,7 @@
    (peer-class :initarg :peer-class :initform 'stream-peer
 	       :documentation "Class to instantiate as peer thread.")
 ;;   (request-timeout-length :initarg :request-timeout-length :initform 90)
-   %socket %peers (%thread :initform nil)))
+   (%socket :initform nil) (%peers :initform nil) (%thread :initform nil)))
 
 (defmethod start ((self socket-server))
   (when (not (%status self))
