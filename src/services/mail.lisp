@@ -15,6 +15,9 @@
 ;; (mapcar (curry #'enqueue (mail-sender.queue *s)) *test-mails*)
 ;; (process *s)
 
+
+;; we store smtp codes for ease of remember
+;; *smtp-codes* :: [ (ResponseCodes, Description) ]
 (defparameter *smtp-codes*
   '((220 . "connect")
     (235 . "auth success")
@@ -23,12 +26,17 @@
     (354 . "data")
     (554 . "fail")))
 
+;; default smtp response parser
+;; default-smtp-response? :: Socket () -> ResponseCode
 (defrule default-smtp-response? (c)
   (:lwsp?)
   (:fixnum? c)
   (:zom (:not #\Newline)
 	(:type (or space? octet?)))
   (:return c))
+
+;; we define different response code parsers here
+;; rc-parsers :: Socket () -> Boolean
 
 (defun service-ready? (sock)
   (eq 220 (default-smtp-response? sock)))
@@ -41,22 +49,43 @@
 (defun auth-success? (sock)
   (eq 235 (default-smtp-response? sock)))
 
+;; We define a class for the main service object called
+;; "mail-sender". This object has mandatory slots like username and
+;; password used to connect to a mail server. mail server hostname and
+;; port also required.
+;;
+;; We're adding mails to this sender's queue and upon service start,
+;; we schedule a queue processor.
+
 (defclass mail-sender (logger-server)
-  ((username :accessor mail-sender.username :initarg :username :initform (error "mail-sender username must be defined."))
-   (password :accessor mail-sender.password :initarg :password :initform nil)
-   (server :accessor mail-sender.server :initarg :server :initform (error "mail-sender server must be defined."))
-   (mail-port :accessor mail-sender.port :initarg :mail-port :initform 25)
-   (queue :accessor mail-sender.queue :initarg :queue :initform (make-instance 'queue))
-   (queue-lock :accessor mail-sender.queue-lock :initarg :queue-lock :initform (sb-thread::make-mutex))
-   (timer :accessor mail-sender.timer :initarg :timer :initform nil)
-   (interval :accessor mail-sender.interval :initarg :interval :initform 8))
+  ((username :accessor mail-sender.username :initarg :username :initform (error "mail-sender username must be defined.")
+	     :documentation "Username for connecting to mail server")
+   (password :accessor mail-sender.password :initarg :password :initform nil
+	     :documentation "Password for connecting to mail server")
+   (server :accessor mail-sender.server :initarg :server :initform (error "mail-sender server must be defined.")
+	   :documentation "mail server hostname")
+   (mail-port :accessor mail-sender.port :initarg :mail-port :initform 25
+	      :documentation "mail server port")
+   (queue :accessor mail-sender.queue :initarg :queue :initform (make-instance 'queue)
+	  :documentation "mail queue which will be processed with intervals")
+   (queue-lock :accessor mail-sender.queue-lock :initarg :queue-lock :initform (sb-thread::make-mutex)
+	       :documentation "queue lock used to separate multiple worker threads")
+   (timer :accessor mail-sender.timer :initarg :timer :initform nil
+	  :documentation "A timer is an object holding a scheduled function")
+   (interval :accessor mail-sender.interval :initarg :interval :initform 8
+	     :documentation "Scheduling interval"))
   (:default-initargs :name "mail sender"))
 
+;; This is the mail adt.
 (defclass envelope ()
-  ((recipient :accessor envelope.recipient :initarg :recipient)
-   (subject :accessor envelope.subject :initarg :subject)
-   (text :accessor envelope.text :initarg :text :initform nil)))
+  ((recipient :accessor envelope.recipient :initarg :recipient
+	      :documentation "Recipient of the mail")
+   (subject :accessor envelope.subject :initarg :subject
+	    :documentation "mail subject")
+   (text :accessor envelope.text :initarg :text :initform nil
+	 :documentation "mail body which is a string")))
 
+;; recursively dequeue an envelope and send it to the wire
 (defmethod/unit %process-queue ((self mail-sender) socket)
   (sb-thread::with-recursive-lock ((mail-sender.queue-lock self))
     (aif (dequeue (mail-sender.queue self))
@@ -65,7 +94,7 @@
 	   (%process-queue self socket))
 	 nil)))
 
-;; write a function that acquires a lock and starts sending mails
+;; when queue has envelopes, process the queue
 (defmethod/unit %process :async-no-return ((self mail-sender))
   (when (< 0 (queue-count (mail-sender.queue self)))
     (smsg self (format nil "Connecting ~A:~D." (mail-sender.server self) (mail-sender.port self)))
@@ -90,6 +119,7 @@
 	   (smsg self "Connection closed."))
 	 (close-stream it))))
 
+;; write an envelope to the wire
 (defmethod %sendmail ((self mail-sender) (e envelope) socket)
   (let ((stream (slot-value socket '%stream)))
     (flet ((purge ()
@@ -123,7 +153,8 @@
 	 ;; 250 2.0.0 Ok: queued as 62E6818ABA
 	 (action-ok? socket))))))
 
-;;; build-message-stream :: Envelope -> String
+;; cosmetics for the message body
+;; build-message-stream :: Envelope -> String
 (defmethod build-message-stream ((e envelope))
   (let ((s (make-core-stream "")))
     (string! s (format nil "Subject: ~A" (envelope.subject e)))
@@ -141,7 +172,7 @@
     (char! s #\Newline)
     (return-stream s)))
 
-;; TODO: fox authentication
+;; TODO: fix authentication
 (defmethod/unit auth-plain ((self mail-sender) socket)
   (smsg self "Sending AUTH")
   (string! socket "AUTH PLAIN ")
@@ -154,6 +185,8 @@
   (let ((res (parse-line? socket)))
     (smsg self (format nil "got response \"~A\"" res))))
 
+;; Use user supplied timer, otherwise make a new timer and schedule
+;; it.
 (defmethod start ((self mail-sender))
   (unless (mail-sender.timer self) 
     (setf (mail-sender.timer self)
@@ -164,9 +197,12 @@
 		  (mail-sender.interval self)
 		  :repeat-interval (mail-sender.interval self)))
 
+;; remove the scheduled timer and stop.
 (defmethod stop ((self mail-sender))
   (unschedule-timer (mail-sender.timer self)))
 
+;; we're also inheriting logger-server. So here we define a logging
+;; function with a default tag 'smtp.
 (defun smsg (msender text)
   (log-me msender 'smtp (format nil "~A: ~A~%" (unit.name msender) text)))
  
@@ -185,6 +221,7 @@
 		  :subject "third mail (3)"
 		  :text "number three (3)")))
 
+;; main interface to other programs
 (defmethod/unit sendmail :async-no-return ((self mail-sender) recipient subject text)
   (enqueue (mail-sender.queue self) (apply #'make-instance 'envelope (list :recipient recipient :subject subject :text text))))
 
