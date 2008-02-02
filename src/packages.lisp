@@ -452,6 +452,7 @@
    #:make-new-session
    #:http-context
    #:+context+
+   #:+html-output+
    #:make-new-context
    #:copy-context
    #:session

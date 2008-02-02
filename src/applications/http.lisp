@@ -3,6 +3,7 @@
 (defvar +continuation-query-name+ "k")
 (defvar +session-query-name+ "s")
 (defvar +context+ nil)
+(defvar +html-output+ nil)
 (defvar +k+ nil)
 
 (defmacro with-query (queries request &body body)
@@ -39,9 +40,11 @@
 (defmacro defurl (application regexp-url queries &body body)
   `(register-url ,application ,regexp-url
 		 (lambda (context)
-		   (with-context context
+		   (let ((+html-output+ (http-response.stream (response context))))
+		     (declare (special +html-output+))
+		     (with-context context		       
 		       (with-query ,queries (request +context+)
-			 ,@body)))))
+			 ,@body))))))
 
 (defmethod register-url ((self http-application) regexp-url lambda)  
   (setf (application.urls self)
