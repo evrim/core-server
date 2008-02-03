@@ -8,6 +8,13 @@
 		   acc))
 	  list :initial-value nil))
 
+(defun all (lambda list)
+  (reduce #'(lambda (acc atom)
+	      (aif (funcall lambda atom)
+		   t
+		   (return-from all nil)))
+	  list :initial-value t))
+
 (defmacro s-v (slot-name)
   "slot-value self slot-name"
   `(slot-value self ,slot-name))
