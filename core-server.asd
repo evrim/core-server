@@ -68,7 +68,7 @@
                          (:module :servers
                                   :components
                                   ((:file "database")
-                                   (:file "dns")
+                                   (:file "tinydns")
                                    (:file "apache")
                                    (:file "postfix")
                                    (:file "logger")

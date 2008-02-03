@@ -106,33 +106,18 @@
 (defclass standard-model-class ()
   ((creation-date :accessor standard-model-class.creation-date :initarg :creation-date :initform nil)))
 
-(defclass name-server (server)
-  ((ns-script-pathname :accessor name-server.ns-script-pathname :initarg :ns-script-pathname
-		       :initform
-		       #-debian (make-pathname :directory '(:absolute "etc" "init.d") :name "svscan")
-		       #+debian (make-pathname :directory '(:absolute "etc" "init.d") :name "djbdns"))
-   (ns-db-pathname :accessor name-server.ns-db-pathname :initarg :ns-db-pathname
-		   :initform (if (sb-posix:getenv "CORESERVER_HOME")
-				 (merge-pathnames (make-pathname :directory '(:relative "var" "tinydns"))
-						  (sb-posix:getenv "CORESERVER_HOME"))
-				 (merge-pathnames (make-pathname :directory '(:relative "db" "ns"))
-						  (asdf:component-pathname (asdf:find-system :core-server)))))
-   (ns-root-pathname :accessor name-server.ns-root-pathname :initarg :ns-root-pathname
-		     :initform (make-pathname :directory '(:absolute "service" "tinydns" "root")))
-   (ns-compiler-pathname :accessor name-server.ns-compiler-pathname :initarg ns-compiler
-			 :initform (make-pathname :directory '(:absolute "usr" "bin") :name "tinydns-data"))
-   (ns-db :accessor name-server.ns-db :initarg ns-db
-	  :initform (make-instance 'database-server
-				   :directory (if (sb-posix:getenv "CORESERVER_HOME")
-						  (merge-pathnames (make-pathname :directory '(:relative "var" "tinydns"))
-								   (sb-posix:getenv "CORESERVER_HOME"))
-						(merge-pathnames (make-pathname :directory '(:relative "db" "ns"))
-								 (asdf:component-pathname (asdf:find-system :core-server)))) 
-				   :model-class 'ns-model)))
+(defclass tinydns-server (server)
+  ((svc-pathname :accessor tinydns-server.svc-pathname
+		 :initarg :svc-pathame :initform (whereis "svc"))
+   (svstat-pathname :accessor tinydns-server.svstat-pathname
+		    :initarg :svscan-pathname :initform (whereis "svstat"))
+   (root-pathname :accessor tinydns-server.root-pathname :initarg :root-pathname
+		  :initform (make-pathname :directory '(:absolute "service" "tinydns")))
+   (compiler-pathname :accessor tinydns-server.compiler-pathname :initarg :compiler-pathname
+		      :initform (whereis "tinydns-data"))
+   (domains :accessor tinydns-server.domains :initform nil)
+   (%timestamp :initform (get-universal-time)))
   (:default-initargs :name "TinyDNS Server"))
-
-(defclass ns-model ()
-  ((domains :accessor ns-model.domains :initarg :domains :initform (make-hash-table :test #'equal))))
 
 (defclass ns-record ()
   ((source :accessor ns-record.source :initarg :source :initform nil) 
