@@ -4,6 +4,10 @@
   `(sb-thread:with-recursive-lock ((server.mutex ,@server))
      ,@body))
 
+(defmacro with-server-lock (server &body body)
+  `(sb-thread:with-recursive-lock ((server.mutex ,@server))
+     ,@body))
+
 (defmethod start :around ((self server))
   (with-server-mutex (self)
     (let ((failed))
