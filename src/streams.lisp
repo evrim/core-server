@@ -321,7 +321,6 @@
 
 (defmethod shared-initialize :after ((self core-file-io-stream) slot-name
 				     &rest initargs &key &allow-other-keys)
-  (declare (ignorable initargs))
   (when (getf initargs :file)    
     (setf (s-v '%stream)
 	  (open (getf initargs :file)
@@ -330,6 +329,40 @@
 		:if-exists :supersede
 		:if-does-not-exist :create
 		:external-format :utf8))))
+
+(defclass core-file-input-stream (core-fd-io-stream)
+  ())
+
+(defmethod shared-initialize :after ((self core-file-input-stream) slot-names
+				     &rest initargs &key &allow-other-keys)
+  
+  (when (getf initargs :file)
+    (setf (s-v '%stream)
+	  (open (getf initargs :file)
+		:direction :input
+		:element-type '(unsigned-byte 8)
+		:if-does-not-exist :error
+		:external-format :utf8))))
+
+(defun make-core-file-input-stream (pathname)
+  (make-instance 'core-file-input-stream :file pathname))
+
+(defclass core-file-output-stream (core-fd-io-stream)
+  ())
+
+(defmethod shared-initialize :after ((self core-file-output-stream) slot-names
+				     &rest initargs &key &allow-other-keys)
+  (when (getf initargs :file)
+    (setf (s-v '%stream)
+	  (open (getf initargs :file)
+		:direction :output
+		:element-type '(unsigned-byte 8)
+		:if-does-not-exist :create
+		:if-exists :supersede
+		:external-format :utf8))))
+
+(defun make-core-file-output-stream (pathname)
+  (make-instance 'core-file-output-stream :file pathname))
 
 ;;;-----------------------------------------------------------------------------
 ;;; List Stream
