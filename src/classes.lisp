@@ -9,7 +9,8 @@
 
 (defclass web-application (application)
   ((fqdn :reader web-application.fqdn :initarg :fqdn :initform (error "Fqdn must be supplied."))
-   (admin-email :accessor web-application.admin-email :initarg :admin-email :initform (error "Admin email must be supplied."))
+   (admin-email :accessor web-application.admin-email :initarg :admin-email
+		:initform (error "Admin email must be supplied."))
    (project-name :accessor web-application.project-name
 		 :initarg :project-name
 		 :initform nil)
@@ -18,12 +19,17 @@
 		     :initform nil)))
 
 (defclass apache-web-application (web-application)
-  ((vhost-template-pathname :accessor apache-web-application.vhost-template-pathname :initarg :vhost-template-pathname
-			    :initform (merge-pathnames (make-pathname :directory '(:relative "etc") :name "vhost" :type "conf")
-						       (asdf:component-pathname (asdf:find-system :core-server)))
+  ((vhost-template-pathname :accessor apache-web-application.vhost-template-pathname
+			    :initarg :vhost-template-pathname
+			    :initform (merge-pathnames (make-pathname :directory '(:relative "etc")
+								      :name "vhost" :type "conf")
+						       (asdf:component-pathname
+							(asdf:find-system :core-server)))
 			    :documentation "Apache Vhost Configuration Template Pathname") 
-   (default-entry-point :accessor apache-web-application.default-entry-point :initarg :default-entry-point
-			:initform "index.core" :documentation "Default Entry Point for redirector creation, setq nil not to.")
+   (default-entry-point :accessor apache-web-application.default-entry-point
+                        :initarg :default-entry-point
+			:initform "index.core"
+			:documentation "Default Entry Point for redirector creation, setq nil not to.")
    (skel-pathname :accessor apache-web-application.skel-pathname :initarg :skel-pathname
 		  :initform (merge-pathnames (make-pathname :directory '(:relative "etc" "skel"))
 					     (asdf:component-pathname (asdf:find-system :core-server)))
@@ -32,7 +38,8 @@
 (defclass serializable-web-application (web-application)
   ((sources :accessor serializable-web-application.sources
 	    :initarg :sources
-	    :initform '(src/packages src/model src/tx src/interfaces src/application src/security src/ui/main))
+	    :initform '(src/packages src/model src/tx src/interfaces
+			src/application src/security src/ui/main))
    (directories :accessor serializable-web-application.directories
 		:initarg :directories
 		:initform (list (make-pathname :directory '(:relative "src"))
@@ -71,8 +78,10 @@
 (defclass apache-server (web-server)
   ((apachectl-pathname :accessor apache-server.apachectl-pathname :initarg :apachectl-pathname
 		       :initform
-		       #+pardus (make-pathname :directory '(:absolute "usr" "sbin") :name "apache2ctl")
-		       #+debian (make-pathname :directory '(:absolute "usr" "sbin") :name "apache2ctl")
+		       #+pardus (make-pathname :directory '(:absolute "usr" "sbin")
+					       :name "apache2ctl")
+		       #+debian (make-pathname :directory '(:absolute "usr" "sbin")
+					       :name "apache2ctl")
 		       #+(not (or pardus debian)) (make-pathname :directory '(:absolute "etc" "init.d") :name "apache2"))
    (htpasswd-pathname :accessor apache-server.htpasswd-pathname :initarg :htpasswd-pathname
 		      :initform
@@ -104,7 +113,8 @@
 	    (get-directory self))))
 
 (defclass standard-model-class ()
-  ((creation-date :accessor standard-model-class.creation-date :initarg :creation-date :initform nil)))
+  ((creation-date :accessor standard-model-class.creation-date
+		  :initarg :creation-date :initform nil)))
 
 (defclass tinydns-server (server)
   ((svc-pathname :accessor tinydns-server.svc-pathname
@@ -119,38 +129,31 @@
    (%timestamp :initform (get-universal-time)))
   (:default-initargs :name "TinyDNS Server"))
 
-(defclass ns-record ()
-  ((source :accessor ns-record.source :initarg :source :initform nil) 
-   (target :accessor ns-record.target :initarg :target :initform nil)))
 
-(defmethod print-object ((self ns-record) stream)
-  (print-unreadable-object (self stream :type t :identity t)
-    (format stream "Source: ~A Target: ~A" (ns-record.source self) (ns-record.target self))))
-
-(defclass ns-mx (ns-record)
-  ())
-
-(defclass ns-alias (ns-record)
-  ())
-
-(defclass ns-ns (ns-record)
-  ())
-
-(defclass ns-host (ns-record)
-  ())
+;; this is a thread that logs messages to a stream
+(defclass logger-server (local-unit)
+  ((log-stream :accessor log-stream :initarg :log-stream :initform nil) ;;*core-output*
+   (log-path :accessor log-path :initarg :log-path
+	     :initform (merge-pathnames (make-pathname :directory '(:relative "var" "log"))
+					(sb-posix:getenv "CORESERVER_HOME")))))
 
 (defclass email-server (server)
   ())
 
 (defclass postfix-server (email-server)
-  ((postfix-script-pathname :accessor postfix-server.postfix-script-pathname :initarg postfix-script-pathname
-			    :initform (make-pathname :directory '(:absolute "etc" "init.d") :name "postfix"))
-   (virtual-mailbox-maps :accessor postfix-server.virtual-mailbox-maps :initarg :virtual-mailbox-maps
-			 :initform (make-pathname :directory '(:absloute "etc" "postfix") :name "vmailbox")))
+  ((postfix-script-pathname :accessor postfix-server.postfix-script-pathname
+			    :initarg postfix-script-pathname
+			    :initform (make-pathname :directory '(:absolute "etc" "init.d")
+						     :name "postfix"))
+   (virtual-mailbox-maps :accessor postfix-server.virtual-mailbox-maps
+			 :initarg :virtual-mailbox-maps
+			 :initform (make-pathname :directory '(:absloute "etc" "postfix")
+						  :name "vmailbox")))
   (:default-initargs :name "Postfix mail Server"))
 
 (defclass ticket-model ()
-  ((tickets :accessor ticket-model.tickets :initarg :tickets :initform (make-hash-table :test #'equal))))
+  ((tickets :accessor ticket-model.tickets :initarg :tickets
+	    :initform (make-hash-table :test #'equal))))
 
 (defclass ticket ()
   ((hash :accessor ticket.hash :initarg :hash :initform (error "No hash given."))
