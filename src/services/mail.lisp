@@ -58,17 +58,20 @@
 ;; we schedule a queue processor.
 
 (defclass mail-sender (logger-server)
-  ((username :accessor mail-sender.username :initarg :mail-username :initform (error "mail-sender username must be defined.")
+  ((username :accessor mail-sender.username :initarg :mail-username
+	     :initform (error "mail-sender username must be defined.")
 	     :documentation "Username for connecting to mail server")
    (password :accessor mail-sender.password :initarg :mail-password :initform nil
 	     :documentation "Password for connecting to mail server")
-   (server :accessor mail-sender.server :initarg :mail-server :initform (error "mail-sender server must be defined.")
+   (server :accessor mail-sender.server :initarg :mail-server
+	   :initform (error "mail-sender server must be defined.")
 	   :documentation "mail server hostname")
    (mail-port :accessor mail-sender.port :initarg :mail-port :initform 25
 	      :documentation "mail server port")
    (queue :accessor mail-sender.queue :initarg :queue :initform (make-instance 'queue)
 	  :documentation "mail queue which will be processed with intervals")
-   (queue-lock :accessor mail-sender.queue-lock :initarg :queue-lock :initform (sb-thread::make-mutex)
+   (queue-lock :accessor mail-sender.queue-lock :initarg :queue-lock
+	       :initform (sb-thread::make-mutex)
 	       :documentation "queue lock used to separate multiple worker threads")
    (timer :accessor mail-sender.timer :initarg :timer :initform nil
 	  :documentation "A timer is an object holding a scheduled function")
@@ -91,8 +94,7 @@
     (aif (dequeue (mail-sender.queue self))
 	 (progn 
 	   (%sendmail self it socket)
-	   (%process-queue self socket))
-	 nil)))
+	   (%process-queue self socket)))))
 
 ;; when queue has envelopes, process the queue
 (defmethod/unit %process :async-no-return ((self mail-sender))
@@ -190,16 +192,16 @@
 (defmethod start ((self mail-sender))
   (unless (mail-sender.timer self) 
     (setf (mail-sender.timer self)
-	  (make-timer (lambda ()
-			(%process self))
-		      :name "mail-sender")))
+	  (make-timer (lambda () (%process self)) :name "mail-sender")))
   (schedule-timer (mail-sender.timer self)
 		  (mail-sender.interval self)
-		  :repeat-interval (mail-sender.interval self)))
+		  :repeat-interval (mail-sender.interval self))
+  t)
 
 ;; remove the scheduled timer and stop.
 (defmethod stop ((self mail-sender))
-  (unschedule-timer (mail-sender.timer self)))
+  (unschedule-timer (mail-sender.timer self))
+  t)
 
 ;; we're also inheriting logger-server. So here we define a logging
 ;; function with a default tag 'smtp.
@@ -223,7 +225,9 @@
 
 ;; main interface to other programs
 (defmethod/unit sendmail :async-no-return ((self mail-sender) recipient subject text)
-  (enqueue (mail-sender.queue self) (apply #'make-instance 'envelope (list :recipient recipient :subject subject :text text))))
+  (enqueue (mail-sender.queue self)
+	   (apply #'make-instance 'envelope
+		  (list :recipient recipient :subject subject :text text))))
 
 ;;; sample mail conversation
 ;;;
