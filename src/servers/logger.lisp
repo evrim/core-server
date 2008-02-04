@@ -10,16 +10,6 @@
 ;; for file output (to $CORESERVER_HOME/var/log/core-server.log):
 ;; (defparameter *logger* (make-instance 'logger-server :log-stream nil))
 
-(defparameter +default-log-path+
-  (merge-pathnames (make-pathname :directory '(:relative "var" "log"))
-		   (sb-posix:getenv "CORESERVER_HOME")))
-
-;; this is a thread that logs messages to a stream
-(defclass logger-server (local-unit)
-  ((log-stream :accessor log-stream :initarg :log-stream :initform *core-output*)
-   (log-path :accessor log-path :initarg :log-path
-	     :initform +default-log-path+)))
-
 ;; log lines are like that:
 ;; <time> <tag> <message>
 (defmethod/unit log-me :async-no-return ((self logger-server) tag message)
@@ -61,5 +51,4 @@
     (setf (log-stream self) nil)))
 
 (defmethod status ((self logger-server))
-  (if (log-stream self)
-      t))
+  (if (log-stream self) t))
