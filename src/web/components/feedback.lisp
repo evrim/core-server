@@ -14,8 +14,12 @@
   (<:form
    (<:input :type "text" :id "feedback-text" :name "feedback-text")))
 
-(defmethod/local send-feedback ((self feedback-component) feedback)
-  (format *standard-output* "got feedback:~A~%" feedback))
+(defmethod/local send-feedback ((self feedback-component) feedback url)
+  (sendmail (application.server (application self)) (web-application.admin-email (application self)) "Feedback"
+	    (format nil "Date:~A~%Url:~A~%Feedback:~A~%"
+		    (time->string (get-universal-time) :long)
+		    url
+		    feedback)))
 
 (defmethod/remote setup ((self feedback-component))
   (if (= "undefined" (typeof (this.get-div)))
@@ -28,7 +32,7 @@
       (setf form.onsubmit (dojo.hitch this
 				      (lambda ()
 					(this.toast "Sending...")
-					(this.send-feedback input.value)
+					(this.send-feedback input.value (+ "" window.location))
 					(this.setup)
 					(this.toast (this.get-thank-text))
 					(return false))))

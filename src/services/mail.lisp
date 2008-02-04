@@ -200,8 +200,8 @@
 
 ;; remove the scheduled timer and stop.
 (defmethod stop ((self mail-sender))
-  (unschedule-timer (mail-sender.timer self))
-  t)
+  (when (mail-sender.timer self)
+    (unschedule-timer (mail-sender.timer self))))
 
 ;; we're also inheriting logger-server. So here we define a logging
 ;; function with a default tag 'smtp.
