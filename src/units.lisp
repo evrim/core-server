@@ -69,17 +69,19 @@
   (thread-receive))
 
 (defmethod start ((self local-unit))
-  (if (not (status self))      
+  (if (not (local-unit.status self))      
       (prog1 t
 	(setf (s-v '%thread)
-	      (thread-spawn #'(lambda () (run self)) :name (unit.name self))))
-      nil))
+	      (thread-spawn #'(lambda () (run self)) :name (unit.name self))))))
 
 (defmethod stop ((self local-unit))
-  (if (status self) (send-message self 'shutdown))
+  (if (local-unit.status self) (send-message self 'shutdown))
   t)
 
 (defmethod status ((self local-unit))
+  (local-unit.status self))
+
+(defmethod local-unit.status ((self local-unit))
   (and (threadp (s-v '%thread)) (thread-alive-p (s-v '%thread))))
 
 (defmethod me-p ((self local-unit))
