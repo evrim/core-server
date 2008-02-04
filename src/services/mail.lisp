@@ -70,8 +70,7 @@
 	      :documentation "mail server port")
    (queue :accessor mail-sender.queue :initarg :queue :initform (make-instance 'queue)
 	  :documentation "mail queue which will be processed with intervals")
-   (queue-lock :accessor mail-sender.queue-lock :initarg :queue-lock
-	       :initform (sb-thread::make-mutex)
+   (queue-lock :accessor mail-sender.queue-lock :initarg :queue-lock :initform (sb-thread::make-mutex)
 	       :documentation "queue lock used to separate multiple worker threads")
    (timer :accessor mail-sender.timer :initarg :timer :initform nil
 	  :documentation "A timer is an object holding a scheduled function")
@@ -94,7 +93,8 @@
     (aif (dequeue (mail-sender.queue self))
 	 (progn 
 	   (%sendmail self it socket)
-	   (%process-queue self socket)))))
+	   (%process-queue self socket))
+	 nil)))
 
 ;; when queue has envelopes, process the queue
 (defmethod/unit %process :async-no-return ((self mail-sender))
@@ -192,7 +192,9 @@
 (defmethod start ((self mail-sender))
   (unless (mail-sender.timer self) 
     (setf (mail-sender.timer self)
-	  (make-timer (lambda () (%process self)) :name "mail-sender")))
+	  (make-timer (lambda ()
+			(%process self))
+		      :name "mail-sender")))
   (schedule-timer (mail-sender.timer self)
 		  (mail-sender.interval self)
 		  :repeat-interval (mail-sender.interval self))
