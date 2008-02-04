@@ -12,10 +12,10 @@
    (peer-class :initarg :peer-class :initform 'stream-peer
 	       :documentation "Class to instantiate as peer thread.")
 ;;   (request-timeout-length :initarg :request-timeout-length :initform 90)
-   (%socket :initform nil) (%peers :initform nil) (%thread :initform nil)))
+   (%socket :initform nil) (%peers :initform nil) (%socket-thread :initform nil)))
 
 (defmethod start ((self socket-server))
-  (when (not (%status self))
+  (when (not (socket-server.status self))
     (setf (s-v '%socket) (make-server :host (s-v 'host)
 				      :port (s-v 'port)
 				      :reuse-address (s-v 'reuse-address)
@@ -32,29 +32,26 @@
 			       (setf (peer.server p) self)
 			       p))
 			 (seq (s-v 'peers-max)))
-	  (s-v '%thread) (thread-spawn #'(lambda () (run self))
-				       :name (format nil "Socket Server at ~A:~A"
-						     (s-v 'host) (s-v 'port))))
-    t))
+	  (s-v '%socket-thread) (thread-spawn #'(lambda () (socket-server.run self))
+					      :name (format nil "Socket Server at ~A:~A"
+							    (s-v 'host) (s-v 'port))))))
 
 (defmethod stop ((self socket-server))
-  (if (s-v '%socket)
-      (close-server (s-v '%socket)))
-  (when (%status self)
-    (thread-kill (s-v '%thread))
+  (when (socket-server.status self)
+    (thread-kill (s-v '%socket-thread))
+    (and (s-v '%socket) (close-server (s-v '%socket)))
     (mapc #'stop (s-v '%peers))
     (setf (s-v '%socket) nil
-	  (s-v '%thread) nil
-	  (s-v '%peers) nil)
-    t))
+	  (s-v '%socket-thread) nil
+	  (s-v '%peers) nil)))
 
-(defmethod %status ((self socket-server))
-  (and (threadp (s-v '%thread)) (thread-alive-p (s-v '%thread))))
+(defmethod socket-server.status ((self socket-server))
+  (and (threadp (s-v '%socket-thread)) (thread-alive-p (s-v '%socket-thread))))
 
 (defmethod status ((self socket-server))
-  (%status self))
+  (socket-server.status self))
 
-(defmethod run ((self socket-server))  
+(defmethod socket-server.run ((self socket-server))  
   (loop
      (progn
        (mapc #'(lambda (peer)
