@@ -37,6 +37,7 @@
                          (:file "protocol")
                          (:file "application")
                          (:file "server")
+                         (:file "parenscript")
                          (:file "html")
                          (:module :commands
                                   :serial t
