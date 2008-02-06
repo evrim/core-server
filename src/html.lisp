@@ -237,7 +237,7 @@
 				  (if (null (cdr attr))
 				      t))
 				(list ,@(mapcar (lambda (attr)
-						  `(cons ,(js::symbol-to-js attr) ,attr))
+						  `(cons ,(symbol-to-js attr) ,attr))
 						attributes)))
 		     children)))))
        (export ',name (find-package :tr.gen.core.server.html)))))
@@ -307,7 +307,7 @@
 (deftag <:li :core :event :i18n)
 (deftag <:link :core :event :i18n charset href hreflang media rel rev type)
 (deftag <:map :core :event :i18n name)
-(deftag <:meta :i18n content http-equiv name scheme)
+(deftag <:meta :i18n content http--equiv name scheme)
 (deftag <:noframes :core :event :i18n)
 (deftag <:noscript :core :event :i18n)
 (deftag <:object :core :event :i18n archive classid codebase codetype
