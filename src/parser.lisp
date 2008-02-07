@@ -94,6 +94,9 @@
 (defatom tab? ()
   (= c 9))
 
+(defatom no-break-space? ()
+  (= c 160))
+
 (defatom double-quote? ()
   (= c 34))
 
@@ -102,7 +105,8 @@
 
 (defatom white-space? ()
   (or (space? c)
-      (tab? c)))
+      (tab? c)
+      (no-break-space?)))
 
 (defatom visible-char? ()
   (and (> c 32)
