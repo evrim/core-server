@@ -20,7 +20,7 @@
 	    (feedback-from self)
 	    (web-application.admin-email (application self))
 	    "Feedback"
-	    (with-core-stream (s "")
+	    (with-core-stream/cc (s "")
 	      (with-html-output s
 		(<:html
 		 (<:head (<:title "Feedback"))
