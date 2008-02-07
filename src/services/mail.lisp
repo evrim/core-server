@@ -26,6 +26,33 @@
     (354 . "data")
     (554 . "fail")))
 
+(defparameter *x-mailer* "core-server")
+
+;; thanks to cl-smtp for get-email-date-string and get-timezone-from-integer
+(defun get-email-date-string ()
+  (multiple-value-bind (sec min h d m y wd)
+      (get-decoded-time)
+    (let* ((month (elt '("Jan" "Feb" "r" "Apr" "y" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec") (- m 1)))
+	   (weekday (elt '("n" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun") wd))
+	   (timezone (get-timezone-from-integer
+		      (- (encode-universal-time sec min h d m y 0)
+			 (get-universal-time)))))
+      (format nil "~A, ~2,'0d ~A ~d ~2,'0d:~2,'0d:~2,'0d ~D"
+	      weekday d month y h min sec timezone))))
+
+(defun get-timezone-from-integer (x)
+  (let ((min (/ x 60))
+	(hour (/ x 3600)))
+    (if (integerp hour)
+	(cond
+	  ((>= hour 0) (format nil "+~2,'0d00" hour))
+	  ((< hour 0) (format nil "-~2,'0d00" (* -1 hour))))
+	(multiple-value-bind (h m)
+	    (truncate min 60)
+	  (cond
+	    ((>= hour 0) (format nil "+~2,'0d~2,'0d" h (truncate m)))
+	    ((< hour 0) (format nil "-~2,'0d~2,'0d" (* -1 h) (* -1 (truncate m)))))))))
+
 ;; default smtp response parser
 ;; default-smtp-response? :: Socket () -> ResponseCode
 (defrule default-smtp-response? (c)
@@ -70,8 +97,6 @@
 	      :documentation "mail server port")
    (queue :accessor mail-sender.queue :initarg :queue :initform (make-instance 'queue)
 	  :documentation "mail queue which will be processed with intervals")
-   (queue-lock :accessor mail-sender.queue-lock :initarg :queue-lock :initform (sb-thread::make-mutex)
-	       :documentation "queue lock used to separate multiple worker threads")
    (timer :accessor mail-sender.timer :initarg :timer :initform nil
 	  :documentation "A timer is an object holding a scheduled function")
    (interval :accessor mail-sender.interval :initarg :interval :initform 8
@@ -80,21 +105,32 @@
 
 ;; This is the mail adt.
 (defclass envelope ()
-  ((recipient :accessor envelope.recipient :initarg :recipient
+  ((from :accessor envelope.from :initarg :from :initform (error "from field required for envelope")
+	 :documentation "envelope from field")
+   (display-name :accessor envelope.display-name :initarg :display-name :initform nil
+		 :documentation "Display name of the sender. Ex: john doe")
+   (to :accessor envelope.to :initarg :to :initform (error "to field required for envelope")
 	      :documentation "Recipient of the mail")
-   (subject :accessor envelope.subject :initarg :subject
+   (cc :accessor envelope.cc :initarg :cc :initform nil
+       :documentation "carbon copy goes to")
+   (relpy-to :accessor envelope.reply-to :initarg :reply-to :initform nil
+	     :documentation "reply to address")
+   (subject :accessor envelope.subject :initarg :subject :initform (error "subject field required for envelope")
 	    :documentation "mail subject")
-   (text :accessor envelope.text :initarg :text :initform nil
-	 :documentation "mail body which is a string")))
+   (text :accessor envelope.text :initarg :text :initform ""
+	 :documentation "mail body which is a string")
+   (date :accessor envelope.date :initarg :date :initform (get-email-date-string)
+	 :documentation "creation date of envelope")
+   (extra-headers :accessor envelope.extra-headers :initarg :extra-headers :initform nil
+		  :documentation "extra headers for this envelope. List of string tuples.")))
 
 ;; recursively dequeue an envelope and send it to the wire
 (defmethod/unit %process-queue ((self mail-sender) socket)
-  (sb-thread::with-recursive-lock ((mail-sender.queue-lock self))
-    (aif (dequeue (mail-sender.queue self))
-	 (progn 
-	   (%sendmail self it socket)
-	   (%process-queue self socket))
-	 nil)))
+  (aif (dequeue (mail-sender.queue self))
+       (progn 
+	 (%sendmail self it socket)
+	 (%process-queue self socket))
+       nil))
 
 ;; when queue has envelopes, process the queue
 (defmethod/unit %process :async-no-return ((self mail-sender))
@@ -129,13 +165,13 @@
       ;; TODO: how to program atomically dependent steps in here?
       (and
        (progn
-	 (string! socket (format nil "MAIL FROM: ~A" (mail-sender.username self)))
+	 (string! socket (format nil "MAIL FROM: ~@[~A ~]<~A>" (envelope.display-name e) (envelope.from e)))
 	 (char! socket #\Newline)
 	 (purge)
 	 ;; 250 2.1.0 Ok
 	 (action-ok? socket))
        (progn 
-	 (string! socket (format nil "RCPT TO: ~A" (envelope.recipient e)))
+	 (string! socket (format nil "RCPT TO: ~A" (car (envelope.to e))))
 	 (char! socket #\Newline)
 	 (purge)
 	 ;; 250 2.1.5 Ok
@@ -147,7 +183,7 @@
 	 ;; 354 End data with <CR><LF>.<CR><LF>
 	 (start-input? socket))
        (progn 
-	 (string! socket (build-message-stream e)) 
+	 (string! socket (build-message-stream e))
 	 (char! socket #\Newline)
 	 (char! socket #\.)
 	 (char! socket #\Newline)
@@ -158,21 +194,30 @@
 ;; cosmetics for the message body
 ;; build-message-stream :: Envelope -> String
 (defmethod build-message-stream ((e envelope))
-  (let ((s (make-core-stream "")))
-    (string! s (format nil "Subject: ~A" (envelope.subject e)))
-    (char! s #\Newline)
-    (string! s (format nil "To: ~A" (envelope.recipient e)))
-    (char! s #\Newline)
-    (string! s "MIME-Version: 1.0")
-    (char! s #\Newline)
-    (string! s "Content-Type: text/plain; charset=UTF-8; format=flowed")
-    (char! s #\Newline)
-    (string! s "Content-Transfer-Encoding: 8bit") 
-    (char! s #\Newline)
-    (char! s #\Newline)
-    (string! s (envelope.text e))
-    (char! s #\Newline)
-    (return-stream s)))
+  (flet ((smtp! (sock string)
+	   (string! sock string)
+	   (char! sock #\Newline)))
+    (let ((s (make-core-stream "")))
+      (smtp! s (format nil "Date: ~A" (envelope.date e)))
+      (smtp! s (format nil "From: ~@[~A <~]~A~@[>~]" (envelope.display-name e) (envelope.from e) (envelope.display-name e)))
+      (smtp! s (format nil "To: ~{ ~a~^,~}" (envelope.to e)))
+      (when (envelope.cc e)
+	(smtp! s (format nil "Cc: ~{ ~a~^,~}" (envelope.cc e))))
+      (when (envelope.reply-to e)
+	(smtp! s (format nil "Reply-To: ~A" (envelope.reply-to e))))
+      (smtp! s (format nil "Subject: ~A" (envelope.subject e)))
+      (smtp! s (format nil "X-Mailer: ~A" *x-mailer*))
+      (let ((hdrs (envelope.extra-headers e)))
+	(when (and hdrs (listp hdrs))
+	  (dolist (h hdrs)
+	    (smtp! s (format nil "~A: ~A" (car h) (cdr h))))))
+      (smtp! s "MIME-Version: 1.0")
+      (smtp! s "Content-Type: text/html; charset=UTF-8; format=flowed")
+      (smtp! s "Content-Transfer-Encoding: 8bit")
+      (char! s #\Newline)
+      (string! s (envelope.text e))
+      (char! s #\Newline)
+      (return-stream s))))
 
 ;; TODO: fix authentication
 (defmethod/unit auth-plain ((self mail-sender) socket)
@@ -194,7 +239,8 @@
     (setf (mail-sender.timer self)
 	  (make-timer (lambda ()
 			(%process self))
-		      :name "mail-sender")))
+		      :name "mail-sender"
+		      :thread (s-v '%thread))))
   (schedule-timer (mail-sender.timer self)
 		  (mail-sender.interval self)
 		  :repeat-interval (mail-sender.interval self))
@@ -213,23 +259,33 @@
 (defparameter *test-mails*
   (list
    (make-instance 'envelope
-		  :recipient "aycan@core.gen.tr"
+		  :from "bilgi@core.gen.tr"
+		  :to '("aycan@core.gen.tr")
 		  :subject "first mail (1)"
-		  :text "number one (1)")
+		  :text (with-core-stream (s "")
+			  (with-html-output s
+			    (<:html
+			     (<:head (<:title "taytl"))
+			     (<:body
+			      (<:h1 "Heading 1")
+			      (<:p "Lorem ipsum okuzum malim."))))))
    (make-instance 'envelope
-		  :recipient "aycan@core.gen.tr"
+		  :from "bilgi@core.gen.tr"
+		  :to '("aycan@core.gen.tr")
 		  :subject "second mail (2)"
 		  :text "number two (2)")
    (make-instance 'envelope
-		  :recipient "aycan@core.gen.tr"
+		  :from "bilgi@core.gen.tr"
+		  :to  '("aycan@core.gen.tr")
 		  :subject "third mail (3)"
 		  :text "number three (3)")))
 
 ;; main interface to other programs
-(defmethod/unit sendmail :async-no-return ((self mail-sender) recipient subject text)
+(defmethod/unit sendmail :async-no-return ((self mail-sender) from to subject text &optional cc reply-to display-name)
   (enqueue (mail-sender.queue self)
 	   (apply #'make-instance 'envelope
-		  (list :recipient recipient :subject subject :text text))))
+		  (list :from from :to (ensure-list to) :subject subject :text text
+			:cc (ensure-list cc) :reply-to reply-to :display-name display-name))))
 
 ;;; sample mail conversation
 ;;;
