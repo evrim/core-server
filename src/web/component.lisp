@@ -159,10 +159,21 @@
 (defmethod/cc send/ctor ((self component) remote-slots local-methods remote-methods)
   (<:js
    `(setf ,(class-name (class-of self))
-	  (lambda ()
+	  (lambda (,@(reduce (lambda (acc slot)
+			       (if (keywordp slot)
+				   (cons (intern (symbol-name slot)) acc)
+				   acc))
+			     remote-slots :initial-value nil))
 	    (setf this.prototype (create ;; ,@(local-slots)
 				  ,@remote-slots
 				  ,@local-methods ,@remote-methods))
+	    ,@(reduce (lambda (acc slot)
+			(if (keywordp slot)
+			    (cons `(if (not (= "undefined" (typeof ,(intern (symbol-name slot)))))
+				       (setf (slot-value this.prototype ',(intern (symbol-name slot)))
+					     ,(intern (symbol-name slot)))) acc)
+			    acc))
+		      remote-slots :initial-value nil)
 	    (return this.prototype)))))
 
 (defmacro defcomponent (name supers slots &rest default-initargs)
