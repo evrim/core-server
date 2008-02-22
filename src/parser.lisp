@@ -411,11 +411,13 @@
 	(byte! stream code))))
 
 (defun string! (stream string)
-  (reduce #'(lambda (acc atom)
-	      (declare (ignore acc))
-	      (byte! stream atom)
-	      nil)
-	  (string-to-octets string :utf-8) :initial-value nil))
+  (write-stream stream (string-to-octets string :utf-8))
+  ;; (reduce #'(lambda (acc atom)
+;; 	      (declare (ignore acc))
+;; 	      (byte! stream atom)
+;; 	      nil)
+;; 	  (string-to-octets string :utf-8) :initial-value nil)
+  )
 
 (defun version! (stream version)
   (fixnum! stream (car version))
