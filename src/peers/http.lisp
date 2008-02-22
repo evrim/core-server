@@ -57,18 +57,14 @@
 	  ;;	  (describe (mime-part.data (nth 3 (http-message.entities request))))
 
 (defmethod render-http-headers ((self http-peer) stream response)  
-  (checkpoint-stream stream)
   (http-response-headers! stream response)
   (char! stream #\Newline)
-  (char! stream #\Newline)
-  (commit-stream stream))
+  (char! stream #\Newline))
 
 (defmethod render-mod-lisp-headers ((self http-peer)stream response)  
-  (checkpoint-stream stream)
   (mod-lisp-response-headers! stream response)
   (string! stream "end")
-  (char! stream #\Newline)
-  (commit-stream stream))
+  (char! stream #\Newline))
 
 (defmethod render-headers ((self http-peer) stream response)
   (if (eq 'mod-lisp (s-v 'peer-type))
@@ -88,19 +84,16 @@
     response))
 
 (defmethod eval-request ((self http-peer) request)
-  (let ((response (make-response)))    
+  (let ((response (make-response (make-core-stream (slot-value (http-request.stream request) '%stream)))))
     (checkpoint-stream (http-response.stream response))
     response))
 
 (defmethod render-response ((self http-peer) stream response)
   (render-headers self stream response)
-  (commit-stream (http-response.stream response))
-  (string! stream (return-stream (http-response.stream response)))
-  (commit-stream stream)
-  (close-stream stream))
+  (commit-stream (http-response.stream response)))
 
 (defmethod render-error ((self http-peer) stream)
-  (let ((response (make-response)))
+  (let ((response (make-response stream)))
     (checkpoint-stream stream)
     (setf (http-response.status-code response) (make-status-code 200))
     (render-headers self stream response)
@@ -122,6 +115,14 @@
 	  (render-error self stream))
     (retry () :report "Retry evaluating request"
 	   (handle-stream self stream address))))
+
+(defvar +http-peer-methods+ '(handle-stream render-error render-response eval-request parse-request
+			      render-headers make-response render-http-headers render-mod-lisp-headers))
+(defun trace-http-peer ()
+  (mapcar (lambda (m) (eval `(trace ,m))) +http-peer-methods+))
+
+(defun untrace-http-peer ()
+  (mapcar (lambda (m) (eval `(untrace ,m))) +http-peer-methods+))
 
 ;; (defparameter *response-body* ;;  "Hello, World!"
 ;;   (with-yaclml-output-to-string
