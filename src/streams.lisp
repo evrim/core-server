@@ -147,18 +147,22 @@
       (incf (the fixnum (s-v '%index)))
       c)))
 
-(defmethod write-stream ((self core-vector-io-stream) (c (eql nil))) nil)
+(defmethod write-stream ((self core-vector-io-stream) (c (eql nil)))
+  self)
+
+(defmethod write-stream ((self core-vector-io-stream) (vector vector))  
+  (prog1 self (reduce #'write-stream vector :initial-value self)))
 
 (defmethod write-stream ((self core-vector-io-stream) atom)
   (if (transactionalp self)
-      (push-atom atom (s-v '%buffer))      
+      (push-atom atom (s-v '%buffer))
       (if (> (length (the vector (s-v '%octets))) (the fixnum (s-v '%index)))
 	  (setf (aref (the (vector (unsigned-byte 8)) (s-v '%octets))
 		      (s-v '%index)) atom)
 	  (push-atom atom (s-v '%octets))))
   
   (incf (the fixnum (s-v '%index))) ;; paradoxal
-  )
+  self)
 
 (defmethod checkpoint-stream ((self core-vector-io-stream))
   (if (transactionalp self)
@@ -271,14 +275,22 @@
 	    (incf (the fixnum (s-v '%read-index))))
 	  read))))
 
-(defmethod write-stream ((self core-fd-io-stream) (c (eql nil))) nil)
+(defmethod write-stream ((self core-fd-io-stream) (c (eql nil)))
+  self)
+
+(defmethod write-stream ((self core-fd-io-stream) (vector vector))
+  (prog1 self
+    (if (transactionalp self)
+	(reduce #'write-stream vector :initial-value self)	
+	(write-sequence vector (s-v '%stream)))))
 
 (defmethod write-stream ((self core-fd-io-stream) atom)
-  (if (transactionalp self)
-      (push-atom atom (s-v '%write-buffer))      
-      (prog1 (write-byte atom (s-v '%stream))
-;;	(sb-impl::flush-output-buffer (s-v '%stream))
-	nil))
+  (prog1 self
+    (if (transactionalp self)
+	(push-atom atom (s-v '%write-buffer))      
+	(write-byte atom (s-v '%stream))
+	;;	(sb-impl::flush-output-buffer (s-v '%stream))
+	))
   ;;  (incf (s-v '%read-index)) ;; paradoxal
   )
 
@@ -307,11 +319,7 @@
 (defmethod commit-stream ((self core-fd-io-stream))
   (let ((buffer (s-v '%write-buffer)))
     (prog1 (%rewind-checkpoint self)
-      (reduce #'(lambda (acc item)
-		  (declare (ignore acc))
-		  (write-stream self item)
-		  nil)
-	      buffer :initial-value nil))))
+      (write-stream self buffer))))
 
 ;;;-----------------------------------------------------------------------------
 ;;; File Stream
@@ -393,7 +401,8 @@
       (incf (the fixnum (s-v '%index)))
       c)))
 
-(defmethod write-stream ((self core-list-io-stream) (c (eql nil))) nil)
+(defmethod write-stream ((self core-list-io-stream) (c (eql nil)))
+  nil)
 
 (defmethod write-stream ((self core-list-io-stream) atom)
   (if (transactionalp self)
