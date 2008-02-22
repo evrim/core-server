@@ -108,6 +108,9 @@
   (defclass core-standard-output (core-stream)
     ())
 
+  (defmethod write-stream ((self core-standard-output) (vector vector))
+    (reduce #'write-stream vector :initial-value self))
+  
   (defmethod write-stream ((self core-standard-output) atom)
     (princ (code-char atom) *standard-output*))
 
