@@ -1,5 +1,13 @@
 (in-package :tr.gen.core.server)
 
+(defun flatten (lst &optional (acc nil))
+  "why? why? why?"
+  (cond
+    ((null lst) acc)
+    ((atom lst) (cons lst acc))
+    ((listp lst)
+     (flatten (cdr lst) (flatten (car lst) acc)))))
+
 (defun any (lambda list)
   "i wonder why missing."
   (reduce #'(lambda (acc atom)
