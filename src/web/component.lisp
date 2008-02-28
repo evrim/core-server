@@ -18,7 +18,9 @@
 (defun reduce-class-tree (name type)
   (let ((lst))
     (mapcar (lambda (atom)
-	      (pushnew atom lst))
+	      (pushnew atom lst
+		       :key #'(lambda (a) (if (atom a) a (car a)))
+		       :test #'eq))
 	    (reduce #'append
 		    (mapcar (lambda (atom)
 			      (getf (gethash (class-name atom) +component-registry+) type))
@@ -225,11 +227,15 @@
 				(cons arg acc))))
 		      args :initial-value nil))
 	       (reduce #'(lambda (acc arg)
-			   (let ((value (getf (cdar default-initargs) (make-keyword (car arg)))))
-			     (if value
-				 (cons (list (car arg) value) acc)
-				 (cons arg acc))))
-		       args :initial-value nil)))
+			   (pushnew arg acc :key #'car :test #'equal)
+			   acc)
+		       (reduce #'(lambda (acc arg)
+				   (let ((value (getf (cdar default-initargs) (make-keyword (car arg)))))
+				     (if value
+					 (cons (list (car arg) value) acc)
+					 (cons arg acc))))
+			       args :initial-value nil)
+		       :initial-value nil)))
 	   (remote-args (slotz)
 	     (let ((args (append
 			  (nreverse (reduce #'remote-slot slotz :initial-value nil))
@@ -251,17 +257,20 @@
 				(cons arg acc))))
 		      args :initial-value nil))
 	       (reduce #'(lambda (acc arg)
-			   (let ((value (getf (cdar default-initargs)
-					      (make-keyword (car arg)))))
-			     (if value
-				 (cons (list (car arg) value) acc)
-				 (cons arg acc))))
-		       args :initial-value nil)))
+			   (pushnew arg acc :key #'car :test #'eq))
+		       (reduce #'(lambda (acc arg)
+				   (let ((value (getf (cdar default-initargs)
+						      (make-keyword (car arg)))))
+				     (if value
+					 (cons (list (car arg) value) acc)
+					 (cons arg acc))))
+			       args :initial-value nil)
+		       :initial-value nil)))
 	   (function-key-args (slotz)
 	     (reduce #'(lambda (acc slot-def)			 
 			 (cons (make-keyword (car slot-def))
 			       (cons (car slot-def) acc)))
-		     (local-args slotz) :initial-value nil))
+		     (append (remote-args slotz) (local-args slotz)) :initial-value nil))
 	   (filter-default-initargs (lst)
 	     (nreverse (reduce #'(lambda (acc item)
 				   (if (or (eq item :default-initargs)
@@ -274,6 +283,7 @@
 	     (cons (car slot) (or (getf (cdr slot) :client-type) 'primitive))))    
     `(prog1
 	 (eval-when (:compile-toplevel :load-toplevel :execute)
+	   (export ',name (find-package ,(package-name (symbol-package name))))
 	   (setf (getf (gethash ',name +component-registry+) :supers) ',supers
 		 (getf (gethash ',name +component-registry+) :default-initargs) ',(cdar default-initargs)
 		 (getf (gethash ',name +component-registry+) :local-args) ',(local-args slots)
@@ -283,8 +293,9 @@
 	     ,(mapcar #'filter-slot (copy-tree slots))
 	     (:default-initargs ,@(filter-default-initargs (car default-initargs)))
 	     ,@(cdr default-initargs)))
-       (defun/cc ,(intern (string-upcase name)) (&key ,@(local-args slots))
-	 (send/component (apply #'make-instance ',name (list ,@(function-key-args slots)))))
+       (defun ,(intern (string-upcase name) (symbol-package name))
+	   (&key ,@(local-args slots) ,@(remote-args slots))
+	 (apply #'make-instance ',name (list ,@(function-key-args slots))))
        ,@(mapcar (lambda (slot)
 		   `(progn
 		      (defmethod/local ,(proxy-getter-name (car slot)) ((self ,name))
@@ -301,7 +312,7 @@
 			(return (slot-value this ',(car slot))))))
 		 (remote-args slots)))))
 
-(defun/cc dojo (&optional base-url (debug nil)
+(defun/cc dojo (&optional base-url (debug nil) (prevent-back-button 'false)
 		(css '("/dijit/themes/dijit.css"
 		       "/dijit/themes/tundra/tundra.css"
 		       "/dojox/widget/Toaster/Toaster.css"
@@ -331,9 +342,12 @@
 	  (.append-child (aref (document.get-elements-by-tag-name "head") 0)
 			 link)
 	  (return link)))
-      (defun init-core-server ()      
+      (defun init-core-server ()
 	(when (= "undefined" (typeof dojo))
-	  (setf dj-config (create :base-url ,+dojo-path+ :is-debug ,debug))      
+	  (setf dj-config (create :base-url ,+dojo-path+ :is-debug ,debug
+				  :prevent-back-button-fix ,prevent-back-button
+;;				  :dojo-iframe-history-url "./resources/iframe_history.html"
+				  ))      
 	  (dolist (src (array "bootstrap.js" "loader.js" "hostenv_browser.js" "loader_xd.js"))	
 	    (load-javascript (+ ,+dojo-path+ "_base/_loader/" src)))
 	  (load-javascript (+ ,+dojo-path+ "_base.js")))
@@ -341,6 +355,7 @@
 			    (format nil "/~A/~A"
 				    (web-application.fqdn (application +context+))
 				    base-url)))
+	(dojo.require "dojo.back")
 	,@(mapcar (lambda (c) `(load-css ,c)) css)
 	(dojo.add-on-load
 	 (lambda ()
