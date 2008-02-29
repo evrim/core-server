@@ -5,7 +5,8 @@
    (greeting-text :accessor greeting-text :host remote
 		  :initform "Please give us feedback to improve our site. Click here to enter.")
    (thank-text :accessor thank-text :host remote
-	       :initform "Thank you for giving us feedback.")
+	       :initform "Thank you for giving us feedback."
+	       :initarg :thank-text)
    (feedback-from :accessor feedback-from :host local :initform "nospam@core.gen.tr")))
 
 (defmethod/remote get-div ((self feedback-component))
