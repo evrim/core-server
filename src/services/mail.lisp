@@ -243,8 +243,7 @@
 		      :thread (s-v '%thread))))
   (schedule-timer (mail-sender.timer self)
 		  (mail-sender.interval self)
-		  :repeat-interval (mail-sender.interval self))
-  t)
+		  :repeat-interval (mail-sender.interval self)))
 
 ;; remove the scheduled timer and stop.
 (defmethod stop ((self mail-sender))
@@ -254,7 +253,7 @@
 ;; we're also inheriting logger-server. So here we define a logging
 ;; function with a default tag 'smtp.
 (defun smsg (msender text)
-  (log-me msender 'smtp (format nil "~A: ~A~%" (unit.name msender) text)))
+  (log-me msender 'smtp (format nil "~A: ~A" (unit.name msender) text)))
  
 (defparameter *test-mails*
   (list
