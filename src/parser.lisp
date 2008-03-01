@@ -106,7 +106,7 @@
 (defatom white-space? ()
   (or (space? c)
       (tab? c)
-      (no-break-space?)))
+      (no-break-space? c)))
 
 (defatom visible-char? ()
   (and (> c 32)

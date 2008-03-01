@@ -2,7 +2,7 @@
 
 (defcomponent feedback-component (toaster-component)
   ((feedback-id :accessor feedback-id :host remote :initform "feedback")
-   (greeting-text :accessor greeting-text :host remote
+   (greeting-text :accessor greeting-text :host remote :initarg :greeting-text
 		  :initform "Please give us feedback to improve our site. Click here to enter.")
    (thank-text :accessor thank-text :host remote
 	       :initform "Thank you for giving us feedback."
