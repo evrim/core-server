@@ -37,12 +37,23 @@
   (merge-pathnames (hedee.root self)
 		   (apache-web-application.docroot-pathname (application self))))
 
+(defmethod filtered-list-directory ((self hedee-component))
+  (reduce (lambda (acc atom)
+	    (when (or (equal (string-downcase (pathname-type atom)) "jpg")
+		      (equal (string-downcase (pathname-type atom)) "JPEG")
+		      (equal (string-downcase (pathname-type atom)) "png")
+		      (equal (string-downcase (pathname-type atom)) "gif"))
+	      (cons atom acc)
+	      acc))
+	  (cl-fad:list-directory (images-pathname self))
+	  :initial-value nil))
+
 (defmethod/local get-total ((self hedee-component))
-  (length (cl-fad:list-directory (images-pathname self))))
+  (length (filtered-list-directory self)))
 
 (defmethod list-directory ((self hedee-component) offset length)
   (mapcar (lambda (atom seq) (cons seq atom))
-          (nthcdr offset (cl-fad:list-directory (images-pathname self)))
+          (nthcdr offset (filtered-list-directory self))
           (seq length)))
 
 (defmethod/local template ((self hedee-component) offset length)
