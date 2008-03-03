@@ -490,6 +490,8 @@
    #:toaster-component
    #:login-component
    #:feedback-component
+   #:hedee-component
+   #:hilighter
    ;; [Helpers]
    #:make-keyword
    ;; [Search]

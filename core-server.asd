@@ -94,7 +94,8 @@
                                              (:file "fckeditor")
                                              (:file "login")
                                              (:file "feedback")
-                                             (:file "hilighter"))))))))
+                                             (:file "hilighter")
+                                             (:file "hedee"))))))))
   :depends-on (:bordeaux-threads :cl-prevalence :sb-bsd-sockets
                                  :arnesi :cl-ppcre :cl-fad :parenscript)
   :serial t)
