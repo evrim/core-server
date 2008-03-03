@@ -39,12 +39,12 @@
 
 (defmethod filtered-list-directory ((self hedee-component))
   (reduce (lambda (acc atom)
-	    (when (or (equal (string-downcase (pathname-type atom)) "jpg")
-		      (equal (string-downcase (pathname-type atom)) "JPEG")
-		      (equal (string-downcase (pathname-type atom)) "png")
-		      (equal (string-downcase (pathname-type atom)) "gif"))
-	      (cons atom acc)
-	      acc))
+	    (if (or (equal (string-downcase (pathname-type atom)) "jpg")
+		    (equal (string-downcase (pathname-type atom)) "jpeg")
+		    (equal (string-downcase (pathname-type atom)) "png")
+		    (equal (string-downcase (pathname-type atom)) "gif"))
+		(cons atom acc)
+		acc))
 	  (cl-fad:list-directory (images-pathname self))
 	  :initial-value nil))
 
