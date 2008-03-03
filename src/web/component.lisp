@@ -356,6 +356,7 @@
 				    (web-application.fqdn (application +context+))
 				    base-url)))
 	(dojo.require "dojo.back")
+	(dojo.back.init)
 	,@(mapcar (lambda (c) `(load-css ,c)) css)
 	(dojo.add-on-load
 	 (lambda ()
