@@ -116,7 +116,7 @@
 								    (this.get-total)
 								    this.len)))
   (dolist (a (dojo.query (+ "#" this.content-id " a.hedee-a")))
-    (setf a.onclick (dojo.hitch this (lambda (e) (return (this.show-image e.target.id))))))
+    (dojo.connect a "onclick" this (lambda (e) (return (this.show-image e.target.id)))))
   (return t))
 
 
