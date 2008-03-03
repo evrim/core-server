@@ -75,8 +75,7 @@
 		       (cons (<:div :id (format nil "hedee-div-~D" (+ offset seq))
 				    :class "hedee-div"
 				    (<:a :id (format nil "hedee-a-~D" (+ offset seq))
-					 :class "hedee-a"
-					 :href "#"
+					 :class "hedee-a"					 
 					 (<:img :id (format nil "~A/~A.~A" (hedee.root self)
 							    (pathname-name (cdr atom))
 							    (pathname-type (cdr atom))) ;;(format nil "hedee-img-~D" (+ offset seq))
@@ -92,6 +91,7 @@
   (return false))
 
 (defmethod/remote show-image ((self hedee-component) image-source)
+  (this.toast "Image loading, please hold...")
   (dojo.require "dijit.Dialog")
   (let ((div (document.create-element "DIV"))
 	(img (document.create-element "IMG")))
