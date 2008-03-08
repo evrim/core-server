@@ -104,8 +104,7 @@
 		       
 		       (.show (new (dijit.*dialog (create :title "Hedee Image Gallery") div)))
 		       (return false)))
-    (div.append-child img)
-    (document.body.append-child div))
+    (div.append-child img))
   (return false))
 
 (defmethod/remote setup ((self hedee-component))
