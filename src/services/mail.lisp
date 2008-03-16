@@ -235,7 +235,7 @@
 ;; Use user supplied timer, otherwise make a new timer and schedule
 ;; it.
 (defmethod start ((self mail-sender))
-  (unless (mail-sender.timer self) 
+  (unless (mail-sender.timer self)
     (setf (mail-sender.timer self)
 	  (make-timer (lambda ()
 			(%process self))
@@ -248,7 +248,8 @@
 ;; remove the scheduled timer and stop.
 (defmethod stop ((self mail-sender))
   (when (mail-sender.timer self)
-    (unschedule-timer (mail-sender.timer self))))
+    (unschedule-timer (mail-sender.timer self))
+    (setf (mail-sender.timer self) nil)))
 
 ;; we're also inheriting logger-server. So here we define a logging
 ;; function with a default tag 'smtp.
