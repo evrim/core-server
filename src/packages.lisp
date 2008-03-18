@@ -523,6 +523,8 @@
    #:true
    #:false
    #:undefined
+   ;; Form component (which emails a filled form)
+   #:web-form-component
    ))
 
 (defpackage :tr.gen.core.server.html
