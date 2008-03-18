@@ -24,7 +24,7 @@
 (defmethod/remote setformvals ((self web-form-component))
   (.for-each (dojo.query "*" (this.get-form-id))
 	     (lambda (i)
-	       (case i.tag-name
+	       (case (i.tag-name.to-lower-case)
 		 ("textarea"
 		  (i.append-child (document.create-text-node i.value)))
 		 ("input"
@@ -53,7 +53,7 @@
 		  (obj.setformvals)
 		  (obj.sendform form.inner-h-t-m-l)
 		  (.parent-node.replace-child (obj.form) orig (obj.form))
-		  (this.toast "Form successfuly sent. Thank you.")
+		  (obj.toast "Form successfuly sent. Thank you.")
 		  (return false)))))))
 
 ;; (defurl *test* "forms.can" ()
