@@ -88,9 +88,10 @@
     (checkpoint-stream (http-response.stream response))
     response))
 
-(defmethod render-response ((self http-peer) stream response)
+(defmethod render-response ((self http-peer) stream response request)
   (render-headers self stream response)
-  (commit-stream (http-response.stream response)))
+  (if (not (eq 'head (http-request.method request)))
+      (commit-stream (http-response.stream response))))
 
 (defmethod render-error ((self http-peer) stream)
   (let ((response (make-response stream)))
@@ -116,8 +117,8 @@
 		     (render-response self stream response))))))
     (close-stream stream)))
 
-(deftrace http-peer '(handle-stream render-error render-response eval-request parse-request
-		      render-headers make-response render-http-headers render-mod-lisp-headers))
+;; (deftrace http-peer '(handle-stream render-error render-response eval-request parse-request
+;; 		      render-headers make-response render-http-headers render-mod-lisp-headers))
 
 ;; (defparameter *response-body* ;;  "Hello, World!"
 ;;   (with-yaclml-output-to-string
