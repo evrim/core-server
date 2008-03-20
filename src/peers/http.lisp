@@ -114,7 +114,7 @@
 	   (if request
 	       (let ((response (eval-request self request)))
 		 (if response		  
-		     (render-response self stream response))))))
+		     (render-response self stream response request))))))
     (close-stream stream)))
 
 ;; (deftrace http-peer '(handle-stream render-error render-response eval-request parse-request
