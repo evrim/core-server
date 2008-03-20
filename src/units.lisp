@@ -93,7 +93,8 @@
 	 (arg-names (extract-argument-names method-args :allow-specializers t))
 	 (self (car arg-names)))
     `(progn
-       (defgeneric ,name ,arg-names)
+       (defgeneric ,name ,(mapcar #'(lambda (arg) (if (listp arg) (car arg) arg))
+				  method-args))
        (defmethod ,name ,method-args ,@method-body)
        ,(cond
 	 ((or (eq method-keyword :async-no-return)
@@ -116,6 +117,9 @@
 	 valid (i.e. :async, :dispatch (or :async-no-return),:sync), or try usual
 	 defmethod.")))
        (warn "defmethod/unit overrides :around method."))))
+
+;; (deftrace unit '(async-method-call async-method-call-with-no-return
+;; 		 start stop send-message receive-message me-p run))
 
 ;; ;;;-----------------------------------------------------------------------------
 ;; ;;; STANDARD UNIT
@@ -276,10 +280,6 @@
 ;; 		  (async-method-call ,self ',name ,@(rest arg-names))))))
 ;; 	 (t (error "Keyword you've entered is not a valid, try usual defmethod.")))
 ;;        (warn "defmethod/unit overrides :around method."))))
-
-(deftrace unit '(async-method-call async-method-call-with-no-return
-		 start stop send-message receive-message me-p run))
-
 
 ;; (defmethod async-method-call ((self local-unit) method-name &rest args)
 ;;   (let ((me (current-thread)))    
