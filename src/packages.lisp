@@ -491,6 +491,7 @@
    #:login-component
    #:feedback-component
    #:hedee-component
+   #:make-hedee
    #:hilighter
    ;; [Helpers]
    #:make-keyword

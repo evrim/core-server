@@ -5,8 +5,8 @@
               (shell :cmd (whereis "mv")
                      :args (list path (make-pathname :directory (pathname-directory path)
                                                      :type (string-downcase (pathname-type path))
-                                                     :name (format nil "~A" seq)))))
-          (cl-fad:list-directory pathname)
+                                                     :name (format nil "~2,'0D" seq)))))
+          (sort (cl-fad:list-directory pathname) #'string< :key (compose #'string-downcase #'namestring))
           (mapcar (curry #'+ starting-from) (seq (length (cl-fad:list-directory pathname))))))
 
 (defun create-thumbnails (pathname &optional (height 150) (width 150))
@@ -78,7 +78,7 @@
 					 :class "hedee-a"					 
 					 (<:img :id (format nil "~A/~A.~A" (hedee.root self)
 							    (pathname-name (cdr atom))
-							    (pathname-type (cdr atom))) ;;(format nil "hedee-img-~D" (+ offset seq))
+							    (pathname-type (cdr atom))) ;;(format nil "hedee-img-~D" (+ offset seq))			
 						:src (image-src (cdr atom))
 						:class "hedee-img")))
 			     acc)))
@@ -98,6 +98,7 @@
     (setf div.id "hedee-dialog"
 	  img.src image-source
 	  img.onclick (dojo.hitch this (lambda (e) (return (this.hide-image))))
+	  img.title image-source
 	  img.onload (lambda (e)
 		       (if (dijit.by-id "hedee-dialog")
 			   (.destroy (dijit.by-id "hedee-dialog")))
@@ -118,4 +119,13 @@
     (dojo.connect a "onclick" this (lambda (e) (return (this.show-image e.target.id)))))
   (return t))
 
-
+(defun make-hedee (path id)
+  (lambda (context)
+    (with-context context
+      (javascript/suspend
+       (lambda ()
+	 (send/component (make-instance 'hedee-component :root path :content-id id))
+	 (<:js
+	   `(progn
+	      (setf hedee (new (hedee-component)))
+	      (dojo.add-on-load (lambda () (hedee.setup))))))))))
