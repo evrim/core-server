@@ -95,34 +95,29 @@
 (defmethod render-error ((self http-peer) stream)
   (let ((response (make-response stream)))
     (checkpoint-stream stream)
-    (setf (http-response.status-code response) (make-status-code 200))
+    (setf (http-response.status-code response) (make-status-code 500))
     (render-headers self stream response)
     (with-html-output stream (<:html (<:body "An error occured.")))
-    (commit-stream stream)
+    (commit-stream stream)))
+
+(defmethod/unit handle-stream :async-no-return ((self http-peer) stream address)
+  (unwind-protect
+       (handler-bind ((error #'(lambda (condition)
+				 (let ((swank::*sldb-quit-restart* 'fail))
+				   (restart-case (swank:swank-debugger-hook condition nil)
+				     (fail () :report "Give up evaluating request"
+					   (render-error self stream))
+				     (retry () :report "Retry evaluating request"
+					    (handle-stream self stream address)))))))
+	 (let ((request (parse-request self stream)))
+	   (if request
+	       (let ((response (eval-request self request)))
+		 (if response		  
+		     (render-response self stream response))))))
     (close-stream stream)))
 
-(defmethod/unit handle-stream :async-no-return ((self http-peer) stream address)		
-  (restart-case
-      (progn
-	(let ((swank::*sldb-quit-restart* 'fail)
-	      (request (parse-request self stream)))
-	  (if request
-	      (let ((response (eval-request self request)))
-		(if response		  
-		    (render-response self stream response))))
-	  (close-stream stream)))
-    (fail () :report "Give up evaluating request"
-	  (render-error self stream))
-    (retry () :report "Retry evaluating request"
-	   (handle-stream self stream address))))
-
-(defvar +http-peer-methods+ '(handle-stream render-error render-response eval-request parse-request
-			      render-headers make-response render-http-headers render-mod-lisp-headers))
-(defun trace-http-peer ()
-  (mapcar (lambda (m) (eval `(trace ,m))) +http-peer-methods+))
-
-(defun untrace-http-peer ()
-  (mapcar (lambda (m) (eval `(untrace ,m))) +http-peer-methods+))
+(deftrace http-peer '(handle-stream render-error render-response eval-request parse-request
+		      render-headers make-response render-http-headers render-mod-lisp-headers))
 
 ;; (defparameter *response-body* ;;  "Hello, World!"
 ;;   (with-yaclml-output-to-string
