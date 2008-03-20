@@ -16,57 +16,15 @@
   (:method ((self unit)) t))
 
 (defvar +debug-units-on-error+ t "Debugging flag.")
-;;;-----------------------------------------------------------------------------
-;;; STANDARD UNIT
-;;;-----------------------------------------------------------------------------
+
 (defclass standard-unit (unit)
-  ((%pid :reader get-pid :initarg :pid :initform -1)
-   (%server :initarg :server :initform nil)
-   (%continuations :initform (make-hash-table :test #'equal)
-		   :documentation "Captured continuations.")))
+  ())
 
-(defmethod register-continuation ((self standard-unit) lambda &optional (k-id (current-thread)))
-  (setf (gethash k-id (s-v '%continuations)) lambda))
-
-(defmethod unregister-continuation ((self standard-unit) &optional (k-id (current-thread)))
-  (remhash k-id (s-v '%continuations)))
-
-(defmethod find-continuation ((self standard-unit) k-id)
-  (gethash k-id (s-v '%continuations)))
-
-(defmethod run ((self standard-unit))
-  (flet ((control-loop-error (condition)
-	   (if +debug-units-on-error+ 
-	       (swank:swank-debugger-hook condition nil)
-	       (invoke-restart 'ignore-error)))
-	 (l00p ()
-	   (let ((message (receive-message self)))
-	     (cond
-	       ((eq message 'shutdown)
-;;		(format t "Shutting down unit:~A~%" self)
-		(return-from run (values)))
-	       ((functionp message)
-		(funcall message self))
-	       (t					  
-		(format t "Got unknown message:~A~%" message))))))
-  (loop
-     (handler-bind ((error #'control-loop-error))
-       (restart-case (l00p)
-	 (ignore-error ()
-	   :report "Ignore the error and continue processing."))))))
-
-;;;-----------------------------------------------------------------------------
-;;; LOCAL UNITS a.k.a. THREADS
-;;;-----------------------------------------------------------------------------
 (defclass local-unit (standard-unit)
-  ((%thread :initform nil :documentation "Local thread that this unit runs."))
-  (:default-initargs :name "Core-serveR Local Unit"))
+  ((%thread :initform nil)))
 
-(defmethod send-message ((self local-unit) message &optional (target nil))
-  (thread-send (or target (s-v '%thread)) message))
-
-(defmethod receive-message ((self local-unit))
-  (thread-receive))
+(defmethod local-unit.status ((self local-unit))
+  (and (threadp (s-v '%thread)) (thread-alive-p (s-v '%thread))))
 
 (defmethod start ((self local-unit))
   (if (not (local-unit.status self))      
@@ -75,41 +33,57 @@
 	      (thread-spawn #'(lambda () (run self)) :name (unit.name self))))))
 
 (defmethod stop ((self local-unit))
-  (if (local-unit.status self) (send-message self 'shutdown))
+  (if (local-unit.status self) (thread-send (s-v '%thread) 'shutdown))
   t)
 
 (defmethod status ((self local-unit))
   (local-unit.status self))
 
-(defmethod local-unit.status ((self local-unit))
-  (and (threadp (s-v '%thread)) (thread-alive-p (s-v '%thread))))
-
 (defmethod me-p ((self local-unit))
   (or (equal (current-thread) (s-v '%thread)) (not (status self))))
 
-(defvar +ret+ nil)
-(defmethod async-method-call-with-no-return ((self local-unit) method-name &rest args)
-  (send-message self #'(lambda (unit)
-			 (apply method-name unit args)))
-  (values))
+(defmethod send-message ((self local-unit) message)
+  (thread-send (s-v '%thread) message))
+
+(defmethod receive-message ((self local-unit))
+  (thread-receive))
+
+(defmethod run ((self local-unit))
+  (flet ((l00p (message)	   
+	   (cond
+	     ((eq message 'shutdown) (return-from run nil))
+	     ((functionp message) (funcall message self))
+	     (t (format *standard-output* "Got unknown message:~A~%" message)))))
+    (loop (l00p (receive-message self)))))
+
+(defmethod debug-condition ((self local-unit) (condition condition)
+			    (ignore function)
+			    (retry function))
+  (if +debug-units-on-error+
+      (let ((swank::*sldb-quit-restart* 'ignore-error))
+	(restart-case (swank:swank-debugger-hook condition nil)
+	  (ignore-error ()
+	    :report "Ignore the error and return (values"
+	    (funcall ignore))
+	  (retry ()
+	    :report "Retry the funcall"
+	    (funcall retry))))
+      (funcall ignore)))
 
 (defmethod async-method-call ((self local-unit) method-name &rest args)
-  (let ((me (current-thread)))    
+  (let ((me (current-thread)))
     (send-message self
-		  #'(lambda (unit)		      
-		      (block unit-execution 
-			(let ((+ret+ #'(lambda (val)
-					 (format t "funki +ret+~A~%" val)
-					 (thread-send me (list val))
-;; 					 (return-from unit-execution t)
-					 (format t "before run~%")
-					 (run unit)
-					 )))
-			  (let ((result (multiple-value-list
-					 (apply method-name unit args))))
-			    (thread-send me result)))))))
-  #'(lambda ()
-      (apply #'values (thread-receive))))
+		  #'(lambda (unit)
+		      (tagbody start
+			 (block unit-execution
+			   (handler-bind ((error #'(lambda (condition)
+						     (debug-condition unit condition
+								      (lambda () (thread-send me nil))
+								      (lambda () (go start)))
+						     (return-from unit-execution nil))))
+			     (let ((result (multiple-value-list (apply method-name unit args))))
+			       (thread-send me result)))))))
+    #'(lambda () (apply #'values (thread-receive)))))
 
 (defmacro defmethod/unit (name &rest args)
   (let* ((method-keyword (if (keywordp (car args))
@@ -119,34 +93,192 @@
 	 (arg-names (extract-argument-names method-args :allow-specializers t))
 	 (self (car arg-names)))
     `(progn
+       (defgeneric ,name ,arg-names)
        (defmethod ,name ,method-args ,@method-body)
        ,(cond
-	 ((eq method-keyword :async-no-return)
+	 ((or (eq method-keyword :async-no-return)
+	      (eq method-keyword :dispatch))
 	  `(defmethod ,name :around ,method-args
 	     (if (me-p ,self)
 		 (call-next-method)
-		 (async-method-call-with-no-return ,self ',name ,@(rest arg-names)))))
+		 (async-method-call ,self ',name ,@(rest arg-names)))))
 	 ((eq method-keyword :async)
 	  `(defmethod ,name :around ,method-args
 	     (if (me-p ,self)
-		 (if (null +ret+)
-		     (let ((+ret+ #'(lambda (val)
-				      (return-from ,name val))))
-		       (call-next-method))
-		     (call-next-method))
-		 (async-method-call ,self ',name ,@(rest arg-names)))))	 
+		 (call-next-method)
+		 (async-method-call ,self ',name ,@(rest arg-names)))))
 	 ((or (null method-keyword) (eq method-keyword :sync))
 	  `(defmethod ,name :around ,method-args
 	     (if (me-p ,self)
-		 (if (null +ret+)
-		     (let ((+ret+ #'(lambda (val)
-				      (return-from ,name val))))
-		       (call-next-method))
-		     (call-next-method))
-		 (funcall		  
-		  (async-method-call ,self ',name ,@(rest arg-names))))))
-	 (t (error "Keyword you've entered is not a valid, try usual defmethod.")))
+		 (call-next-method) 
+		 (funcall (async-method-call ,self ',name ,@(rest arg-names))))))
+	 (t (error "Keyword you've entered is not a
+	 valid (i.e. :async, :dispatch (or :async-no-return),:sync), or try usual
+	 defmethod.")))
        (warn "defmethod/unit overrides :around method."))))
+
+;; ;;;-----------------------------------------------------------------------------
+;; ;;; STANDARD UNIT
+;; ;;;-----------------------------------------------------------------------------
+;; (defclass standard-unit (unit)
+;;   ((%pid :reader get-pid :initarg :pid :initform -1)
+;;    (%server :initarg :server :initform nil)
+;;    (%continuations :initform (make-hash-table :test #'equal)
+;; 		   :documentation "Captured continuations.")))
+
+;; (defmethod register-continuation ((self standard-unit) lambda &optional (k-id (current-thread)))
+;;   (setf (gethash k-id (s-v '%continuations)) lambda))
+
+;; (defmethod unregister-continuation ((self standard-unit) &optional (k-id (current-thread)))
+;;   (remhash k-id (s-v '%continuations)))
+
+;; (defmethod find-continuation ((self standard-unit) k-id)
+;;   (gethash k-id (s-v '%continuations)))
+
+;; (defmethod run ((self standard-unit))  
+;;   (flet ((control-loop-error (condition)
+;; 	   (if +debug-units-on-error+
+;; 	       (swank:swank-debugger-hook condition nil)
+;; 	       (invoke-restart 'ignore-error)))
+;; 	 (l00p ()
+;; 	   (let ((message (receive-message self)))
+;; 	     (cond
+;; 	       ((eq message 'shutdown)
+;; 		;;		(format t "Shutting down unit:~A~%" self)
+;; 		(return-from run (values)))
+;; 	       ((and (listp message) (functionp (cdr message)))
+;; 		(funcall (cdr message) self))
+;; 	       (t					  
+;; 		(format t "Got unknown message:~A~%" message))))))
+;;     (loop
+;;        (handler-bind ((error #'control-loop-error))
+;; 	 (restart-case (l00p)
+;; 	   (ignore-error ()
+;; 	     :report "Ignore the error and continue processing."))))))
+
+;; ;; (defmethod run ((self local-unit))
+;; ;;   (flet ((l00p ()
+;; ;; 	   (let ((message (receive-message self)))
+;; ;; 	     (cond
+;; ;; 	       ((eq message 'shutdown) (return-from run (values)))
+;; ;; 	       ((and (listp message) (functionp (cdr message)))		
+;; ;; 		(handler-bind ((error
+;; ;; 				#'(lambda (condition)
+;; ;; 				    (thread-send (if (slot-value (s-v 'debug-unit) '%thread)
+;; ;; 						     (slot-value (s-v 'debug-unit) '%thread)
+;; ;; 						     (car message))
+;; ;; 				     #'(lambda ()
+;; ;; 					 (if +debug-units-on-error+
+;; ;; 					     (restart-case (swank:swank-debugger-hook condition nil)
+;; ;; 					       (ignore-error ()
+;; ;; 						 :report "Ignore the error and continue processing.")
+;; ;; 					       (retry ()
+;; ;; 						 :report "Retry the funcall"
+;; ;; 						 (send-message self (current-thread) (cdr message))
+;; ;; 						 (funcall #'(lambda ()
+;; ;; 							      (apply #'values (funcall (thread-receive))))))))))
+;; ;; 				    (return-from l00p nil))))
+;; ;; 		  (funcall (cdr message) self)))
+;; ;; 	       (t (format t "Got unknown message:~A~%" message))))))
+;; ;;     (loop (l00p))))
+
+;; ;;;-----------------------------------------------------------------------------
+;; ;;; LOCAL UNITS a.k.a. THREADS
+;; ;;;-----------------------------------------------------------------------------
+;; (defclass local-unit (standard-unit)
+;;   ((%thread :initform nil :documentation "Local thread that this unit runs.")
+;;    (%debug-unit :initform nil :initarg :debug-unit))
+;;   (:default-initargs :name "Core-serveR Local Unit"))
+
+;; (defmethod send-message ((self local-unit) remote message)
+;;   (thread-send (s-v '%thread) (cons remote message)))
+
+;; (defmethod receive-message ((self local-unit))
+;;   (thread-receive))
+
+;; (defmethod start ((self local-unit))
+;;   (if (not (local-unit.status self))      
+;;       (prog1 t
+;; 	(setf (s-v '%thread)
+;; 	      (thread-spawn #'(lambda () (run self)) :name (unit.name self))))))
+
+;; (defmethod stop ((self local-unit))
+;;   (if (local-unit.status self) (thread-send (s-v '%thread) 'shutdown))
+;;   t)
+
+;; (defmethod status ((self local-unit))
+;;   (local-unit.status self))
+
+;; (defmethod local-unit.status ((self local-unit))
+;;   (and (threadp (s-v '%thread)) (thread-alive-p (s-v '%thread))))
+
+;; (defmethod me-p ((self local-unit))
+;;   (or (equal (current-thread) (s-v '%thread)) (not (status self))))
+
+;; (defvar +ret+ nil)
+;; (defmethod async-method-call-with-no-return ((self local-unit) method-name &rest args)
+;;   (send-message self (current-thread)
+;; 		#'(lambda (unit)
+;; 		    (apply method-name unit args)))
+;;   (values))
+
+;; (defmethod async-method-call ((self local-unit) method-name &rest args)
+;;   (let ((me (current-thread)))    
+;;     (send-message self (current-thread)
+;; 		  #'(lambda (unit)		      
+;; 		      (block unit-execution 
+;; 			(let ((+ret+ #'(lambda (val)
+;; 					 (format t "funki +ret+~A~%" val)
+;; 					 (thread-send me (list val))
+;; ;; 					 (return-from unit-execution t)
+;; 					 (format t "before run~%")
+;; 					 (run unit)
+;; 					 )))
+;; 			  (let ((result (multiple-value-list
+;; 					 (apply method-name unit args))))
+;; 			    (thread-send me #'(lambda () result))))))))
+;;   #'(lambda ()
+;;       (apply #'values (funcall (thread-receive)))))
+
+;; (defmacro defmethod/unit (name &rest args)
+;;   (let* ((method-keyword (if (keywordp (car args))
+;; 			     (prog1 (car args) (setq args (cdr args)))))
+;; 	 (method-body (cdr args))
+;; 	 (method-args (car args))
+;; 	 (arg-names (extract-argument-names method-args :allow-specializers t))
+;; 	 (self (car arg-names)))
+;;     `(progn
+;;        (defmethod ,name ,method-args ,@method-body)
+;;        ,(cond
+;; 	 ((eq method-keyword :async-no-return)
+;; 	  `(defmethod ,name :around ,method-args
+;; 	     (if (me-p ,self)
+;; 		 (call-next-method)
+;; 		 (async-method-call-with-no-return ,self ',name ,@(rest arg-names)))))
+;; 	 ((eq method-keyword :async)
+;; 	  `(defmethod ,name :around ,method-args
+;; 	     (if (me-p ,self)
+;; 		 (if (null +ret+)
+;; 		     (let ((+ret+ #'(lambda (val)
+;; 				      (return-from ,name val))))
+;; 		       (call-next-method))
+;; 		     (call-next-method))
+;; 		 (async-method-call ,self ',name ,@(rest arg-names)))))	 
+;; 	 ((or (null method-keyword) (eq method-keyword :sync))
+;; 	  `(defmethod ,name :around ,method-args
+;; 	     (if (me-p ,self)
+;; 		 (if (null +ret+)
+;; 		     (let ((+ret+ #'(lambda (val)
+;; 				      (return-from ,name val))))
+;; 		       (call-next-method))
+;; 		     (call-next-method))
+;; 		 (funcall		  
+;; 		  (async-method-call ,self ',name ,@(rest arg-names))))))
+;; 	 (t (error "Keyword you've entered is not a valid, try usual defmethod.")))
+;;        (warn "defmethod/unit overrides :around method."))))
+
+(deftrace unit '(async-method-call async-method-call-with-no-return
+		 start stop send-message receive-message me-p run))
 
 
 ;; (defmethod async-method-call ((self local-unit) method-name &rest args)
