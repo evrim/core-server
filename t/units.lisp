@@ -45,7 +45,7 @@
 
 (defun clean-local-units ()
   (mapcar #'(lambda (thread)
-	      (if (equal "Local Unit" (sb-thread::thread-name thread))
+	      (if (equal "Core-serveR Local Unit" (sb-thread::thread-name thread))
 		  (thread-kill thread)))
 	  (core-server::all-threads)))
 
@@ -80,3 +80,93 @@
 ;; ;;  	       do (fast-lightning unit)))
 ;;     ))
 
+;; (defclass debug-unit (local-unit)
+;;   ())
+
+;; (defmethod/unit debug-me :async-no-return ((self unit) (remote unit) caller
+;; 					   (condition condition) (lambda function))  
+;;   (if +debug-units-on-error+
+;;       (restart-case (swank:swank-debugger-hook condition nil)
+;; 	(ignore-error ()
+;; 	  :report "Ignore the error and continue processing.")
+;; 	(retry ()
+;; 	  :report "Retry the funcall"
+;; 	  (send-message remote (slot-value remote '%thread) lambda)
+;; 	  (funcall #'(lambda ()
+;; 		       (apply #'values (funcall (thread-receive)))))))
+;;       (thread-send caller #'(lambda () (values)))))
+
+;; (defparameter *y (make-instance 'debug-unit))
+;; (start *y)
+
+;; (defclass my-unit (local-unit)
+;;   ())
+
+;; (defmethod run ((self local-unit))  
+;;   (flet ((l00p ()
+;; 	   (let ((message (receive-message self)))
+;; 	     (cond
+;; 	       ((eq message 'shutdown) (return-from run (values)))
+;; 	       ((and (listp message) (functionp (cdr message)))		
+;; 		(handler-bind ((error
+;; 				#'(lambda (condition)
+;; 				    (debug-me (if (s-v '%debug-unit)
+;; 						  (s-v '%debug-unit)
+;; 						  self)
+;; 					      (current-thread)
+;; 					      condition (cdr message))
+;; ;;; 				    (let ((l #'(lambda ()
+;; ;;; 						 (format *standard-output* "gee i'm in lambda~%")
+;; ;;; 						 (if +debug-units-on-error+
+;; ;;; 						     (restart-case (swank:swank-debugger-hook condition nil)
+;; ;;; 						       (ignore-error ()
+;; ;;; 							 :report "Ignore the error and continue processing.")
+;; ;;; 						       (retry ()
+;; ;;; 							 :report "Retry the funcall"
+;; ;;; 							 (send-message self (current-thread) (cdr message))
+;; ;;; 							 (funcall #'(lambda ()
+;; ;;; 								      (apply #'values (funcall (thread-receive)))))))))))
+;; ;;; 				      (if (s-v '%debug-unit)
+;; ;;; 					  (send-message (s-v '%debug-unit) (current-thread) l)
+;; ;;; 					  (thread-send (car message) l)))
+;; 				    (return-from l00p nil))))
+;; 		  (funcall (cdr message) self)))
+;; 	       (t (format t "Got unknown message:~A~%" message))))))
+;;     (loop (l00p))))
+
+;; (defun gee ()
+;;   (restart-case
+;;       (handler-bind ((error #'(lambda (condition)
+;; 				(if +debug-units-on-error+
+;; 				    (swank:swank-debugger-hook condition nil)
+;; 				    (invoke-restart 'my-restart 7)))))
+;; 	(error "Foo."))
+;;     (my-restart (&optional v) (format t "ab~%") v)))
+
+;; (defmethod/unit valid ((self my-unit))
+;;   1)
+
+;; (defmethod/unit bogus ((self my-unit))
+;;   (error "I'm gee the error"))
+
+;; (defparameter *x (make-instance 'my-unit :debug-unit *y))
+;; (start *x)
+;; (defparameter *z (make-instance 'my-unit :debug-unit nil))
+;; (start *z)
+
+;; (progn
+;;   (stop *y)
+;;   (stop *x)
+;;   (stop *z)
+;;   (start *y)
+;;   (start *x)
+;;   (start *z))
+
+;; (defparameter *u1 (make-instance 'local-unit))
+;; (start *u1)
+
+;; (defmethod/unit valid ((self local-unit))
+;;   1)
+
+;; (defmethod/unit bogus ((self local-unit))
+;;   (error "there is a horror occurred."))
