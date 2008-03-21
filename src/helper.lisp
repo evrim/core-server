@@ -1,5 +1,18 @@
 (in-package :tr.gen.core.server)
 
+(defmacro deftrace (name methods)
+  "Defines +name-methods+ variable, trace-name, untrace-name functions
+for traceing a closed system."
+  (let ((var-symbol (intern (string-upcase (format nil "+~A-methods+" name))))
+	(trace-symbol (intern (string-upcase (format nil "trace-~A" name))))
+	(untrace-symbol (intern (string-upcase (format nil "untrace-~A" name)))))
+    `(progn
+       (defvar ,var-symbol ,methods)
+       (defun ,trace-symbol (&optional (methods ,var-symbol))
+	 (mapcar (lambda (e) (eval `(trace ,e))) methods))
+       (defun ,untrace-symbol (&optional (methods ,var-symbol))
+	 (mapcar (lambda (e) (eval `(untrace ,e))) methods)))))
+
 (defun flatten (lst &optional (acc nil))
   "why? why? why?"
   (cond
