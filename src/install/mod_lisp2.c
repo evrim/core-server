@@ -611,15 +611,15 @@ lisp_handler (request_rec * r)
      without worrying about some joker sending a server-id header of
      his own.  (Robert Macomber) */
   ML_LOG_DEBUG (r, "write headers");
-  CVT_ERROR ((write_lisp_header (socket, "server-id", (cfg->server_id))),
-	     	     "writing to Lisp");
+  /* CVT_ERROR ((write_lisp_header (socket, "server-id", (cfg->server_id))), */
+  /* 	     	     "writing to Lisp, server-id"); */
 
-  CVT_ERROR ((write_lisp_header (socket, "server-baseversion", AP_SERVER_BASEVERSION)),
-	     	     "writing to Lisp");
-  CVT_ERROR ((write_lisp_header (socket, "modlisp-version", VERSION_STRING)),
-	     	     "writing to Lisp");
-  CVT_ERROR ((write_lisp_header (socket, "modlisp-major-version", "2")),
-	     	     "writing to Lisp");
+  /* CVT_ERROR ((write_lisp_header (socket, "server-baseversion", AP_SERVER_BASEVERSION)), */
+  /* 	     	     "writing to Lisp, server-baseversion"); */
+  /* CVT_ERROR ((write_lisp_header (socket, "modlisp-version", VERSION_STRING)), */
+  /* 	     	     "writing to Lisp, modlisp-version"); */
+  /* CVT_ERROR ((write_lisp_header (socket, "modlisp-major-version", "2")), */
+  /* 	     	     "writing to Lisp, modlisp-major-version"); */
   /* Send all the remaining headers.  */
   if ((r->headers_in) != 0)
     CVT_ERROR
@@ -676,9 +676,9 @@ lisp_handler (request_rec * r)
     }
 
   /* Set up read timeout so we don't hang forever if Lisp is wedged.  */
-  ML_LOG_DEBUG (r, "set socket timeout");
-  CVT_ERROR ((apr_socket_timeout_set (socket, READ_TIMEOUT)),
-	     	     "setting read timeout");
+  /* ML_LOG_DEBUG (r, "set socket timeout"); */
+  /* CVT_ERROR ((apr_socket_timeout_set (socket, READ_TIMEOUT)), */
+  /* 	     	     "setting read timeout"); */
 
   /* Read the headers and process them.  */
   ML_LOG_DEBUG (r, "read headers");
@@ -686,6 +686,10 @@ lisp_handler (request_rec * r)
     {
       char header_name [4096];
       char header_value [MAX_STRING_LEN];
+      ML_LOG_DEBUG (r, "set socket timeout");
+      CVT_ERROR ((apr_socket_timeout_set (socket, READ_TIMEOUT)),
+		 "setting read timeout");
+
       CVT_ERROR
 	((read_lisp_line (socket, header_name, (sizeof (header_name)))),
 	 	 "reading from Lisp");
