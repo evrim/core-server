@@ -21,7 +21,8 @@
   ())
 
 (defclass local-unit (standard-unit)
-  ((%thread :initform nil)))
+  ((%thread :initform nil)
+   (%debug-unit :initform nil :initarg :debug-unit)))
 
 (defmethod local-unit.status ((self local-unit))
   (and (threadp (s-v '%thread)) (thread-alive-p (s-v '%thread))))
@@ -56,9 +57,9 @@
 	     (t (format *standard-output* "Got unknown message:~A~%" message)))))
     (loop (l00p (receive-message self)))))
 
-(defmethod debug-condition ((self local-unit) (condition condition)
-			    (ignore function)
-			    (retry function))
+(defmethod/unit debug-condition :async ((self local-unit) (condition condition)
+					(ignore function)
+					(retry function))
   (if +debug-units-on-error+
       (let ((swank::*sldb-quit-restart* 'ignore-error))
 	(restart-case (swank:swank-debugger-hook condition nil)
@@ -72,18 +73,23 @@
 
 (defmethod async-method-call ((self local-unit) method-name &rest args)
   (let ((me (current-thread)))
-    (send-message self
-		  #'(lambda (unit)
-		      (tagbody start
-			 (block unit-execution
-			   (handler-bind ((error #'(lambda (condition)
-						     (debug-condition unit condition
-								      (lambda () (thread-send me nil))
-								      (lambda () (go start)))
-						     (return-from unit-execution nil))))
-			     (let ((result (multiple-value-list (apply method-name unit args))))
-			       (thread-send me result)))))))
-    #'(lambda () (apply #'values (thread-receive)))))
+    (labels ((unit-execution (unit)	     
+	       (handler-bind ((error #'(lambda (condition)
+					 (debug-condition
+					  (if (slot-value unit '%debug-unit)
+					      (slot-value unit '%debug-unit)
+					      unit)
+					  condition
+					  (lambda () (thread-send me nil))
+					  (lambda ()
+					    (if (slot-value unit '%debug-unit)
+						(send-message unit #'unit-execution)
+						(unit-execution unit))))
+					 (return-from unit-execution nil))))
+		 (let ((result (multiple-value-list (apply method-name unit args))))
+		   (thread-send me result)))))
+      (send-message self #'unit-execution)
+      #'(lambda () (apply #'values (thread-receive))))))
 
 (defmacro defmethod/unit (name &rest args)
   (let* ((method-keyword (if (keywordp (car args))
@@ -118,8 +124,7 @@
 	 defmethod.")))
        (warn "defmethod/unit overrides :around method."))))
 
-;; (deftrace unit '(async-method-call async-method-call-with-no-return
-;; 		 start stop send-message receive-message me-p run))
+(deftrace unit '(async-method-call start stop send-message receive-message me-p run))
 
 ;; ;;;-----------------------------------------------------------------------------
 ;; ;;; STANDARD UNIT
