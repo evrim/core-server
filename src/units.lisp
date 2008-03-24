@@ -54,42 +54,8 @@
 	   (cond
 	     ((eq message 'shutdown) (return-from run nil))
 	     ((functionp message) (funcall message self))
-	     (t (format *standard-output* "Got unknown message:~A~%" message)))))
+	     (t (format *standard-output* "Unit ~A Got unknown message:~A~%" self message)))))
     (loop (l00p (receive-message self)))))
-
-(defmethod/unit debug-condition :async ((self local-unit) (condition condition)
-					(ignore function)
-					(retry function))
-  (if +debug-units-on-error+
-      (let ((swank::*sldb-quit-restart* 'ignore-error))
-	(restart-case (swank:swank-debugger-hook condition nil)
-	  (ignore-error ()
-	    :report "Ignore the error and return (values"
-	    (funcall ignore))
-	  (retry ()
-	    :report "Retry the funcall"
-	    (funcall retry))))
-      (funcall ignore)))
-
-(defmethod async-method-call ((self local-unit) method-name &rest args)
-  (let ((me (current-thread)))
-    (labels ((unit-execution (unit)	     
-	       (handler-bind ((error #'(lambda (condition)
-					 (debug-condition
-					  (if (slot-value unit '%debug-unit)
-					      (slot-value unit '%debug-unit)
-					      unit)
-					  condition
-					  (lambda () (thread-send me nil))
-					  (lambda ()
-					    (if (slot-value unit '%debug-unit)
-						(send-message unit #'unit-execution)
-						(unit-execution unit))))
-					 (return-from unit-execution nil))))
-		 (let ((result (multiple-value-list (apply method-name unit args))))
-		   (thread-send me result)))))
-      (send-message self #'unit-execution)
-      #'(lambda () (apply #'values (thread-receive))))))
 
 (defmacro defmethod/unit (name &rest args)
   (let* ((method-keyword (if (keywordp (car args))
@@ -108,7 +74,7 @@
 	  `(defmethod ,name :around ,method-args
 	     (if (me-p ,self)
 		 (call-next-method)
-		 (async-method-call ,self ',name ,@(rest arg-names)))))
+		 (prog1 (values) (async-method-call ,self ',name ,@(rest arg-names))))))
 	 ((eq method-keyword :async)
 	  `(defmethod ,name :around ,method-args
 	     (if (me-p ,self)
@@ -124,7 +90,50 @@
 	 defmethod.")))
        (warn "defmethod/unit overrides :around method."))))
 
-(deftrace unit '(async-method-call start stop send-message receive-message me-p run))
+(defmethod/unit debug-condition :async ((self local-unit) (condition condition)
+					(ignore function)
+					(retry function))
+  (if +debug-units-on-error+
+      (let ((swank::*sldb-quit-restart* 'ignore-error))
+	(restart-case (swank:swank-debugger-hook condition nil)
+	  (ignore-error ()
+	    :report "Ignore the error and return (values)"
+	    (funcall ignore))
+	  (retry ()
+	    :report "Retry the funcall"
+	    (funcall retry))))
+      (funcall ignore)))
+
+(defmethod ignore-lambda ((self local-unit) method-name &rest args)
+  (let ((me (current-thread)))
+    (lambda () (thread-send me nil))))
+
+(defmethod retry-lambda ((self local-unit) method-name &rest args)
+  (lambda ()
+    (if (slot-value self '%debug-unit)
+	(send-message self #'unit-execution)
+	(unit-execution self))))
+
+(defmethod async-method-call ((self local-unit) method-name &rest args)
+  (let ((me (current-thread)))
+    (labels ((unit-execution (unit)	     
+	       (handler-bind ((error #'(lambda (condition)
+					 (debug-condition
+					  (if (slot-value unit '%debug-unit)
+					      (slot-value unit '%debug-unit)
+					      unit)
+					  condition
+					  (lambda () (thread-send me nil))
+					  (lambda () (send-message unit #'unit-execution)))
+					 (return-from unit-execution nil))))
+		 (let ((result (multiple-value-list (apply method-name unit args))))
+		   (thread-send me result)))))
+      (send-message self #'unit-execution)
+      #'(lambda () (apply #'values (thread-receive))))))
+
+
+(deftrace unit '(async-method-call start stop send-message receive-message me-p run
+		 debug-condition))
 
 ;; ;;;-----------------------------------------------------------------------------
 ;; ;;; STANDARD UNIT
