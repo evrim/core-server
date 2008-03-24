@@ -112,7 +112,7 @@
     (reduce #'write-stream vector :initial-value self))
   
   (defmethod write-stream ((self core-standard-output) atom)
-    (princ (code-char atom) *standard-output*))
+    (prog1 self (princ (code-char atom) *standard-output*)))
 
   (defvar *core-output* (make-instance 'core-standard-output)))
 
@@ -222,7 +222,7 @@
 (defclass %core-fd-stream (core-stream)
   ((%stream :initarg :stream :initform nil)))
 
-(defmethod close-stream ((self %core-fd-stream))
+(defmethod close-stream ((self %core-fd-stream))  
   (close (s-v '%stream))
   (setf (s-v '%checkpoints) '() (s-v '%current) -1)
   t)
@@ -284,14 +284,14 @@
 (defmethod write-stream ((self core-fd-io-stream) (vector vector))
   (prog1 self
     (if (transactionalp self)
-	(reduce #'write-stream vector :initial-value self)	
+	(reduce #'write-stream vector :initial-value self)		
 	(write-sequence vector (s-v '%stream)))))
 
 (defmethod write-stream ((self core-fd-io-stream) atom)
   (prog1 self
     (if (transactionalp self)
-	(push-atom atom (s-v '%write-buffer))      
-	(write-byte atom (s-v '%stream))
+	(push-atom atom (s-v '%write-buffer))
+	(write-byte atom (s-v '%stream))	
 	;;	(sb-impl::flush-output-buffer (s-v '%stream))
 	))
   ;;  (incf (s-v '%read-index)) ;; paradoxal
