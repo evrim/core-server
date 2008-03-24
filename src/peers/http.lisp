@@ -90,6 +90,7 @@
 
 (defmethod render-response ((self http-peer) stream response request)
   (render-headers self stream response)
+  (commit-stream stream)
   (if (not (eq 'head (http-request.method request)))
       (commit-stream (http-response.stream response))))
 
@@ -102,23 +103,34 @@
     (commit-stream stream)))
 
 (defmethod/unit handle-stream :async-no-return ((self http-peer) stream address)
-  (unwind-protect
-       (handler-bind ((error #'(lambda (condition)
-				 (let ((swank::*sldb-quit-restart* 'fail))
-				   (restart-case (swank:swank-debugger-hook condition nil)
-				     (fail () :report "Give up evaluating request"
-					   (render-error self stream))
-				     (retry () :report "Retry evaluating request"
-					    (handle-stream self stream address)))))))
-	 (let ((request (parse-request self stream)))
-	   (if request
-	       (let ((response (eval-request self request)))
-		 (if response		  
-		     (render-response self stream response request))))))
-    (close-stream stream)))
+  (flet ((handle-error (condition)
+	   (if (typep condition 'sb-int::simple-stream-error)	       
+	       (return-from handle-stream nil))
+	   (flet ((ignore-error (unit)
+		    (render-error unit stream)
+		    (close-stream stream))
+		  (retry-error (unit)
+		    (do ((i (current-checkpoint stream)
+			    (current-checkpoint stream)))
+			((< (the fixnum i) 0) nil)
+		      (rewind-stream stream))
+		    (handle-stream unit stream address)))
+	     (debug-condition (aif (s-v '%debug-unit) it self)
+			      condition
+			      (lambda () (send-message self #'ignore-error))
+			      (lambda () (send-message self #'retry-error)))
+	   (return-from handle-stream nil))))
+    (handler-bind ((error #'handle-error))
+      (checkpoint-stream stream)
+      (let ((request (parse-request self stream)))
+	(if request
+	    (let ((response (eval-request self request)))
+	      (if response		  
+		  (render-response self stream response request))))
+	(close-stream stream)))))
 
-;; (deftrace http-peer '(handle-stream render-error render-response eval-request parse-request
-;; 		      render-headers make-response render-http-headers render-mod-lisp-headers))
+(deftrace http-peer '(handle-stream render-error render-response eval-request parse-request
+		      render-headers make-response render-http-headers render-mod-lisp-headers))
 
 ;; (defparameter *response-body* ;;  "Hello, World!"
 ;;   (with-yaclml-output-to-string
