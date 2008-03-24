@@ -89,10 +89,12 @@
     response))
 
 (defmethod render-response ((self http-peer) stream response request)
-  (render-headers self stream response)
-  (commit-stream stream)
-  (if (not (eq 'head (http-request.method request)))
-      (commit-stream (http-response.stream response))))
+  (let ((content-length (length (slot-value (http-response.stream response) '%write-buffer))))
+    (add-entity-header response 'content-length content-length)
+    (render-headers self stream response)
+    (commit-stream stream)
+    (if (not (eq 'head (http-request.method request)))
+	(commit-stream (http-response.stream response)))))
 
 (defmethod render-error ((self http-peer) stream)
   (let ((response (make-response stream)))
