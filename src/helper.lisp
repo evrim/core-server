@@ -7,7 +7,7 @@ for traceing a closed system."
 	(trace-symbol (intern (string-upcase (format nil "trace-~A" name))))
 	(untrace-symbol (intern (string-upcase (format nil "untrace-~A" name)))))
     `(progn
-       (defvar ,var-symbol ,methods)
+       (defparameter ,var-symbol ,methods)
        (defun ,trace-symbol (&optional (methods ,var-symbol))
 	 (mapcar (lambda (e) (eval `(trace ,e))) methods))
        (defun ,untrace-symbol (&optional (methods ,var-symbol))
