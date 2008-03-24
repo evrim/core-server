@@ -170,3 +170,16 @@
 
 ;; (defmethod/unit bogus ((self local-unit))
 ;;   (error "there is a horror occurred."))
+
+;; (defmethod/unit bogus2 :async ((self local-unit))
+;;   (error "there is a horror occured."))
+
+;; (stop *u1)
+;; (defparameter *debug-unit* (make-instance 'local-unit :name "Debug Unit"))
+;; (defparameter *u1 (make-instance 'local-unit :debug-unit *debug-unit*))
+
+;; (progn
+;;   (stop *debug-unit*)
+;;   (stop *u1)
+;;   (start *debug-unit*)
+;;   (start *u1))
