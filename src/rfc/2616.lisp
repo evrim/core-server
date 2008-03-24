@@ -1309,6 +1309,12 @@
 		   :initarg :entity-headers)
    (stream :accessor http-response.stream :initform nil :initarg :stream)))
 
+(defmethod add-entity-header ((self http-response) key val)
+  (setf (slot-value self 'entity-headers)
+	(cons (cons key val)
+	      (remove-if #'(lambda (a) (eq a key))
+			 (slot-value self 'entity-headers) :key #'car))))
+
 (defmacro defhttp-header-render (name format header-list) 
   (let ((hname (gensym)))
     `(defun ,name (stream hdr)
