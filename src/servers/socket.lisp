@@ -12,10 +12,12 @@
    (peer-class :initarg :peer-class :initform 'stream-peer
 	       :documentation "Class to instantiate as peer thread.")
 ;;   (request-timeout-length :initarg :request-timeout-length :initform 90)
-   (%socket :initform nil) (%peers :initform nil) (%socket-thread :initform nil)))
+   (%socket :initform nil) (%peers :initform nil) (%socket-thread :initform nil)
+   (%debug-unit :initform nil)))
 
 (defmethod start ((self socket-server))
   (when (not (socket-server.status self))
+    (start (setf (s-v '%debug-unit) (make-instance 'local-unit :name "Http Server Debugging Unit")))
     (setf (s-v '%socket) (make-server :host (s-v 'host)
 				      :port (s-v 'port)
 				      :reuse-address (s-v 'reuse-address)
@@ -26,8 +28,12 @@
 			     (declare (ignore n))
 			     (let ((p (if (listp (s-v 'peer-class))
 					  (apply #'make-instance
-						 (car (s-v 'peer-class)) (cdr (s-v 'peer-class)))
-					  (make-instance (s-v 'peer-class)))))
+						 (car (s-v 'peer-class))
+						 (cons :debug-unit
+						       (cons (s-v '%debug-unit)
+							     (cdr (s-v 'peer-class)))))
+					  (make-instance (s-v 'peer-class)
+							 :debug-unit (s-v '%debug-unit)))))
 			       (start p)
 			       (setf (peer.server p) self)
 			       p))
@@ -41,6 +47,7 @@
     (thread-kill (s-v '%socket-thread))
     (and (s-v '%socket) (close-server (s-v '%socket)))
     (mapc #'stop (s-v '%peers))
+    (stop (s-v '%debug-unit))
     (setf (s-v '%socket) nil
 	  (s-v '%socket-thread) nil
 	  (s-v '%peers) nil)))
