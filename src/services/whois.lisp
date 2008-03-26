@@ -21,6 +21,7 @@
     ("be" . "whois.dns.be")
     ("bg" . "whois.ripe.net")
 ;;    ("bm" . "rwhois.ibl.bm:4321")
+    ("biz" . "whois.biz")
     ("br" . "whois.nic.br")
     ("by" . "whois.ripe.net")
     ("ca" . "whois.cira.ca")
@@ -51,6 +52,7 @@
     ("ie" . "whois.domainregistry.ie")
     ("il" . "whois.ripe.net")
     ("in" . "whois.ncst.ernet.in")
+    ("info" . "whois.afilias.net")
     ("int" . "whois.isi.edu")
     ("is" . "whois.isnet.is")
     ("it" . "whois.nic.it")
@@ -67,6 +69,7 @@
     ("mil" . "whois.nic.mil")
     ("mk" . "whois.ripe.net")
     ("mm" . "whois.nic.mm")
+    ("mobi" . "whois.dotmobiregistry.net")
     ("ms" . "whois.adamsnames.tc")
     ("mt" . "whois.ripe.net")
     ("mx" . "whois.nic.mx")
@@ -97,6 +100,7 @@
     ("to" . "whois.tonic.to")
     ("tr" . "whois.metu.edu.tr")
     ("tw" . "whois.twnic.net")
+    ("tv" . "tvwhois.verisign-grs.com")
     ("ua" . "whois.ripe.net")
     ("ac.uk" . "whois.ja.net")
     ("gov.uk" . "whois.ja.net")
@@ -108,6 +112,44 @@
     ("gb.com" . "whois.nomination.net")
     ("gb.net" . "whois.nomination.net")
     ("za" . "whois.co.za")))
+
+;; com, net, org, edu -> type1
+;; info -> type2
+;; tv -> type1
+;; mobi -> type2
+;; biz -> type3
+
+(defun render-type1 (fqdn)
+  (format nil "=~a~c~c" fqdn #\return #\linefeed))
+
+(defun render-type2 (fqdn)
+  (format nil "~a~c~c" fqdn #\return #\linefeed))
+
+(defun render-type3 (fqdn)
+  (format nil "~a~c~c" fqdn #\return #\linefeed))
+
+(defun parser-type1 (text)
+  (search "No match for" text))
+
+(defun parser-type2 (text)
+  (search "NOT FOUND" text))
+
+(defun parser-type3 (text)
+  (search "Not found:" text))
+
+(defparameter +whois-map+
+  (list (cons '("com" "net" "org" "edu" "tv")
+	      '(render-type1 . parser-type1))
+	(cons '("info" "mobi")
+	      '(render-type2 . parser-type2))
+	(cons '("biz")
+	      '(render-type3 . parser-type3))))
+
+(defun whois-map-lookup (dpart)
+  (reduce (lambda (i a) (if (null i) a i))
+    (mapcar (lambda (l)
+	      (if (member dpart (car l) :test #'string=) (cdr l)))
+	    +whois-map+)))
 
 (defun root-domain-part (fqdn)
   (awhen (position #\. fqdn :from-end t)
@@ -127,6 +169,12 @@
 		     *default-whois-port*
 		     (cdr s)))))))
 
+;; look for this top level domains: com info net org tv mobi biz
+;; domain-availablep :: string -> bool
+(defun domain-availablep (fqdn)
+  (let ((res (whois fqdn)))
+    (if (funcall (car res) (cdr res)) t nil)))
+
 (defun whois (fqdn)
   (handler-bind ((error (lambda (condition)
 			  (restart-case (swank::swank-debugger-hook condition nil)
@@ -134,16 +182,19 @@
 			      :report "ignore error"
 			      (return-from whois nil))))))
     (multiple-value-bind (server port) (whois-server fqdn)
-      (let ((s (make-instance 'sb-bsd-sockets:inet-socket :type :stream :protocol 6)))
+      (let ((s (make-instance 'sb-bsd-sockets:inet-socket :type :stream :protocol 6))
+	    (out "")
+	    (whois-map (whois-map-lookup (root-domain-part fqdn))))
 	(sb-bsd-sockets:socket-connect s server port)
 	(with-open-stream (s (sb-bsd-sockets:socket-make-stream s :input t :output t :buffering :none
 								:external-format :iso-8859-9
 								:element-type 'character))
-	  (format s "~a~c~c" fqdn #\return #\linefeed)
-	  (force-output s)
-	  (do ((line (read-line s nil :eof) (read-line s nil :eof)))
+	  (format s (funcall (car whois-map) fqdn))
+	  (force-output s) 
+	  ;; no need to read all output, just search every line
+	  (do ((line (read-line s nil :eof)
+		     (read-line s nil :eof)))
 	      ((eq line :eof))
-	    (princ line)
-	    (terpri)))))))
-
-
+	    (setf out (concatenate 'string out (format nil "~A~%" line))))
+	  (format t "~A" out)
+	  (cons (cdr whois-map) out))))))
