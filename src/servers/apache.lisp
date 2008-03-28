@@ -58,7 +58,7 @@
 
 (defmethod create-vhost-config ((self apache-server) (app apache-web-application))
   (let* ((config-pathname (apache-web-application.config-pathname app self))
-	 (config-data (load-file-into-string (apache-web-application.vhost-template-pathname app))))
+	 (config-data (read-string-from-file (apache-web-application.vhost-template-pathname app))))
     (with-open-file (s config-pathname :direction :output :if-exists :supersede :if-does-not-exist :create) 
       (write-string  
        (reduce #'(lambda (acc item)
