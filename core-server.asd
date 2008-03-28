@@ -30,6 +30,7 @@
                          (:file "prevalence")
                          (:file "search")
                          (:file "mop")
+                         (:file "class")
                          (:file "command")
                          (:file "config")
                          (:file "method")
@@ -96,7 +97,8 @@
                                              (:file "feedback")
                                              (:file "hilighter")
                                              (:file "hedee")
-                                             (:file "form"))))))))
+                                             (:file "form"))
+                                            :serial t))))))
   :depends-on (:bordeaux-threads :cl-prevalence :sb-bsd-sockets
                                  :arnesi :cl-ppcre :cl-fad :parenscript)
   :serial t)

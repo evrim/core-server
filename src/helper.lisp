@@ -36,6 +36,21 @@ for traceing a closed system."
 		   (return-from all nil)))
 	  list :initial-value t))
 
+(defun plist-to-alist (plist)
+  (let (key)
+    (nreverse
+     (reduce #'(lambda (acc atom)
+		 (if (and (null key) (keywordp atom))
+		     (prog1 acc (setf key atom))
+		     (prog1 (cons (cons (intern (symbol-name key)) atom) acc)
+		       (setf key nil))))
+	     plist :initial-value nil))))
+
+(defun alist-to-plist (alist)  
+  (reduce #'(lambda (acc atom)	      
+	      (nreverse (cons (cdr atom) (cons (make-keyword (car atom)) (nreverse acc)))))
+	  alist :initial-value nil))
+
 (defmacro s-v (slot-name)
   "slot-value self slot-name"
   `(slot-value self ,slot-name))
