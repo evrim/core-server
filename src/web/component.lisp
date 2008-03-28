@@ -13,61 +13,19 @@
   (:documentation "Send component to remote."))
 
 (eval-when (:execute :compile-toplevel :load-toplevel)
-  (defvar +component-registry+ (make-hash-table :test #'equal)))
+  (defun proxy-method-name (name)
+    (intern (string-upcase (format nil "~A-proxy" name)) (find-package :core-server)))
 
-(defun reduce-class-tree (name type)
-  (let ((lst))
-    (mapcar (lambda (atom)
-	      (pushnew atom lst
-		       :key #'(lambda (a) (if (atom a) a (car a)))
-		       :test #'eq))
-	    (reduce #'append
-		    (mapcar (lambda (atom)
-			      (getf (gethash (class-name atom) +component-registry+) type))
-			    (cons (find-class name) (class-superclasses (find-class name))))
-		    :initial-value nil))
-    lst))
+  (defun proxy-getter-name (name)
+    (intern (string-upcase (format nil "get-~A" name)) (find-package :core-server)))
 
-(defun local-methods-of-class (name) (reduce-class-tree name :local-methods))
-
-(defun remote-methods-of-class (name) (reduce-class-tree name :remote-methods))
-
-(defun local-slots-of-class (name)
-  (reduce-class-tree name :local-args))
-
-(defun remote-slots-of-class (name)
-  (reduce-class-tree name :remote-args))
-
-(defun proxy-method-name (name)
-  (intern (string-upcase (format nil "~A-proxy" name)) (find-package :core-server)))
-
-(defun proxy-getter-name (name)
-  (intern (string-upcase (format nil "get-~A" name)) (find-package :core-server)))
-
-(defun proxy-setter-name (name)
-  (intern (string-upcase (format nil "set-~A" name)) (find-package :core-server)))
-
-(defun client-type-for-slot (name slot)
-  (any #'(lambda (atom)
-	   (cdr (assoc slot (getf (gethash (class-name atom) +component-registry+) :client-types))))
-       (cons (find-class name) (class-superclasses (find-class name)))))
-
-(defun add-local-method-for-class (name method-name)
-  (setf (getf (gethash name +component-registry+) :local-methods)
-	(cons method-name
-	      (remove method-name
-		      (getf (gethash name +component-registry+) :local-methods)))))
-
-(defun add-remote-method-for-class (name method-name)
-  (setf (getf (gethash name +component-registry+) :remote-methods)
-	(cons method-name
-	      (remove method-name
-		      (getf (gethash name +component-registry+) :remote-methods)))))
+  (defun proxy-setter-name (name)
+    (intern (string-upcase (format nil "set-~A" name)) (find-package :core-server))))
 
 (defmacro defmethod/local (name ((self class-name) &rest args) &body body)    
   `(progn
      (eval-when (:compile-toplevel :load-toplevel :execute)
-       (add-local-method-for-class ',class-name ',name))
+       (register-local-method-for-class ',class-name ',name))
      (defgeneric/cc ,name (,class-name ,@args))
      (defgeneric/cc ,(proxy-method-name name) (,class-name))
      (defmethod/cc ,(proxy-method-name name) ((,self ,class-name))
@@ -89,10 +47,10 @@
      (defmethod/cc ,name ((,self ,class-name) ,@args) ,@body)))
 
 (defmacro defmethod/remote (name ((self class-name) &rest args) &body body)
-  (let ((arg-names (arnesi:extract-argument-names args :allow-specializers t)))    
+  (let ((arg-names (arnesi:extract-argument-names args :allow-specializers t)))
     `(progn
        (eval-when (:compile-toplevel :load-toplevel :execute)
-	 (add-remote-method-for-class ',class-name ',name))
+	 (register-remote-method-for-class ',class-name ',name))
        (defgeneric/cc ,name (,class-name ,@args))
        (defgeneric/cc ,(proxy-method-name name) (,class-name))
        (defmethod/cc ,(proxy-method-name name) ((,self ,class-name))	      
@@ -128,17 +86,19 @@
     (flet ((local-slots ()
 	     (reduce (lambda (acc slot)
 		       (cons (make-keyword slot) (cons 'null acc)))
-		     (reverse (mapcar #'car (local-slots-of-class class-name)))
+		     (reverse (mapcar (compose #'car #'ensure-list)
+				      (local-slots-of-class class-name)))
 		     :initial-value nil))
 	   (remote-slots ()
 	     (reduce (lambda (acc slot)
 		       (cons (make-keyword slot)
 			     (cons (serialize-to-parenscript
-				    (client-type-for-slot class-name slot)
+				    (client-type-of-slot class-name slot)
 				    (if (slot-boundp self slot)
 					(slot-value self slot)))
 				   acc)))
-		     (reverse (mapcar #'car (remote-slots-of-class class-name)))
+		     (reverse (mapcar (compose #'car  #'ensure-list)
+				      (remote-slots-of-class class-name)))
 		     :initial-value nil))
 	   (local-methods ()
 	     (reduce (lambda (acc method)
@@ -178,131 +138,21 @@
 		      remote-slots :initial-value nil)
 	    (return this.prototype)))))
 
-(defmacro defcomponent (name supers slots &rest default-initargs)
-  (labels ((class-default-initargs (class)
-	     (getf (gethash class +component-registry+) :default-initargs))
-	   (class-superclasses (class)
-	     (cons class
-		   (reduce #'append
-			   (mapcar #'class-superclasses
-				   (getf (gethash class +component-registry+) :supers)))))
-	   (filter-slot (slot-def)
-	     (when (or (eq 'local (getf (cdr slot-def) :host))
-		       (eq 'both  (getf (cdr slot-def) :host)))
-	       (unless (getf (cdr slot-def) :initarg)
-		 (setf (getf (cdr slot-def) :initarg) (make-keyword (car slot-def)))))
-	     (unless (getf (cdr slot-def) :accessor)
-	       (setf (getf (cdr slot-def) :accessor) (car slot-def)))
-	     (remf (cdr slot-def) :host)
-	     (remf (cdr slot-def) :client-type)
-	     slot-def)
-	   (remote-slot (acc slot-def)
-	     (if (or (eq 'remote (getf (cdr slot-def) :host))
-		     (eq 'both   (getf (cdr slot-def) :host)))
-		 (cons (list (car slot-def) (getf (cdr slot-def) :initform)) acc)
-		 acc))
-	   (local-slot (acc slot-def)
-	     (if (or (eq 'local (getf (cdr slot-def) :host))
-		     (eq 'both  (getf (cdr slot-def) :host)))
-		 (cons (list (car slot-def) (getf (cdr slot-def) :initform)) acc)
-		 acc))
-	   (local-args (slotz)
-	     (let ((args (append
-			  (nreverse (reduce #'local-slot slotz :initial-value nil))
-			  (reduce #'(lambda (acc super)
-				      (append acc (getf (gethash super +component-registry+)
-							:local-args)))
-				  (reduce #'append (mapcar #'class-superclasses supers))
-				  :initial-value nil)))
-		   (super-args
-		    (reduce #'append (mapcar #'class-default-initargs supers))))
-	       (setf args		     
-		     (reduce
-		      #'(lambda (acc arg)
-			  (let ((value ;; (cadr (assoc (car arg) super-args :test #'string=))
-				 (getf super-args (make-keyword (car arg)))
-				  ))
-			    (if value
-				(cons (list (car arg) value) acc)
-				(cons arg acc))))
-		      args :initial-value nil))
-	       (reduce #'(lambda (acc arg)
-			   (pushnew arg acc :key #'car :test #'equal)
-			   acc)
-		       (reduce #'(lambda (acc arg)
-				   (let ((value (getf (cdar default-initargs) (make-keyword (car arg)))))
-				     (if value
-					 (cons (list (car arg) value) acc)
-					 (cons arg acc))))
-			       args :initial-value nil)
-		       :initial-value nil)))
-	   (remote-args (slotz)
-	     (let ((args (append
-			  (nreverse (reduce #'remote-slot slotz :initial-value nil))
-			  (reduce #'(lambda (acc super)
-				      (append acc (getf (gethash super +component-registry+)
-							:remote-args)))
-				  (reduce #'append (mapcar #'class-superclasses supers))
-				  :initial-value nil)))
-		   (super-args
-		    (reduce #'append (mapcar #'class-default-initargs supers))))
-	       (setf args		     
-		     (reduce
-		      #'(lambda (acc arg)
-			  (let ((value ;; (cadr (assoc (car arg) super-args :test #'string=))
-				 (getf super-args (make-keyword (car arg)))
-				  ))
-			    (if value
-				(cons (list (car arg) value) acc)
-				(cons arg acc))))
-		      args :initial-value nil))
-	       (reduce #'(lambda (acc arg)
-			   (pushnew arg acc :key #'car :test #'eq))
-		       (reduce #'(lambda (acc arg)
-				   (let ((value (getf (cdar default-initargs)
-						      (make-keyword (car arg)))))
-				     (if value
-					 (cons (list (car arg) value) acc)
-					 (cons arg acc))))
-			       args :initial-value nil)
-		       :initial-value nil)))
-	   (function-key-args (slotz)
-	     (reduce #'(lambda (acc slot-def)			 
-			 (cons (make-keyword (car slot-def))
-			       (cons (car slot-def) acc)))
-		     (append (remote-args slotz) (local-args slotz)) :initial-value nil))
-	   (filter-default-initargs (lst)
-	     (nreverse (reduce #'(lambda (acc item)
-				   (if (or (eq item :default-initargs)
-					   (eq item :local-args)
-					   (eq item :remote-args))
-				       acc
-				       (cons item acc)))
-			       lst :initial-value nil)))
-	   (client-type (slot)
-	     (cons (car slot) (or (getf (cdr slot) :client-type) 'primitive))))    
-    `(prog1
-	 (eval-when (:compile-toplevel :load-toplevel :execute)
-	   (export ',name (find-package ,(package-name (symbol-package name))))
-	   (setf (getf (gethash ',name +component-registry+) :supers) ',supers
-		 (getf (gethash ',name +component-registry+) :default-initargs) ',(cdar default-initargs)
-		 (getf (gethash ',name +component-registry+) :local-args) ',(local-args slots)
-		 (getf (gethash ',name +component-registry+) :remote-args) ',(remote-args slots)
-		 (getf (gethash ',name +component-registry+) :client-types) ',(mapcar #'client-type slots))
-	   (defclass ,name (,@supers component)
-	     ,(mapcar #'filter-slot (copy-tree slots))
-	     (:default-initargs ,@(filter-default-initargs (car default-initargs)))
-	     ,@(cdr default-initargs)))
-       (defun ,(intern (string-upcase name) (symbol-package name))
-	   (&key ,@(local-args slots) ,@(remote-args slots))
-	 (apply #'make-instance ',name (list ,@(function-key-args slots))))
+(defmacro defcomponent (name supers slots &rest rest)
+  (multiple-value-bind (slots new-rest) (register-class name supers slots rest)
+    `(prog1 (defclass ,name (,@supers component)
+	      ,slots
+	      (:default-initargs ,@(alist-to-plist (default-initargs-of-class name)))
+	      ,@(remove :default-initargs new-rest :key #'car))
+       (defun ,name (&key ,@(local-slots-of-class name) ,@(remote-slots-of-class name))
+	 (apply #'make-instance ',name (list ,@(ctor-arguments name))))
        ,@(mapcar (lambda (slot)
 		   `(progn
 		      (defmethod/local ,(proxy-getter-name (car slot)) ((self ,name))
 			(slot-value self ',(car slot)))
 		      (defmethod/local ,(proxy-setter-name (car slot)) ((self ,name) value)
 			(setf (slot-value self ',(car slot)) value))))
-		 (local-args slots))
+		 (mapcar #'ensure-list (local-slots-of-class name)))
        ,@(mapcar (lambda (slot)
 		   `(progn
 		      (defmethod/remote ,(proxy-getter-name (car slot)) ((self ,name))
@@ -310,7 +160,7 @@
 		      (defmethod/remote ,(proxy-setter-name (car slot)) ((self ,name) value)			
 			(setf (slot-value this ',(car slot)) value)
 			(return (slot-value this ',(car slot))))))
-		 (remote-args slots)))))
+		 (mapcar #'ensure-list (remote-slots-of-class name))))))
 
 (defun/cc dojo (&optional base-url (debug nil) (prevent-back-button 'false)
 		(css '("/dijit/themes/dijit.css"
@@ -387,3 +237,180 @@
 				(throw (new (*error (+ "Funcall error: " url ", " err))))))))
 	  (return result)))
       (init-core-server))))
+
+;; (eval-when (:execute :compile-toplevel :load-toplevel)
+;;   (defvar +component-registry+ (make-hash-table :test #'equal)))
+
+;; (defun reduce-class-tree (name type)
+;;   (let ((lst))
+;;     (mapcar (lambda (atom)
+;; 	      (pushnew atom lst
+;; 		       :key #'(lambda (a) (if (atom a) a (car a)))
+;; 		       :test #'eq))
+;; 	    (reduce #'append
+;; 		    (mapcar (lambda (atom)
+;; 			      (getf (gethash (class-name atom) +component-registry+) type))
+;; 			    (cons (find-class name) (class-superclasses (find-class name))))
+;; 		    :initial-value nil))
+;;     lst))
+
+;; (defun local-methods-of-class (name) (reduce-class-tree name :local-methods))
+
+;; (defun remote-methods-of-class (name) (reduce-class-tree name :remote-methods))
+
+;; (defun local-slots-of-class (name)
+;;   (reduce-class-tree name :local-args))
+
+;; (defun remote-slots-of-class (name)
+;;   (reduce-class-tree name :remote-args))
+
+;; (defun client-type-for-slot (name slot)
+;;   (any #'(lambda (atom)
+;; 	   (cdr (assoc slot (getf (gethash (class-name atom) +component-registry+) :client-types))))
+;;        (cons (find-class name) (class-superclasses (find-class name)))))
+
+;; (defun add-local-method-for-class (name method-name)
+;;   (setf (getf (gethash name +component-registry+) :local-methods)
+;; 	(cons method-name
+;; 	      (remove method-name
+;; 		      (getf (gethash name +component-registry+) :local-methods)))))
+
+;; (defun add-remote-method-for-class (name method-name)
+;;   (setf (getf (gethash name +component-registry+) :remote-methods)
+;; 	(cons method-name
+;; 	      (remove method-name
+;; 		      (getf (gethash name +component-registry+) :remote-methods)))))
+
+;; (defmacro defcomponent (name supers slots &rest default-initargs)
+;;   (labels ((class-default-initargs (class)
+;; 	     (getf (gethash class +component-registry+) :default-initargs))
+;; 	   (class-superclasses (class)
+;; 	     (cons class
+;; 		   (reduce #'append
+;; 			   (mapcar #'class-superclasses
+;; 				   (getf (gethash class +component-registry+) :supers)))))
+;; 	   (filter-slot (slot-def)
+;; 	     (when (or (eq 'local (getf (cdr slot-def) :host))
+;; 		       (eq 'both  (getf (cdr slot-def) :host)))
+;; 	       (unless (getf (cdr slot-def) :initarg)
+;; 		 (setf (getf (cdr slot-def) :initarg) (make-keyword (car slot-def)))))
+;; 	     (unless (getf (cdr slot-def) :accessor)
+;; 	       (setf (getf (cdr slot-def) :accessor) (car slot-def)))
+;; 	     (remf (cdr slot-def) :host)
+;; 	     (remf (cdr slot-def) :client-type)
+;; 	     slot-def)
+;; 	   (remote-slot (acc slot-def)
+;; 	     (if (or (eq 'remote (getf (cdr slot-def) :host))
+;; 		     (eq 'both   (getf (cdr slot-def) :host)))
+;; 		 (cons (list (car slot-def) (getf (cdr slot-def) :initform)) acc)
+;; 		 acc))
+;; 	   (local-slot (acc slot-def)
+;; 	     (if (or (eq 'local (getf (cdr slot-def) :host))
+;; 		     (eq 'both  (getf (cdr slot-def) :host)))
+;; 		 (cons (list (car slot-def) (getf (cdr slot-def) :initform)) acc)
+;; 		 acc))
+;; 	   (local-args (slotz)
+;; 	     (let ((args (append
+;; 			  (nreverse (reduce #'local-slot slotz :initial-value nil))
+;; 			  (reduce #'(lambda (acc super)
+;; 				      (append acc (getf (gethash super +component-registry+)
+;; 							:local-args)))
+;; 				  (reduce #'append (mapcar #'class-superclasses supers))
+;; 				  :initial-value nil)))
+;; 		   (super-args
+;; 		    (reduce #'append (mapcar #'class-default-initargs supers))))
+;; 	       (setf args		     
+;; 		     (reduce
+;; 		      #'(lambda (acc arg)
+;; 			  (let ((value ;; (cadr (assoc (car arg) super-args :test #'string=))
+;; 				 (getf super-args (make-keyword (car arg)))
+;; 				  ))
+;; 			    (if value
+;; 				(cons (list (car arg) value) acc)
+;; 				(cons arg acc))))
+;; 		      args :initial-value nil))
+;; 	       (reduce #'(lambda (acc arg)
+;; 			   (pushnew arg acc :key #'car :test #'equal)
+;; 			   acc)
+;; 		       (reduce #'(lambda (acc arg)
+;; 				   (let ((value (getf (cdar default-initargs) (make-keyword (car arg)))))
+;; 				     (if value
+;; 					 (cons (list (car arg) value) acc)
+;; 					 (cons arg acc))))
+;; 			       args :initial-value nil)
+;; 		       :initial-value nil)))
+;; 	   (remote-args (slotz)
+;; 	     (let ((args (append
+;; 			  (nreverse (reduce #'remote-slot slotz :initial-value nil))
+;; 			  (reduce #'(lambda (acc super)
+;; 				      (append acc (getf (gethash super +component-registry+)
+;; 							:remote-args)))
+;; 				  (reduce #'append (mapcar #'class-superclasses supers))
+;; 				  :initial-value nil)))
+;; 		   (super-args
+;; 		    (reduce #'append (mapcar #'class-default-initargs supers))))
+;; 	       (setf args		     
+;; 		     (reduce
+;; 		      #'(lambda (acc arg)
+;; 			  (let ((value ;; (cadr (assoc (car arg) super-args :test #'string=))
+;; 				 (getf super-args (make-keyword (car arg)))
+;; 				  ))
+;; 			    (if value
+;; 				(cons (list (car arg) value) acc)
+;; 				(cons arg acc))))
+;; 		      args :initial-value nil))
+;; 	       (reduce #'(lambda (acc arg)
+;; 			   (pushnew arg acc :key #'car :test #'eq))
+;; 		       (reduce #'(lambda (acc arg)
+;; 				   (let ((value (getf (cdar default-initargs)
+;; 						      (make-keyword (car arg)))))
+;; 				     (if value
+;; 					 (cons (list (car arg) value) acc)
+;; 					 (cons arg acc))))
+;; 			       args :initial-value nil)
+;; 		       :initial-value nil)))
+;; 	   (function-key-args (slotz)
+;; 	     (reduce #'(lambda (acc slot-def)			 
+;; 			 (cons (make-keyword (car slot-def))
+;; 			       (cons (car slot-def) acc)))
+;; 		     (append (remote-args slotz) (local-args slotz)) :initial-value nil))
+;; 	   (filter-default-initargs (lst)
+;; 	     (nreverse (reduce #'(lambda (acc item)
+;; 				   (if (or (eq item :default-initargs)
+;; 					   (eq item :local-args)
+;; 					   (eq item :remote-args))
+;; 				       acc
+;; 				       (cons item acc)))
+;; 			       lst :initial-value nil)))
+;; 	   (client-type (slot)
+;; 	     (cons (car slot) (or (getf (cdr slot) :client-type) 'primitive))))    
+;;     `(prog1
+;; 	 (eval-when (:compile-toplevel :load-toplevel :execute)
+;; 	   (export ',name (find-package ,(package-name (symbol-package name))))
+;; 	   (setf (getf (gethash ',name +component-registry+) :supers) ',supers
+;; 		 (getf (gethash ',name +component-registry+) :default-initargs) ',(cdar default-initargs)
+;; 		 (getf (gethash ',name +component-registry+) :local-args) ',(local-args slots)
+;; 		 (getf (gethash ',name +component-registry+) :remote-args) ',(remote-args slots)
+;; 		 (getf (gethash ',name +component-registry+) :client-types) ',(mapcar #'client-type slots))
+;; 	   (defclass ,name (,@supers component)
+;; 	     ,(mapcar #'filter-slot (copy-tree slots))
+;; 	     (:default-initargs ,@(filter-default-initargs (car default-initargs)))
+;; 	     ,@(cdr default-initargs)))
+;;        (defun ,(intern (string-upcase name) (symbol-package name))
+;; 	   (&key ,@(local-args slots) ,@(remote-args slots))
+;; 	 (apply #'make-instance ',name (list ,@(function-key-args slots))))
+;;        ,@(mapcar (lambda (slot)
+;; 		   `(progn
+;; 		      (defmethod/local ,(proxy-getter-name (car slot)) ((self ,name))
+;; 			(slot-value self ',(car slot)))
+;; 		      (defmethod/local ,(proxy-setter-name (car slot)) ((self ,name) value)
+;; 			(setf (slot-value self ',(car slot)) value))))
+;; 		 (local-args slots))
+;;        ,@(mapcar (lambda (slot)
+;; 		   `(progn
+;; 		      (defmethod/remote ,(proxy-getter-name (car slot)) ((self ,name))
+;; 			(return (slot-value this ',(car slot))))
+;; 		      (defmethod/remote ,(proxy-setter-name (car slot)) ((self ,name) value)			
+;; 			(setf (slot-value this ',(car slot)) value)
+;; 			(return (slot-value this ',(car slot))))))
+;; 		 (remote-args slots)))))
