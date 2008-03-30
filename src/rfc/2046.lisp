@@ -116,7 +116,6 @@
 	     (:and (:type octet? c)
 		   (:collect c acc)))))
 
-(setf (gethash :mime? +parser-rules+) 'mime?)
 (defun mime? (stream &aux data headers)
   (checkpoint-stream stream)
   (setq headers (mime-headers? stream))
@@ -141,7 +140,6 @@
 	 (prog1 (make-top-level-media headers data)
 	   (commit-stream stream))))))
 
-(setf (gethash :mimes? +parser-rules+) 'mimes?)
 (defun mimes? (stream &optional (boundary nil) &aux last mimes)
   (flet ((rew-ret (var)
 	   (when (not var)

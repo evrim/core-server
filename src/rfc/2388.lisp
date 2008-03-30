@@ -31,7 +31,6 @@
 	(:lwsp?))
   (:return (list type (nreverse parameters))))
 
-(setf (gethash :rfc2388-mimes? +parser-rules+) 'rfc2388-mimes?)
 (defun rfc2388-mimes? (stream &optional (boundary nil))
   (let ((mimes (mimes? stream boundary)))
     (when mimes
