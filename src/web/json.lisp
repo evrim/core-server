@@ -103,14 +103,19 @@
 
 (defmethod json-object! ((stream core-stream) hash-table)
   (prog1 stream
-    (string! stream "{")
-    (maphash (lambda (key value)
-	       (char! stream #\Space)
-	       (json-key! stream key)
-	       (string! stream ": ")
-	       (json! stream value))
-	     hash-table)
-    (string! stream " }")))
+    (flet ((one (key value)
+	     (json-key! stream key)
+	     (string! stream ": ")
+	     (json! stream value)))
+      (let ((keys (hash-table-keys hash-table))
+	    (values (hash-table-values hash-table)))
+	(string! stream "{")
+	(one (car keys) (car values))
+	(mapcar (lambda (k v)
+		  (string! stream ", ")
+		  (one k v))
+		(cdr keys) (cdr values))
+	(string! stream " }")))))
 
 
 (defrule json? (value)
