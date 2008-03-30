@@ -99,8 +99,7 @@
                                              (:file "feedback")
                                              (:file "hilighter")
                                              (:file "hedee")
-                                             (:file "form"))
-                                            :serial t))))))
+                                             (:file "form"))))))))
   :depends-on (:bordeaux-threads :cl-prevalence :sb-bsd-sockets
                                  :arnesi :cl-ppcre :cl-fad :parenscript)
   :serial t)

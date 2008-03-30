@@ -537,6 +537,8 @@
    #:undefined
    ;; Form component (which emails a filled form)
    #:web-form-component
+   ;; socialshare
+   #:socialshare-component
    ))
 
 (defpackage :tr.gen.core.server.html
