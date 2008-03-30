@@ -736,25 +736,11 @@
 	    (standard-object (list 'core-cps-object-io-stream :object target)))
 	  args)))
 
-(defvar +stream-funs+ '(peek-stream read-stream write-stream checkpoint-stream
-		       rewind-stream commit-stream close-stream current-checkpoint))
+(deftrace streams '(peek-stream read-stream write-stream checkpoint-stream
+		    rewind-stream commit-stream close-stream)) ;;current-checkpoint
 
-(defun trace-streams ()
-  (eval `(progn
-	   ,@(mapcar #'(lambda (a)
-			 `(trace ,a)) +stream-funs+))))
-
-(defun untrace-streams ()
-  (eval `(progn
-	   ,@(mapcar #'(lambda (a)
-			 `(untrace ,a)) +stream-funs+))))
-
-(defvar +stream-tx-funs+ '(peek-stream checkpoint-stream rewind-stream commit-stream close-stream
+(deftrace streams-tx '(peek-stream checkpoint-stream rewind-stream commit-stream close-stream
 			   current-checkpoint))
-(defun untrace-tx ()
-  (eval `(progn
-	   ,@(mapcar #'(lambda (a)
-			 `(untrace ,a)) +stream-tx-funs+))))
 
 ;; (defmethod rewind-stream ((self core-fd-input-stream))
 ;;   (setf (s-v '%read-index) (s-v '%current))
