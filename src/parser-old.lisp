@@ -276,7 +276,7 @@
 ;;; Rules
 ;;;-----------------------------------------------------------------------------
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defmacro defrule (name args &rest body)
+  (defmacro defrule-old (name args &rest body)
     "Rule definition macro that provides a common lexical environment for rules."
     (with-unique-names (stream)
       (flet ((rule-args ()
@@ -291,16 +291,16 @@
 	       ,(compile-parser-grammar stream `(:checkpoint ,@body))
 	       nil)))))))
 
-(defrule crlf? ()
+(defrule-old crlf? ()
   (:or (:checkpoint #\Return #\Newline (:commit))
        #\Newline)
   (:return t))
 
-(defrule lwsp? ()  
+(defrule-old lwsp? ()  
   (:zom (:type (or space? tab? carriage-return? linefeed?)))
   (:return t))
 
-(defrule hex-value? (a b)  
+(defrule-old hex-value? (a b)  
   (:or (:and (:type digit? a)
 	     (:do (setq a (- (the (unsigned-byte 8) a) 48))))
        (:and (:type hex-upchar? a)
@@ -317,21 +317,21 @@
 
 ;;       escaped       = "%" hex hex
 (eval-when (:load-toplevel :compile-toplevel :execute)
-  (defrule escaped? (hex)  
+  (defrule-old escaped? (hex)  
     (:and #\% (:hex-value? hex) (:return hex))))
 
-(defrule digit-value? (d)
+(defrule-old digit-value? (d)
   (:and (:type digit? d)
 	(:return (- (the (unsigned-byte 8) d) 48))))
 
 (eval-when (:load-toplevel :compile-toplevel :execute)
-  (defrule fixnum? ((acc (make-accumulator)) c)
+  (defrule-old fixnum? ((acc (make-accumulator)) c)
     (:type digit? c) (:collect c acc)
     (:zom (:type digit? c)
 	  (:collect c acc))
     (:return (parse-integer acc))))
 
-(defrule float? ((acc (make-accumulator)) c)
+(defrule-old float? ((acc (make-accumulator)) c)
   (:and (:zom (:type digit? c) (:collect c acc))
 	(:and #\. (:collect #\. acc))
 	(:and (:type digit? c) (:collect c acc))
@@ -339,13 +339,13 @@
   (:return  acc))
 
 (eval-when (:load-toplevel :compile-toplevel :execute)
-  (defrule version? (version d)
+  (defrule-old version? (version d)
     (:fixnum? d) (:do (push d version))
     (:zom #\. (:fixnum? d) (:do (push d version)))
     (:return (nreverse version))))
 
 (eval-when (:load-toplevel :compile-toplevel :execute)
-  (defrule utf-escaped? (f1 f2 f3 f4)
+  (defrule-old utf-escaped? (f1 f2 f3 f4)
     (:sci "%u")    
     (:type hex? f1)  (:type hex? f2) (:type hex? f3) (:type hex? f4)
     (:do (describe (list f1 f2 f3 f4)))
@@ -354,11 +354,11 @@
       (with-input-from-string (s (format nil "#x~C~C~C~C" (code-char f1) (code-char f2) (code-char f3) (code-char f4)))
 	(read s)))))
 
-(defrule escaped-string? (c (acc (make-accumulator :byte)))
+(defrule-old escaped-string? (c (acc (make-accumulator :byte)))
   (:oom (:escaped? c) (:collect c acc))
   (:return acc))
 
-(defrule quoted? ((value (make-accumulator :byte)) c b)
+(defrule-old quoted? ((value (make-accumulator :byte)) c b)
   (:or
    (:and
     #\"
@@ -378,18 +378,18 @@
 	       (:collect c value))
 	 (:return (octets-to-string value :utf-8)))))
 
-(defrule parse-line? (c (acc (make-accumulator)))
+(defrule-old parse-line? (c (acc (make-accumulator)))
   (:zom (:or (:and #\Newline (:return acc))
 	     (:and (:type octet? c) (:collect c acc))))
   (:return acc))
 
-(defrule split-by-line (c (acc (make-accumulator)) lst)
+(defrule-old split-by-line (c (acc (make-accumulator)) lst)
   (:zom (:or (:and #\Newline (:do (push acc lst)
 				  (setq acc (make-accumulator))))
 	     (:and (:type octet? c) (:collect c acc))))
   (:return lst))
 
-(defrule split-by-space (c (acc (make-accumulator)) lst)
+(defrule-old split-by-space (c (acc (make-accumulator)) lst)
   (:lwsp?)
   (:zom (:or (:and #\Space (:do (push acc lst)
 				(setq acc (make-accumulator))))
@@ -615,14 +615,14 @@
 ;; 		     (write-string ")" stream))))
 ;; 	  (write-string " ) )" stream)))))
 
-;; (defrule abc? (header abc)
+;; (defrule-old abc? (header abc)
 ;;   (:cond
 ;;     ((string= "abc" header)
 ;;      (:zom (:type visible-char?))
 ;;      (:do (setq abc 1)))
 ;;     (t
 ;;      (:return 1))))
-;; (defrule abc? ()
+;; (defrule-old abc? ()
 ;;   #\1 #\2 #\6
 ;;   (:return (list 1 2)))
 
@@ -630,7 +630,7 @@
 ;;(defparameter *gee (format nil  "~C~C~C~Ca" #\Return #\Linefeed #\Space #\Tab))
 ;;(defparameter *gee (format nil  "~C~C" #\Space #\Tab))
 ;;(defparameter *gee (format nil  "A7"))
-;; (defrule text-newline (c (text (make-accumulator)) (text2 (make-accumulator)))
+;; (defrule-old text-newline (c (text (make-accumulator)) (text2 (make-accumulator)))
 ;;   (:and (:zom (:type alpha? c)
 ;; 	      (:collect c text))
 ;; 	(:type linefeed?))
