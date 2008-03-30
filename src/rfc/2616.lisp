@@ -1278,25 +1278,18 @@
 (defrule x-www-form-urlencoded? (query)
   (:query? query) (:return query))
 
-(defun trace-http-headers ()
-  (trace http-request-first-line?)
-  (mapcar (lambda (header)
-	    (eval `(trace ,(intern (format nil "HTTP-~A?" header)))))
-	  (append +http-general-headers+ +http-request-headers+
-		  +http-entity-headers+))
-  (mapcar (lambda (header)	    
-	    (eval `(trace ,(intern (format nil "MOD-LISP-HTTP-~A?" header)))))
-	  +mod-lisp-request-headers+))
 
-(defun untrace-http-headers ()
-  (untrace http-request-first-line?)
-  (mapcar (lambda (header)
-	    (eval `(untrace ,(intern (format nil "HTTP-~A?" header)))))
-	  (append +http-general-headers+ +http-request-headers+
-		  +http-entity-headers+))
-  (mapcar (lambda (header)	    
-	    (eval `(untrace ,(intern (format nil "MOD-LISP-HTTP-~A?" header)))))
-	  +mod-lisp-request-headers+))
+(deftrace http-headers
+    (append (list 'http-request-first-line? 'rfc2616-request-headers?
+		  'http-unknown-header? 'mod-lisp-request-headers?
+		  'http-general-header? 'http-request-header? 'http-entity-header?
+		  'mod-lisp-header?)
+	    (append
+	     (mapcar (lambda (header) (intern (format nil "HTTP-~A?" header)))
+		     (append +http-general-headers+ +http-request-headers+
+			     +http-entity-headers+))
+	     (mapcar (lambda (header) (intern (format nil "MOD-LISP-HTTP-~A?" header)))
+		     +mod-lisp-request-headers+))))
 
 ;;;-----------------------------------------------------------------------------
 ;;; HTTP RESPONSE
