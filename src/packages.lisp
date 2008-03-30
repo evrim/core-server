@@ -10,7 +10,7 @@
   (:import-from #:arnesi #:fdefinition/cc)
   (:import-from #:sb-ext #:make-timer #:schedule-timer #:unschedule-timer #:timer)
   (:export 
-   ;; Threads
+   ;; [Threads]
    #:thread-mailbox
    #:thread-send
    #:thread-receive
@@ -51,6 +51,17 @@
    #:with-core-stream
    #:with-core-stream/cc
    #:with-html-output
+   ;; [Class]
+   #:defclass+
+   #:register-class
+   #:register-remote-method-for-class
+   #:register-local-method-for-class
+   #:local-slots-of-class
+   #:remote-slots-of-class
+   #:default-initargs-of-class
+   #:client-type-of-slot
+   #:local-methods-of-class
+   #:remote-methods-of-class
    ;; [Sockets]
    #:resolve-hostname
    #:make-server
