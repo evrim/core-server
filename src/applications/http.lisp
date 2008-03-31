@@ -215,7 +215,7 @@
 		it)
 	(funcall it request response)))
      ((any #'(lambda (url)
-	       (aif (caadr (uri.paths (http-request.uri request)))
+	       (aif (caar (uri.paths (http-request.uri request)))
 		    (and (cl-ppcre:scan-to-strings (cadr url) it :sharedp t) url)))
 	   (application.urls self))
       (prog1 t      
