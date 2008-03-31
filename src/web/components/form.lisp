@@ -11,7 +11,7 @@
 
 ;; send form as html
 (defmethod/local sendform ((self web-form-component) form)
-  (let ((f (format nil "<div id=\"form\">~A</div>" (cl-ppcre::regex-replace-all "\\\\n" form ""))))
+  (let ((f (format nil "<html><head><meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\"></head><body><div id=\"form\">~A</div></body></html>" (cl-ppcre::regex-replace-all "\\\\n" form ""))))
     (sendmail
      (application.server (application self)) ;; mail-sender
      (format nil "noreply@~A" (web-application.fqdn (application self))) ;; from

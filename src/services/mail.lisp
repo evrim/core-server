@@ -255,30 +255,6 @@
 ;; function with a default tag 'smtp.
 (defun smsg (msender text)
   (log-me msender 'smtp (format nil "~A: ~A" (unit.name msender) text)))
- 
-(defparameter *test-mails*
-  (list
-   (make-instance 'envelope
-		  :from "bilgi@core.gen.tr"
-		  :to '("aycan@core.gen.tr")
-		  :subject "first mail (1)"
-		  :text (with-core-stream (s "")
-			  (with-html-output s
-			    (<:html
-			     (<:head (<:title "taytl"))
-			     (<:body
-			      (<:h1 "Heading 1")
-			      (<:p "Lorem ipsum okuzum malim."))))))
-   (make-instance 'envelope
-		  :from "bilgi@core.gen.tr"
-		  :to '("aycan@core.gen.tr")
-		  :subject "second mail (2)"
-		  :text "number two (2)")
-   (make-instance 'envelope
-		  :from "bilgi@core.gen.tr"
-		  :to  '("aycan@core.gen.tr")
-		  :subject "third mail (3)"
-		  :text "number three (3)")))
 
 ;; main interface to other programs
 (defmethod/unit sendmail :async-no-return ((self mail-sender) from to subject text &optional cc reply-to display-name)
@@ -286,6 +262,32 @@
 	   (apply #'make-instance 'envelope
 		  (list :from from :to (ensure-list to) :subject subject :text text
 			:cc (ensure-list cc) :reply-to reply-to :display-name display-name))))
+
+
+;; (defparameter *test-mails*
+;;   (list
+;;    (make-instance 'envelope
+;; 		  :from "bilgi@core.gen.tr"
+;; 		  :to '("aycan@core.gen.tr")
+;; 		  :subject "first mail (1)"
+;; 		  :text (with-core-stream (s "")
+;; 			  (with-html-output s
+;; 			    (<:html
+;; 			     (<:head (<:title "taytl"))
+;; 			     (<:body
+;; 			      (<:h1 "Heading 1")
+;; 			      (<:p "Lorem ipsum okuzum malim."))))))
+;;    (make-instance 'envelope
+;; 		  :from "bilgi@core.gen.tr"
+;; 		  :to '("aycan@core.gen.tr")
+;; 		  :subject "second mail (2)"
+;; 		  :text "number two (2)")
+;;    (make-instance 'envelope
+;; 		  :from "bilgi@core.gen.tr"
+;; 		  :to  '("aycan@core.gen.tr")
+;; 		  :subject "third mail (3)"
+;; 		  :text "number three (3)")))
+
 
 ;;; sample mail conversation
 ;;;
