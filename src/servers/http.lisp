@@ -3,7 +3,7 @@
 (defclass custom-http-peer (http-peer)
   ())
 
-(defmethod render-404 ((self custom-http-peer) (request http-request) (response http-response))
+(defmethod render-404 ((request http-request) (response http-response))
   (setf (http-response.status-code response) (make-status-code 404))
   (rewind-stream (http-response.stream response))
   (checkpoint-stream (http-response.stream response))
@@ -46,7 +46,7 @@
 		 (server.applications (peer.server self))))
        response)
       ;; catch-all via 404
-      (t (render-404 self request response)))))
+      (t (render-404 request response)))))
 
 (defclass http-server (socket-server)
   ((applications :accessor server.applications :initform '()))

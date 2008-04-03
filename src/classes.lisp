@@ -16,7 +16,10 @@
 		 :initform nil)
    (project-pathname :accessor web-application.project-pathname
 		     :initarg :project-pathname
-		     :initform nil)))
+		     :initform nil)
+   (htdocs-pathname :accessor web-application.htdocs-pathname
+		    :initarg :htdocs-pathname
+		    :initform nil)))
 
 (defclass apache-web-application (web-application)
   ((vhost-template-pathname :accessor apache-web-application.vhost-template-pathname

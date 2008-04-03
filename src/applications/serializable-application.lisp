@@ -164,10 +164,12 @@
 	 :admin-email ,(web-application.admin-email self)
 	 :project-name ,(web-application.project-name self)
 	 :project-pathname ,(web-application.project-pathname self)
+	 :htdocs-pathname ,(web-application.htdocs-pathname self)
 	 :sources ',(serializable-web-application.sources self)
 	 :directories ',(serializable-web-application.directories self)
 	 :use ',(serializable-web-application.use self)
 	 :depends-on ',(serializable-web-application.depends-on self)
+	 :urls nil
 	 ;; :dispatchers (cons (make-instance 'regexp-dispatcher :url-string "^index.*$"
 ;; 					   :handler (lambda ()
 ;; 						      (arnesi::with-call/cc
@@ -200,3 +202,13 @@
 ;;        (<:div :id "body" (<:h1 "Hi, i'm a template *core* application."))
 ;;        (<:div :id "footer" (footer)))
      ))
+
+(defun make-serializable-application (fqdn project-name admin-email project-pathname &optional htdocs-pathname use depends-on)
+  (let ((params (list :fqdn fqdn
+		      :project-name project-name
+		      :admin-email admin-email
+		      :project-pathname project-pathname)))
+    (and htdocs-pathname (nconc params (list :htdocs-pathname htdocs-pathname)))
+    (and use (nconc params (list :use use)))
+    (and depends-on (nconc params (list :depends-on depends-on)))
+    (apply #'make-instance 'serializable-web-application params)))

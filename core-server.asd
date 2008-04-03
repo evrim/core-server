@@ -91,6 +91,7 @@
                                   ((:file "macros")
                                    (:file "json")
                                    (:file "component")
+                                   (:file "mime-types")
                                    (:module :components
                                             :components
                                             ((:file "toaster")

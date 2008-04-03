@@ -58,10 +58,9 @@
 
 (defmethod render-http-headers ((self http-peer) stream response)  
   (http-response-headers! stream response)
-  (char! stream #\Newline)
   (char! stream #\Newline))
 
-(defmethod render-mod-lisp-headers ((self http-peer)stream response)  
+(defmethod render-mod-lisp-headers ((self http-peer) stream response)  
   (mod-lisp-response-headers! stream response)
   (string! stream "end")
   (char! stream #\Newline))
@@ -101,12 +100,12 @@
     (checkpoint-stream stream)
     (setf (http-response.status-code response) (make-status-code 500))
     (render-headers self stream response)
-    (with-html-output stream (<:html (<:body "An error occured.")))
+    (with-html-output stream (<:html (<:body "An error condition occured and ignored.")))
     (commit-stream stream)))
 
 (defmethod/unit handle-stream :async-no-return ((self http-peer) stream address)
   (flet ((handle-error (condition)
-	   (if (typep condition 'sb-int::simple-stream-error)	       
+	   (if (typep condition 'sb-int::simple-stream-error)    
 	       (return-from handle-stream nil))
 	   (flet ((ignore-error (unit)
 		    (render-error unit stream)
@@ -127,7 +126,7 @@
       (let ((request (parse-request self stream)))
 	(if request
 	    (let ((response (eval-request self request)))
-	      (if response		  
+	      (if response
 		  (render-response self stream response request))))
 	(close-stream stream)))))
 

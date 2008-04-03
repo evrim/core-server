@@ -458,6 +458,7 @@
    #:defurl
    #:register-url
    #:unregister-url
+   #:make-dispatcher
    #:find-url
    #:http-session
    #:make-new-session

@@ -51,12 +51,20 @@
 	(append (unregister-url self regexp-url)
 		(list (list regexp-url (cl-ppcre:create-scanner regexp-url) lambda)))))
 
+(defun make-dispatcher (regexp-string handler)
+  (list regexp-string (cl-ppcre:create-scanner regexp-string) handler))
+
 (defmethod unregister-url ((self http-application) regexp-url)
   (setf (application.urls self)
 	(remove regexp-url (application.urls self) :test #'equal :key #'car)))
 
 (defmethod find-url ((self http-application) regexp-url)
-  (caddr (find regexp-url (application.urls self) :test #'equal :key #'car)))
+  (aif (any #'(lambda (url)
+		(and (cl-ppcre:scan-to-strings (cadr url) regexp-url :sharedp t) url))
+	    (application.urls self))
+       (caddr it))
+;;;   (caddr (find regexp-url (application.urls self) :test #'equal :key #'car))
+  )
 
 (defclass http-session ()
   ((id :reader id :initform (random-string 8))
@@ -203,7 +211,6 @@
 (defmethod dispatch ((self http-application) (request http-request) (response http-response))
   (when (> (random 100) 40)
     (gc self))
-
   (let ((session (gethash (uri.query (http-request.uri request) +session-query-name+)
 			  (application.sessions self))))
     (acond
@@ -219,7 +226,9 @@
 		    (and (cl-ppcre:scan-to-strings (cadr url) it :sharedp t) url)))
 	   (application.urls self))
       (prog1 t      
-	(funcall (caddr it) (make-new-context self request response session)))))))
+	(funcall (caddr it) (make-new-context self request response session))))
+     (t (prog1 t
+	  (directory-handler (make-new-context self request response session)))))))
 
 (defun kontinue (&rest args)
   (if (functionp (car args))
@@ -275,3 +284,32 @@
 ;;   (loop for i in +k+
 ;;        for j from 0
 ;;        do (format t "~%~D:~A" j i)))
+
+
+;; TODO: what if /../../../etc/passwd ? filter those.
+(defun directory-handler (context)
+  (let ((htdocs-path (web-application.htdocs-pathname (application context)))
+	(paths (uri.paths (http-request.uri (request context)))))
+    ;; 404 when htdocs not found
+    (when (not (cl-fad:file-exists-p htdocs-path))
+      (render-404 (request context) (response context)))
+    ;; index.html when root requested
+    (when (string= (caar paths) "")
+      (setf (caar paths) "index.html"))
+    (let* ((file-and-ext (pathname (caar (last paths))))
+	   (path (append '(:relative) (mapcar #'car (butlast paths))))
+	   (output (http-response.stream (response context)))
+	   (abs-path (merge-pathnames
+		      (merge-pathnames (make-pathname :directory path) file-and-ext)
+		      htdocs-path))
+	   (mime-type (mime-type abs-path))) 
+      (if (and (cl-fad:file-exists-p abs-path)
+	       (not (cl-fad:directory-exists-p abs-path)))
+	  (progn
+	    (setf (cdr (assoc 'content-type (http-response.entity-headers (response context))))
+		  (split "/" mime-type))
+	    (with-open-file (input abs-path :element-type '(unsigned-byte 8) :direction :input)
+	      (let ((seq (make-array (file-length input) :element-type 'unsigned-byte)))
+		(read-sequence seq input)
+		(write-stream output seq))))
+	  (render-404 (request context) (response context))))))
