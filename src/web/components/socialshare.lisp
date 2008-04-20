@@ -4,43 +4,72 @@
   ((socialshare-id :host remote :initarg :socialshare-id :initform "socialshare"
 		   :documentation "id of the socialshare div element")))
 
-(defmethod/remote make-link ((self socialshare-component) href text)
-  (let ((a (document.create-element "A")))
+(defmethod/remote make-link ((self socialshare-component) href text icon-url)
+  (let ((a (document.create-element "A"))
+	(img (document.create-element "IMG")))
     (a.set-attribute "href" href)
-    (setf a.inner-h-t-m-l text)
+    (a.set-attribute "title" text)
+    (img.set-attribute "src" icon-url)
+    (img.set-attribute "alt" text)
+    (setf img.border "0")
+    (a.append-child img)
     (return a)))
 
-;; reddit, delicious, stumbleupon, digg
-(defmethod/remote make-type1-link ((self socialshare-component) base text url title)
-  (return (this.make-link (+ base "?url=" url "&title=" title) text)))
+;; reddit, delicious, stumbleupon, digg, dzone
+(defmethod/remote make-type1-link ((self socialshare-component) base text icon url title)
+  (return (this.make-link (+ base "?url=" (encode-u-r-i-component url) "&title=" title) text icon)))
 
 ;; yahoo, facebook
-(defmethod/remote make-type2-link ((self socialshare-component) base text url title)
-  (return (this.make-link (+ base "?u=" url "&t=" title) text)))
+(defmethod/remote make-type2-link ((self socialshare-component) base text icon url title)
+  (return (this.make-link (+ base "?u=" (encode-u-r-i-component url) "&t=" title) text icon)))
 
 ;; http://reddit.com/submit?url=...&title=...
 (defmethod/remote make-reddit-link ((self socialshare-component) url title)
-  (return (this.make-type1-link "http://reddit.com/submit" "reddit" url title)))
+  (return (this.make-type1-link "http://reddit.com/submit"
+				"reddit"
+				"http://www.core.gen.tr/images/sociallinks/reddit.gif"
+				url title)))
 
 ;; http://del.icio.us/post?url=...&title=...
 (defmethod/remote make-delicious-link ((self socialshare-component) url title)
-  (return (this.make-type1-link "http://del.icio.us/post" "del.icio.us" url title)))
+  (return (this.make-type1-link "http://del.icio.us/post"
+				"del.icio.us"
+				"http://www.core.gen.tr/images/sociallinks/delicious.gif"
+				url title)))
 
 ;; http://www.stumbleupon.com/submit?url=...&title=...
 (defmethod/remote make-stumbleupon-link ((self socialshare-component) url title)
-  (return (this.make-type1-link "http://www.stumbleupon.com/submit" "stumbleupon" url title)))
+  (return (this.make-type1-link "http://www.stumbleupon.com/submit"
+				"stumbleupon"
+				"http://www.core.gen.tr/images/sociallinks/stumbleupon.gif"
+				url title)))
 
 ;; http://digg.com/submit?url=...&title=...
 (defmethod/remote make-digg-link ((self socialshare-component) url title)
-  (return (this.make-type1-link "http://digg.com/submit" "digg" url title)))
+  (return (this.make-type1-link "http://digg.com/submit"
+				"digg"
+				"http://l.yimg.com/us.yimg.com/i/us/pps/digg.png" url title)))
+
+;; http://www.dzone.com/links/add.html?url=...&title=...
+(defmethod/remote make-dzone-link ((self socialshare-component) url title)
+  (return (this.make-type1-link "http://www.dzone.com/links/add.html"
+				"dzone"
+				"http://l.yimg.com/us.yimg.com/i/us/pps/dzone.png"
+				url title)))
 
 ;; http://www.facebook.com/sharer.php?u=...
 (defmethod/remote make-facebook-link ((self socialshare-component) url title)
-  (return (this.make-type2-link "http://www.facebook.com/sharer.php" "facebook" url title)))
+  (return (this.make-type2-link "http://www.facebook.com/sharer.php"
+				"facebook"
+				"http://www.core.gen.tr/images/sociallinks/facebook.gif"
+				url title)))
 
 ;; http://myweb2.search.yahoo.com/myresults/bookmarklet?&u=...&t=....
 (defmethod/remote make-yahoo-link ((self socialshare-component) url title)
-  (return (this.make-type2-link "http://myweb2.search.yahoo.com/myresults/bookmarklet" "yahoo" url title)))
+  (return (this.make-type2-link "http://myweb2.search.yahoo.com/myresults/bookmarklet"
+				"yahoo"
+				"http://www.core.gen.tr/images/sociallinks/yahoo.jpg"
+				url title)))
 
 (defmethod/remote make-socialshare-box ((self socialshare-component))
   (let ((div (document.create-element "DIV")))
@@ -48,6 +77,7 @@
     (div.append-child (this.make-delicious-link window.location document.title))
     (div.append-child (this.make-stumbleupon-link window.location document.title))
     (div.append-child (this.make-digg-link window.location document.title))
+    (div.append-child (this.make-dzone-link window.location document.title))
     (div.append-child (this.make-facebook-link window.location document.title))
     (div.append-child (this.make-yahoo-link window.location document.title))
     (return div)))
