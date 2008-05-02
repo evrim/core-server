@@ -46,9 +46,20 @@
   (interactive) (save-buffer)
   (interactive) (slime-compile-and-load-file))
 
-(add-hook 'slime-mode-hook (lambda ()
-			     (slime-define-key "\C-c\C-k" 
-					       'save-and-load-and-compile)))
+(add-hook 'slime-mode-hook
+	  (lambda ()
+	    (slime-define-key "\C-c\C-k" 
+			      'save-and-load-and-compile)))
+
+(defun slime-run-rt-test ()
+  (interactive)
+  (slime-display-output-buffer)
+  (slime-interactive-eval (format "%s" `(rt:do-test ',(cadr (read (slime-last-expression)))))))
+
+(add-hook 'slime-mode-hook
+	  (lambda ()
+	    (slime-define-key "\C-x\C-a"
+			      'slime-run-rt-test)))
 
 (slime-setup '(slime-fancy slime-asdf))
 ;;(setq (get 'defmethod/cc 'common-lisp-indent-function) 'lisp-indent-defmethod
