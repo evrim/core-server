@@ -23,11 +23,22 @@
 (defmethod/remote make-type2-link ((self socialshare-component) base text icon url title)
   (return (this.make-link (+ base "?u=" (encode-u-r-i-component url) "&t=" title) text icon)))
 
+;; google
+(defmethod/remote make-type3-link ((self socialshare-component) base text icon url title)
+  (return (this.make-link (+ base "?op=edit&bkmk=" (encode-u-r-i-component url) "&title=" title) text icon)))
+
 ;; http://reddit.com/submit?url=...&title=...
 (defmethod/remote make-reddit-link ((self socialshare-component) url title)
   (return (this.make-type1-link "http://reddit.com/submit"
 				"reddit"
 				"http://www.core.gen.tr/images/sociallinks/reddit.gif"
+				url title)))
+
+;; http://www.google.com/bookmarks/mark?op=edit&bkmk=<url>&title=<title>
+(defmethod/remote make-google-link ((self socialshare-component) url title)
+  (return (this.make-type3-link "http://www.google.com/bookmarks/mark"
+                                "google"
+				"http://www.core.gen.tr/images/sociallinks/google.jpg"
 				url title)))
 
 ;; http://del.icio.us/post?url=...&title=...
@@ -73,8 +84,9 @@
 
 (defmethod/remote make-socialshare-box ((self socialshare-component))
   (let ((div (document.create-element "DIV")))
-    (div.append-child (this.make-reddit-link window.location document.title))
+    (div.append-child (this.make-google-link window.location document.title))
     (div.append-child (this.make-delicious-link window.location document.title))
+    (div.append-child (this.make-reddit-link window.location document.title))
     (div.append-child (this.make-stumbleupon-link window.location document.title))
     (div.append-child (this.make-digg-link window.location document.title))
     (div.append-child (this.make-dzone-link window.location document.title))
