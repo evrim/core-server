@@ -13,7 +13,26 @@
     `(write-stream ,stream ,form))
 
   (defmethod expand-render ((form bind-form) expander (stream symbol) &optional continue checpoint)
-    `(,(func form) ,stream ,@(args form))))
+    `(,(func form) ,stream ,@(args form)))
+
+  (defmethod expand-render ((form sep-form) expander (stream symbol) &optional continue checkpoint)
+    (if (symbolp (children form))
+	`(prog1 ,continue
+	   ,(funcall expander (walk-grammar `(car ,(children form)))
+		     expander stream continue checkpoint)
+	   (mapcar (lambda (atom)		 
+		     ,(funcall expander (walk-grammar `(:and ,(seperator form) atom))
+			       expander stream continue checkpoint))
+		   (cdr ,(children form))))
+	(progn
+	  (if (eq 'quote (car (children form))) (setf (children form) (cadr (children form))))
+	  `(prog1 ,continue
+	     ,(funcall expander (walk-grammar (car (children form)))
+		       expander stream continue checkpoint)
+	     ,@(mapcar (lambda (atom)
+			 (funcall expander (walk-grammar `(:and ,(seperator form) ,atom))
+				  expander stream continue checkpoint))
+		       (cdr (children form))))))))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defmacro defrender (name args &rest body)
