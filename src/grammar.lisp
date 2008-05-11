@@ -211,12 +211,13 @@
 	       (walk-grammar
 		`(:checkpoint
 		  (:do
-		   (reduce #'(lambda (acc atom)
-			       (declare (ignore acc))
-			       (when (not (eq (peek-stream ,stream) (char-code atom)))
-				 (rewind-stream ,stream)
-				 (return-from ,checkpoint ,(not continue))))
-			   ,(value form) :initial-value nil))
+		   (reduce #'(lambda (stream atom)
+			       (when (not (eq (peek-stream stream) (char-code atom)))
+				 (rewind-stream stream)
+				 (return-from ,checkpoint ,(not continue)))
+			       (read-stream stream)
+			       stream)
+			   ,(value form) :initial-value ,stream))
 		  (:commit)))
 	       expander stream nil checkpoint)))
 
@@ -240,13 +241,14 @@
 	       (walk-grammar
 		`(:checkpoint
 		  (:do
-		   (reduce #'(lambda (acc atom)
-			       (declare (ignore acc))
-			       (when (not (or (eq (peek-stream ,stream) (char-code (char-upcase atom)))
-					      (eq (peek-stream ,stream) (char-code (char-downcase atom)))))
+		   (reduce #'(lambda (stream atom)
+			       (when (not (or (eq (peek-stream stream) (char-code (char-upcase atom)))
+					      (eq (peek-stream stream) (char-code (char-downcase atom)))))
 				 (rewind-stream ,stream)
-				 (return-from ,checkpoint nil)))
-			   ,(value form) :initial-value nil))
+				 (return-from ,checkpoint ,(not continue)))
+			       (read-stream stream)
+			       stream)
+			   ,(value form) :initial-value ,stream))
 		  (:commit)))
 	       expander stream nil checkpoint)))
 
