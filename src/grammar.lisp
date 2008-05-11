@@ -10,8 +10,10 @@
       ((symbolp lst) lst)
       ((atom lst) lst)
       ((and (listp lst) (keywordp (car lst)))
-       (if (find-class (intern (format nil "~A-FORM" (symbol-name (car lst)))) nil)
-	   (apply (symbol-function (intern (format nil "~A-FORM" (symbol-name (car lst)))))
+       (if (find-class (intern (format nil "~A-FORM" (symbol-name (car lst)))
+			       (find-package :core-server)) nil)
+	   (apply (symbol-function (intern (format nil "~A-FORM" (symbol-name (car lst)))
+					   (find-package :core-server)))
 		  (mapcar #'walk-grammar (cdr lst)))
 	   (apply #'bind-form (intern (symbol-name (car lst))) (mapcar #'walk-grammar (cdr lst)))))
       (t
@@ -134,6 +136,9 @@
 
 (defgrammar-form do-form ()
   (&rest children))
+
+(defgrammar-form sep-form ()
+  (seperator children))
 
 ;; Grammar compiler
 (eval-when (:load-toplevel :compile-toplevel :execute)
@@ -304,7 +309,8 @@
 				    expander stream continue checkpoint)))
 		 (conditions form)))))
 
-(defgrammar-expander do-form `(prog1 ,continue ,@(children form)))
+(defgrammar-expander do-form
+  `(prog1 ,continue ,@(children form)))
 
 ;; (defparser crlf? ()
 ;;   (:or (:checkpoint #\Return #\Newline (:commit)) #\Newline)
