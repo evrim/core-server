@@ -533,6 +533,8 @@
    ;; The server itself
    *server*
    ;; Javascript
+   #:defjsmacr0
+   #:js+
    #:true
    #:false
    #:undefined
