@@ -8,23 +8,12 @@
   (export 'regex)
   (export '--)
   (export 'create)
-  (export 'typeof))
-
-(defmacro defjsmacr0 (name args &body body)
-  (with-unique-names (rest)
-    `(setf (gethash ',name *javascript-macros*)
-	   #'(lambda (&rest ,rest)
-	       (destructuring-bind ,args ,rest
-		 ,@body)))))
+  (export 'typeof)
+  (export 'with)
+  (export 'doeach))
 
 (defmacro defjsinfix (name &optional (js-operator nil))
   `(setf (gethash ',name *javascript-infix*) ',(or js-operator name)))
-
-(defmacro defjssyntax (name &body body)
-  `(setf (gethash ',name *javascript-syntax*)
-	 #'(lambda (arguments expander)
-	     (declare (ignorable expander))
-	     ,@body)))
 
 (defjsinfix +)
 (defjsinfix -)
@@ -35,86 +24,75 @@
 (defjsinfix <)
 (defjsinfix <=)
 (defjsinfix = ==)
-(defjsinfix eql ===)
 (defjsinfix eq ===)
+(defjsinfix eql ===)
 (defjsinfix equal ===)
 
-(defjssyntax aref
-  `(:and ,(funcall expander (car arguments) expander)
-	 "[" ,(funcall expander (cadr arguments) expander) "]"))
+(defmacro defjssyntax (name args &body body)
+  `(setf (gethash ',name *javascript-syntax*)
+	 #'(lambda (arguments expander)
+	     (declare (ignorable expander))
+	     (destructuring-bind ,args arguments
+	       ,@body))))
 
-(defjssyntax incf
-  (assert (= 1 (length arguments)))
-  `(:and "++" ,(funcall expander (car arguments) expander)))
+(defjssyntax aref (target slot)
+  `(:and ,(funcall expander target expander)
+	 "[" ,(funcall expander slot expander) "]"))
 
-(defjssyntax decf
-  (assert (= 1 (length arguments)))
-  `(:and "--" ,(funcall expander (car arguments) expander)))
+(defjssyntax incf (arg)
+  `(:and "++" ,(funcall expander arg expander)))
 
-(defjssyntax ++
-  (assert (= 1 (length arguments)))
-  `(:and ,(funcall expander (car arguments) expander) "++"))
+(defjssyntax decf (arg)
+  `(:and "--" ,(funcall expander arg expander)))
 
-(defjssyntax --
-  (assert (= 1 (length arguments)))
-  `(:and ,(funcall expander (car arguments) expander) "--"))
+(defjssyntax ++ (arg)
+  `(:and ,(funcall expander arg expander) "++"))
 
-(defjssyntax not
-  (assert (= 1 (length arguments)))
-  (if (and (typep (car arguments) 'application-form)
-	   (js-infix-op-p (operator (car arguments))))
-      `(:and "!(" ,(funcall expander (car arguments) expander) ")")
-      `(:and "!" ,(funcall expander (car arguments) expander))))
+(defjssyntax -- (arg)
+  `(:and ,(funcall expander arg expander) "--"))
 
-(defjssyntax setf
-  `(:sep ,(format nil ";~%")
-	 ',(reverse
-	    (mapcar (lambda (b a)
-		      `(:and ,(funcall expander a expander)
-			       " = "
-			       ,(funcall expander b expander)))
-		    (reduce (lambda (acc atom)
-			      (if (oddp (position atom arguments))
-				  (cons atom acc)
-				  acc))
-			    arguments :initial-value nil)
-		    (reduce (lambda (acc atom)
-			      (if (evenp (position atom arguments))
-				  (cons atom acc)
-				  acc))
-			    arguments :initial-value nil)))))
+(defjssyntax not (arg)
+  (if (and (typep arg 'application-form)
+	   (js-infix-op-p (operator arg)))
+      `(:and "!(" ,(funcall expander arg expander) ")")
+      `(:and "!" ,(funcall expander arg expander))))
 
-(defjssyntax typeof
-  `(:and "typeof " ,@(mapcar (rcurry expander expander) arguments)))
+(defjssyntax typeof (arg)
+  `(:and "typeof " ,@(mapcar (rcurry expander expander) arg)))
 
-(defjssyntax return
-  `(:and "return " ,@(mapcar (rcurry expander expander) arguments)))
+(defjssyntax return (arg)
+  `(:and "return " ,@(mapcar (rcurry expander expander) arg)))
 
-(defjssyntax delete
-  (assert (= 1 (length arguments)))
-  `(:and "delete " ,(funcall expander (car arguments) expander)))
+(defjssyntax delete (arg)
+  `(:and "delete " ,(funcall expander arg expander)))
 
-(defjssyntax defvar
-  `(:and "var " ,(funcall expander (car arguments) expander)
-	 " = " ,(funcall expander (cadr arguments) expander)))
+(defjssyntax defvar (var value &optional doc)
+  (declare (ignore doc))
+  `(:and "var " ,(funcall expander var expander)
+	 " = " ,(funcall expander value expander)))
 
-(defjssyntax while
-  `(:and "while (" ,(funcall expander (car arguments) expander) ") {" #\Newline
-	 (:sep ,(format nil ";~%") ',(mapcar (rcurry expander expander) (cdr arguments)))
+(defjssyntax while (consequent &rest body)
+  `(:and "while (" ,(funcall expander consequent expander) ") {" #\Newline
+	 (:sep ,(format nil ";~%") ',(mapcar (rcurry expander expander) body))
 	 ";" #\Newline "}"))
 
-(defjssyntax regex 
-  (format nil "~A" (unwalk-form (car arguments))))
+(defjssyntax regex (expression)
+  (format nil "~A" (unwalk-form expression)))
 
-(defjssyntax new
-  (assert (= 1 (length arguments)))
-  `(:and "new " ,(funcall expander (car arguments) expander)))
+(defjssyntax new (expression)
+  `(:and "new " ,(funcall expander expression expander)))
 
-(defjssyntax create
+;; TODO: Below syntax should go into walker!
+;; TODO: Rewrite lisp2 code walker, aha, it shoudl be trivial.
+;; -evrim
+(defjssyntax create (&rest arguments)
   `(:and "{ " (:sep (format nil ",~%")
 		    ',(reverse
 		       (mapcar (lambda (b a)
-				 `(:and ,(funcall expander a expander) " : " ,(funcall expander b expander)))
+				 `(:and
+				   ,(funcall expander a expander)
+				   " : "
+				   ,(funcall expander b expander)))
 			       (reduce (lambda (acc atom)
 					 (if (oddp (position atom arguments))
 					     (cons atom acc)
@@ -126,6 +104,54 @@
 					     acc))
 				       arguments :initial-value nil))))
 	 " }"))
+
+(defjssyntax with (object &rest body)
+  `(:and "with ("
+	 ,(funcall expander object expander)
+	 ") {" #\Newline
+	 ,(funcall expander (walk-form-no-expand
+			     `(progn
+				,@(unwalk-forms body)))
+		   expander)
+	 #\Newline "}"))
+
+(defjssyntax doeach (iterator &rest body)
+  `(:and "for (var " ,(symbol-to-js (operator iterator))
+	 " in " ,(funcall expander (car (arguments iterator)) expander)
+	 ") {" #\Newline
+	 ,(funcall expander (walk-form-no-expand
+			     `(progn
+				,@(unwalk-forms body)))
+		   expander)
+	 #\Newline "}"))
+
+(defjssyntax switch (&rest arguments)
+  `(:and "switch ("
+	 ,(funcall expander (car arguments) expander)
+	 ") {" #\Newline
+	 ,@(mapcar (lambda (option)
+		     (describe option)
+		     `(:and ,(funcall expander
+				      (if (eql 'default (operator option))
+					  "default"
+					  (operator option))
+				      expander)
+			    ,(funcall expander
+				      (walk-form-no-expand
+				       `(progn
+					  ,@(unwalk-forms (arguments option))))
+				      expander)))
+		   (cdr arguments))))
+
+(defjssyntax slot-value (object slot)
+  `(:and ,(funcall expander object expander) "." ,(funcall expander slot expander)))
+
+(defmacro defjsmacr0 (name args &body body)
+  (with-unique-names (rest)
+    `(setf (gethash ',name *javascript-macros*)
+	   #'(lambda (&rest ,rest)
+	       (destructuring-bind ,args ,rest
+		 ,@body)))))
 
 (defjsmacr0 1+ (arg)
   `(+ ,arg 1))
@@ -145,6 +171,9 @@
 (defjsmacr0 list (&rest arg)
   `(new (*array ,@arg)))
 
+(defjsmacr0 setf (&rest rest)
+  `(setq ,@rest))
+
 (defmacro defjavascript-expander (class (&rest slots) &body body)
   `(defmethod expand-javascript ((form ,class) (expand function))
      (declare (ignorable expand))
@@ -163,8 +192,8 @@
      `(:and "[ " (:sep ", " ',(mapcar (lambda (v)
 				       (symbol-to-js (format nil "~S" v)))
 				     value))  " ]"))
-    (t
-     (format nil "~A" value))))
+    (symbol (symbol-to-js value))
+    (t (format nil "~A" value))))
 
 (defjavascript-expander variable-reference (name)
   (cond
@@ -192,7 +221,6 @@
     `(:and ,(symbol-to-js operator) "("
 	   (:sep ", " ',(mapcar (rcurry expand expand) arguments))
 	   ")"))))
-
 
 (defjavascript-expander lambda-application-form (operator arguments)
   `(:and ;;    "("
@@ -256,7 +284,9 @@
   (if (typep (parent form) 'application-form)
       `(:and "(" ,(funcall expand consequent expand)
 	" ? " ,(funcall expand then expand)
-	" : " ,(funcall expand arnesi::else expand) ")")
+	" : " ,(if arnesi::else
+		   (funcall expand arnesi::else expand)
+		   "null") ")")
       `(:and
 	"if "
 	"(" ,(funcall expand consequent expand) ")"
@@ -430,20 +460,61 @@
 (defjavascript-expander throw-form (tag value)
   `(:and "throw " ,(funcall expand tag expand)))
 
-(defmacro js+ (&body body)
+(defjavascript-expander dotimes-form (var how-many body)    
+  `(:and "for (var " ,(symbol-to-js var)
+	 " = 0; " ,(symbol-to-js var)
+	 " < " ,(funcall expand how-many expand)
+	 "; " ,(symbol-to-js var) " = " ,(symbol-to-js var)
+	 " + 1) {" #\Newline
+	 ,(funcall expand (walk-form-no-expand
+			     `(progn
+				,@(unwalk-forms body)))
+		   expand)
+	 #\Newline "}"))
+
+(defjavascript-expander dolist-form (var lst body)
+  `(:and "for (var " ,(symbol-to-js var)
+	 " = 0; " ,(symbol-to-js var)
+	 " < " ,(funcall expand lst expand)
+	 "; " ,(symbol-to-js var) " = " ,(symbol-to-js var)
+	 " + 1) {" #\Newline
+	 ,(funcall expand (walk-form-no-expand
+			   `(progn
+			      ,@(unwalk-forms body)))
+		   expand)
+	 #\Newline "}"))
+
+(defjavascript-expander defun-form (name arguments declares body)
+  `(:and "function " ,(symbol-to-js name) "("
+	 (:sep ", "
+	       ',(mapcar (rcurry expand expand) arguments))
+	 ") {" #\Newline
+	 (:sep (format nil ";~%")
+	       ',(mapcar (rcurry expand expand) body))
+	 ";" #\Newline "}"))
+
+(defmacro +js+ (&body body)
   `(with-core-stream (s "")
      (funcall (lambda ()
 		(block rule-block		  
 		  ,(expand-render
 		    (walk-grammar
 		     `(:and ,@(mapcar (rcurry #'expand-javascript #'expand-javascript)
-			       (mapcar #'walk-form-no-expand body))))
+				      (mapcar #'walk-form-no-expand body))))
 		    #'expand-render 's))))
      (return-stream s)))
 
-(js+ 
-  (+ 1 1)
-  (+ 2 2))
+(defmacro <:js+ (&body body)
+  (with-unique-names (output)    
+    `(let ((,output (if +context+ (http-response.stream (response +context+)) *core-output*)))
+       (funcall (lambda ()
+		  (block rule-block
+		    ,(expand-render
+		      (walk-grammar
+		       `(:and ,@(mapcar (rcurry #'expand-javascript #'expand-javascript)
+					(mapcar #'walk-form-no-expand (cdar body)))))
+		      #'expand-render output)
+		    nil))))))
 
 (defmacro defun/javascript (name params &body body)
   `(prog1
@@ -461,3 +532,7 @@
 
 ;; (defun/javascript fun1 ()
 ;;   (setf fun1 (lambda (a b c) (list a b c))))
+
+;; (js+ 
+;;   (+ 1 1)
+;;   (+ 2 2))

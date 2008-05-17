@@ -547,7 +547,7 @@
 (defpackage :tr.gen.core.server.html
   (:nicknames :< :core-server.html)
   (:use :core-server)
-  (:export #:ai #:ah #:js #:a #:abbr #:acronym #:address #:area #:b
+  (:export #:ai #:ah #:js #:js+ #:a #:abbr #:acronym #:address #:area #:b
   #:base #:bdo #:big #:blockquote #:body #:br #:button #:caption
   #:cite #:code #:col #:colgroup #:dd #:del #:dfn #:div #:dl #:dt #:em 
   #:embed #:fieldset #:form #:frame #:frameset #:h1 #:h2 #:h3 #:h4
@@ -557,3 +557,15 @@
   #:script #:select #:small #:span #:strong #:style #:sub #:sup
   #:table #:tbody #:td #:textarea #:tfoot #:th #:thead #:title #:tr
   #:tt #:ul #:var))
+
+(defpackage :tr.gen.core.server.html.dojo
+  (:nicknames :<dojo :core-server.html.dojo)
+  (:use :core-server :<))
+
+(defpackage :tr.gen.core.server.html.dijit
+  (:nicknames :<dijit :core-server.html.dijit)
+  (:use :core-server :<))
+
+(defpackage :tr.gen.core.server.html.dijit.layout
+  (:nicknames :<dijit.layout :core-server.html.dijit.layout)
+  (:use :core-server :<))
