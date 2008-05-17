@@ -16,9 +16,7 @@
 					   (find-package :core-server)))
 		  (mapcar #'walk-grammar (cdr lst)))
 	   (apply #'bind-form (intern (symbol-name (car lst))) (mapcar #'walk-grammar (cdr lst)))))
-      (t
-       ;;     (make-instance 'monad-atom-form :value lst)
-       lst))))
+      (t lst))))
 
 (defmacro defgrammar-form (name supers lambda-list)
   `(prog1 (defclass ,name (,@supers form)
