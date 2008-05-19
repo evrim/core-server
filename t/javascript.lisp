@@ -2,7 +2,7 @@
 
 (defmacro test-js (name statement result)
   `(deftest ,name
-       (core-server::js+ ,statement)
+       (core-server::+js+ ,statement)
      ,result))
 
 
@@ -370,6 +370,81 @@ anotherObject : { schtrunz : 1 } }")
 	 (throw "foobar")
 	 "throw 'foobar'")
 
+(test-js object-literals-3
+  (slot-value an-object 'foo)
+  "anObject.foo")
+
+
+(test-js the-with-statement-1
+  (with (create :foo "foo" :i "i")
+	(alert (+ "i is now intermediary scoped: " i))
+	(alert "zoo"))
+  "with ({ foo : 'foo',
+i : 'i' }) {
+alert('i is now intermediary scoped: ' + i);
+alert('zoo');
+}")
+
+(test-js iteration-constructs-4
+  (doeach (i object)
+	  (document.write (+ i " is " (aref object i))))
+  "for (var i in object) {
+document.write(i + ' is ' + object[i]);
+}")
+
+(test-js iteration-constructs-2
+  (dotimes (i blorg.length)
+    (document.write (+ "L is " (aref blorg i)))
+    (alert "zoo"))
+  "for (var i = 0; i < blorg.length; i = i + 1) {
+document.write('L is ' + blorg[i]);
+alert('zoo');
+}")
+
+(test-js iteration-constructs-3
+  (dolist (l blorg)
+    (document.write (+ "L is " l))
+    (alert "zoo"))
+  "for (var l = 0; l < blorg.length; l = l + 1) {
+document.write('L is ' + l);
+alert('zoo');
+}"
+;;;   "{
+;;;   var tmpArr1 = blorg;
+;;;   for (var tmpI2 = 0; tmpI2 < tmpArr1.length;
+;;;     tmpI2 = tmpI2 + 1) {
+;;;     var l = tmpArr1[tmpI2];
+;;;     document.write('L is ' + l);
+;;;   };
+;;; }"
+  )
+
+(test-js slot-val-1
+  (slot-value a "abc")
+  "a['abc']")
+
+(test-js slot-val-2
+  (slot-value a 'abc)
+  "a.abc")
+
+(test-js slot-val-3
+  (slot-value a abc)
+  "a[abc]")
+
+(test-js the-try-statement-1
+  (try (throw "i")
+       (:catch (error)
+	 (alert (+ "an error happened: " error)))
+       (:finally
+	(alert "Leaving the try form")))
+  "try {
+throw 'i'
+} catch (error) {
+alert('an error happened: ' + error);
+} finally {
+alert('Leaving the try form');
+}")
+
 ;;; -------------------------
 ;;; Below is not working yet.
 ;;; -------------------------
@@ -378,13 +453,10 @@ anotherObject : { schtrunz : 1 } }")
 	 (array "foobar" "bratzel bub"))
   "[ [ 2, 3 ], [ 'foobar', 'bratzel bub' ] ]")
 
-(test-js object-literals-3
-  (slot-value an-object 'foo)
-  "anObject.foo")
 
 (test-js object-literals-5
   (with-slots (a b c) this
-  (+ a b c))
+    (+ a b c))
   "this.a + this.b + this.c;")
 
 (test-js regular-expression-literals-1
@@ -403,58 +475,31 @@ anotherObject : { schtrunz : 1 } }")
   (.blorg (aref foobar 1) NIL T)
   "foobar[1].blorg(null, true)")
 
-
 (test-js function-definition-1
   (defun a-function (a b)
-  (return (+ a b)))
+    (return (+ a b)))
   "function aFunction(a, b) {
   return a + b;
 }")
 
 (test-js iteration-constructs-1
   (do ((i 0 (1+ i))
-     (l (aref blorg i) (aref blorg i)))
-    ((or (= i blorg.length)
-         (eql l "Fumitastic")))
-  (document.write (+ "L is " l)))
+       (l (aref blorg i) (aref blorg i)))
+      ((or (= i blorg.length)
+	   (eql l "Fumitastic")))
+    (document.write (+ "L is " l)))
   "for (var i = 0, l = blorg[i];
      !(i == blorg.length || l == 'Fumitastic');
      i = i + 1, l = blorg[i]) {
   document.write('L is ' + l);
 }")
 
-(test-js iteration-constructs-2
-  (dotimes (i blorg.length)
-  (document.write (+ "L is " (aref blorg i))))
-  "for (var i = 0; i < blorg.length; i = i + 1) {
-  document.write('L is ' + blorg[i]);
-}")
-
-(test-js iteration-constructs-3
-  (dolist (l blorg)
-  (document.write (+ "L is " l)))
-  "{
-  var tmpArr1 = blorg;
-  for (var tmpI2 = 0; tmpI2 < tmpArr1.length;
-    tmpI2 = tmpI2 + 1) {
-    var l = tmpArr1[tmpI2];
-    document.write('L is ' + l);
-  };
-}")
-
-(test-js iteration-constructs-4
-  (doeach (i object)
-   (document.write (+ i " is " (aref object i))))
-  "for (var i in object) {
-  document.write(i + ' is ' + object[i]);
-}")
-
 
 (test-js the-case-statement-1
   (case (aref blorg i)
-  ((1 "one") (alert "one"))
-  (2 (alert "two"))
-  (t (alert "default clause")))
+    ((1 "one") (alert "one"))
+    (2 (alert "two"))
+    (t (alert "default clause")))
   "switch (blorg[i]) {
   case 1:   ;
   case 'one':
@@ -468,35 +513,13 @@ anotherObject : { schtrunz : 1 } }")
 
 (test-js the-case-statement-2
   (switch (aref blorg i)
-  (1 (alert "If I get here"))
-  (2 (alert "I also get here"))
-  (default (alert "I always get here")))
+    (1 (alert "If I get here"))
+    (2 (alert "I also get here"))
+    (default (alert "I always get here")))
   "switch (blorg[i]) {
   case 1:   alert('If I get here');
   case 2:   alert('I also get here');
   default:   alert('I always get here');
-}")
-
-(test-js the-with-statement-1
-  (with (create :foo "foo" :i "i")
-  (alert (+ "i is now intermediary scoped: " i)))
-  "with ({ foo : 'foo',
-        i : 'i' }) {
-  alert('i is now intermediary scoped: ' + i);
-}")
-
-(test-js the-try-statement-1
-  (try (throw "i")
- (:catch (error)
-   (alert (+ "an error happened: " error)))
- (:finally
-   (alert "Leaving the try form")))
-  "try {
-  throw 'i';
-} catch (error) {
-  alert('an error happened: ' + error);
-} finally {
-  alert('Leaving the try form');
 }")
 
 (test-js the-html-generator-1
