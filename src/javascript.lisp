@@ -538,7 +538,7 @@
 (defjavascript-expander dolist-form (var lst body)
   (let ((i (symbol-to-js (gensym "tmp")))
 	(j (symbol-to-js (gensym "tmp"))))
-    `(:and "for (var i=" ,i "=0," ,j "="
+    `(:and "for (var " ,i "=0," ,j "="
 	   ,(funcall expand lst expand)
 	   "; " ,i " < " ,j ".length; " ,i "++) {" #\Newline
 	   "var " ,(symbol-to-js var) " = " ,j "[" ,i "];" #\Newline
@@ -604,3 +604,4 @@
 ;; (js+ 
 ;;   (+ 1 1)
 ;;   (+ 2 2))
+
