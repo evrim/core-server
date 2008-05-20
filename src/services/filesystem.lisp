@@ -11,6 +11,7 @@
 ;;;
 ;;;   (writefile *fs* #P"staff/introduction.txt" "Here we go...")
 ;;;   (readfile  *fs* #P"staff/introduction.txt")
+;;;   (list-directory *fs* #P"pictures/" :recursive t)
 
 ;; http://www.emmett.ca/~sabetts/slurp.html
 (defun slurp-stream5 (stream) 
@@ -62,5 +63,12 @@
 
 ;; filesystem -> pathname -> IO [pathname]
 (defmethod/unit ls :async-no-return ((self filesystem) filepath)
-  ;; TODO: implement diff-pathnames
-  (error "Not implemented yet."))
+  (with-guard (self filepath)
+    (cl-fad::list-directory (merge-pathnames filepath (filesystem.root self)))))
+
+(defmethod/unit fold-directory :async-no-return ((self filesystem) filepath fun)
+  (with-guard (self filepath)
+    (cl-fad:walk-directory (merge-pathnames filepath (filesystem.root self))
+			   fun
+			   :directories t
+			   :if-does-not-exist :error)))
