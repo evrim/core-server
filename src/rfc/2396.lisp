@@ -312,6 +312,12 @@
    (queries :accessor uri.queries :initarg :queries :initform nil) 
    (fragments :accessor uri.fragments :initarg :fragments :initform nil)))
 
+(defprint-object (self uri :identity t :type t)
+  (with-slots (scheme username password server
+		      port paths queries fragments) self
+    (format *standard-output* "~A://~A:~A@~A:~A~{/~A~}?~{~A&~}#~{~A&~}"
+	    scheme username password server port paths (ensure-list queries) (ensure-list fragments))))
+
 (defgeneric urip (uri)
   (:method ((uri uri)) t)
   (:method ((uri t)) t))
