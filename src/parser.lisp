@@ -205,7 +205,7 @@
 	   (:and #\" (:return (octets-to-string value :utf-8)))
 	   (:and (:or ;;		  (:and (:utf-escaped? b c) (:collect b value))
 		      (:escaped? c)
- 		      (:type (or visible-char? space?) c))		 
+ 		      (:type (or visible-char? space?) c))
 		 (:collect c value)))))
    (:and (:zom (:or ;;		(:and (:utf-escaped? b c) (:collect b value))
 		    (:escaped? c)
