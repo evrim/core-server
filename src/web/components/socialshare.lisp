@@ -85,12 +85,13 @@
 (defmethod/remote make-socialshare-box ((self socialshare-component))
   (let ((div (document.create-element "DIV")))
     (div.append-child (this.make-google-link window.location document.title))
+    (div.append-child (this.make-facebook-link window.location document.title))
     (div.append-child (this.make-delicious-link window.location document.title))
     (div.append-child (this.make-reddit-link window.location document.title))
     (div.append-child (this.make-stumbleupon-link window.location document.title))
     (div.append-child (this.make-digg-link window.location document.title))
     (div.append-child (this.make-dzone-link window.location document.title))
-    (div.append-child (this.make-facebook-link window.location document.title))
+
     (div.append-child (this.make-yahoo-link window.location document.title))
     (return div)))
 
