@@ -350,3 +350,49 @@
 (deftag <:var :core :event :i18n)
 (deftag <:embed src width height type quality bgcolor name align
               allow-script-access pluginspage)
+
+;; (defvar *current-selected* nil)
+;; (defun <:css (selectors &allow-other-attributes others &body body)
+;;   `(let* ((selectors ,(if (and (listp selectors) (or (stringp (car selectors)) (not (fboundp (car selectors)))))
+;;                           (cons 'list (mapcar #'identity selectors))
+;;                           selectors))
+;;           (*current-selected* (if *current-selected*
+;;                                   (reduce #'(lambda (acc item)
+;;                                               (nconc acc                                                    
+;;                                                      (mapcar #'(lambda (current)
+;;                                                                  (string-join (list current item) " "))
+;;                                                              *current-selected*)))
+;;                                           (ensure-list selectors)
+;;                                           :initial-value nil)
+;;                                   (ensure-list selectors)))
+;;           (properties (reduce #'(lambda (acc item)
+;;                                    (if (keywordp item)
+;;                                        (concatenate 'string acc " " (string-downcase (string item)) ":")
+;;                                        (concatenate 'string acc " " item ";" ~%)))
+;;                                (list ,@others)
+;;                                :initial-value nil)))
+;;      (when properties
+;;        (<:ah
+;;         (format nil "~A {~%~A}~%~%"
+;;                 (string-join *current-selected* ", ") properties)))
+;;      ,@body))
+
+;; (defmacro <:media (media &body body)
+;;   `(<:ah "@media " ,media " {" ~%
+;;          ,@body "}" ~%))
+
+;; Test
+;; (<:css ("div.abc" "div.def")
+;;        :def "gef"
+;;        :color "#000"
+;;        (<:css ("a:hover" "a:active" "a:link")
+;;            :abc "def"))
+
+;; div.abc, dv.def {
+;;  def: gef;
+;;  color: #000;
+;; };
+
+;; div.abc a:hover, dv.def a:hover, div.abc a:active, dv.def a:active, div.abc a:link, dv.def a:link {
+;;  abc: def;
+;; };
