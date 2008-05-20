@@ -101,6 +101,9 @@
       (commit-stream self)))
   (call-next-method))
 
+(defmethod write-stream ((self core-stream) (c null))
+  self)
+
 ;;;-----------------------------------------------------------------------------
 ;;; Standard Output Workarounds
 ;;;-----------------------------------------------------------------------------
@@ -114,6 +117,12 @@
   (defmethod write-stream ((self core-standard-output) atom)
     (prog1 self (princ (code-char atom) *standard-output*)))
 
+  (defmethod write-stream ((self core-standard-output) (a character))
+    (prog1 self (write-stream self (char-code a))))
+
+  (defmethod write-stream ((self core-standard-output) (a null))
+    nil)
+  
   (defvar *core-output* (make-instance 'core-standard-output)))
 
 ;;;-----------------------------------------------------------------------------
@@ -150,9 +159,32 @@
       (incf (the fixnum (s-v '%index)))
       c)))
 
-(defmethod write-stream ((self core-vector-io-stream) (c (eql nil)))
-  self)
-
+;; SERVER> (time 
+;; 	 (let ((a (make-array 0 :element-type 'character :adjustable t :fill-pointer 0)))
+;; 	  (loop for i from 0 upto 10000000
+;; 	       do (vector-push-extend #\A a))))
+;; Evaluation took:
+;;   0.667 seconds of real time
+;;   0.620038 seconds of user run time
+;;   0.052003 seconds of system run time
+;;   [Run times include 0.056 seconds GC run time.]
+;;   0 calls to %EVAL
+;;   0 page faults and
+;;   268,434,512 bytes consed.
+;; NIL
+;; SERVER> (time 
+;; 	 (let ((a (make-array 0 :element-type 'character :adjustable t :fill-pointer 0)))
+;; 	   (adjust-array a 10000000)
+;; 	   (loop for i from 0 upto 10000000
+;; 	       do (vector-push #\A a))))
+;; Evaluation took:
+;;   0.304 seconds of real time
+;;   0.288018 seconds of user run time
+;;   0.016001 seconds of system run time
+;;   0 calls to %EVAL
+;;   0 page faults and
+;;   80,000,032 bytes consed.
+;; NIL
 (defmethod write-stream ((self core-vector-io-stream) (vector vector))  
   (prog1 self (reduce #'write-stream vector :initial-value self)))
 
@@ -485,17 +517,23 @@
 (defmethod return-stream ((self core-object-io-stream))
   (list-to-object (s-v '%list) (s-v '%clazz)))
 
-(defun make-core-stream (target &rest args)
-  (apply #'make-instance
-	 (append
-	  (etypecase target
-	    (string (list 'core-string-io-stream :string target))
-	    (pathname (list 'core-file-io-stream :file target))
-	    (array (list 'core-vector-io-stream :octets target))
-	    (sb-sys::fd-stream (list 'core-fd-io-stream :stream target))
-	    (list (list 'core-list-io-stream :list target))
-	    (standard-object (list 'core-object-io-stream :object target)))
-	  args)))
+;; (defmacro make-core-stream (target &rest args)
+;;   `(etypecase ,target
+;;      (string (make-instance 'core-string-io-stream :string ,target ,@args))
+;;      (pathname (make-instance 'core-file-io-stream :file ,target))
+;;      (array (make-instance 'core-vector-io-stream :octets ,target))
+;;      (sb-sys::fd-stream (make-instance 'core-fd-io-stream :stream ,target))
+;;      (list (make-instance 'core-list-io-stream :list ,target))
+;;      (standard-object (make-instance 'core-object-io-stream :object ,target))))
+
+(defun make-core-stream (target)
+  (etypecase target
+    (string (make-instance 'core-string-io-stream :string target))
+    (pathname (make-instance 'core-file-io-stream :file target))
+    (array (make-instance 'core-vector-io-stream :octets target))
+    (sb-sys::fd-stream (make-instance 'core-fd-io-stream :stream target))
+    (list (make-instance 'core-list-io-stream :list target))
+    (standard-object (make-instance 'core-object-io-stream :object target))))
 
 ;; HELPERS
 (defmacro with-core-stream ((var val) &body body) 
