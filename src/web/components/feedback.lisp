@@ -51,7 +51,7 @@
       (setf form.onsubmit (dojo.hitch this
 				      (lambda ()
 					(this.toast "Sending...")
-					(this.send-feedback input.value (+ "" window.location))
+					(this.send-feedback (escape input.value) (+ "" window.location))
 					(this.setup)
 					(this.toast (this.get-thank-text))
 					(return false))))
