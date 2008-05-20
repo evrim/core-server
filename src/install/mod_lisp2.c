@@ -128,7 +128,7 @@ University of Illinois, Urbana-Champaign.
 */
 
 #define VERSION_STRING "1.3.1"
-#define READ_TIMEOUT 60000000
+#define READ_TIMEOUT 200000000
 
 /* Enable debug logging by default so it can be controller with
    Apache's LogLevel directive. */
