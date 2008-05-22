@@ -205,12 +205,23 @@
 		   :initform #P"core-server")
    (registry :initform '() :documentation "Systems registry.")
    (root :initarg :root :initform (error "One must specify a root directory"))))
+  
+(defun normalize-target-directory (dir)
+  (let ((dir (pathname dir)))
+    (cond
+      ((and (null (pathname-name dir))
+	    (not (null (pathname-directory dir))))
+       dir)
+      (t
+       (make-pathname :directory (append (pathname-directory dir)
+					 (if (pathname-type dir)
+					     (list (format nil "~A.~A"
+							   (pathname-name dir)
+							   (pathname-type dir)))
+					     (list (pathname-name dir)))))))))
 
 (defun make-layout (root)
-  (make-instance 'layout
-		 :root (if (pathnamep root)
-			   root
-			   (make-pathname :directory root))))
+  (make-instance 'layout :root (normalize-target-directory root)))
 
 (defmethod unregister-system ((self layout) (sys sys))
   (setf (s-v 'registry)
@@ -587,10 +598,7 @@ echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
     :server-address "127.0.0.1"))
 
 (defun make-server-layout (root)
-  (make-instance 'server-layout
-		 :root (if (pathnamep root)
-			   root
-			   (make-pathname :directory root))))
+  (make-instance 'server-layout :root (normalize-target-directory root)))
 
 (defmethod core-server.sh ((self server-layout))
   (format nil "#!/bin/bash
@@ -870,5 +878,3 @@ exit 0
   (call-next-method)
   (chown :user "core" :group "core" :recursive t
 	 :path (layout.root self)))
-
-  
