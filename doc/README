@@ -40,9 +40,9 @@ This document will aid you while installing and using [Core-serveR].
 [Core-serveR] currently support several GNU/Linux distributions. The list of
 supported distributions and related installation documentary are as follows:
 
- + Gentoo - http://www.core.gen.tr/projects/core-server/doc/GENTOO
- + Ubuntu - http://www.core.gen.tr/projects/core-server/doc/UBUNTU
- + Pardus - http://www.core.gen.tr/projects/core-server/doc/PARDUS
+ + Gentoo - http://labs.core.gen.tr/repos/core-server/doc/GENTOO
+ + Ubuntu - http://labs.core.gen.tr/repos/core-server/doc/UBUNTU
+ + Pardus - http://labs.core.gen.tr/repos/core-server/doc/PARDUS
 
 These documents defines methods that can be used to install and operate the
 server. Copy of those documents can also be found in your server installation
