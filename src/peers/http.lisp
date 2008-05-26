@@ -74,7 +74,7 @@
   (let ((response (make-instance 'http-response :stream stream)))
     (setf (http-message.general-headers response)
 	  (list (cons 'date (get-universal-time))
-		(list 'pragma 'no-cache)
+		;; (list 'pragma 'no-cache)
 		(cons 'connection 'keep-alive))
 	  (http-response.entity-headers response)
 	  (list (cons 'content-type (list "text" "html" (list "charset" "UTF-8"))))
