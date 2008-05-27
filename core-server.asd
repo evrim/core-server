@@ -41,6 +41,7 @@
                          (:file "application")
                          (:file "server")
                          (:file "parenscript")
+                         (:file "javascript")
                          (:file "html")
                          (:module :commands
                                   :serial t
