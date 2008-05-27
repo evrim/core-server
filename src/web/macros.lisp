@@ -36,6 +36,27 @@
 (defjsmacro $idoc (iframe-id)
   `(s-v ($ ,iframe-id) 'content-document))
 
+(defjsmacro aif (a b c)
+  `((lambda (it)     
+      (if it
+	  ,b
+	  ,c)) ,a))
+
+(defjsmacro mapcar (lambda lst)
+  `(dojo.map ,lst ,lambda))
+
+(defjsmacr0 mapcar (lambda lst)
+  `(dojo.map ,lst ,lambda))
+
+;; (defjsmacro null (arg)
+;;   `(= 'null ,arg))
+
+;; (defjsmacro undefined (arg)
+;;   `(= "undefined" (typeof ,arg)))
+
+(defjsmacro input-value (id)
+  `(slot-value ($ ,id) 'value))
+
 ;; (defjsmacro wrap-on-load (&body body)
 ;;   (if (context.ajax-request *context*)
 ;;       `(progn
