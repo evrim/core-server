@@ -291,7 +291,7 @@
   (let ((htdocs-path (web-application.htdocs-pathname (application context)))
 	(paths (uri.paths (http-request.uri (request context)))))
     ;; 404 when htdocs not found
-    (when (not (cl-fad:file-exists-p htdocs-path))
+    (when (or (not htdocs-path) (not (cl-fad:file-exists-p htdocs-path)))
       (render-404 (request context) (response context)))
     ;; index.html when root requested
     (when (string= (caar paths) "")
