@@ -28,6 +28,8 @@
 (defjsinfix eq ===)
 (defjsinfix eql ===)
 (defjsinfix equal ===)
+(defjsinfix and &&)
+(defjsinfix or ||)
 
 (defmacro defjssyntax (name args &body body)
   `(setf (gethash ',name *javascript-syntax*)
