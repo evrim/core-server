@@ -65,7 +65,8 @@
                                    (:file "serializable-application")
                                    (:file "darcs")
                                    (:file "git")
-                                   (:file "http")))
+                                   (:file "http")
+                                   (:file "dns")))
                          (:module :peers
                                   :components
                                   ((:file "peer")

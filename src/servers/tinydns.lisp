@@ -124,19 +124,26 @@
 		     (tinydns-server.data-pathname self))))))
 
 (defmethod tinydns-server.domains ((self tinydns-server))
-  (if (or (null (s-v '%timestamp))
-	  (> (sb-posix:stat-mtime (sb-posix::stat (tinydns-server.data-pathname self)))
-	     (s-v '%timestamp)))
-      (setf (s-v '%timestamp) (sb-posix:stat-mtime
-			       (sb-posix::stat (tinydns-server.data-pathname self)))
-	    (s-v 'domains) (tinydns-server.data self))
-      (s-v 'domains)))
+;; TODO: Fix cacheing, it doesnt work.
+;; (if (or (null (s-v '%timestamp))
+;; 	  (> (sb-posix:stat-mtime (sb-posix::stat (tinydns-server.data-pathname self)))
+;; 	     (s-v '%timestamp)))
+;;       (setf (s-v '%timestamp) (sb-posix:stat-mtime
+;; 			       (sb-posix::stat (tinydns-server.data-pathname self)))
+;; 	    (s-v 'domains) (tinydns-server.data self))
+;;       (s-v 'domains))
+  (tinydns-server.data self))
 
 (defmethod find-record ((self tinydns-server) fqdn)
   (let ((fqdn (nreverse (nameserver-domainname? (make-core-stream fqdn)))))
     (reverse
      (reduce (lambda (acc atom)
-	       (if (starts-with (car atom) fqdn :test #'equal)
+	       (if (reduce (lambda (acc1 atom1)
+			     (if (and acc1 (equal (car atom1) (cdr atom1)))
+				 t
+				 nil))
+			   (mapcar #'cons (car atom) fqdn)
+			   :initial-value t)		   
 		   (cons (cons (cadr atom)
 			       (cons (car atom) (cddr atom))) acc)
 		   acc))
@@ -155,43 +162,52 @@
 (defrecord-finder ns)
 (defrecord-finder mx)
 
-(defcommand tinydns.add-mx (shell)
-  ((add-mx-pathname :host local :initform #P"/service/tinydns/root/add-mx" :initarg :add-mx-pathname))
+(defclass tinydns-add-mixin ()
+  ((root :initform #P"/service/tinydns/root/")))
+
+(defmethod run ((self tinydns-add-mixin))
+  (with-current-directory (slot-value self 'root)
+    (setf (args self) (cons (slot-value self 'add-pathname)
+			    (args self)))
+    (call-next-method)))
+
+(defcommand tinydns.add-mx (tinydns-add-mixin shell)
+  ((add-pathname :host local :initform #P"/service/tinydns/root/add-mx" :initarg :add-pathname))
   (:default-initargs :cmd +sudo+ :verbose nil))
 
-(defcommand tinydns.add-host (shell)
-  ((add-host-pathname :host local :initform #P"/service/tinydns/root/add-host" :initarg :add-host-pathname))
+(defcommand tinydns.add-host (tinydns-add-mixin shell)
+  ((add-pathname :host local :initform #P"/service/tinydns/root/add-host" :initarg :add-pathname))
   (:default-initargs :cmd +sudo+ :verbose nil))
 
-(defcommand tinydns.add-alias (shell)
-  ((add-alias-pathname :host local :initform #P"/service/tinydns/root/add-alias" :initarg :add-alias-pathname))
+(defcommand tinydns.add-alias (tinydns-add-mixin shell)
+  ((add-pathname :host local :initform #P"/service/tinydns/root/add-alias" :initarg :add-pathname))
   (:default-initargs :cmd +sudo+ :verbose nil))
 
-(defcommand tinydns.add-ns (shell)
-  ((add-ns-pathname :host local :initform #P"/service/tinydns/root/add-ns" :initarg :add-ns-pathname))
-  (:default-initargs :cmd +sudo+ :verbose nil))
+(defcommand tinydns.add-ns (tinydns-add-mixin shell)
+  ((add-pathname :host local :initform #P"/service/tinydns/root/add-ns" :initarg :add-pathname))
+  (:default-initargs :cmd +sudo+ :verbose t))
 
 (defmethod add-mx ((self tinydns-server) fqdn &optional ip)
   (with-server-lock (self)
-    (tinydns.add-mx :add-mx-pathname (merge-pathnames #P"root/add-mx"
+    (tinydns.add-mx :add-pathname (merge-pathnames #P"root/add-mx"
 						      (tinydns-server.root-pathname self))
 		    :args (list fqdn ip))))
 
 (defmethod add-host ((self tinydns-server) fqdn ip)
   (with-server-lock (self)
-    (tinydns.add-host :add-host-pathname (merge-pathnames #P"root/add-host"
+    (tinydns.add-host :add-pathname (merge-pathnames #P"root/add-host"
 							  (tinydns-server.root-pathname self))
 		      :args (list fqdn ip))))
 
 (defmethod add-alias ((self tinydns-server) fqdn ip)
   (with-server-lock (self)
-    (tinydns.add-alias :add-alias-pathname (merge-pathnames #P"root/add-alias"
-							    (tinydns-server.root-pathname self))
+    (tinydns.add-alias :add-pathname (merge-pathnames #P"root/add-alias"
+						      (tinydns-server.root-pathname self))
 		       :args (list fqdn ip))))
 
 (defmethod add-ns ((self tinydns-server) fqdn ip)
   (with-server-lock (self)
-    (tinydns.add-ns :add-ns-pathname (merge-pathnames #P"root/add-ns"
+    (tinydns.add-ns :add-pathname (merge-pathnames #P"root/add-ns"
 						      (tinydns-server.root-pathname self))
 		    :args (list fqdn ip))))
 
