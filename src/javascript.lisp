@@ -28,8 +28,6 @@
 (defjsinfix eq ===)
 (defjsinfix eql ===)
 (defjsinfix equal ===)
-(defjsinfix and &&)
-(defjsinfix or ||)
 
 (defmacro defjssyntax (name args &body body)
   `(setf (gethash ',name *javascript-syntax*)
@@ -86,7 +84,6 @@
   `(:and "new " ,(funcall expander expression expander)))
 
 ;; TODO: Below syntax should go into walker!
-;; TODO: Rewrite lisp2 code walker, aha, it shoudl be trivial.
 ;; -evrim
 (defjssyntax create (&rest arguments)
   `(:and "{ " (:sep (format nil ",~%")
@@ -238,9 +235,13 @@
     (if (and (not (null (parent form)))
 	     (typep (parent form) 'application-form)
 	     (gethash (operator (parent form)) *javascript-infix*))
-	`(:and "(" (:sep ,(format nil " ~A " (symbol-name it))
+	`(:and "(" (:sep ,(format nil " ~A " (if (symbolp it)
+						 (format nil "~A" it)
+						 it))
 			 ',(mapcar (rcurry expand expand) arguments)) ")")     
-	`(:sep ,(format nil " ~A " (symbol-name it))
+	`(:sep ,(format nil " ~A " (if (symbolp it)
+				       (format nil "~S" it)
+				       it))
 	       ',(mapcar (rcurry expand expand) arguments))))
    ((gethash operator *javascript-macros*)
     (funcall expand (walk-form-no-expand (apply it (mapcar #'unwalk-form arguments))) expand))
@@ -550,6 +551,27 @@
 				    ,@(unwalk-forms body)))
 			 expand))
 	   #\Newline "}")))
+
+(defjavascript-expander do-form (varlist endlist declares body)
+  `(:and "for (var "
+	 (:sep ", "
+	       ',(mapcar (lambda (var)
+			   `(:and ,(symbol-to-js (car var))
+				  "="
+				  ,(funcall expand (cadr var) expand)))
+			 varlist))
+	 "; "
+	 "!(" ,(funcall expand (car endlist) expand) "); "
+	 (:sep ", "
+	       ',(mapcar (lambda (var)
+			   `(:and ,(symbol-to-js (car var)) "="
+				  ,(funcall expand (caddr var) expand)))
+			 varlist))
+	 ") {" #\Newline
+	 (:sep ,(format nil ";~%")
+	       ',(mapcar (rcurry expand expand) body))
+	 ";"
+	 #\Newline "}"))
 
 (defjavascript-expander defun-form (name arguments declares body)
   `(:and "function " ,(symbol-to-js name) "("
