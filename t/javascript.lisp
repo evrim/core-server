@@ -445,23 +445,20 @@ alert('an error happened: ' + error);
 alert('Leaving the try form');
 }")
 
-;;; -------------------------
-;;; Below is not working yet.
-;;; -------------------------
-(test-js array-literals-3
-  (array (array 2 3)
-	 (array "foobar" "bratzel bub"))
-  "[ [ 2, 3 ], [ 'foobar', 'bratzel bub' ] ]")
-
-
-(test-js object-literals-5
-  (with-slots (a b c) this
-    (+ a b c))
-  "this.a + this.b + this.c;")
-
 (test-js regular-expression-literals-1
-  (regex "foobar")
+  (regex "/foobar/")
   "/foobar/")
+
+(test-js function-definition-1
+  (defun a-function (a b)
+    (return (+ a b)))
+  "function aFunction(a, b) {
+return a + b;
+}")
+
+(test-js function-calls-and-method-calls-6
+  (.blorg (aref foobar 1) NIL T)
+  "foobar[1].blorg(null, true)")
 
 (test-js function-calls-and-method-calls-4
   (.blorg this 1 2)
@@ -471,44 +468,14 @@ alert('Leaving the try form');
   (this.blorg 1 2)
   "this.blorg(1, 2)")
 
-(test-js function-calls-and-method-calls-6
-  (.blorg (aref foobar 1) NIL T)
-  "foobar[1].blorg(null, true)")
-
-(test-js function-definition-1
-  (defun a-function (a b)
-    (return (+ a b)))
-  "function aFunction(a, b) {
-  return a + b;
-}")
-
 (test-js iteration-constructs-1
   (do ((i 0 (1+ i))
        (l (aref blorg i) (aref blorg i)))
       ((or (= i blorg.length)
 	   (eql l "Fumitastic")))
     (document.write (+ "L is " l)))
-  "for (var i = 0, l = blorg[i];
-     !(i == blorg.length || l == 'Fumitastic');
-     i = i + 1, l = blorg[i]) {
-  document.write('L is ' + l);
-}")
-
-
-(test-js the-case-statement-1
-  (case (aref blorg i)
-    ((1 "one") (alert "one"))
-    (2 (alert "two"))
-    (t (alert "default clause")))
-  "switch (blorg[i]) {
-  case 1:   ;
-  case 'one':
-            alert('one');
-            break;
-  case 2:
-            alert('two');
-            break;
-  default:   alert('default clause');
+  "for (var i=0, l=blorg[i]; !((i == blorg.length) || (l === 'Fumitastic')); i=i + 1, l=blorg[i]) {
+document.write('L is ' + l);
 }")
 
 (test-js the-case-statement-2
@@ -517,10 +484,42 @@ alert('Leaving the try form');
     (2 (alert "I also get here"))
     (default (alert "I always get here")))
   "switch (blorg[i]) {
-  case 1:   alert('If I get here');
-  case 2:   alert('I also get here');
-  default:   alert('I always get here');
+case 1: alert('If I get here');
+case 2: alert('I also get here');
+default: alert('I always get here');
 }")
+
+(test-js the-case-statement-1
+  (case (aref blorg i)
+    ((1 "one") (alert "one"))
+    (2 (alert "two"))
+    (t (alert "default clause")))
+  "switch (blorg[i]) {
+case 1: 
+case 'one': alert('one');
+break;
+case 2: alert('two');
+break;
+default: alert('default clause');
+}")
+
+(test-js object-literals-5
+	 (with-slots (a b c) this
+	   (+ a b c))
+	 "var a = this.a;
+var b = this.b;
+var c = this.c;
+a + b + c")
+;;  "this.a + this.b + this.c;"
+
+(test-js array-literals-3
+  (array (array 2 3)
+	 (array "foobar" "bratzel bub"))
+  "[ [ 2, 3 ], [ 'foobar', 'bratzel bub' ] ]")
+
+;;; -------------------------
+;;; Below is not working yet.
+;;; -------------------------
 
 (test-js the-html-generator-1
   (html ((:a :href "foobar") "blorg"))

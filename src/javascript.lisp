@@ -11,7 +11,8 @@
   (export 'typeof)
   (export 'with)
   (export 'doeach)
-  (export 'try))
+  (export 'try)
+  (export 'default))
 
 (defmacro defjsinfix (name &optional (js-operator nil))
   `(setf (gethash ',name *javascript-infix*) ',(or js-operator name)))
@@ -35,6 +36,9 @@
 	     (declare (ignorable expander))
 	     (destructuring-bind ,args arguments
 	       ,@body))))
+
+(defjssyntax array (&rest a)
+  `(:and ,@(mapcar (rcurry expander expander) a)))
 
 (defjssyntax aref (target slot)
   `(:and ,(funcall expander target expander)
@@ -66,6 +70,9 @@
 
 (defjssyntax delete (arg)
   `(:and "delete " ,(funcall expander arg expander)))
+
+(defjssyntax break ()
+  "break")
 
 (defjssyntax defvar (var value &optional doc)
   (declare (ignore doc))
@@ -125,29 +132,44 @@
 		   expander)
 	 #\Newline "}"))
 
-(defjssyntax switch (&rest arguments)
-  `(:and "switch ("
-	 ,(funcall expander (car arguments) expander)
-	 ") {" #\Newline
-	 ,@(mapcar (lambda (option)
-		     (describe option)
-		     `(:and ,(funcall expander
-				      (if (eql 'default (operator option))
-					  "default"
-					  (operator option))
-				      expander)
-			    ,(funcall expander
-				      (walk-form-no-expand
-				       `(progn
-					  ,@(unwalk-forms (arguments option))))
-				      expander)))
-		   (cdr arguments))))
-
 (defjssyntax slot-value (object slot)
   (if (and (typep slot 'constant-form) (typep (value slot) 'symbol))
       `(:and ,(funcall expander object expander) "." ,(funcall expander slot expander))
       `(:and ,(funcall expander object expander) "[" ,(funcall expander slot expander) "]")))
 
+(defjssyntax switch (object &rest cases)
+  (describe cases)
+  `(:and
+    "switch (" ,(funcall expander object expander) ") {" #\Newline
+    ,@(mapcar (lambda (case)
+		(cond
+		  ((or (eq 'default (operator case))
+		       (eq 't (operator case)))
+		   `(:and "default: "
+			  (:sep (format nil ";~%")
+				',(mapcar (rcurry expander expander) (arguments case)))
+			  ";" #\Newline))
+		  ((atom (operator case))
+		   `(:and "case " ,(funcall expander (walk-form-no-expand (operator case)) expander) ": "
+			  (:sep (format nil ";~%")
+				',(mapcar (rcurry expander expander) (arguments case)))
+			  ";" #\Newline))
+		  (t
+		   `(:and
+		     (:sep #\Newline
+			   ',(mapcar (lambda (case)
+				       (if (or (eq 'default case)
+					       (eq 't case))
+					   "default"
+					   `(:and "case "
+						  ,(funcall expander (walk-form-no-expand case) expander)					       
+						  ": ")))
+				     (operator case)))
+		     (:sep (format nil ";~%")
+			   ',(mapcar (rcurry expander expander) (arguments case)))
+		     ";" #\Newline))))
+	      cases)
+    "}"))
 
 ;; NOTE: This is very ugly but needed only for backward compat with parenscript
 ;; I'll try to implement handler-bind, catch for the use of the newer compiler.
@@ -187,9 +209,6 @@
 (defjsmacr0 unless (a &rest b)
   `(if (not ,a) (progn ,@b)))
 
-(defjsmacr0 array (&rest a)
-  `(quote ,a))
-
 (defjsmacr0 make-array (&rest a)
   `(new (*array ,@a)))
 
@@ -198,6 +217,19 @@
 
 (defjsmacr0 setf (&rest rest)
   `(setq ,@rest))
+
+(defjsmacr0 case (object &rest cases)
+  `(switch ,object
+     ,@(mapcar (lambda (case)
+		 (append case (list 'break)))
+	       (butlast cases))
+     ,(last1 cases)))
+
+(defjsmacr0 with-slots (slots object &body body)
+  `(let ,(mapcar (lambda (slot)
+		   (list slot `(slot-value ,object ',slot)))
+		 slots)
+     ,@body))
 
 (defmacro defjavascript-expander (class (&rest slots) &body body)
   `(defmethod expand-javascript ((form ,class) (expand function))
@@ -210,6 +242,7 @@
   form)
 
 (defjavascript-expander constant-form (value)
+  (describe value)
   (typecase value
     (string
      (format nil "'~A'" value))
@@ -229,8 +262,9 @@
 (defun js-infix-op-p (operator) (if (gethash operator *javascript-infix*) t))
 
 (defjavascript-expander application-form (operator arguments)
-  (acond   
-   ((gethash operator *javascript-syntax*) (funcall it arguments expand))
+  (acond
+   ((gethash operator *javascript-macros*)
+    (funcall expand (walk-form-no-expand (apply it (mapcar #'unwalk-form arguments))) expand))
    ((gethash operator *javascript-infix*)
     (if (and (not (null (parent form)))
 	     (typep (parent form) 'application-form)
@@ -242,14 +276,13 @@
 	`(:sep ,(format nil " ~A " (if (symbolp it)
 				       (format nil "~S" it)
 				       it))
-	       ',(mapcar (rcurry expand expand) arguments))))
-   ((gethash operator *javascript-macros*)
-    (funcall expand (walk-form-no-expand (apply it (mapcar #'unwalk-form arguments))) expand))
+	       ',(mapcar (rcurry expand expand) arguments))))   
    ((char= #\. (aref (symbol-to-js operator) 0))
     `(:and ,(funcall expand (car arguments) expand)
 	   ,(symbol-to-js operator) "("
 	   (:sep ", " ',(mapcar (rcurry expand expand) (cdr arguments)))
 	   ")"))
+   ((gethash operator *javascript-syntax*) (funcall it arguments expand))
    (t
     `(:and ,(symbol-to-js operator) "("
 	   (:sep ", " ',(mapcar (rcurry expand expand) arguments))
