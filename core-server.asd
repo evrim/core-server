@@ -26,7 +26,8 @@
                                   :components
                                   ((:file "helper")
                                    (:file "search")
-                                   (:file "mop")))
+                                   (:file "mop")
+                                   (:file "class+")))
                          (:module :compat
                                   :serial t
                                   :components
@@ -44,7 +45,6 @@
                                    (:file "grammar")
                                    (:file "parser")
                                    (:file "render")))
-                         (:file "class")
                          (:file "command")
                          (:file "config")
                          (:file "method")
