@@ -63,12 +63,10 @@
                                    (:file "2616") ;;http
                                    (:file "2045") ;;mime-part1
                                    (:file "2046") ;;mime-part2
-                                   (:file "2388") ;;multpart/form-data
-                                   )) ;;http
+                                   (:file "2388"))) ;;multpart/form-data                                   
                          (:module :applications
                                   :components
-                                  (;; (:file "ucw")
-                                   (:file "serializable-application")
+                                  ((:file "serializable-application")
                                    (:file "darcs")
                                    (:file "git")
                                    (:file "http")
