@@ -21,7 +21,12 @@
                         :serial t
                         :components
 			((:file "packages")
-                         (:file "helper")
+                         (:module :util
+                                  :serial t
+                                  :components
+                                  ((:file "helper")
+                                   (:file "search")
+                                   (:file "mop")))
                          (:module :compat
                                   :serial t
                                   :components
@@ -36,8 +41,6 @@
                                    (:file "grammar")
                                    (:file "parser")
                                    (:file "render")))
-                         (:file "search")
-                         (:file "mop")
                          (:file "class")
                          (:file "command")
                          (:file "config")
