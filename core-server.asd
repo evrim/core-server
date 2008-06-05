@@ -33,7 +33,10 @@
                                   ((:file "sockets")
                                    (:file "threads")
                                    (:file "prevalence")))
-                         (:file "units")
+                         (:module :units
+                                  :serial t
+                                  :components
+                                  ((:file "units")))
                          (:module :streams
                                   :serial t
                                   :components
