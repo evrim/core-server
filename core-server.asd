@@ -45,7 +45,11 @@
                                    (:file "grammar")
                                    (:file "parser")
                                    (:file "render")))
-                         (:file "command")
+                         (:module :commands
+                                  :serial t
+                                  :components
+                                  ((:file "command")
+                                   (:file "hxpath")))
                          (:file "config")
                          (:file "method")
                          (:file "classes")
@@ -55,10 +59,6 @@
                          (:file "parenscript")
                          (:file "javascript")
                          (:file "html")
-                         (:module :commands
-                                  :serial t
-                                  :components
-                                  ((:file "hxpath")))
                          (:module :rfc
                                   :serial t
                                   :components
