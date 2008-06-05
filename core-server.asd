@@ -22,8 +22,11 @@
                         :components
 			((:file "packages")
                          (:file "helper")
-                         (:file "sockets")
-                         (:file "threads")
+                         (:module :compat
+                                  :serial t
+                                  :components
+                                  ((:file "sockets")
+                                   (:file "threads")))
                          (:file "units")
                          (:module :streams
                                   :serial t
