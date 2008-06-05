@@ -20,7 +20,7 @@
 	       (:module :src
                         :serial t
                         :components
-			((:file "packages")
+			((:file "core-server")
                          (:module :util
                                   :serial t
                                   :components
