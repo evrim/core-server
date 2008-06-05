@@ -25,10 +25,13 @@
                          (:file "sockets")
                          (:file "threads")
                          (:file "units")
-                         (:file "streams")
-                         (:file "grammar")
-                         (:file "parser")
-                         (:file "render")
+                         (:module :streams
+                                  :serial t
+                                  :components
+                                  ((:file "streams")
+                                   (:file "grammar")
+                                   (:file "parser")
+                                   (:file "render")))
                          (:file "prevalence")
                          (:file "search")
                          (:file "mop")
