@@ -26,7 +26,8 @@
                                   :serial t
                                   :components
                                   ((:file "sockets")
-                                   (:file "threads")))
+                                   (:file "threads")
+                                   (:file "prevalence")))
                          (:file "units")
                          (:module :streams
                                   :serial t
@@ -35,7 +36,6 @@
                                    (:file "grammar")
                                    (:file "parser")
                                    (:file "render")))
-                         (:file "prevalence")
                          (:file "search")
                          (:file "mop")
                          (:file "class")
