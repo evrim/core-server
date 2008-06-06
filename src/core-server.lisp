@@ -1,3 +1,14 @@
+;;+----------------------------------------------------------------------------
+;;|
+;;| [Core-serveR] Project - http://labs.core.gen.tr
+;;|
+;;+----------------------------------------------------------------------------
+;;| Author: Evrim Ulu <evrim@core.gen.tr>
+;;| Co-Author: Aycan Irican <aycan@core.gen.tr>
+;;|
+;;| Project launch date: Dec 2006
+;;+----------------------------------------------------------------------------
+
 (in-package :cl-user)
 (defpackage :tr.gen.core.install)
 (defpackage :tr.gen.core.server
@@ -75,7 +86,7 @@
    #:me-p
    #:defmethod/unit
    #:run
-   ;; rfc 2109
+   ;; [RFC 2109]
    #:cookie
    #:cookie.name
    #:cookie.value
@@ -92,14 +103,14 @@
    #:rfc2109-cookie-value?
    #:rfc2109-quoted-value?
    #:cookie?
-   ;; rfc 2045
+   ;; [RFC 2045]
    #:quoted-printable?
    #:quoted-printable!
    #:base64?
    #:base64!
 ;;;; header symbol
    #:quoted-printable
-   ;; rfc 2046
+   ;; [RFC 2046]
 ;;;; classes and methods
    #:mime
    #:mime.headers
@@ -115,9 +126,9 @@
    #:mime.header
 ;;;; header symbols
    #:content-type
-   ;; rfc 2388
+   ;; [RFC 2388]
    #:rfc2388-mimes?
-   ;; rfc 2396
+   ;; [RFC 2396]
    #:uri
    #:uri.scheme
    #:uri.username
@@ -133,13 +144,13 @@
    #:uri?
    #:query!
    #:uri!
-   ;; rfc 822
+   ;; [RFC 822]
    #:mailbox?
-   ;; rfc 2616
-   ;; classes
+   ;; [RFC 2616]
+   ;; Classes
    #:http-request
    #:http-response
-   ;; accessors
+   ;; Accessors
    #:http-message.version
    #:http-message.general-headers
    #:http-message.unknown-headers
@@ -152,7 +163,7 @@
    #:http-response.status-code
 ;;; helpers
    #:escape-parenscript
-   ;; request
+   ;; Http Request
    #:http-accept?
    #:http-accept-charset?
    #:http-accept-encoding?
@@ -174,7 +185,7 @@
    #:http-te?
    #:http-user-agent?
    #:http-response!
-   ;; response
+   ;; HTTP Response
    #:http-accept-ranges!
    #:http-age!
    #:http-etag!
@@ -184,7 +195,7 @@
    #:http-server!
    #:http-vary!
    #:http-www-authenticate!
-   ;; general
+   ;; HTTP General Headers
    #:http-cache-control?
    #:http-cache-control!
    #:http-connection?
@@ -203,8 +214,7 @@
    #:http-via!
    #:http-warning?
    #:http-warning!
-   ;; header symbols
-   ;; request methods
+   ;; HTTP Request methods
    #:OPTIONS
    #:GET
    #:HEAD
@@ -213,7 +223,7 @@
    #:DELETE
    #:TRACE
    #:CONNECT
-   ;; cache request directives
+   ;; Cache Request Directives
    #:NO-CACHE
    #:NO-STORE
    #:MAX-AGE
@@ -221,7 +231,7 @@
    #:MIN-FRESH
    #:NO-TRANSFORM
    #:ONLY-IF-CACHED
-   ;; cache response directives
+   ;; Cache Response Directives
    #:PUBLIC
    #:PRIVATE
    #:NO-CACHE
@@ -231,7 +241,7 @@
    #:PROXY-REVALIDATE
    #:MAX-AGE
    #:S-MAXAGE
-   ;; general headers
+   ;; General Headers
    #:CACHE-CONTROL
    #:CONNECTION
    #:DATE
@@ -241,7 +251,7 @@
    #:UPGRADE
    #:VIA
    #:WARNING
-   ;; request headers
+   ;; Request Headers
    #:ACCEPT
    #:ACCEPT-CHARSET
    #:ACCEPT-ENCODING
@@ -260,7 +270,7 @@
    #:REFERER
    #:TE
    #:USER-AGENT
-   ;; response headers
+   ;; Response Headers
    #:ACCEPT-RANGES
    #:AGE
    #:ETAG
@@ -270,7 +280,7 @@
    #:SERVER
    #:VARY
    #:WWW-AUTHENTICATE
-   ;; entity headers
+   ;; Entity Headers
    #:ALLOW
    #:CONTENT-ENCODING
    #:CONTENT-LANGUAGE
@@ -281,7 +291,7 @@
    #:CONTENT-TYPE
    #:EXPIRES
    #:LAST-MODIFIED
-   ;; browser symbols
+   ;; Browser Symbols
    #:BROWSER
    #:VERSION
    #:OPERA
@@ -292,12 +302,12 @@
    #:SEAMONKEY
    ;; 
    ;; [Protocol]
-   ;; classes
+   ;; Classes
    #:application
    #:web-application
    #:server
    #:web-server
-   ;; accessors
+   ;; Accessors
    #:server.name
    #:server.mutex
    #:web-application.fqdn
@@ -311,10 +321,10 @@
    #:with-server-mutex
 
    ;; [Apache]
-   ;; classes
+   ;; Classes
    #:apache-server
    #:apache-web-application
-   ;; accessors
+   ;; Accessors
    #:apache-web-application.vhost-template-pathname
    #:apache-web-application.redirector-pathname
    #:apache-web-application.default-entry-point
@@ -341,7 +351,7 @@
    #:log-me-raw
 
    ;; [Database]
-   ;; classes
+   ;; Classes
    #:database-server
    #:standard-model-class
    ;; Accessors
@@ -354,14 +364,14 @@
    #:make-database
    #:update-slots
    ;; [Nameserver]
-   ;; classes
+   ;; Classes
    #:name-server
    #:ns-model
    #:ns-mx
    #:ns-alias
    #:ns-ns
    #:ns-host
-   ;; accessors
+   ;; Accessors
    #:name-server.ns-script-pathname
    #:name-server.ns-db-pathname
    #:name-server.ns-root-pathname
@@ -383,7 +393,7 @@
    #:find-domain-records
 
    ;; [Postfix]
-   ;; classes
+   ;; Classes
    #:email-server
    #:postfix-server
    ;; API
@@ -391,7 +401,7 @@
    #:del-email
 
    ;; [Ticket]
-   ;; classes
+   ;; Classes
    #:ticket-model
    #:ticket-server
    ;; API
@@ -403,7 +413,7 @@
    #:ticket-server.db
 
    ;; [Core]
-   ;; classes
+   ;; Classes
    #:core-server
    #:core-web-server
    #:*core-server*
@@ -425,7 +435,7 @@
    ;; [Serializable Application]
    #:serializable-web-application
    ;; [Darcs Web Application]
-   ;; classes
+   ;; Classes
    #:make-darcs-application
    #:darcs-application
    #:src/model
@@ -454,7 +464,7 @@
    #:find-session
    #:find-continuation
    #:with-context ;; helper for defurl
-   #:with-query ;; helper macro
+   #:with-query	  ;; helper macro
    #:defurl
    #:register-url
    #:unregister-url
@@ -518,14 +528,14 @@
    #:mail-sender.port
    #:sendmail
    #:make-mail
-   ;; [filesystem]
+   ;; [Filesystem]
    #:filesystem
    #:filesystem.label
    #:filesystem.root
    #:readfile
    #:writefile
    #:ls
-   ;; [parser]
+   ;; [Parser]
    #:string!
    #:char!
    #:fixnum!
