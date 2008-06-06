@@ -1,55 +1,101 @@
 (in-package :tr.gen.core.server)
 
-;;;-----------------------------------------------------------------------------
-;;; INDIVISIBLE WORKING UNITS
-;;;-----------------------------------------------------------------------------
+;;+----------------------------------------------------------------------------
+;;| Units Framework for [Core-serveR]
+;;+----------------------------------------------------------------------------
+;;
+;; Most servers use worker threads to accomplish certain tasks like handling
+;; incoming connections, evaluating requests and rendering responses.
+;;
+;; Units framework is the abstraction of worker threads on top of the usual
+;; objects. It allows certain messages to be sent and received transparently.
+;;
+;; There are two type of units:
+;; - local-unit: Runs locally
+;; - remote-unit: Runs on another node (not implemented yet)
+;;
+;; To define a new unit, just inherit a new class from local-unit. make a
+;; new instance of that class and say (start *unit*). This would create a
+;; worker thread which eventually will receive and execute your commands.
+;;
+;; To specify commands that unit will execute, use defmethod/unit macro.
+;; When unit is started, your method body will be executed by the worker
+;; thread and result will be passed back.
+;;
+;; Example:
+;;
+;; (defclass my-unit (local-unit)
+;;  ())
+;;
+;; (defmethod/unit :sync ((self my-unit) param-1 param-2)
+;;   (list param-1 param-2))
+;;
+;; There are three types of unit methods:
+;;
+;; i)   :sync - Runs method synchronized, you will be blocked
+;; ii)  :async - Runs method asyncronized, it'll return a zero-arg lambda
+;;        that you can funcall later to get the result.
+;; iii) :async-no-return/:dispatch - Use this if you do not care about
+;;        the return value of the method.
+
 (defclass unit (server)
-  ((name :accessor unit.name :initarg :name :initform "Core-serveR Unit")))
+  ((name :accessor unit.name :initarg :name :initform "[Core-serveR] Unit"))
+  (:documentation "Units Framework Abstract Base Class"))
 
 (defgeneric run (unit)
-  (:documentation "Run method to make this unit work.")
+  (:documentation "Run method to make this unit work")
   (:method ((self null)) nil)
   (:method ((self unit)) t))
 
 (defgeneric unitp (unit)
+  (:documentation "Returns t if 'unit' is a unit")
   (:method ((self null)) nil)
   (:method ((self unit)) t))
 
-(defvar +debug-units-on-error+ t "Debugging flag.")
+(defvar +debug-units-on-error+ t "Debugging flag for Units")
 
 (defclass standard-unit (unit)
   ())
 
 (defclass local-unit (standard-unit)
   ((%thread :initform nil)
-   (%debug-unit :initform nil :initarg :debug-unit)))
+   (%debug-unit :initform nil :initarg :debug-unit))
+  (:documentation "A Local Unit that would execute methods defined by defmethod/unit"))
 
 (defmethod local-unit.status ((self local-unit))
+  "Return t if local-unit is alive and running"
   (and (threadp (s-v '%thread)) (thread-alive-p (s-v '%thread))))
 
 (defmethod start ((self local-unit))
-  (if (not (local-unit.status self))      
+  "Start the local-unit"
+  (if (not (local-unit.status self))
       (prog1 t
 	(setf (s-v '%thread)
 	      (thread-spawn #'(lambda () (run self)) :name (unit.name self))))))
 
 (defmethod stop ((self local-unit))
+  "Stop the local-unit"
   (if (local-unit.status self) (thread-send (s-v '%thread) 'shutdown))
   t)
 
 (defmethod status ((self local-unit))
+  "Returns t if local-unit is running and alive"
   (local-unit.status self))
 
 (defmethod me-p ((self local-unit))
+  "Returns t if current thread is same as local-units' worker thread"
   (or (equal (current-thread) (s-v '%thread)) (not (status self))))
 
 (defmethod send-message ((self local-unit) message)
+  "Send 'message' to the local-unit that would be queued for execution"
   (thread-send (s-v '%thread) message))
 
 (defmethod receive-message ((self local-unit))
+  "Pop a message from local-units thread queue"
   (thread-receive))
 
 (defmethod run ((self local-unit))
+  "Main loop that runs a local-unit"
   (flet ((l00p (message)	   
 	   (cond
 	     ((eq message 'shutdown) (return-from run nil))
@@ -58,6 +104,7 @@
     (loop (l00p (receive-message self)))))
 
 (defmacro defmethod/unit (name &rest args)
+  "Define a method that would be run by the worker thread of the unit"
   (let* ((method-keyword (if (keywordp (car args))
 			     (prog1 (car args) (setq args (cdr args)))))
 	 (method-body (cdr args))
@@ -132,8 +179,11 @@
       #'(lambda () (apply #'values (thread-receive))))))
 
 
-(deftrace unit '(async-method-call start stop send-message receive-message me-p run
-		 debug-condition))
+(deftrace unit
+    '(async-method-call start stop send-message receive-message me-p run
+      debug-condition))
+
+;; TODO: Implement Remote-units, unit manager. -evrim
 
 ;; ;;;-----------------------------------------------------------------------------
 ;; ;;; STANDARD UNIT
