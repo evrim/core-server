@@ -1,8 +1,12 @@
 (in-package :tr.gen.core.server)
 
+;;+----------------------------------------------------------------------------
+;;| Utility functions, macros, etc.
+;;+----------------------------------------------------------------------------
+
 (defmacro deftrace (name methods)
   "Defines +name-methods+ variable, trace-name, untrace-name functions
-for traceing a closed system."
+for traceing a closed system"
   (let ((var-symbol (intern (string-upcase (format nil "+~A-methods+" name))))
 	(trace-symbol (intern (string-upcase (format nil "trace-~A" name))))
 	(untrace-symbol (intern (string-upcase (format nil "untrace-~A" name)))))
@@ -14,7 +18,7 @@ for traceing a closed system."
 	 (mapcar (lambda (e) (eval `(untrace ,e))) methods)))))
 
 (defun flatten (lst &optional (acc nil))
-  "why? why? why?"
+  "Flatten a list tree into a plain list"
   (cond
     ((null lst) acc)
     ((atom lst) (cons lst acc))
@@ -22,7 +26,7 @@ for traceing a closed system."
      (flatten (cdr lst) (flatten (car lst) acc)))))
 
 (defun any (lambda list)
-  "i wonder why missing."
+  "Returns any non-null result when lambda is applied to the any element of list"
   (reduce #'(lambda (acc atom)
 	      (aif (funcall lambda atom)
 		   (return-from any it)
@@ -30,6 +34,7 @@ for traceing a closed system."
 	  list :initial-value nil))
 
 (defun all (lambda list)
+  "Return t if all elements of list satisfies lambda"
   (reduce #'(lambda (acc atom)
 	      (aif (funcall lambda atom)
 		   t
@@ -37,6 +42,7 @@ for traceing a closed system."
 	  list :initial-value t))
 
 (defun plist-to-alist (plist)
+  "Transforms a plist to an alist, keywords are transformed into symbols"
   (let (key)
     (nreverse
      (reduce #'(lambda (acc atom)
@@ -46,13 +52,14 @@ for traceing a closed system."
 		       (setf key nil))))
 	     plist :initial-value nil))))
 
-(defun alist-to-plist (alist)  
-  (reduce #'(lambda (acc atom)	      
+(defun alist-to-plist (alist)
+  "Transforms an alist to a plist, key symbols are transformed into keywords"
+  (reduce #'(lambda (acc atom)
 	      (nreverse (cons (cdr atom) (cons (make-keyword (car atom)) (nreverse acc)))))
 	  alist :initial-value nil))
 
 (defmacro s-v (slot-name)
-  "slot-value self slot-name"
+  "Expands to (slot-value self slot-name)"
   `(slot-value self ,slot-name))
 
 (defmacro seq (how-many)
@@ -62,52 +69,50 @@ for traceing a closed system."
        (push n result))))
 
 (defun drop (n lst)
+  "Drop n element from the head of lst and return rest"
   (subseq lst n))
 
 (defun take (n lst)
+  "Take n elements from the head of lst and return"
   (subseq lst 0 n))
 
-(defun fix-apache-permissions (pathname)
-  (sb-ext:run-program +sudo+ (cons (namestring +chown+)
-				   (list (format nil "~A:~A" +apache-user+ +apache-group+)					   
-					 (namestring pathname))))
-  (sb-ext:run-program +sudo+ (cons (namestring +chmod+)
-				   (list "660" (namestring pathname)))))
+(defmacro with-package (package &body body)
+  "Executes body while setting current package to 'package'"
+  `(let ((*package* (find-package ,package)))
+     ,@body))
 
-
-;;; http://paste.lisp.org/display/9527
-;;; greetz goes to andreas
-(defmacro with-current-directory (dir &body body)
-  `(unwind-protect (progn
-                     (sb-posix:chdir ,dir)
-                     (let ((*default-pathname-defaults* ,dir))
-                       ,@body))
+(defmacro with-current-directory (directory &body body)
+  "Executes body while setting current directory to 'directory'"
+  `(unwind-protect
+	(progn
+	  (sb-posix:chdir ,directory)
+	  (let ((*default-pathname-defaults* ,directory))
+	    ,@body))
      (sb-posix:chdir *default-pathname-defaults*)))
 
 (defmacro make-project-path (system path)
+  "Generates asdf-system relative directory pathname to the project source directory"
   `(merge-pathnames (make-pathname :directory '(:relative ,path))
                     (asdf:component-pathname (asdf:find-system ,system))))
 
-;; DNS aids
-(defun host-part (fqdn)
-  (awhen (position #\. fqdn)
-    (subseq fqdn 0 it)))
+(defparameter +day-names+
+  '((:tr "Pazartesi" "Salı" "Çarşamba" "Perşembe" "Cuma" "Cumartesi" "Pazar")
+    (:en "Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday" "Sunday"))
+  "Day names in different languages in UTF-8")
 
-(defun domain-part (fqdn)
-  (awhen (position #\. fqdn)
-    (subseq fqdn (+ 1 it))))
-
-(defmacro with-package (package &body b0dy)  
-  `(let ((*package* (find-package ,package)))
-     ,@b0dy))
-
-(defparameter +day-names+ '((:tr "Pazartesi" "Salı" "Çarşamba" "Perşembe" "Cuma" "Cumartesi" "Pazar")
-			    (:en "Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday" "Sunday")))
-(defparameter +month-names+ '((:tr "Ocak" "Şubat" "Mart" "Nisan" "Mayıs" "Haziran" "Temmuz"
-			       "Ağustos" "Eylül" "Ekim" "Kasım" "Aralık")
-			      (:en "January" "February" "March" "April" "May" "June" "July" "August" "September" "October" "November" "December")))
+(defparameter +month-names+
+  '((:tr "Ocak" "Şubat" "Mart" "Nisan" "Mayıs" "Haziran" "Temmuz"
+     "Ağustos" "Eylül" "Ekim" "Kasım" "Aralık")
+    (:en "January" "February" "March" "April" "May" "June" "July"
+     "August" "September" "October" "November" "December"))
+  "Month names in different languages in UTF-8")
 
 (defun time->string (time &optional mode (lang :tr))
+  "Converts a timestamp to a human readable string. There are few modes:
+i)  :date  - 06. June, 2008 - Friday
+ii) :short - 06/06 17:30
+iii):long  - 06 June 2008 Friday, 17:30:38
+iv) t      - 06/06/2008 17:30"
   (multiple-value-bind (second minute hour day month year day-of-week dst-p tz)
       (decode-universal-time time)
     (declare (ignore tz dst-p))
@@ -122,24 +127,28 @@ for traceing a closed system."
       (t (format nil "~2,'0d/~2,'0d/~d ~2,'0d:~2,'0d" day month year hour minute)))))
 
 (defun time->ymd (time)
+  "Converts a timestamp to a human readable string, ie: '2005-06-21' (Year/month/Day)"
   (multiple-value-bind (second minute hour day month year day-of-week dst-p tz)
       (decode-universal-time time)
     (declare (ignore tz dst-p))
     (format nil "~d-~2,'0d-~2,'0d" year month day)))
 
 (defun time->dmy (time)
+  "Converts a timestamp to a human readable string, ie: '31-12-2005' (Day/month/Year)"
   (multiple-value-bind (second minute hour day month year day-of-week dst-p tz)
       (decode-universal-time time)
     (declare (ignore tz dst-p))
     (format nil "~2,'0d-~2,'0d-~d" day month year)))
 
 (defun time->hm (time)
+  "Converts a timestamp to a human readable string, ie: '13:55' (Hour:minute)"
   (multiple-value-bind (second minute hour day month year day-of-week dst-p tz)
       (decode-universal-time time)
     (declare (ignore tz dst-p))
     (format nil "~2,'0d:~2,'0d" hour minute)))
 
 (defun hm->time (hm-str)
+  "Returns a timestamp for the specified string in 'Hour:minute'"
   (cond
     ((null hm-str) nil)
     (t (let ((val (cl-ppcre:split #\: hm-str)))
@@ -148,8 +157,8 @@ for traceing a closed system."
 					    collect (parse-integer (nth i val) :junk-allowed t))))
 			(list 1 1 0)))))))
 
-;; given seconds, return hours as string
 (defun seconds->hours (seconds)
+  "Given seconds, returns hours as string, DD/hh/mm"
   (let* ((second-minute 60)
          (second-hour (* second-minute 60))
          (second-day (* second-hour 24))
@@ -165,6 +174,7 @@ for traceing a closed system."
     (format nil "~D:~D:~D" day hour minute)))
 
 (defun ymd->time (ymd)
+  "Given YY-mm-dd, return corresponding timestamp"
   (cond
     ((null ymd) nil)
     (t (apply #'encode-universal-time
@@ -174,31 +184,31 @@ for traceing a closed system."
 			      (reverse (cl-ppcre:split #\- ymd))))))))
 
 (defun combine-date-time (date time)
+  "Combines two timestamps given, taking date values from 'date', time values from 'time'"
   (multiple-value-bind (s1 min1 h1 d1 m1 y1 day-of-week-1 dst1 tz1) (decode-universal-time date)
     (multiple-value-bind (s2 min2 h2 d2 m2 y2 day-of-week-2 dst2 tz2) (decode-universal-time time)
       (encode-universal-time s2 min2 h2 d1 m1 y1))))
 
 (defun string-replace-all (old new big)
-  "Replace all occurences of OLD string with NEW
-string in BIG string."
+  "Replace all occurences of OLD string with NEW string in BIG string."
   (do ((newlen (length new))
        (oldlen (length old))
        (i (search old big)
           (search old big :start2 (+ i newlen))))
       ((null i) big)
     (setq big
-	  (concatenate 'string
-		       (subseq big 0 i)
-		       new
-		       (subseq big (+ i oldlen))))))
+	  (concatenate 'string (subseq big 0 i) new (subseq big (+ i oldlen))))))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defmethod make-keyword ((str string))
-    (intern (string-upcase str) :keyword)))
+    "Returns keyword for the string 'str'"
+    (intern (string-upcase str) :keyword))
 
-(defmethod make-keyword ((sym symbol))
-  (intern (symbol-name sym) :keyword))
+  (defmethod make-keyword ((sym symbol))
+    "Returns keyword for the symbol 'sym'"
+    (intern (symbol-name sym) :keyword)))
 
+;; TODO: move below to where they belong. -evrim.
 (defun escape-parenscript (string)
   (core-server::return-stream   
    (let ((input (make-core-stream string))
@@ -213,80 +223,18 @@ string in BIG string."
 	    (core-server::hex-value! output peek)))	 	 
 	 (t (core-server::byte! output peek)))))))
 
-#+nil
-(progn
-  (defvar +tr-alphabet+
-    "ABCÇDEFGĞHIİJKLMNOÖPQRSŞTUÜVWXYZabcçdefgğhıijklmnoöpqrsştuüvwxyz")
+;; DNS aids
+(defun host-part (fqdn)
+  (awhen (position #\. fqdn)
+    (subseq fqdn 0 it)))
 
-  (defun tr2en (str)
-    "Convert a turkish string to corresponding ascii string."
-    (nsubstitute #\s #\ş str) (nsubstitute #\S #\Ş str)
-    (nsubstitute #\i #\ı str) (nsubstitute #\I #\İ str)
-    (nsubstitute #\g #\ğ str) (nsubstitute #\G #\Ğ str)
-    (nsubstitute #\c #\ç str) (nsubstitute #\C #\Ç str)
-    (nsubstitute #\u #\ü str) (nsubstitute #\U #\Ü str)
-    (nsubstitute #\o #\ö str) (nsubstitute #\O #\Ö str)
-    str)
-  
-  (defun tr-char-upcase (a)
-    (case a
-      ((#\ı #\i)
-       (aref +tr-alphabet+ (- (position a +tr-alphabet+) 32)))
-      (otherwise (char-upcase a))))
+(defun domain-part (fqdn)
+  (awhen (position #\. fqdn)
+    (subseq fqdn (+ 1 it))))
 
-  (defun tr-char-downcase (a)
-    (case a
-      ((#\I #\İ)
-       (aref +tr-alphabet+ (+ (position a +tr-alphabet+) 32)))
-      (otherwise (char-downcase a))))
-
-  (defun tr-string-upcase (str)
-    (reduce #'(lambda (acc item) (vector-push-extend (tr-char-upcase item) acc) acc)
-	    str
-	    :initial-value (make-array 0 :fill-pointer 0 :element-type 'character)))
-
-  (defun tr-string-downcase (str)  
-    (reduce #'(lambda (acc item) (vector-push-extend (tr-char-downcase item) acc) acc)
-	    str
-	    :initial-value (make-array 0 :fill-pointer 0 :element-type 'character)))
-
-  (defun tr-char< (a b) 
-    (if (eq a b)
-	nil
-	(let* ((posa (position a +tr-alphabet+))
-	       (posb (position b +tr-alphabet+)))
-	  (if (and posa posb)
-	      (> posa posb)
-	      (char< a b)))))
-
-  (defun tr-char> (a b)
-    (if (eq a b)
-	nil
-	(not (tr-char< a b))))
-
-  ;; (and
-  ;;   (tr-string< "aycan" "AYCAN")
-  ;;   (tr-string< "aYcaN" "Aycan")
-  ;;   (tr-string< "aycan" "aycaN")
-  ;;   (equal (sort (list "ABC" "Abc" "abc" "aBC") #'string<)
-  ;;          (tr-sort (list "ABC" "Abc" "abc" "aBC") #'tr-string>)))
-
-  (defun tr-string< (a b) 
-    (let ((len (min (length a) (length b)))
-	  (result nil))
-      (dotimes (i len)
-	(if (tr-char< (aref a i) (aref b i))
-	    (return-from tr-string< t))
-	(if (tr-char< (aref b i) (aref a i))
-	    (return-from tr-string< nil)))
-      nil))
-
-  (defun tr-string> (a b)
-    (not (tr-string< a b)))
-
-  (defun tr-sort (list test &key (key #'identity)) 
-    (sort (copy-list list)
-	  (lambda (a b)
-	    (funcall test a b))
-	  :key key))
-  )
+(defun fix-apache-permissions (pathname)
+  (sb-ext:run-program +sudo+ (cons (namestring +chown+)
+				   (list (format nil "~A:~A" +apache-user+ +apache-group+)					   
+					 (namestring pathname))))
+  (sb-ext:run-program +sudo+ (cons (namestring +chmod+)
+				   (list "660" (namestring pathname)))))

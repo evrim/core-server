@@ -1,15 +1,21 @@
 (in-package :core-server)
 
-;; Standard successors
+;;+----------------------------------------------------------------------------
+;;| Utilities for meta-object-protocol (mop)
+;;+----------------------------------------------------------------------------
+
 (defun class-successors (class &optional (base 'component))
-  (if (eq class (find-class base))
-      nil
-      (sb-mop:class-direct-superclasses class)))
+  "Returns direct superclasses of the 'class'"
+  (let ((class (if (symbolp class) (find-class class) class)))
+    (if (eq class (find-class base nil))
+	nil
+	(sb-mop:class-direct-superclasses class))))
 
 ;; INSTALL> (class-superclasses 'c)
 ;; (#<STANDARD-CLASS C> #<STANDARD-CLASS B> #<STANDARD-CLASS A>
 ;;  #<STANDARD-CLASS COMMAND>)
 (defun class-superclasses (class &optional (base 'component) &aux lst)
+  "Returns all superclasses of the given 'class'"
   (let ((class (if (symbolp class) (find-class class) class)))
     (core-search (cons class (copy-list (sb-mop:class-direct-superclasses class)))
 		 #'(lambda (atom) (pushnew atom lst) nil) 
@@ -21,6 +27,7 @@
 ;; ((:ARG-B 'ARG-B-OVERRIDEN-BY-C #<FUNCTION {BC06125}>)
 ;;  (:ARG-A 'ARG-A-OVERRIDEN-BY-C #<FUNCTION {BC06195}>))
 (defun class-default-initargs (class &optional (base 'component) &aux lst)
+  "Returns default-initargs of the given 'class'"
   (core-search (cons (find-class class)
 		     (copy-list
 		      (sb-mop:class-direct-superclasses (find-class class))))
