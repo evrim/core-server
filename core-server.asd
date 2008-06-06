@@ -50,7 +50,7 @@
                                   :components
                                   ((:file "command")
                                    (:file "hxpath")))
-                         (:file "config")
+                         (:file "vars")
                          (:file "method")
                          (:file "classes")
                          (:file "protocol")
