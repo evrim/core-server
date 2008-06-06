@@ -1,7 +1,14 @@
 (in-package :s-serialization)
 
+;;+----------------------------------------------------------------------------
+;;| Cl-Prevalence Compat Functions
+;;+----------------------------------------------------------------------------
+;;
+;; This file overrides some properties of cl-prevalence database.
+
 #+sbcl
 (defmethod serialize-sexp-internal ((object pathname) stream serialization-state)
+  "Serialize a pathname structure to prevalence log file"
   (let ((id (known-object-id serialization-state object)))
     (if id
 	(progn
@@ -21,52 +28,60 @@
 	  (write-string " )" stream)))))
 
 (defun deserialize-sexp-internal (sexp deserialized-objects)
+  "Overrides the real function and adds de/serialization of pathname objects to
+prevalence log file."
   (if (atom sexp) 
       sexp
       (ecase (first sexp)
-        (:sequence (destructuring-bind (id &key class size elements) (rest sexp)
-                     (let ((sequence (make-sequence class size)))
-                       (setf (gethash id deserialized-objects) sequence)
-                       (map-into sequence 
-                                 #'(lambda (x) (deserialize-sexp-internal x deserialized-objects)) 
-                                 elements))))
-        (:hash-table (destructuring-bind (id &key test size rehash-size rehash-threshold entries) (rest sexp)
-                       (let ((hash-table (make-hash-table :size size 
-                                                          :test test 
-                                                          :rehash-size rehash-size 
-                                                          :rehash-threshold rehash-threshold)))
-                         (setf (gethash id deserialized-objects) hash-table)
-                         (dolist (entry entries)
-                           (setf (gethash (deserialize-sexp-internal (first entry) deserialized-objects) hash-table)
-                                 (deserialize-sexp-internal (rest entry) deserialized-objects)))
-                         hash-table)))
-        (:object (destructuring-bind (id &key class slots) (rest sexp)
-                   (let ((object (make-instance class)))
-                     (setf (gethash id deserialized-objects) object)
-                     (dolist (slot slots)
-                       (when (slot-exists-p object (first slot))
-                         (setf (slot-value object (first slot)) 
-                               (deserialize-sexp-internal (rest slot) deserialized-objects))))
-                     object)))
-        (:struct (destructuring-bind (id &key class slots) (rest sexp)
-                   (let ((object (funcall (intern (concatenate 'string "MAKE-" (symbol-name class)) 
-                                                  (symbol-package class)))))
-                     (setf (gethash id deserialized-objects) object)
-                     (dolist (slot slots)
-                       (when (slot-exists-p object (first slot))
-                         (setf (slot-value object (first slot)) 
-                               (deserialize-sexp-internal (rest slot) deserialized-objects))))
-                     object)))
-        (:cons (destructuring-bind (id cons-car cons-cdr) (rest sexp)
-                 (let ((conspair (cons nil nil)))
-                   (setf (gethash id deserialized-objects)
-                         conspair)                   
-                   (rplaca conspair (deserialize-sexp-internal cons-car deserialized-objects))
-                   (rplacd conspair (deserialize-sexp-internal cons-cdr deserialized-objects)))))
+        (:sequence
+	 (destructuring-bind (id &key class size elements) (rest sexp)
+	   (let ((sequence (make-sequence class size)))
+	     (setf (gethash id deserialized-objects) sequence)
+	     (map-into sequence 
+		       #'(lambda (x) (deserialize-sexp-internal x deserialized-objects)) 
+		       elements))))
+        (:hash-table
+	 (destructuring-bind (id &key test size rehash-size rehash-threshold entries) (rest sexp)
+	   (let ((hash-table (make-hash-table :size size 
+					      :test test 
+					      :rehash-size rehash-size 
+					      :rehash-threshold rehash-threshold)))
+	     (setf (gethash id deserialized-objects) hash-table)
+	     (dolist (entry entries)
+	       (setf (gethash (deserialize-sexp-internal (first entry) deserialized-objects) hash-table)
+		     (deserialize-sexp-internal (rest entry) deserialized-objects)))
+	     hash-table)))
+        (:object
+	 (destructuring-bind (id &key class slots) (rest sexp)
+	   (let ((object (make-instance class)))
+	     (setf (gethash id deserialized-objects) object)
+	     (dolist (slot slots)
+	       (when (slot-exists-p object (first slot))
+		 (setf (slot-value object (first slot)) 
+		       (deserialize-sexp-internal (rest slot) deserialized-objects))))
+	     object)))
+        (:struct
+	 (destructuring-bind (id &key class slots) (rest sexp)
+	   (let ((object (funcall (intern (concatenate 'string "MAKE-" (symbol-name class)) 
+					  (symbol-package class)))))
+	     (setf (gethash id deserialized-objects) object)
+	     (dolist (slot slots)
+	       (when (slot-exists-p object (first slot))
+		 (setf (slot-value object (first slot)) 
+		       (deserialize-sexp-internal (rest slot) deserialized-objects))))
+	     object)))
+        (:cons
+	 (destructuring-bind (id cons-car cons-cdr) (rest sexp)
+	   (let ((conspair (cons nil nil)))
+	     (setf (gethash id deserialized-objects)
+		   conspair)                   
+	     (rplaca conspair (deserialize-sexp-internal cons-car deserialized-objects))
+	     (rplacd conspair (deserialize-sexp-internal cons-cdr deserialized-objects)))))
         (:ref (gethash (rest sexp) deserialized-objects))
 	#+sbcl
-	(:pathname (destructuring-bind (id &key directory name type) (rest sexp) 
-		     (let ((pathname (make-pathname :directory (deserialize-sexp-internal directory deserialized-objects)
-						    :name (deserialize-sexp-internal name deserialized-objects)
-						    :type (deserialize-sexp-internal type deserialized-objects))))
-		       (setf (gethash id deserialized-objects) pathname)))))))
+	(:pathname
+	 (destructuring-bind (id &key directory name type) (rest sexp) 
+	   (let ((pathname (make-pathname :directory (deserialize-sexp-internal directory deserialized-objects)
+					  :name (deserialize-sexp-internal name deserialized-objects)
+					  :type (deserialize-sexp-internal type deserialized-objects))))
+	     (setf (gethash id deserialized-objects) pathname)))))))

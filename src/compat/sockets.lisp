@@ -1,15 +1,19 @@
 (in-package :tr.gen.core.server)
 
-;;;-----------------------------------------------------------------------------
-;;; BSD SOCKETS, mostly from trivial-sockets.
-;;;-----------------------------------------------------------------------------
+;;+----------------------------------------------------------------------------
+;;| BSD Sockets Compatibilty Functions
+;;+----------------------------------------------------------------------------
+;;
+;; This file contains compat layer for BSD Sockets
+
 (defun resolve-hostname (name)
+  "Resolves the host 'name' by using gethostbyname(3)"
   (cond
    ((typep name '(vector * 4)) name)
    (t (car (host-ent-addresses (get-host-by-name name))))))
 
-(defun make-server (&key (host (vector 0 0 0 0)) (port 0) (reuse-address t) (backlog 1)
-			 (protocol :tcp))
+(defun make-server (&key (host (vector 0 0 0 0)) (port 0) (reuse-address t)
+		    (backlog 1) (protocol :tcp))
   "Returns a SERVER object and the port that was bound, as multiple values"
   (let ((socket (make-instance 'inet-socket :type :stream :protocol protocol)))
     (when reuse-address
@@ -20,9 +24,11 @@
 	    (multiple-value-list (socket-name socket)))))
 
 (defun close-server (server)
+  "Closes a server socket created by make-server"
   (socket-close server))
 
 (defun accept (socket &key (element-type '(unsigned-byte 8)))
+  "Returns a new client core-stream that is just connected to 'socket'"
   (multiple-value-bind (s peer) (socket-accept socket)
     (values (make-core-stream (socket-make-stream s
 						  :input t :output t
@@ -31,7 +37,9 @@
             peer)))
 
 (defun connect (server-host server-port
-		&key (element-type '(unsigned-byte 8)) (protocol :tcp))  
+		&key (element-type '(unsigned-byte 8)) (protocol :tcp))
+  "Connects to the specified 'server-host' 'server-port' and returns a new
+core-stream"
   (let ((socket (make-instance 'inet-socket :type :stream :protocol protocol)))
     (socket-connect socket (resolve-hostname server-host) server-port)
     (make-core-stream (socket-make-stream socket :input t :output t
