@@ -161,9 +161,9 @@
 (defrecord-finder alias)
 (defrecord-finder ns)
 (defrecord-finder mx)
-
-(defclass tinydns-add-mixin ()
-  ((root :initform #P"/service/tinydns/root/")))
+(eval-when (:execute :compile-toplevel :load-toplevel)
+  (defclass tinydns-add-mixin ()
+    ((root :initform #P"/service/tinydns/root/"))))
 
 (defmethod run ((self tinydns-add-mixin))
   (with-current-directory (slot-value self 'root)
