@@ -122,3 +122,28 @@
      (setq anchor (skeleton-read "Page anchor:"))
      (setq page-name (buffer-name (current-buffer))))
   "<a href=\"" page-name "#" anchor "\" onclick=\"return coretal.loadPage('" anchor "');\">" str "</a>")
+
+(defun make-backup-file-name (file)
+  "Create the non-numeric backup file name for FILE.
+Normally this will just be the file's name with `~' appended.
+Customization hooks are provided as follows.
+
+If the variable `make-backup-file-name-function' is non-nil, its value
+should be a function which will be called with FILE as its argument;
+the resulting name is used.
+
+Otherwise a match for FILE is sought in `backup-directory-alist'; see
+the documentation of that variable.  If the directory for the backup
+doesn't exist, it is created."
+  (if make-backup-file-name-function
+      (funcall make-backup-file-name-function file)
+      (if (and (eq system-type 'ms-dos) (not (msdos-long-file-names)))
+	  (let ((fn (file-name-nondirectory file)))
+	    (concat (file-name-directory file)
+		    "."
+		    (or (and (string-match "\\`[^.]+\\'" fn)
+			     (concat (match-string 0 fn) ".~"))
+			(and (string-match "\\`[^.]+\\.\\(..?\\)?" fn)
+			     (concat (match-string 0 fn) "~")))))
+	  (let ((fname (make-backup-file-name-1 file)))
+	    (concat (file-name-directory fname) "." (file-name-nondirectory fname) "~")))))
