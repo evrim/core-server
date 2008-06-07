@@ -17,34 +17,33 @@
 
 (in-package :core-server)
 
-(defgeneric serialize-source (app symbol)
-  (:documentation "Serialize a new source for application")
-  (:method ((self null) symbol) t))
-(defgeneric serialize-asd (app)
-  (:documentation "Serialize system definition"))
-(defgeneric source-to-pathname (app symbol)
-  (:documentation "todo"))
-(defgeneric serialize (app)
-  (:documentation "Serialize application"))
-
-(defgeneric package-keyword (app &optional long)
-  (:documentation "Package name for our new application"))
-
-(defgeneric src/packages (app)
-  (:documentation "Serialize a source directory"))
-(defgeneric src/model (app)
-  (:documentation "Serialize a source directory"))
-(defgeneric src/tx (app)
-  (:documentation "Serialize a source directory"))
-(defgeneric src/interfaces (app)
-  (:documentation "Serialize a source directory"))
-(defgeneric src/application (app)
-  (:documentation "Serialize a source directory"))
-(defgeneric src/security (app)
-  (:documentation "Serialize a source directory"))
-(defgeneric src/ui/main (app)
-  (:documentation "Serialize a source directory"))
-
+;;+----------------------------------------------------------------------------
+;;| Serializable Application
+;;+----------------------------------------------------------------------------
+;;
+;; This file contains base implementation of serializable application. The main
+;; aim is to create a stub object that holds some important properties of our
+;; application. This object is created by executing function:
+;;
+;; (make-serializable-application (fqdn project-name admin-email project-pathname
+;;                                 &optional htdocs-pathname use depends-on))
+;;
+;; Above method creates a stub application object so that we serialize it to disk:
+;;
+;; (serialize *stub*)
+;; 
+;; See http://labs.core.gen.tr/#firstapp for a detailed tutorial.
+;;
+;; Currently, there are three types of serializable application:
+;;
+;;    SCM     Class
+;; ------------------------------------
+;; 1)  -      serializable-application
+;; 2) Darcs   darcs-application
+;; 3)  Git    git-application
+;;
+;; Refer to src/classes.lisp for class definitions.
+;; 
 (defmethod package-keyword ((self serializable-web-application) &optional long)
   (or (and long (make-keyword (strcat "tr.gen.core." (web-application.project-name self))))
       (make-keyword (web-application.project-name self))))
@@ -60,7 +59,8 @@
 
 (defmethod serialize-source ((self serializable-web-application) symbol)
   (with-package :core-server
-    (with-open-file (out (source-to-pathname self symbol) :direction :output :if-does-not-exist :create :if-exists :supersede)
+    (with-open-file (out (source-to-pathname self symbol)
+			 :direction :output :if-does-not-exist :create :if-exists :supersede)
       (let ((*print-escape* nil)
 	    (*print-pretty* t))
 	(mapcar #'(lambda (line)
@@ -220,7 +220,9 @@
 ;;        (<:div :id "footer" (footer)))
      ))
 
-(defun make-serializable-application (fqdn project-name admin-email project-pathname &optional htdocs-pathname use depends-on)
+(defun make-serializable-application (fqdn project-name admin-email project-pathname
+				      &optional htdocs-pathname use depends-on)
+  "Returns a new serializable application object having provided parameters"
   (let ((params (list :fqdn fqdn
 		      :project-name project-name
 		      :admin-email admin-email

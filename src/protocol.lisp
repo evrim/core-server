@@ -21,8 +21,8 @@
 ;;| Server Protocol
 ;;+----------------------------------------------------------------------------
 ;;
-;; This file defines the generic server protocol.
-
+;; Definition of generic server protocol.
+;;
 (defgeneric start (server)
   (:documentation "Starts the server. This method is surrounded by server.mutex")
   (:method-combination sysv-standard :type :start)
@@ -79,3 +79,46 @@
 
 (defgeneric generate-tickets (server amount type)
   (:documentation "Generate given amount of tickets with random hash"))
+
+;;+----------------------------------------------------------------------------
+;;| Application Protocol
+;;+----------------------------------------------------------------------------
+;;
+;; Definition of generic application protocol
+;;
+(defgeneric serialize-source (app symbol)
+  (:documentation "Serialize a new source for application")
+  (:method ((self null) symbol) t))
+
+(defgeneric serialize-asd (app)
+  (:documentation "Serialize system definition"))
+
+(defgeneric source-to-pathname (app symbol)
+  (:documentation "todo"))
+
+(defgeneric serialize (app)
+  (:documentation "Serialize application to project path"))
+
+(defgeneric package-keyword (app &optional long)
+  (:documentation "Package name for our new application"))
+
+(defgeneric src/packages (app)
+  (:documentation "Returns src/packages.lisp sexp"))
+
+(defgeneric src/model (app)
+  (:documentation "Returns src/model.lisp sexp"))
+
+(defgeneric src/tx (app)
+  (:documentation "Returns src/tx.lisp sexp"))
+
+(defgeneric src/interfaces (app)
+  (:documentation "Returns src/interfaces.lisp sexp"))
+
+(defgeneric src/application (app)
+  (:documentation "Returns src/application.lisp sexp"))
+
+(defgeneric src/security (app)
+  (:documentation "Returns src/security.lisp sexp"))
+
+(defgeneric src/ui/main (app)
+  (:documentation "Returns src/ui/main.lisp sexp"))
