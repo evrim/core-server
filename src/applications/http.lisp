@@ -17,44 +17,65 @@
 
 (in-package :core-server)
 
-(defvar +continuation-query-name+ "k")
-(defvar +session-query-name+ "s")
-(defvar +context+ nil)
-(defvar +html-output+ nil)
-(defvar +k+ nil)
+;;+----------------------------------------------------------------------------
+;;| HTTP Application
+;;+----------------------------------------------------------------------------
+;;
+;; This file contains HTTP application implementation.
+;;
+(defvar +continuation-query-name+ "k"
+  "Query key for continuations")
+
+(defvar +session-query-name+ "s"
+  "Query key for sessions")
+
+(defvar +context+ nil
+  "A special variable that holds HTTP context")
+
+(defvar +html-output+ nil
+  "A special variable that holds HTML output stream")
+
+(defvar +k+ nil
+  "A special variable that holds current continuation")
 
 (defmacro with-query (queries request &body body)
+  "Executes 'body' while binding 'queries' from 'request'"
   `(let ,(mapcar #'(lambda (p)
-		     `(,(car p) (or (uri.query (http-request.uri ,request) ,(cadr p))
-				    ,(caddr p))))
+		     `(,(car p)
+			(or (uri.query (http-request.uri ,request) ,(cadr p))
+			    ,(caddr p))))
 		 queries)
      ,@body))
 
-(defclass http-application (web-application)
-  ((urls :accessor application.urls :initarg :urls :initform '())
-   (sessions :accessor application.sessions :initform (make-hash-table :test #'equal))))
-
-(defmethod print-object ((self http-application) stream)
-  (print-unreadable-object (self stream :type t :identity t)
-    (format stream "FQDN:\"~A\" is ~Arunning." (web-application.fqdn self)
-	    (if (status self) "" "*not* "))))
-
 (defmethod find-session ((self http-application) id)
+  "Returns the session associated with 'id'"
   (gethash id (application.sessions self)))
 
 (defmethod find-continuation ((self http-application) id)
+  "Returns the continuation associated with 'id'"
   (maphash #'(lambda (k session)
 	       (aif (gethash id (continuations session))
 		    (return-from find-continuation (values it session))))
 	   (application.sessions self)))
 
 (defmacro with-context (context &body body)
+  "Executes 'body' with HTTP context bind to 'context'"
   `(with-call/cc
      (let ((+context+ ,context))
        (declare (special +context+))
        ,@body)))
 
+;; (defmacro with-context ((arg uri application) &body body)
+;;   `(let ((,arg (make-new-context ,application
+;; 				 (make-instance 'http-request :uri ,uri)
+;; 				 (make-response *core-output*)
+;; 				 nil)))
+;;      ,@body))
+
+
 (defmacro defurl (application regexp-url queries &body body)
+  "Defines a new entry point to 'application' having url
+'regexp-url'. 'queries' are bounded while executing 'body'"
   `(register-url ,application ,regexp-url
 		 (lambda (context)
 		   (let ((+html-output+ (http-response.stream (response context))))
@@ -63,51 +84,42 @@
 		       (with-query ,queries (request +context+)
 			 ,@body))))))
 
-(defmethod register-url ((self http-application) regexp-url lambda)  
+(defmethod register-url ((self http-application) regexp-url lambda)
+  "Registers a new 'regexp-url' to application to execute 'lambda'
+when requested"
   (setf (application.urls self)
 	(append (unregister-url self regexp-url)
 		(list (list regexp-url (cl-ppcre:create-scanner regexp-url) lambda)))))
 
 (defun make-dispatcher (regexp-string handler)
+  "Returns a new dispatcher list having url 'regexp-string' and lambda
+'handler'"
   (list regexp-string (cl-ppcre:create-scanner regexp-string) handler))
 
 (defmethod unregister-url ((self http-application) regexp-url)
+  "Removes 'regexp-url' from applications handlers"
   (setf (application.urls self)
 	(remove regexp-url (application.urls self) :test #'equal :key #'car)))
 
 (defmethod find-url ((self http-application) regexp-url)
+  "Returns associated dispatcher with 'regexp-url'"
   (aif (any #'(lambda (url)
 		(and (cl-ppcre:scan-to-strings (cadr url) regexp-url :sharedp t) url))
 	    (application.urls self))
-       (caddr it))
-;;;   (caddr (find regexp-url (application.urls self) :test #'equal :key #'car))
-  )
-
-(defclass http-session ()
-  ((id :reader id :initform (random-string 8))
-   (continuations :reader continuations :initform (make-hash-table :test #'equal)) 
-   (timestamp :accessor timestamp :initform (get-universal-time))
-   (data :accessor session-data :initform (make-hash-table :test #'equal))))
+       (caddr it)))
 
 (defun make-new-session ()
+  "Returns a new empty session"
   (make-instance 'http-session))
 
-(defclass http-context (core-cps-stream)
-  ((request :accessor request :initarg :request :initform nil)
-   (response :accessor response :initarg :response :initform nil)
-   (session :accessor session :initarg :session :initform nil)
-   (application :accessor application :initarg :application :initform nil)
-   (continuation :accessor continuation :initform nil)
-   (returns :accessor returns :initform nil)))
-
 (defun make-new-context (application request response session)
+  "Returns a new HTTP context having parameters provided"
   (make-instance 'http-context
-		 :application application
-		 :request request
-		 :response response
-		 :session session))
+		 :application application :request request
+		 :response response :session session))
 
 (defmethod copy-context ((self http-context))
+  "Returns a copy of the HTTP context 'self'"
   (let ((s (copy-core-stream self)))
     (change-class s (find-class 'http-context))
     (setf (slot-value s 'application) (s-v 'application)
@@ -116,6 +128,7 @@
     s))
 
 (defmethod session ((self http-context))
+  "Return the session of the HTTP context 'self', creates if none exists"
   (let ((s (slot-value self 'session)))
     (if (null s)
 	(setf s (make-new-session)
@@ -125,6 +138,7 @@
     s))
 
 (defmacro send/suspend (&body body)
+  "Saves current continuation, executes 'body', terminates."
   `(prog1
      (let/cc k
        (setf (continuation +context+) k)
@@ -140,6 +154,8 @@
      ))
 
 (defmacro function/hash (parameters &body body)
+  "Registers a continuation at macro-expansion time and binds
+'parameters' while executing 'body'"
   (with-unique-names (context kont name)
     `(let ((,name (format nil "fun-~A" (random-string 3)))
 	   (,context (copy-context +context+)))
@@ -158,6 +174,8 @@
 		    (returns +context+)))))))
 
 (defmacro action/hash (parameters &body body)
+  "Registers a continuation at run time and binds 'parameters' while
+executing 'body'"
   (with-unique-names (context kont)
     (let ((name (format nil "act-~A" (random-string 8))))
       `(let ((,context (copy-context +context+)))
@@ -177,16 +195,19 @@
 		      (returns +context+))))))))
 
 (defmacro function/url (parameters &body body)
+  "Returns URI representation of function/hash"
   `(format nil "?~A=~A&~A=~A"
 	   +session-query-name+ (id (session +context+))
 	   +continuation-query-name+ (function/hash ,parameters ,@body)))
 
 (defmacro action/url (parameters &body body)
+  "Returns URI representation of action/hash"
   `(format nil "?~A=~A&~A=~A"
 	   +session-query-name+ (id (session +context+))
 	   +continuation-query-name+ (action/hash ,parameters ,@body)))
 
 (defmacro answer (&rest values)
+  "Continues from the continuation saved by action/hash or function/hash"
   `(progn
 ;;      (mapcar #'(lambda (ret)
 ;; 		 (remhash (car ret) (continuations (session +context+))))
@@ -195,24 +216,28 @@
      (apply #'kall (continuation +context+) (list ,@values))))
 
 (defun/cc javascript/suspend (lambda)
+  "Javascript version of send/suspend, sets content-type to text/javascript"
   (send/suspend    
     (setf (cdr (assoc 'content-type (http-response.entity-headers (response +context+))))
 	  '("text" "javascript" ("charset" "UTF-8")))
     (funcall lambda)))
 
 (defun/cc json/suspend (lambda)
+  "Json version of send/suspend, sets content-type to text/json"
   (send/suspend    
     (setf (cdr (assoc 'content-type (http-response.entity-headers (response +context+))))
 	  '("text" "json" ("charset" "UTF-8")))
     (funcall lambda)))
 
 (defun/cc xml/suspend (lambda)
+  "Xml version of send/suspend, sets content-type to text/xml"
   (send/suspend    
     (setf (cdr (assoc 'content-type (http-response.entity-headers (response +context+))))
 	  '("text" "xml" ("charset" "UTF-8")))
     (funcall lambda)))
 
 (defmethod gc ((self http-application))
+  "Garbage collector for HTTP application, removes expired sessions/continuations"
   (let* ((session-timeout (* 10 60 1000))
 	 (sessions (application.sessions self)))
     ;; bu gc her dispatch'te mi caliscak?
@@ -227,6 +252,7 @@
 	    expired))))
 
 (defmethod dispatch ((self http-application) (request http-request) (response http-response))
+  "Dispatch 'request' to 'self' application with empty 'response'"
   (when (> (random 100) 40)
     (gc self))
   (let ((session (gethash (uri.query (http-request.uri request) +session-query-name+)
@@ -249,6 +275,7 @@
 	  (directory-handler (make-new-context self request response session)))))))
 
 (defun kontinue (&rest args)
+  "Continues a contination saves by function/hash or action/hash"
   (if (functionp (car args))
       (apply (car args)
 	     (cons (make-instance 'http-request :uri (make-instance 'uri))
@@ -259,60 +286,19 @@
 		(error "Continuation not found, please correct name.")
 		(apply fun parameters))))))
 
-;; (aif (gethash (uri.query uri +continuation-query-name+)
-;; 		   (application.continuations ,application))
-;; 	  (funcall it (make-instance 'http-request :uri uri) (make-response) ,@parameters)
-(defmacro test-url (url application &rest parameters)
+(defmacro test-url (url application)
+  "Conventional macro to test urls wihout using a browser. One may
+provide query parameters inside URL as key=value"
   `(let ((uri (uri? (make-core-stream ,url))))
      (funcall (find-url ,application (caar (uri.paths uri)))
 	      (make-new-context ,application
 				(make-instance 'http-request :uri uri)
 				(make-response *core-output*)
 				nil))))
-;;)
-
-;; (defmacro with-context ((arg uri application) &body body)
-;;   `(let ((,arg (make-new-context ,application
-;; 				 (make-instance 'http-request :uri ,uri)
-;; 				 (make-response *core-output*)
-;; 				 nil)))
-;;      ,@body))
-
-;; Override YACLmL
-;; (defun yaclml::emit-princ (&rest items)
-;;   "Princ items to *yaclml-stream*"
-;;   (mapc #'(lambda (item)
-;; 	    (awhen (and item (yaclml::string-value-of item))
-;; 	      (if (typep *yaclml-stream* 'core-stream)
-;; 		  (string! *yaclml-stream* it)
-;; 		  (princ it *yaclml-stream*))))
-;;    items)
-;;   nil)
-
-;; (defun emit-html (&rest items)
-;;   "Like EMIT-PRINC but escapes html chars in item."
-;;   (mapc
-;;    #'(lambda (item)
-;;        (awhen (and item (yaclml::string-value-of item))
-;; 	 (if (typep *yaclml-stream* 'core-stream)
-;; 	     (string! *yaclml-stream* (escape-as-html it))
-;; 	     (princ (escape-as-html it) *yaclml-stream*))))
-;;    items)
-;;   nil)
-
-;; (deftag <:js (&body body)
-;;   `(<:ai
-;;     (js::js*
-;;      ,@body) ~%))
-
-;; (defun print-+k+ ()
-;;   (loop for i in +k+
-;;        for j from 0
-;;        do (format t "~%~D:~A" j i)))
-
 
 ;; TODO: what if /../../../etc/passwd ? filter those.
 (defun directory-handler (context)
+  "Default directory handler which serves static files"
   (let ((htdocs-path (web-application.htdocs-pathname (application context)))
 	(paths (let ((tmp (or (uri.paths (http-request.uri (request context))) '(("")))))
 		 (if (equal (caar tmp) "")
