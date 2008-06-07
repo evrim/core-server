@@ -69,7 +69,6 @@
                                   ((:file "command")
                                    (:file "hxpath")))
                          (:file "vars")
-                         (:file "method")
                          (:file "classes")
                          (:file "protocol")
                          (:file "application")

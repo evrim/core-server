@@ -21,7 +21,48 @@
 ;;| Utilities for meta-object-protocol (mop)
 ;;+----------------------------------------------------------------------------
 
-(defun class-successors (class &optional (base 'component))
+;;-----------------------------------------------------------------------------
+;; SysV Method Combination
+;;-----------------------------------------------------------------------------
+;;
+;; SysV method combination is used to define a server protocol for several
+;; methods like start,stop,status.
+;;
+;; start and stop methods of an object are runned inside a 'progn'
+;; status method is runned inside an 'and'
+;;
+(define-method-combination sysv-standard (&key (type :start))
+  ((around (:around)) (primary () :required t))  
+  (labels ((specializer (method)
+	     (car (sb-mop:method-specializers method)))
+	   (specializers (methods)
+	     (mapcar #'(lambda (m) (cons (specializer m) m)) methods))
+	   (sort-by-specializers (methods)
+	     (mapcar #'cdr (sort (specializers methods) #'equal :key #'car)))
+	   (call-methods (methods)
+	     (mapcar #'(lambda (method) `(call-method ,method))  methods)))
+    (let ((around (nreverse around)))
+      (cond ((eq type :start)
+	     (setf primary (cons 'progn
+				 (call-methods (nreverse (sort-by-specializers primary))))))
+	    ((eq type :stop)
+	     (setf primary (cons 'progn 
+				 (call-methods (sort-by-specializers primary)))))
+	    ((eq type :status)
+	     (setf primary (cons 'and 
+				 (call-methods (nreverse (sort-by-specializers primary)))))))
+      (if around
+	  `(call-method ,(first around)
+			(,@(rest around)
+			   (make-method ,primary)))
+	  primary))))
+
+(deftrace sysv '(start stop status))
+
+;;-----------------------------------------------------------------------------
+;; Other MOP Utilities
+;;-----------------------------------------------------------------------------
+(defun class-direct-superclasses (class &optional (base 'component))
   "Returns direct superclasses of the 'class'"
   (let ((class (if (symbolp class) (find-class class) class)))
     (if (eq class (find-class base nil))
@@ -36,7 +77,7 @@
   (let ((class (if (symbolp class) (find-class class) class)))
     (core-search (cons class (copy-list (sb-mop:class-direct-superclasses class)))
 		 #'(lambda (atom) (pushnew atom lst) nil) 
-		 #'(lambda (class) (class-successors class base))
+		 #'(lambda (class) (class-directory-superclasses class base))
 		 #'append)
     (nreverse lst)))
 
@@ -53,6 +94,6 @@
 				(sb-mop:class-direct-default-initargs atom))))
 		     (when args (setf lst (append args lst))))
 		   nil)
-	       #'(lambda (class) (class-successors class base))
+	       #'(lambda (class) (class-direct-superclasses class base))
 	       #'append)
   lst)
