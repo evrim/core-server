@@ -17,14 +17,30 @@
 
 (in-package :tr.gen.core.server)
 
+;;+----------------------------------------------------------------------------
+;;| Server Implementation
+;;+----------------------------------------------------------------------------
+;;
+;; This file contains implementation of protocol defined in 'protocol.lisp'.
+;;
+
 (defmacro with-server-mutex (server &body body)
+  "Execute 'body' while holding 'server' lock"
   `(sb-thread:with-recursive-lock ((server.mutex ,@server))
      ,@body))
 
 (defmacro with-server-lock (server &body body)
+  "Execute 'body' while holding 'server' lock"
   `(sb-thread:with-recursive-lock ((server.mutex ,@server))
      ,@body))
 
+;;-----------------------------------------------------------------------------
+;; Wrapper :around methods for protocol
+;;-----------------------------------------------------------------------------
+;;
+;; They wrap protocol methods to detect errors and implement appropriate
+;; restarts.
+;;
 (defmethod start :around ((self server))
   (with-server-mutex (self)
     (let ((failed))
@@ -74,6 +90,7 @@
 
 (defmethod shared-initialize :after ((self server) slot-names
 				     &rest initargs &key &allow-other-keys)
+  "If auto-start slot of the server is t, start server"
   (declare (ignore initargs))
   (when (s-v 'auto-start)
     (start self)))
