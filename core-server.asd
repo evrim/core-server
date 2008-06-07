@@ -25,6 +25,7 @@
                                   :serial t
                                   :components
                                   ((:file "helper")
+                                   (:file "turkiye")
                                    (:file "search")
                                    (:file "mop")
                                    (:file "class+")))
