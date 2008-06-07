@@ -17,7 +17,12 @@
 
 (in-package :tr.gen.core.server)
 
-;; Server Protocol
+;;+----------------------------------------------------------------------------
+;;| Server Protocol
+;;+----------------------------------------------------------------------------
+;;
+;; This file defines the generic server protocol.
+
 (defgeneric start (server)
   (:documentation "Starts the server. This method is surrounded by server.mutex")
   (:method-combination sysv-standard :type :start)
@@ -37,13 +42,15 @@
   (:method ((self server)) t))
 
 (defgeneric register (server app)
-  (:documentation "Deploys an application to web server. This method is surrounded by server.mutex")
+  (:documentation "Deploys an application to web server. This method
+  is surrounded by server.mutex")
   (:method-combination sysv-standard :type :start)
   (:method ((self null) app) nil)
   (:method ((self web-server) app) nil))
 
 (defgeneric unregister (server app)
-  (:documentation "Undeploys an application from a web server. This method is surrounded by server.mutex")
+  (:documentation "Undeploys an application from a web server. This
+  method is surrounded by server.mutex")
   (:method-combination sysv-standard :type :stop)
   (:method ((self null) app) nil)
   (:method ((self web-server) app) nil))
@@ -62,7 +69,8 @@
   (:documentation "Adds an alias from source fqdn to target "))
 
 (defgeneric find-domain-records (server domain-name)
-  (:documentation "Return the list of dns records of the associated domain identified by name."))
+  (:documentation "Return the list of dns records of the associated
+  domain identified by name."))
 
 ;;; Ticket Server Protocol
 
