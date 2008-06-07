@@ -480,7 +480,7 @@ exit 0
 if [ -z $CORESERVER_HOME ]; then
   export CORESERVER_HOME=\"~A\"
 fi
-emacs -l $CORESERVER_HOME/etc/emacs/core-server.el
+emacs -q -l $CORESERVER_HOME/etc/emacs/core-server.el
 "
 	  (layout.root self)))
 
