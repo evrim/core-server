@@ -17,34 +17,45 @@
 
 (in-package :core-server)
 
-(defvar +ns1+ "139.179.139.251")
-(defvar +ns2+ "212.175.40.11")
-(defvar +mx+ "212.175.40.55")
-
+;;-----------------------------------------------------------------------------
+;; DNS Application
+;;-----------------------------------------------------------------------------
+;;
+;; This file contains the application mixin to be used along with Tiny DNS
+;; server. 
+;;
 (defclass dns-application (web-application)
-  ((ns :accessor dns-application.ns :initform (list +ns1+ +ns2+) :initarg :ns)
-   (mx :accessor dns-application.mx :initform (list +mx+) :initarg :mx)
-   (alias :accessor dns-application.alias :initform nil :initarg :alias)))
+  ((ns :accessor dns-application.ns :initform (list +ns1+ +ns2+) :initarg :ns
+       :documentation "List of nameserver IP addresses")
+   (mx :accessor dns-application.mx :initform (list +mx+) :initarg :mx
+       :documentation "List of mail exchanger IP addresses")
+   (alias :accessor dns-application.alias :initform nil :initarg :alias
+	  :documentation "List of aliases that this application has")))
 
 (defmethod deploy-ns ((self dns-application))
+  "Add nameserver records for 'application' to nameserver configuration"
   (mapcar (lambda (ns)
 	    (when (null (find-ns (application.server self) (web-application.fqdn self)))	      
 	      (add-ns (application.server self) (web-application.fqdn self) ns)))
 	  (ensure-list (dns-application.ns self))))
 
 (defmethod deploy-mx ((self dns-application))
+  "Add mail exchanger records for 'application' to nameserver configuration"
   (mapcar (lambda (mx)
 	    (when (null (find-mx (application.server self) (web-application.fqdn self)))	      
 	      (add-mx (application.server self) (web-application.fqdn self) mx)))
 	  (ensure-list (dns-application.mx self))))
 
 (defmethod deploy-alias ((self dns-application))
+  "Add aliases record for 'application' to nameserver configuration"
   (mapcar (lambda (alias)
 	    (when (null (find-alias (application.server self) (web-application.fqdn self)))	      
 	      (add-alias (application.server self) (car alias) (cdr alias))))
 	  (ensure-list (dns-application.alias self))))
 
 (defmethod start ((self dns-application))
+  "Add related records to nameserver configuration like nameserver,
+mail exchanger, aliases"
   (deploy-ns self)
   (deploy-mx self)
   (deploy-alias self))

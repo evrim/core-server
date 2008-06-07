@@ -77,6 +77,18 @@
 (defvar +postmap+ #P"/usr/sbin/postmap") ;;can't be found on all.
 
 ;;-----------------------------------------------------------------------------
+;; DNS Specific Variables
+;;-----------------------------------------------------------------------------
+(defvar +ns1+ "139.179.139.251"
+  "IP address of the first nameserver")
+
+(defvar +ns2+ "212.175.40.11"
+  "IP address of the second nameserver")
+
+(defvar +mx+ "212.175.40.55"
+  "IP address of the mail exchanger")
+
+;;-----------------------------------------------------------------------------
 ;; SCm Specific Variables
 ;;-----------------------------------------------------------------------------
 (defvar +darcs+ (whereis "darcs") "darcs Pathname")
