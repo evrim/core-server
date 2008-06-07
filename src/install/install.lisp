@@ -1,5 +1,21 @@
+;; Core Server: Web Application Server
+
+;; Copyright (C) 2006-2008  Metin Evrim Ulu, Aycan iRiCAN
+
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 ;; -----------------------------------------------------------------------------
-;; Copyright (c) Core-serveR 2006-2007
 ;; Installation Script for Core Server Project at http://www.core.gen.tr
 ;; Author: Evrim Ulu <evrim@core.gen.tr>
 ;;
@@ -385,6 +401,12 @@
 	     ;;	     (funcall (find-symbol "REGISTER-ME" (find-package 'dojo-stub)) *server*)
 	     (terpri)
 	     (describe *server*)
+	     (format t "Core Server Copyright (C) 2006-2008  Metin Evrim Ulu, Aycan iRiCAN
+
+This program comes with ABSOLUTELY NO WARRANTY; for details type
+`(show-license-warranty)'.  This is free software, and you are welcome
+to redistribute it under certain conditions; type
+`(show-license-conditions)' for details.~%~%")
 	     (write-line "Server started!")
 	     (terpri))
 	   (progn
@@ -397,6 +419,24 @@
 
 (defmethod core-server.sh ((self layout))
   (format nil "#!/bin/bash
+# Core Server: Web Application Server
+#
+# Copyright (C) 2006-2008  Metin Evrim Ulu, Aycan iRiCAN
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 help ()
 {
     cat <<EOF
