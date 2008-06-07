@@ -17,9 +17,16 @@
 
 (in-package :core-server)
 
-;;; FIXmE: pathname bile serialize edemio bu prevalence!
-(defmethod sieve-initargs ((self application) initargs)  
-  (let ((current-keyword))
+;;+----------------------------------------------------------------------------
+;;| Default Application Implementation
+;;+----------------------------------------------------------------------------
+;;
+;; This file contains methods that every application would need.
+;;
+
+(defmethod sieve-initargs ((self application) initargs)
+  "Remove unserializable initargs from 'initargs'"
+  (let (current-keyword)
     (remf initargs :dispatchers)
     (reduce #'(lambda (acc arg)
 		(cond 
@@ -32,12 +39,10 @@
 		      acc)		     
 		     (t
 		      (append acc (list current-keyword arg)))))))
-	    initargs
-	    :initial-value '())))
+	    initargs :initial-value '())))
 
-;;; saves primitive initargs into initargs slot
 (defmethod shared-initialize :after ((self application) slot-names 
-				     &rest initargs 
-				     &key &allow-other-keys)
-  (setf (application.initargs self)
-	(sieve-initargs self initargs)))
+				     &rest initargs &key &allow-other-keys)
+  "Saves primitive initargs into initargs slot so that application
+serialization can occur"
+  (setf (application.initargs self) (sieve-initargs self initargs)))
