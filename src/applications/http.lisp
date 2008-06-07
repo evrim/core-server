@@ -86,7 +86,8 @@
 (defclass http-session ()
   ((id :reader id :initform (random-string 8))
    (continuations :reader continuations :initform (make-hash-table :test #'equal)) 
-   (timestamp :accessor timestamp :initform (get-universal-time))))
+   (timestamp :accessor timestamp :initform (get-universal-time))
+   (data :accessor session-data :initform (make-hash-table :test #'equal))))
 
 (defun make-new-session ()
   (make-instance 'http-session))
@@ -127,10 +128,10 @@
   `(prog1
      (let/cc k
        (setf (continuation +context+) k)
-       (format t "send/suspend called~%")
+;;       (format t "send/suspend called~%")
        ;;     (checkpoint-stream/cc +context+ k)
        ,@body
-       (format t "send/suspend escaping~%")
+;;       (format t "send/suspend escaping~%")
        ;;     (commit-stream/cc +context+ (rets +context+))
 ;;       (describe +context+)
        (escape (returns +context+))
@@ -269,6 +270,13 @@
 				(make-response *core-output*)
 				nil))))
 ;;)
+
+;; (defmacro with-context ((arg uri application) &body body)
+;;   `(let ((,arg (make-new-context ,application
+;; 				 (make-instance 'http-request :uri ,uri)
+;; 				 (make-response *core-output*)
+;; 				 nil)))
+;;      ,@body))
 
 ;; Override YACLmL
 ;; (defun yaclml::emit-princ (&rest items)

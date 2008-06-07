@@ -17,7 +17,16 @@
 
 (in-package :core-server)
 
-(defun make-git-application (fqdn project-name admin-email project-pathname &optional use depends-on)
+;;+----------------------------------------------------------------------------
+;;| Git Application
+;;+----------------------------------------------------------------------------
+;;
+;; This application is the extension of serializable-application to be used
+;; along with SCM Git (http://git.or.cz)
+;;
+(defun make-git-application (fqdn project-name admin-email project-pathname
+			     &optional use depends-on)
+  "Returns a new git-application having parameters provided"
   (let ((params (list :fqdn fqdn
 		      :project-name project-name
 		      :admin-email admin-email

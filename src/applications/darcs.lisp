@@ -17,7 +17,16 @@
 
 (in-package :core-server)
 
-(defun make-darcs-application (fqdn project-name admin-email project-pathname &optional use depends-on)
+;;+----------------------------------------------------------------------------
+;;| Darcs Application
+;;+----------------------------------------------------------------------------
+;;
+;; This application is the extension of serializable-application to be used
+;; along with SCM Darcs (http://darcs.net)
+;;
+(defun make-darcs-application (fqdn project-name admin-email project-pathname
+			       &optional use depends-on)
+  "Returns a new darcs-aplication having parameters provided"
   (let ((params (list :fqdn fqdn
 		      :project-name project-name
 		      :admin-email admin-email
@@ -38,7 +47,8 @@
 		   (web-application.project-pathname self)))
 
 (defmethod darcs-author-file ((self darcs-application))
-  (merge-pathnames (make-pathname :directory '(:relative "prefs") :name "author") (darcs-directory self)))
+  (merge-pathnames (make-pathname :directory '(:relative "prefs") :name "author")
+		   (darcs-directory self)))
   
 (defmethod serialize ((self darcs-application))  
   ;; Error if exists
@@ -64,8 +74,9 @@
     (darcs "record" "-m" (or patch-name "core-server checkpoint")
 	   "--all" "--author" "bilgi@core.gen.tr" "--skip-long-comment" "--look-for-adds")))
 
-(defmethod put ((self darcs-application) &optional (remote-repo (format nil "~A@node2:/home/projects/~A" 
-									+remote-user+ (web-application.project-name self))))
+(defmethod put ((self darcs-application)
+		&optional (remote-repo (format nil "~A@node2:/home/projects/~A" 
+					       +remote-user+ (web-application.project-name self))))
   (with-current-directory (web-application.project-pathname self)
     (darcs "put" remote-repo)))
 
