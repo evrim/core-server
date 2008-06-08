@@ -18,11 +18,12 @@
 (in-package :tr.gen.core.server)
 
 ;;+----------------------------------------------------------------------------
-;;| Server Protocol
+;;| Server Protocols
 ;;+----------------------------------------------------------------------------
-;;
-;; Definition of generic server protocol.
-;;
+
+;;-----------------------------------------------------------------------------
+;; Generic Server Protocol
+;;-----------------------------------------------------------------------------
 (defgeneric start (server)
   (:documentation "Starts the server. This method is surrounded by server.mutex")
   (:method-combination sysv-standard :type :start)
@@ -55,25 +56,51 @@
   (:method ((self null) app) nil)
   (:method ((self web-server) app) nil))
 
-;;; Name-server Protocol
+;;-----------------------------------------------------------------------------
+;; Name-server Protocol
+;;-----------------------------------------------------------------------------
+(defgeneric tinydns-server.domains (server)
+  (:documentation "Returns raw domain data"))
+
+(defgeneric find-record (server fqdn)
+  (:documentation "Finds any record relating to fqdn"))
+
+(defgeneric find-a (server fqdn)
+  (:documentation "Finds A type records for fqdn"))
+
+(defgeneric find-ns (server fqdn)
+  (:documentation "Finds NS type records for fqdn"))
+
+(defgeneric find-mx (server fqdn)
+  (:documentation "Find mX type records for fqdn"))
+
 (defgeneric add-mx (server fqdn &optional ip)
-  (:documentation "Adds an mx record"))
+  (:documentation "Adds new mX type record to the database"))
 
 (defgeneric add-ns (server fqdn ip)
-  (:documentation "Adds a nameserver"))
+  (:documentation "Adds new NS type record to the database"))
 
 (defgeneric add-host (server fqdn ip)
-  (:documentation "Adds a host"))
+  (:documentation "Adds new A type record to the database"))
 
-(defgeneric add-alias (server source target)
-  (:documentation "Adds an alias from source fqdn to target "))
+(defgeneric add-alias (server fqdn ip)
+  (:documentation "Adds new ALIAS type record to the database"))
 
-(defgeneric find-domain-records (server domain-name)
-  (:documentation "Return the list of dns records of the associated
-  domain identified by name."))
+(defgeneric find-a (server fqdn)
+  (:documentation "Returns A records of 'fqdn'"))
 
-;;; Ticket Server Protocol
+(defgeneric find-alias (server fqdn)
+  (:documentation "Returns ALIAS records of 'fqdn'"))
 
+(defgeneric find-ns (server fqdn)
+  (:documentation "Returns NS records of 'fqdn'"))
+
+(defgeneric find-mx (server fqdn)
+  (:documentation "Returns MX records of 'fqdn'"))
+
+;;-----------------------------------------------------------------------------
+;; Ticket Server Protocol
+;;-----------------------------------------------------------------------------
 (defgeneric add-ticket (server hash type &optional used)
   (:documentation "Add ticket to the server"))
 
