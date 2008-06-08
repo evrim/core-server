@@ -17,12 +17,28 @@
 
 (in-package :tr.gen.core.server)
 
-(defclass peer ()
-  ((server :accessor peer.server :initarg :server :initform nil)))
+;;+----------------------------------------------------------------------------
+;;| Peer Base Classes
+;;+----------------------------------------------------------------------------
+;;
+;; This file contains Peer Base Class.
+;;
+(defclass peer (unit)
+  ((server :accessor peer.server :initarg :server :initform nil
+	   :documentation "The server that this peer belongs to"))
+  (:documentation "Peer Base Class - Peers are worker units of
+ servers. The server when started creates N peers to handle incoming
+ requests. These requests can come from very different sources like
+ sockets, unix pipes etc."))
 
 (defclass stream-peer (peer local-unit)
   ()
-  (:default-initargs :name "Stream Peer Handling Unit"))
+  (:default-initargs :name "Stream Peer Handling Unit")
+  (:documentation "Stream Peer Class - This is the base class for
+  core-stream handling peer"))
+
+
+;; FIXme: Do we have a protocol for stream-peer having below method? -evrim
 
 ;; (defmethod/unit handle-stream :async-no-return ((self stream-peer) stream address)
 ;;   (format t "1.Peer address:~A~%" address)

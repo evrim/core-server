@@ -17,11 +17,23 @@
 
 (in-package :tr.gen.core.server)
 
+;;+----------------------------------------------------------------------------
+;;| HTTP Peer
+;;+----------------------------------------------------------------------------
+;;
+;; This file contains implementation of HTTP Handling peer. Its server is
+;; an instance of http-server.
+;;
 (defclass http-peer (stream-peer)
-  ((peer-type :accessor http-peer.peer-type :initform 'http))
-  (:default-initargs :name "Http Peer Handling Unit"))
+  ((peer-type :accessor http-peer.peer-type :initform 'http
+	      :documentation "Current peer type, it can be 'http' or 'mod-lisp'"))
+  (:default-initargs :name "Http Peer Handling Unit")
+  (:documentation "HTTP Peer - This peer handles HTTP requests and
+evaulates to a HTTP response. Its' server is an instance of http-server"))
 
 (defmethod parse-request ((self http-peer) stream)
+  "Returns a fresh RFC 2616 HTTP Request object parsing from 'stream',
+nil if stream data is invalid"
   (multiple-value-bind (peer-type method uri version general-headers
 				  request-headers entity-headers unknown-headers)
       (http-request-headers? stream)
@@ -73,21 +85,25 @@
 ;;; 		  (http-message.entities request))
 	  ;;	  (describe (mime-part.data (nth 3 (http-message.entities request))))
 
-(defmethod render-http-headers ((self http-peer) stream response)  
+(defmethod render-http-headers ((self http-peer) stream response)
+  "Renders RFC 2616 HTTP 'response' to 'stream'"
   (http-response-headers! stream response)
   (char! stream #\Newline))
 
-(defmethod render-mod-lisp-headers ((self http-peer) stream response)  
+(defmethod render-mod-lisp-headers ((self http-peer) stream response)
+  "Renders Mod-Lisp HTTP 'response' to 'stream'"
   (mod-lisp-response-headers! stream response)
   (string! stream "end")
   (char! stream #\Newline))
 
 (defmethod render-headers ((self http-peer) stream response)
+  "Renders HTTP headers from 'response' to 'stream'"
   (if (eq 'mod-lisp (s-v 'peer-type))
       (render-mod-lisp-headers self stream response)
       (render-http-headers self stream response)))
 
 (defun make-response (&optional (stream (make-core-stream "")))
+  "Returns an empty HTTP Response object"
   (let ((response (make-instance 'http-response :stream stream)))
     (setf (http-message.general-headers response)
 	  (list (cons 'date (get-universal-time))
@@ -100,11 +116,13 @@
     response))
 
 (defmethod eval-request ((self http-peer) request)
+  "Evaluates request and returns response, to be overriden by subclasses"
   (let ((response (make-response (make-core-stream (slot-value (http-request.stream request) '%stream)))))
     (checkpoint-stream (http-response.stream response))
     response))
 
 (defmethod render-response ((self http-peer) stream response request)
+  "Renders HTTP/Mod-Lisp 'response' to 'stream'"
   (let ((content-length (length (slot-value (http-response.stream response) '%write-buffer))))
     (add-entity-header response 'content-length content-length)
     (render-headers self stream response)
@@ -113,6 +131,7 @@
 	(commit-stream (http-response.stream response)))))
 
 (defmethod render-error ((self http-peer) stream)
+  "Renders a generic server error response to 'stream'"
   (let ((response (make-response stream)))
     (checkpoint-stream stream)
     (setf (http-response.status-code response) (make-status-code 500))
@@ -147,9 +166,12 @@
 		  (render-response self stream response request))))
 	(close-stream stream)))))
 
-(deftrace http-peer '(handle-stream render-error render-response eval-request parse-request
-		      render-headers make-response render-http-headers render-mod-lisp-headers))
+(deftrace http-peer
+    '(handle-stream render-error render-response eval-request parse-request
+      render-headers make-response render-http-headers render-mod-lisp-headers))
 
+
+;; FIXmE: what to do with below?
 ;; (defparameter *response-body* ;;  "Hello, World!"
 ;;   (with-yaclml-output-to-string
 ;;     (<:html
