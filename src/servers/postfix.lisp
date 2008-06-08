@@ -17,6 +17,12 @@
 
 (in-package :tr.gen.core.server)
 
+;;+----------------------------------------------------------------------------
+;;| Postfix Server Implementation
+;;+----------------------------------------------------------------------------
+;;
+;; This file implementation mail server protocol for Postfix Server.
+;;
 (defmethod run-postfix-sysv-script ((self postfix-server) params)
   (unwind-protect
        (sb-impl::process-exit-code
