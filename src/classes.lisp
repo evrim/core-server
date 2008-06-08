@@ -86,8 +86,7 @@
     :initform (merge-pathnames
 	       (make-pathname :directory '(:relative "etc") :name "vhost" :type "conf")
 	       (asdf:component-pathname (asdf:find-system :core-server)))
-    :documentation "Apache Virtual Host Template Configuration Pathname - see etc/vhost.conf"
-    :documentation "Apache Vhost Configuration Template Pathname") 
+    :documentation "Apache Virtual Host Template Configuration Pathname - see etc/vhost.conf") 
    (default-entry-point
      :accessor apache-web-application.default-entry-point :initarg :default-entry-point
      :initform "index.core"
