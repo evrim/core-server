@@ -17,40 +17,19 @@
 
 (in-package :tr.gen.core.server)
 
-;; TinyDNS Server
-;; ---------------
+;;+----------------------------------------------------------------------------
+;;| TinyDNS Server
+;;+----------------------------------------------------------------------------
+;;
+;; This file contains implementation of control server of TinyDNS
+;;
 ;; DNS RFC's:
 ;; http://www.ietf.org/rfc/rfc1035.txt
 ;; http://www.ietf.org/rfc/rfc1034.txt
 
-;; Protocol
-(defgeneric tinydns-server.domains (server)
-  (:documentation "Returns raw domain data"))
-
-(defgeneric find-record (server fqdn)
-  (:documentation "Finds any record relating to fqdn"))
-
-(defgeneric find-a (server fqdn)
-  (:documentation "Finds A type records for fqdn"))
-
-(defgeneric find-ns (server fqdn)
-  (:documentation "Finds NS type records for fqdn"))
-
-(defgeneric find-mx (server fqdn)
-  (:documentation "Find mX type records for fqdn"))
-
-(defgeneric add-mx (server fqdn &optional ip)
-  (:documentation "Adds new mX type record to the database"))
-
-(defgeneric add-ns (server fqdn ip)
-  (:documentation "Adds new NS type record to the database"))
-
-(defgeneric add-host (server fqdn ip)
-  (:documentation "Adds new A type record to the database"))
-
-(defgeneric add-alias (server fqdn ip)
-  (:documentation "Adds new ALIAS type record to the database"))
-
+;;-----------------------------------------------------------------------------
+;; Data File Parsers
+;;-----------------------------------------------------------------------------
 (defatom domainname-type? ()
   (or (alphanum? c) (= c #.(char-code #\-))))
 
@@ -110,7 +89,9 @@
 	(:lwsp?))
   (:return (nreverse data)))
 
+;;-----------------------------------------------------------------------------
 ;; Svstat Command
+;;-----------------------------------------------------------------------------
 (defcommand svstat (shell)
   ((svstat-pathname :host local :initform (whereis "svstat") :initarg :svstat-pathname))
   (:default-initargs :cmd +sudo+ :verbose nil))
@@ -123,6 +104,9 @@
   (call-next-method)
   (svstat? (make-core-stream (command.output-stream self))))
 
+;;-----------------------------------------------------------------------------
+;; Server Implementation
+;;-----------------------------------------------------------------------------
 (defmethod tinydns-server.data-pathname ((self tinydns-server))
   (merge-pathnames (make-pathname :directory '(:relative "root") :name "data")
 		   (s-v 'root-pathname)))
@@ -151,6 +135,9 @@
 ;;       (s-v 'domains))
   (tinydns-server.data self))
 
+;;-----------------------------------------------------------------------------
+;; Record Finders
+;;-----------------------------------------------------------------------------
 (defmethod find-record ((self tinydns-server) fqdn)
   (let ((fqdn (nreverse (nameserver-domainname? (make-core-stream fqdn)))))
     (reverse
@@ -178,9 +165,12 @@
 (defrecord-finder alias)
 (defrecord-finder ns)
 (defrecord-finder mx)
-(eval-when (:execute :compile-toplevel :load-toplevel)
-  (defclass tinydns-add-mixin ()
-    ((root :initform #P"/service/tinydns/root/"))))
+
+;;-----------------------------------------------------------------------------
+;; TinyDNS Management Commands
+;;-----------------------------------------------------------------------------
+(defcommand tinydns-add-mixin ()
+  ((root :initform #P"/service/tinydns/root/")))
 
 (defmethod run ((self tinydns-add-mixin))
   (with-current-directory (slot-value self 'root)
@@ -204,6 +194,9 @@
   ((add-pathname :host local :initform #P"/service/tinydns/root/add-ns" :initarg :add-pathname))
   (:default-initargs :cmd +sudo+ :verbose t))
 
+;;-----------------------------------------------------------------------------
+;; Implementation of Name-server Protocol
+;;-----------------------------------------------------------------------------
 (defmethod add-mx ((self tinydns-server) fqdn &optional ip)
   (with-server-lock (self)
     (tinydns.add-mx :add-pathname (merge-pathnames #P"root/add-mx"
@@ -228,7 +221,9 @@
 						      (tinydns-server.root-pathname self))
 		    :args (list fqdn ip))))
 
-;; SysV for TinyDNS
+;;-----------------------------------------------------------------------------
+;; Implementation of Server Protocol
+;;-----------------------------------------------------------------------------
 (defmethod start ((self tinydns-server))
   (if (not (probe-file (tinydns-server.data-pathname self)))
       (error "Cannot access tinydns data file ~A" (tinydns-server.data-pathname self)))  
@@ -243,13 +238,6 @@
 (defmethod status ((self tinydns-server))
   (svstat :svstat-pathname (s-v 'svstat-pathname) :args (list (s-v 'root-pathname))))
 
-;; Debugging extensions for TinyDNS parsers
-(defparameter *tinydns-parsers*
-  '(fixnum? nameserver-domainname? ipv4address? nameserver-hostname? tinydns-ns? tinydns-a?
-    tinydns-alias? tinydns-mx? tinydns-data?))
-
-(defun trace-tinydns-parsers ()
-  (mapcar #'(lambda (atom) (eval `(trace ,atom))) *tinydns-parsers*))
-
-(defun untrace-tinydns-parsers ()
-  (mapcar #'(lambda (atom) (eval `(untrace ,atom))) *tinydns-parsers*))
+(deftrace tinydns-parsers
+  '(fixnum? nameserver-domainname? ipv4address? nameserver-hostname? tinydns-ns?
+    tinydns-a? tinydns-alias? tinydns-mx? tinydns-data?))
