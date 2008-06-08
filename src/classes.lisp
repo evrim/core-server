@@ -54,6 +54,32 @@
 		    used for serving static files"))
   (:documentation "Base Web Application Class"))
 
+(defclass http-application (web-application)
+  ((urls :accessor application.urls :initarg :urls :initform '()
+	 :documentation "A list that contains URLs that this application handles")
+   (sessions :accessor application.sessions :initform (make-hash-table :test #'equal)
+	     :documentation "A hash-table that holds sessions"))
+  (:documentation "HTTP Application Class"))
+
+(defmethod print-object ((self http-application) stream)
+  (print-unreadable-object (self stream :type t :identity t)
+    (format stream "FQDN:\"~A\" is ~Arunning." (web-application.fqdn self)
+	    (if (status self) "" "*not* "))))
+
+(defclass http-session ()
+  ((id :reader id :initform (random-string 8))
+   (continuations :reader continuations :initform (make-hash-table :test #'equal)) 
+   (timestamp :accessor timestamp :initform (get-universal-time))
+   (data :accessor session-data :initform (make-hash-table :test #'equal))))
+
+(defclass http-context (core-cps-stream)
+  ((request :accessor request :initarg :request :initform nil)
+   (response :accessor response :initarg :response :initform nil)
+   (session :accessor session :initarg :session :initform nil)
+   (application :accessor application :initarg :application :initform nil)
+   (continuation :accessor continuation :initform nil)
+   (returns :accessor returns :initform nil)))
+
 (defclass apache-web-application (web-application)
   ((vhost-template-pathname
     :accessor apache-web-application.vhost-template-pathname :initarg :vhost-template-pathname
