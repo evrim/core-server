@@ -17,7 +17,14 @@
 
 (in-package :tr.gen.core.server)
 
+;;+----------------------------------------------------------------------------
+;;| Cl-Prevalence Database Server
+;;+----------------------------------------------------------------------------
+;;
+;; This file contains base in-memory database server.
+;;
 (defun start-prevalence-system (system)
+  "Restores and returns 'system'"
   (let ((directory (get-directory system)))    
     (ensure-directories-exist directory)
     (setf (cl-prevalence::get-snapshot system)
@@ -31,29 +38,38 @@
   (restore system))
 
 (defun open-transaction-log-stream (system)
+  "Opens transaction log streams"
   (with-slots (cl-prevalence::transaction-log-stream) system
     (unless cl-prevalence::transaction-log-stream
       (setf cl-prevalence::transaction-log-stream (open (cl-prevalence::get-transaction-log system)
 					 :direction :output :if-does-not-exist :create :if-exists :append)))))
 
-(defmethod cl-prevalence::initialize-instance :after ((system prevalence-system) &rest initargs &key &allow-other-keys)
+(defmethod cl-prevalence::initialize-instance :after
+    ((system prevalence-system) &rest initargs &key &allow-other-keys)
   "After a system is initialized, derive its file paths and try to restore it"
   (declare (ignore initargs))
   (unless (typep system 'database-server)
     (start-prevalence-system system)))
 
 (defun create-guard-with-mutex (mutex)
+  "Returns a lambda that would execute 'thunk' while holding lock 'mutext'"
   #'(lambda (thunk)
       (sb-thread::with-mutex (mutex)
 	(funcall thunk))))
 
 (defmethod model ((system prevalence-system))
+  "Returns :model from 'system's root, can be nil"
   (get-root-object system :model))
 
 (defun tx-model-create (system model-class)
+  "Transaction function that is used to create an instance of
+'model-class'. This instance is then set to :model keyword inside
+'system's root"
   (setf (get-root-object system :model) (make-instance model-class)))
 
 (defun tx-set-creation-date (system date)
+  "Transaction function that is used to set creation date of the
+model."
   (setf (standard-model-class.creation-date (get-root-object system :model)) date))
 
 (defmethod snapshot :after ((self database-server))
@@ -61,11 +77,12 @@
 
 (defmethod shared-initialize :after ((self database-server) slot-name
 				     &rest initargs &key &allow-other-keys)
+  "Start database if auto-start it t"
   (declare (ignorable initargs))
   (when (database-server.db-auto-start self)
     (%start-database self)))
 
-(defmethod %start-database ((self database-server))  
+(defmethod %start-database ((self database-server))
   (start-prevalence-system self)
   (open-transaction-log-stream self)
   ;; synchronize transactions with a mutex
@@ -83,9 +100,11 @@
       (execute self (make-transaction 'tx-set-creation-date (get-universal-time))))))
 
 (defmethod start ((self database-server))
+  "Starts database server"
   (%start-database self))
 
-(defmethod stop ((self database-server))  
+(defmethod stop ((self database-server))
+  "Stops database server"
   (cl-prevalence::close-open-streams self)
   (setf (cl-prevalence::get-root-objects self) (make-hash-table :test 'eq))
   (setf (slot-value self 'cl-prevalence::serialization-state) (cl-prevalence::make-serialization-state))
@@ -94,13 +113,14 @@
 
 ;;; This is here since i don't want the database to be
 ;;; corrupted. 
-(defmethod %status ((self database-server))
+(defmethod database-server.status ((self database-server))
   (and (slot-value self 'cl-prevalence::transaction-log-stream) t))
 
 (defmethod status ((self database-server))
-  (%status self))
+  (database-server.status self))
 
 (defun make-database (db-location model-class)
+  "Create a new database at 'db-location' with an instance of 'model-class'"
   (let ((system (make-prevalence-system db-location
 					:prevalence-system-class 'guarded-prevalence-system
 					:init-args '(:serializer cl-prevalence::serialize-sexp
