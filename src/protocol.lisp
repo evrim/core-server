@@ -99,6 +99,15 @@
   (:documentation "Returns MX records of 'fqdn'"))
 
 ;;-----------------------------------------------------------------------------
+;; Logger Server Protocol
+;;-----------------------------------------------------------------------------
+(defgeneric log-me (server tag message)
+  (:documentation "Log messages as '<time> <tag> <message>'"))
+
+(defgeneric log-me-raw (server message)
+  (:documentation "Log messages as '<message>'"))
+
+;;-----------------------------------------------------------------------------
 ;; Ticket Server Protocol
 ;;-----------------------------------------------------------------------------
 (defgeneric add-ticket (server hash type &optional used)

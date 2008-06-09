@@ -17,18 +17,28 @@
 
 (in-package :tr.gen.core.server)
 
-;;;;
-;;;; Usage:
-;;;;
+;;+----------------------------------------------------------------------------
+;;| Logger Server
+;;+----------------------------------------------------------------------------
 ;;
-;; for console output:
-;; (defparameter *logger* (make-instance 'logger-server :log-stream *standard-output*))
+;; This file implements logger server a basic logger.
 ;;
-;; for file output (to $CORESERVER_HOME/var/log/core-server.log):
-;; (defparameter *logger* (make-instance 'logger-server :log-stream nil))
 
-;; log lines are like that:
-;; <time> <tag> <message>
+;;-----------------------------------------------------------------------------
+;; Usage
+;;-----------------------------------------------------------------------------
+;;
+;; For console output:
+;;---------------------
+;; (defparameter *logger*
+;;   (make-instance 'logger-server :log-stream *standard-output*))
+;;
+;; For file output (to $CORESERVER_HOME/var/log/core-server.log):
+;;----------------------------------------------------------------
+;; (defparameter *logger*
+;;  (make-instance 'logger-server :log-stream nil))
+;;
+
 (defmethod/unit log-me :async-no-return ((self logger-server) tag message)
   (string! (log-stream self) (time->string (get-universal-time) :short))
   (char! (log-stream self) #\Space)
@@ -39,14 +49,15 @@
   (when (typep (log-stream self) 'core-fd-io-stream)
     (force-output (slot-value (log-stream self) '%stream))))
 
-;; raw logging with newline at the end of the message
 (defmethod/unit log-me-raw :async-no-return ((self logger-server) message)
   (string! (log-stream self) message)
   (char! (log-stream self) #\Newline)
   (when (typep (log-stream self) 'core-fd-io-stream)
     (force-output (slot-value (log-stream self) '%stream))))
 
-;; Start logger unit
+;;-----------------------------------------------------------------------------
+;; Server Protocol Implementation
+;;-----------------------------------------------------------------------------
 (defmethod start ((self logger-server))
   (unless (log-stream self)
     (setf (log-stream self)
@@ -60,12 +71,14 @@
 		 :if-does-not-exist :create
 		 :external-format :utf8)))))
 
-;; Stop logger unit
 (defmethod stop ((self logger-server))
   (when (and (log-stream self) 
 	     (typep (log-stream self) 'core-fd-io-stream))
     (close-stream (log-stream self))
     (setf (log-stream self) nil)))
 
-(defmethod status ((self logger-server))
+(defmethod logger-server.status ((self logger-server))
   (if (log-stream self) t))
+
+(defmethod status ((self logger-server))
+  (logger-server.status self))
