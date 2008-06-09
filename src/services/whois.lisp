@@ -17,7 +17,18 @@
 
 (in-package :core-server)
 
-(defparameter *default-whois-port* 43)
+;;+----------------------------------------------------------------------------
+;;| Whois Service
+;;+----------------------------------------------------------------------------
+;;
+;; This file implements whois service
+;;
+
+;;-----------------------------------------------------------------------------
+;; Whois Service Specific Variables
+;;-----------------------------------------------------------------------------
+(defparameter *default-whois-port* 43
+  "Remote whois server port")
 
 (defparameter *whois-servers*
   '(("com" . "whois.internic.net")
@@ -128,14 +139,14 @@
     ("yu" . "whois.ripe.net")
     ("gb.com" . "whois.nomination.net")
     ("gb.net" . "whois.nomination.net")
-    ("za" . "whois.co.za")))
+    ("za" . "whois.co.za"))
+  "Addresses of whois servers around around the world")
 
 ;; com, net, org, edu -> type1
 ;; info -> type2
 ;; tv -> type1
 ;; mobi -> type2
 ;; biz -> type3
-
 (defun render-type1 (fqdn)
   (format nil "=~a~c~c" fqdn #\return #\linefeed))
 
@@ -173,6 +184,7 @@
     (subseq fqdn (1+ it))))
 
 (defun whois-server (fqdn &optional (server-list *whois-servers*))
+  "Returns whois server associated to 'fqdn'"
   (flet ((resolve (addr)
 	  (sb-bsd-sockets:host-ent-address (sb-bsd-sockets:get-host-by-name addr))))
     (awhen (root-domain-part fqdn)
@@ -189,10 +201,12 @@
 ;; look for this top level domains: com info net org tv mobi biz
 ;; domain-availablep :: string -> bool
 (defun domain-availablep (fqdn)
+  "Returns t if domain is available"
   (let ((res (whois fqdn)))
     (if (funcall (car res) (cdr res)) t nil)))
 
 (defun whois (fqdn)
+  "Executes whois query on 'fqdn'"
   (handler-bind ((error (lambda (condition)
 			  (restart-case (swank::swank-debugger-hook condition nil)
 			    (ignore-error ()

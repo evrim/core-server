@@ -103,4 +103,3 @@
 (defvar +default-extension+ ".core" "Web application default extension")
 (defvar +dojo-path+ "/dojo/" "Dojo Pathname")
 (defvar +fckeditor-path+ "/fckeditor/" "Fckeditor Pathname")
-
