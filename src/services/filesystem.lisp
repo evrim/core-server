@@ -17,18 +17,20 @@
 
 (in-package :tr.gen.core.server)
 
-;;;
-;;; Filesystem abstraction as a service
-;;;
-;;; Usage: create a filesystem service,
-;;;
-;;;   (defparameter *fs* (make-instance 'filesystem :root *project-docs-root* :label *project-name*))
-;;;
-;;; Second parameter must be a relative pathname,
-;;;
-;;;   (writefile *fs* #P"staff/introduction.txt" "Here we go...")
-;;;   (readfile  *fs* #P"staff/introduction.txt")
-;;;   (list-directory *fs* #P"pictures/" :recursive t)
+;;+----------------------------------------------------------------------------
+;; Filesystem abstraction as a service
+;;+----------------------------------------------------------------------------
+;;
+;; Usage: create a filesystem service,
+;;
+;; (defparameter *fs*
+;;   (make-instance 'filesystem :root *project-docs-root* :label *project-name*))
+;;
+;; Second parameter must be a relative pathname,
+;;
+;;   (writefile *fs* #P"staff/introduction.txt" "Here we go...")
+;;   (readfile  *fs* #P"staff/introduction.txt")
+;;   (list-directory *fs* #P"pictures/" :recursive t)
 
 ;; http://www.emmett.ca/~sabetts/slurp.html
 (defun slurp-stream5 (stream) 
