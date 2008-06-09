@@ -17,27 +17,31 @@
 
 (in-package :tr.gen.core.server)
 
-(defclass socket-server (server)
-  ((host :initarg :host :initform "0.0.0.0")
-   (port :initarg :port :initform 3009)
-   (reuse-address :initarg :reuse-address :initform t)
-   (backlog :initarg :backlog :initform 1)
-   (protocol :initarg :protocol :initform :tcp)   
-   (peers-max :initarg :peers-max :initform 32)
-   (element-type :initarg :element-type :initform '(unsigned-byte 8))
-   (external-format :initarg :external-format :initform :utf-8)
-   (peer-class :initarg :peer-class :initform 'stream-peer
-	       :documentation "Class to instantiate as peer thread.")
-   (debug :initarg :debug :initform nil
-	  :documentation "Debug or not")
-;;   (request-timeout-length :initarg :request-timeout-length :initform 90)
-   (%socket :initform nil) (%peers :initform nil) (%socket-thread :initform nil)
-   (%debug-unit :initform nil)))
+;;+----------------------------------------------------------------------------
+;;| Socket Server
+;;+----------------------------------------------------------------------------
+;;
+;; This file implements socket server.
+;;
+(defmethod socket-server.run ((self socket-server))
+  "Run method of Socket Server"
+  (loop
+     (progn
+       (mapc #'(lambda (peer)
+		 (multiple-value-bind (stream address) (accept (s-v '%socket))
+		   (when stream
+		     (if (not (status peer)) (start peer))
+		     (handle-stream peer stream address))))
+	     (s-v '%peers)))))
 
+;;-----------------------------------------------------------------------------
+;; Server Procotol Implementation
+;;-----------------------------------------------------------------------------
 (defmethod start ((self socket-server))
   (when (not (socket-server.status self))
-    (if (null (s-v 'debug))
-	(start (setf (s-v '%debug-unit) (make-instance 'local-unit :name "Http Server Debugging Unit"))))
+    (when (null (s-v 'debug))
+      (setf (s-v '%debug-unit) (make-instance 'local-unit :name "Http Server Debugging Unit"))
+      (start (s-v '%debug-unit)))
     (setf (s-v '%socket) (make-server :host (s-v 'host)
 				      :port (s-v 'port)
 				      :reuse-address (s-v 'reuse-address)
@@ -81,13 +85,3 @@
 
 (defmethod status ((self socket-server))
   (socket-server.status self))
-
-(defmethod socket-server.run ((self socket-server))  
-  (loop
-     (progn
-       (mapc #'(lambda (peer)
-		 (multiple-value-bind (stream address) (accept (s-v '%socket))
-		   (when stream
-		     (if (not (status peer)) (start peer))
-		     (handle-stream peer stream address))))
-	     (s-v '%peers)))))

@@ -43,14 +43,14 @@
   (:method ((self server)) t))
 
 (defgeneric register (server app)
-  (:documentation "Deploys an application to web server. This method
+  (:documentation "Deploys an application to server. This method
   is surrounded by server.mutex")
   (:method-combination sysv-standard :type :start)
   (:method ((self null) app) nil)
   (:method ((self web-server) app) nil))
 
 (defgeneric unregister (server app)
-  (:documentation "Undeploys an application from a web server. This
+  (:documentation "Undeploys an application from a server. This
   method is surrounded by server.mutex")
   (:method-combination sysv-standard :type :stop)
   (:method ((self null) app) nil)

@@ -17,33 +17,59 @@
 
 (in-package :tr.gen.core.server)
 
+;;+----------------------------------------------------------------------------
+;;| Ticker Server
+;;+----------------------------------------------------------------------------
+;;
+;; This file implements ticket server.
+;;
+
 (defun make-ticket-server (path &key (auto-start nil))
-  (make-instance 'ticket-server :db (make-instance 'database-server :db-auto-start auto-start :model-class 'ticket-model :directory path)))
+  "Returns a new ticket server instance, if 'auto-start' is t, server
+is started"
+  (make-instance 'ticket-server
+		 :db (make-instance 'database-server
+				    :db-auto-start auto-start
+				    :model-class 'ticket-model
+				    :directory path)))
 
-(defmethod start ((self ticket-server))
-  (start (ticket-server.db self)))
-
-(defmethod stop ((self ticket-server))
-  (stop (ticket-server.db self)))
-
-(defmethod status ((self ticket-server))
-  (status (ticket-server.db self)))
 
 (defmethod tickets ((self ticket-server))
+  "Returns list of tickets that this server owns"
   (ticket-model.tickets (model (ticket-server.db self))))
 
 (defun tx-add-ticket (system hash type &optional (used nil))
+  "Transactional function used to add tickets"
   (let* ((model (model system))
 	 (ticket (make-instance 'ticket :hash hash :type type :used used)))
     (setf (gethash hash (ticket-model.tickets model)) ticket)
     ticket))
 
-(defmethod add-ticket ((server ticket-server) hash type &optional used) 
+;;-----------------------------------------------------------------------------
+;; Ticket Server Procotol Implementation
+;;-----------------------------------------------------------------------------
+(defmethod add-ticket ((server ticket-server) hash type &optional used)
   (if (null (cadr (multiple-value-list (gethash hash (tickets server)))))
       (execute (ticket-server.db server) (make-transaction 'tx-add-ticket hash type used))
       (error "Ticket with this hash already exists!")))
 
 (defmethod generate-tickets ((server ticket-server) amount type)
   (dotimes (i amount)
-    (let ((hash (funcall (ticket-server.hash-fun server) (ticket-model.tickets (model (ticket-server.db server))))))
+    (let ((hash (funcall (ticket-server.hash-fun server)
+			 (ticket-model.tickets (model (ticket-server.db server))))))
       (execute (ticket-server.db server) (make-transaction 'tx-add-ticket hash type)))))
+
+;;-----------------------------------------------------------------------------
+;; Server Protocol Implementation
+;;-----------------------------------------------------------------------------
+(defmethod start ((self ticket-server))
+  (start (ticket-server.db self)))
+
+(defmethod stop ((self ticket-server))
+  (stop (ticket-server.db self)))
+
+(defmethod ticket-server.status ((self ticket-server))
+  (status (ticket-server.db self)))
+
+(defmethod status ((self ticket-server))
+  (ticket-server.status self))

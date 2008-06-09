@@ -152,9 +152,42 @@ that uses GIT (http://git.or.cz) as SCM"))
     (format stream "\"~A\" is~A running." (server.name self)
 	    (if (status self) "" " *not*"))))
 
+(defclass socket-server (server)
+  ((host :initarg :host :initform "0.0.0.0"
+	 :documentation "IP address that this server binds to")
+   (port :initarg :port :initform 3009
+	 :documentation "Port that this server binds to")
+   (protocol :initarg :protocol :initform :tcp
+	     :documentation "Network Protocol, can be :udp, :tcp")
+   (reuse-address :initarg :reuse-address :initform t
+		  :documentation "TCP reuse address option")
+   (backlog :initarg :backlog :initform 1
+	    :documentation "TCP backlog option")
+   (peers-max :initarg :peers-max :initform 32
+	      :documentation "Number of peers that this server manages")
+   (element-type :initarg :element-type :initform '(unsigned-byte 8)
+		 :documentation "Data type for socket stream")
+   (external-format :initarg :external-format :initform :utf-8
+		    :documentation "External format for stream")
+   (peer-class :initarg :peer-class :initform 'stream-peer
+	       :documentation "Class to instantiate as peer thread.")
+   (debug :initarg :debug :initform nil
+	  :documentation "Debugging flag of socket server")
+   ;;   (request-timeout-length :initarg :request-timeout-length :initform 90)
+   (%socket :initform nil) (%peers :initform nil) (%socket-thread :initform nil)
+   (%debug-unit :initform nil))
+  (:documentation "Socket Server Class"))
+
 (defclass web-server (server)
   ()
   (:documentation "Web Server Base Class"))
+
+(defclass custom-http-peer (http-peer)
+  ())
+
+(defclass http-server (web-server socket-server)
+  ((applications :accessor server.applications :initform '()))
+  (:default-initargs :port 3001 :peer-class '(custom-http-peer)))
 
 (defclass apache-server (web-server)
   ((apachectl-pathname

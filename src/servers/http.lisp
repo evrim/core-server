@@ -17,9 +17,6 @@
 
 (in-package :core-server)
 
-(defclass custom-http-peer (http-peer)
-  ())
-
 (defmethod render-404 ((request http-request) (response http-response))
   (setf (http-response.status-code response) (make-status-code 404))
   (rewind-stream (http-response.stream response))
@@ -65,10 +62,9 @@
       ;; catch-all via 404
       (t (render-404 request response)))))
 
-(defclass http-server (socket-server)
-  ((applications :accessor server.applications :initform '()))
-  (:default-initargs :port 3001 :peer-class '(custom-http-peer)))
-
+;;-----------------------------------------------------------------------------
+;; Server Protocol Implementation
+;;-----------------------------------------------------------------------------
 (defmethod register ((self http-server) (app http-application))
   (setf (server.applications self)
 	(sort (cons app
