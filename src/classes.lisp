@@ -63,8 +63,10 @@
 
 (defmethod print-object ((self http-application) stream)
   (print-unreadable-object (self stream :type t :identity t)
-    (format stream "FQDN:\"~A\" is ~Arunning." (web-application.fqdn self)
-	    (if (status self) "" "*not* "))))
+    (if (typep self 'server)
+	(format stream "FQDN:\"~A\" is ~A running" (web-application.fqdn self)
+		(if (status self) "" "*not*"))
+	(format stream "FQDN:\"~A\"" (web-application.fqdn self)))))
 
 (defclass http-session ()
   ((id :reader id :initform (random-string 8))
