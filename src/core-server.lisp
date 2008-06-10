@@ -476,7 +476,7 @@
    #:find-application
    #:register
    #:unregister
-   #:applications
+   #:server.applications
    
    ;; [HTTP Application]
    #:http-application
