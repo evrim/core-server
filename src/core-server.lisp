@@ -324,6 +324,7 @@
    #:web-application
    #:server
    #:web-server
+  
    ;; Accessors
    #:server.name
    #:server.mutex
@@ -475,6 +476,7 @@
    #:find-application
    #:register
    #:unregister
+   #:applications
    
    ;; [HTTP Application]
    #:http-application
