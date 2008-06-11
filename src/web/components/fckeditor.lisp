@@ -164,6 +164,9 @@
    (handle-fck-browse (format nil "/var/www/~A/" (web-application.fqdn (application self)))    
 		      (format nil "/~A/" (web-application.fqdn (application self))))))
 
+(defjsmacro fckeditor-path ()
+  +fckeditor-path+)
+
 (defjsmacro fckeditor-url ()
   `(+ ,+fckeditor-path+ "fckeditor.js"))
 
@@ -188,6 +191,7 @@
 			 "?" "%3F"))))
 	  
     (setf fck.*toolbar-set "CoreDefault"
+	  fck.*base-path (fckeditor-path)
 	  config.*custom-configurations-path (+ base-url (this.fck-editor-config-url))
 	  config.*link-browser-u-r-l browse-path
 	  config.*image-browser-u-r-l browse-path
