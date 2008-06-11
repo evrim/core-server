@@ -206,6 +206,13 @@ iv) t      - 06/06/2008 17:30"
     (multiple-value-bind (s2 min2 h2 d2 m2 y2 day-of-week-2 dst2 tz2) (decode-universal-time time)
       (encode-universal-time s2 min2 h2 d1 m1 y1))))
 
+(defun today+ (seconds)
+  (multiple-value-bind (second minute hour day month year day-of-week dst-p tz)
+      (decode-universal-time (get-universal-time))
+    (declare (ignore second minute hour day-of-week dst-p))
+    (+ seconds (encode-universal-time 0 0 0 day month year tz))))
+
+
 (defun string-replace-all (old new big)
   "Replace all occurences of OLD string with NEW string in BIG string."
   (do ((newlen (length new))
