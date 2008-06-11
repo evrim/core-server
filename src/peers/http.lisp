@@ -42,6 +42,8 @@ nil if stream data is invalid"
 	(let ((request (make-instance 'http-request :stream stream)))
 	  (let ((content-type (cadr (assoc 'content-type entity-headers)))
 		(content-length (cadr (assoc 'content-length entity-headers))))
+	    (if (null content-length)
+		(setf content-length 0))
 	    (cond
 	      ;; content-type = '("multipart" "form-data")
 	      ((and (string-equal "multipart" (car content-type))
