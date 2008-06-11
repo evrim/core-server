@@ -180,10 +180,15 @@
 		 (mapcar #'ensure-list (remote-slots-of-class name))))))
 
 (defun/cc dojo (&optional base-url (debug nil) (prevent-back-button 'false)
-		(css '("/dijit/themes/dijit.css"
-		       "/dijit/themes/tundra/tundra.css"
-		       "/dojox/widget/Toaster/Toaster.css"
-		       "http://node1.core.gen.tr/coretal/style/coretal.css")))
+		(css (reduce (lambda (acc a)
+			       (cons (concatenate
+				      'string +dojo-path+ ".." a)
+				     acc))
+			     (reverse
+			      '("/dijit/themes/dijit.css"
+				"/dijit/themes/tundra/tundra.css"
+				"/dojox/widget/Toaster/Toaster.css"))
+			     :initial-value '("http://node1.core.gen.tr/coretal/style/coretal.css"))))
   (<:js
    `(progn
       (defun load-javascript (url)
