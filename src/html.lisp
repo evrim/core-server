@@ -176,10 +176,10 @@
 	(t	 
 	 (mapcar #'child! (children element))
 	 (char! stream #\Newline)
-	 (indent)))
-      (string! stream "</")
-      (string! stream (tag element))
-      (char! stream #\>))))
+	 (indent)
+	 (string! stream "</")
+	 (string! stream (tag element))
+	 (char! stream #\>))))))
 
 (defclass empty-dom-element (dom-element)
   ())
