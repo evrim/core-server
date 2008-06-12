@@ -47,6 +47,15 @@
 		 queries)
      ,@body))
 
+(defclass http-application (web-application)
+  ((urls :accessor application.urls :initarg :urls :initform '())
+   (sessions :accessor application.sessions :initform (make-hash-table :test #'equal))))
+
+(defmethod print-object ((self http-application) stream)
+  (print-unreadable-object (self stream :type t :identity t)
+    (format stream "FQDN:\"~A\" is ~Arunning." (web-application.fqdn self)
+	    (if (status self) "" "*not* "))))
+
 (defmethod find-session ((self http-application) id)
   "Returns the session associated with 'id'"
   (gethash id (application.sessions self)))
