@@ -553,12 +553,6 @@
     (standard-object (make-instance 'core-object-io-stream :object target))))
 
 ;; HELPERS
-(defmacro with-core-stream ((var val) &body body) 
-  `(let ((,var (make-core-stream ,val))) 
-     (unwind-protect
-	  (progn ,@body) 
-       (close-stream ,var))))
-
 
 ;; (with-core-stream (s "abc")
 ;;   (read-stream s))

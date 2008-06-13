@@ -42,10 +42,10 @@
     (format stream "tag:~A" (tag self))))
 
 (defun make-dom-element (tag attributes &rest children)
-  (make-instance 'dom-element :tag tag :attributes attributes :children children))
-
-(defun dom-successor (element)
-  (if (typep element 'dom-element) (children element)))
+  (make-instance 'dom-element
+		 :tag tag
+		 :attributes attributes
+		 :children children))
 
 (defrule attribute-name? (c (acc (make-accumulator)))
   (:oom (:or (:type alphanum? c)
