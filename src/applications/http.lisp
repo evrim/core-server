@@ -53,8 +53,9 @@
 
 (defmethod print-object ((self http-application) stream)
   (print-unreadable-object (self stream :type t :identity t)
-    (format stream "FQDN:\"~A\" is ~Arunning." (web-application.fqdn self)
-	    (if (status self) "" "*not* "))))
+    (format stream "FQDN:\"~A\" ADmIN: \"~A\""
+	    (web-application.fqdn self)
+	    (web-application.admin-email self))))
 
 (defmethod find-session ((self http-application) id)
   "Returns the session associated with 'id'"

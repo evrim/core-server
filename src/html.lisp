@@ -45,7 +45,10 @@
   (make-instance 'dom-element
 		 :tag tag
 		 :attributes attributes
-		 :children children))
+		 :children (reverse (flatten children))))
+
+(defun dom-successor (element)
+  (if (typep element 'dom-element) (children element)))
 
 (defrule attribute-name? (c (acc (make-accumulator)))
   (:oom (:or (:type alphanum? c)
@@ -180,6 +183,11 @@
 	 (string! stream "</")
 	 (string! stream (tag element))
 	 (char! stream #\>))))))
+
+(defun dom2string (element)
+  (with-core-stream (s "")
+    (dom-element! s element)
+    (return-stream s)))
 
 (defclass empty-dom-element (dom-element)
   ())
