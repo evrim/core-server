@@ -189,6 +189,11 @@
     (dom-element! s element)
     (return-stream s)))
 
+(defun dom2string (element)
+  (with-core-stream (s "")
+    (dom-element! s element)
+    (return-stream s)))
+
 (defclass empty-dom-element (dom-element)
   ())
 
