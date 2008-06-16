@@ -34,6 +34,7 @@
 	   (let ((c (if (characterp c) (char-code c) c)))
 	     (declare (type (unsigned-byte 8) c))
 	     ,@body)))
+     (export ',name)
      (deftype ,name ()
        `(satisfies ,',name))))
 

@@ -571,6 +571,21 @@
    #:web-form-component
    ;; socialshare
    #:socialshare-component
+   ;; [ Core Commands ]
+   #:defcommand
+   #:command
+   #:command.output-stream
+   #:command.input-stream
+   #:command.verbose
+   #:command.verbose-stream
+   #:command.local-args
+   #:command.remote-args
+   #:shell
+   #:whereis
+   ;; [ Core Parser ]
+   #:defrule
+   #:defparser
+   #:defrender
    ))
 
 (defpackage :tr.gen.core.server.html

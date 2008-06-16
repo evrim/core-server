@@ -210,6 +210,9 @@
      ,@body))
 
 (defgrammar-expander bind-form
+  (if (not (fboundp (func form)))
+      (setf (func form) (intern (symbol-name (func form)) :core-server)))
+  
   (if (< (length (args form)) 1)
       `(,(func form) ,stream)
       `(multiple-value-setq ,(args form) (,(func form) ,stream))))
