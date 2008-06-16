@@ -13,11 +13,11 @@
 
 ;; create a handler
 (defurl *hello* "hello" ()
-  (with-html-output (core-server::http-response.stream (core-server::response +context+))
+  (with-html-output +html-output+
     "Hello, World!"))
 
 (defun/cc template (body)
-  (with-html-output (core-server::http-response.stream (core-server::response +context+))
+  (with-html-output +html-output+
     (<:html
      (<:body
       body))))
