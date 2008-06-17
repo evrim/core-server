@@ -22,7 +22,7 @@
                 xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
                 xmlns:str="http://exslt.org/strings">
 
-  <xsl:variable name="repo" select="/darcs/@repository"/>
+  <xsl:variable name="repo" select="core-server"/>
   <xsl:variable name="cgi-url">http://labs.core.gen.tr/cgi-bin/darcs.cgi</xsl:variable>
   <xsl:variable name="command">
     <xsl:value-of select="$cgi-url"/>/<xsl:value-of select="/darcs/@target"/>
