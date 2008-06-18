@@ -179,15 +179,10 @@
 	(t	 
 	 (mapcar #'child! (children element))
 	 (char! stream #\Newline)
-	 (indent)
-	 (string! stream "</")
-	 (string! stream (tag element))
-	 (char! stream #\>))))))
-
-(defun dom2string (element)
-  (with-core-stream (s "")
-    (dom-element! s element)
-    (return-stream s)))
+	 (indent)))
+      (string! stream "</")
+      (string! stream (tag element))
+      (char! stream #\>))))
 
 (defun dom2string (element)
   (with-core-stream (s "")
