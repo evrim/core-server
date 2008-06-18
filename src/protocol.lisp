@@ -116,6 +116,12 @@
 (defgeneric generate-tickets (server amount type)
   (:documentation "Generate given amount of tickets with random hash"))
 
+;;-----------------------------------------------------------------------------
+;; Socket Server Protocol
+;;-----------------------------------------------------------------------------
+(defgeneric handle-stream (unit core-stream address)
+  (:documentation "Handle the incoming remote socket request"))
+
 ;;+----------------------------------------------------------------------------
 ;;| Application Protocol
 ;;+----------------------------------------------------------------------------
