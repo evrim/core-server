@@ -17,6 +17,13 @@
 
 (in-package :tr.gen.core.server)
 
+;;+----------------------------------------------------------------------------
+;;| Mail Service
+;;+----------------------------------------------------------------------------
+;;
+;; This file implements mail service
+;;
+
 ;;; TODO: use auth whenever needed.
 
 ;;;;
