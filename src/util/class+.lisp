@@ -26,6 +26,15 @@
 ;; also provide us some of the information but since there are numerous
 ;; incompatible Common-lisp implementations, we prefered a new framework.
 ;;
+;; The parameters that Class+ saves are:
+;;
+;;     * Local Slots
+;;     * Remote Slots
+;;     * Local Methods
+;;     * Remote Methods
+;;     * Default Initial Arguments (default-initargs)
+;;     * Value of a new keyword called 'host'
+;;
 ;; Generally, those parameters are accessed during compile time. Several
 ;; frameworks inside [Core-serveR] uses Class+:
 ;; i)  Command Framework - Used to execute unix shell commands
@@ -41,8 +50,7 @@
 ;; - local-methods-of-class
 ;; - remote-methods-of-class
 ;;
-;; TODO: Explain what is local/remote slot/method, client-type
-;; FIXmE: Bug me on the list if you wish to learn -evrim.
+;; See http://labs.core.gen.tr/#classplus for more documentation.
 
 (eval-when (:execute :compile-toplevel :load-toplevel)
   (defvar +class-registry+ (make-hash-table :test #'equal)
