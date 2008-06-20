@@ -86,7 +86,8 @@
                                    (:file "2616") ;;http
                                    (:file "2045") ;;mime-part1
                                    (:file "2046") ;;mime-part2
-                                   (:file "2388"))) ;;multpart/form-data                                   
+                                   (:file "2388") ;;multpart/form-data
+				   (:file "2821"))) ;;smtp
                          (:module :applications
                                   :components
                                   ((:file "serializable-application")
