@@ -94,6 +94,7 @@
 				:password (mail-sender.password self)
 				:stream it)) ;; shoudl be < 400
 	   (%process-queue self it)
+	   (smtp-quit :stream it)
 	   ;; close conn
 	   (close-stream it)
 	   (smsg self "Connection closed."))
