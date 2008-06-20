@@ -371,7 +371,9 @@
 (defmethod commit-stream ((self core-fd-io-stream))
   (let ((buffer (s-v '%write-buffer)))
     (prog1 (%rewind-checkpoint self)
-      (write-stream self buffer))))
+      (write-stream self buffer)
+      (if (not (transactionalp self))
+	  (finish-output (s-v '%stream))))))
 
 ;;;-----------------------------------------------------------------------------
 ;;; File Stream
@@ -546,7 +548,7 @@
 (defun make-core-stream (target)
   (etypecase target
     (string (make-instance 'core-string-io-stream :string target))
-    (pathname (make-instance 'core-file-io-stream :file target))
+    (pathname (make-instance 'core-file-input-stream :file target))
     (array (make-instance 'core-vector-io-stream :octets target))
     (sb-sys::fd-stream (make-instance 'core-fd-io-stream :stream target))
     (list (make-instance 'core-list-io-stream :list target))
