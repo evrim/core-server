@@ -23,11 +23,23 @@
    (remote-args :accessor component.remote-args :initarg :remote-args :initform '())
    (application :accessor application :initarg :application :initform nil)))
 
-(defmethod application ((self component))
-  (or (s-v 'application) (application +context+)))
-
 (defgeneric/cc send/component (component)
   (:documentation "Send component to remote."))
+
+(defgeneric html (component)
+  (:documentation "Returns a html dom-element representation of this component")
+  (:method ((self component)) nil))
+
+(defgeneric stylesheet (component)
+  (:documentation "Returns a css-element representation of this component")
+  (:method ((self component)) nil))
+
+(defgeneric javascript (component)
+  (:documentation "Returns a javascript overrides for this component")
+  (:method ((self component)) nil))
+
+(defmethod application ((self component))
+  (or (s-v 'application) (application +context+)))
 
 (eval-when (:execute :compile-toplevel :load-toplevel)
   (defun proxy-method-name (name)
@@ -98,46 +110,54 @@
 		     (reduce #'append acc :initial-value nil))))))
     (array `(array ,@object))))
 
-(defmethod/cc send/component ((self component))
-  (let ((class-name (class-name (class-of self))))
-    (flet ((local-slots ()
-	     (reduce (lambda (acc slot)
-		       (cons (make-keyword slot) (cons 'null acc)))
-		     (reverse (mapcar (compose #'car #'ensure-list)
-				      (local-slots-of-class class-name)))
-		     :initial-value nil))
-	   (remote-slots ()
-	     (reduce (lambda (acc slot)
-		       (cons (make-keyword slot)
-			     (cons (serialize-to-parenscript
-				    (client-type-of-slot class-name slot)
-				    (if (slot-boundp self slot)
-					(slot-value self slot)))
-				   acc)))
-		     (reverse (mapcar (compose #'car  #'ensure-list)
-				      (remote-slots-of-class class-name)))
-		     :initial-value nil))
-	   (local-methods ()
-	     (reduce (lambda (acc method)
-		       (cons (make-keyword method)
-			     (cons (funcall
-				    (symbol-function
-				     (proxy-method-name method)) self)
-				   acc)))
-		     (local-methods-of-class class-name)
-		     :initial-value nil))
-	   (remote-methods ()
-	     (reduce (lambda (acc method)
-		       (cons (make-keyword method)
-			     (cons (funcall (symbol-function
-					     (proxy-method-name method)) self) acc)))
-		     (remote-methods-of-class class-name)
-		     :initial-value nil)))
-      (send/ctor self (remote-slots) (local-methods) (remote-methods)))))
 
-(defmethod/cc send/ctor ((self component) remote-slots local-methods remote-methods)
+(defmethod class-name ((self component))
+  (class-name (class-of self)))
+
+(defmethod/cc local-slots ((self component))
+  (reduce (lambda (acc slot)
+	    (cons (make-keyword slot) (cons 'null acc)))
+	  (reverse (mapcar (compose #'car #'ensure-list)
+			   (local-slots-of-class (class-name self))))
+	  :initial-value nil))
+
+(defmethod/cc remote-slots ((self component))
+  (reduce (lambda (acc slot)
+	    (cons (make-keyword slot)
+		  (cons (serialize-to-parenscript
+			 (client-type-of-slot (class-name self) slot)
+			 (if (slot-boundp self slot)
+			     (slot-value self slot)))
+			acc)))
+	  (reverse (mapcar (compose #'car  #'ensure-list)
+			   (remote-slots-of-class (class-name self))))
+	  :initial-value nil))
+
+(defmethod/cc local-methods ((self component))
+  (reduce (lambda (acc method)
+	    (cons (make-keyword method)
+		  (cons (funcall
+			 (symbol-function
+			  (proxy-method-name method)) self)
+			acc)))
+	  (local-methods-of-class (class-name self))
+	  :initial-value nil))
+
+(defmethod/cc remote-methods ((self component))
+  (reduce (lambda (acc method)
+	    (cons (make-keyword method)
+		  (cons (funcall (symbol-function
+				  (proxy-method-name method)) self) acc)))
+	  (remote-methods-of-class (class-name self))
+	  :initial-value nil))
+
+(defmethod/cc send/component ((self component))  
   (<:js
-   `(setf ,(class-name (class-of self))
+    (send/ctor self (remote-slots self) (local-methods self) (remote-methods self))))
+
+(defmethod/cc send/ctor ((self component) remote-slots local-methods remote-methods)    
+  (js:js*
+   `(setf ,(class-name self)
 	  (lambda (,@(reduce (lambda (acc slot)
 			       (if (keywordp slot)
 				   (cons (intern (symbol-name slot)) acc)
@@ -155,29 +175,58 @@
 		      remote-slots :initial-value nil)
 	    (return this.prototype)))))
 
+(defclass component-dom-element (dom-element)
+  ())
+
+(defmethod dom-element! ((stream core-stream) (element component-dom-element)
+			 &optional (indentation 0))
+  (prog1 stream
+    (mapcar (lambda (e)
+	      (dom-element! stream e indentation)
+	      (char! stream #\Newline))
+	    (children element))))
+
 (defmacro defcomponent (name supers slots &rest rest)
   (multiple-value-bind (slots new-rest) (register-class name supers slots rest)
-    `(prog1 (defclass ,name (,@supers component)
-	      ,slots
-	      (:default-initargs ,@(alist-to-plist (default-initargs-of-class name)))
-	      ,@(remove :default-initargs new-rest :key #'car))
-       (defun ,name (&key ,@(local-slots-of-class name) ,@(remote-slots-of-class name))
-	 (apply #'make-instance ',name (list ,@(ctor-arguments name))))
-       ,@(mapcar (lambda (slot)
-		   `(progn
-		      (defmethod/local ,(proxy-getter-name (car slot)) ((self ,name))
-			(slot-value self ',(car slot)))
-		      (defmethod/local ,(proxy-setter-name (car slot)) ((self ,name) value)
-			(setf (slot-value self ',(car slot)) value))))
-		 (mapcar #'ensure-list (local-slots-of-class name)))
-       ,@(mapcar (lambda (slot)
-		   `(progn
-		      (defmethod/remote ,(proxy-getter-name (car slot)) ((self ,name))
-			(return (slot-value this ',(car slot))))
-		      (defmethod/remote ,(proxy-setter-name (car slot)) ((self ,name) value)			
-			(setf (slot-value this ',(car slot)) value)
-			(return (slot-value this ',(car slot))))))
-		 (mapcar #'ensure-list (remote-slots-of-class name))))))
+    (let ((html-symbol (intern (symbol-name name) (find-package :tr.gen.core.server.html))))
+      `(prog1 (defclass ,name (,@supers component)
+		,slots
+		(:default-initargs ,@(alist-to-plist (default-initargs-of-class name)))
+		,@(remove :default-initargs new-rest :key #'car))
+	 (defun ,name (&key ,@(local-slots-of-class name) ,@(remote-slots-of-class name))
+	   (apply #'make-instance ',name (list ,@(ctor-arguments name))))
+	 (defclass ,html-symbol (component-dom-element)
+	   ())
+	 (defun/cc ,html-symbol (&key ,@(local-slots-of-class name) ,@(remote-slots-of-class name))
+	     (let ((component (funcall (function ,name) ,@(ctor-arguments name))))
+	       (make-instance 'component-dom-element
+			      :tag ,(symbol-name name)
+			      :children (list (<:script :type "text/javascript"							
+							(send/ctor component
+								   (remote-slots component)
+								   (local-methods component)
+								   (remote-methods component))
+							;;							(javascript component)
+							) 
+;;					      (<:style :type "text/css" (stylesheet component))
+					      (html component)))))
+	 (export ',html-symbol (find-package :tr.gen.core.server.html))
+	 ,@(mapcar (lambda (slot)
+		     `(progn
+			(defmethod/local ,(proxy-getter-name (car slot)) ((self ,name))
+			  (slot-value self ',(car slot)))
+			(defmethod/local ,(proxy-setter-name (car slot)) ((self ,name) value)
+			  (setf (slot-value self ',(car slot)) value))))
+		   (mapcar #'ensure-list (local-slots-of-class name)))
+	 ,@(mapcar (lambda (slot)
+		     `(progn
+			(defmethod/remote ,(proxy-getter-name (car slot)) ((self ,name))
+			  (return (slot-value this ',(car slot))))
+			(defmethod/remote ,(proxy-setter-name (car slot)) ((self ,name) value)			
+			  (setf (slot-value this ',(car slot)) value)
+			  (set-parameter ,(symbol-to-js (car slot)) value)
+			  (return (slot-value this ',(car slot))))))
+		   (mapcar #'ensure-list (remote-slots-of-class name)))))))
 
 (defun/cc dojo (&optional base-url (debug nil) (prevent-back-button 'false)
 		(css (reduce (lambda (acc a)
