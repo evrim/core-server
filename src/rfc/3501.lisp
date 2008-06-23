@@ -23,7 +23,10 @@
 ;;
 ;; This file implement only client side operations
 ;;
-
+;; Notes:
+;; - imap-append need to be tested, timestamp is not working
+;; - imap-fetch: parse reponse body
+;; - imap-uid: not implemented yet
 (defparser imap-newline? ()
   #\Return #\Newline (:return t))
 
@@ -60,6 +63,52 @@
 (defparser imap? (cont status)
   (:imap-status-line? cont status)
   (:return (list cont status)))
+
+;; Imap message flags Parser/Render
+(defatom imap-flag? ()
+  (and (not (eq c #.(char-code #\)))) (visible-char? c)))
+
+(defparser imap-flags? (flags c (acc (make-accumulator)))
+  #\(
+  (:zom (:not #\))
+	(:or (:and (:seq "\\Seen") (:do (push 'seen flags)))
+	     (:and (:seq "\\Answered") (:do (push 'answered flags)))
+	     (:and (:seq "\\Flagged") (:do (push 'flagged flags)))
+	     (:and (:seq "\\Deleted") (:do (push 'deleted flags)))
+	     (:and (:seq "\\Draft") (:do (push 'draft flags)))
+	     (:and (:seq "\\Recent") (:do (push 'recent flags)))
+	     (:and (:seq "\\Noselect") (:do (push 'noselect flags)))
+	     (:and (:seq "\\*") (:do (push '* flags)))
+	     (:and (:zom (:type imap-flag? c)
+			 (:collect c acc))
+		   (:do (push acc flags)
+			(setf acc (make-accumulator)))))
+	(:lwsp?))
+  (:return (if (null flags)
+	       'non-existent-imap-flag
+	       (nreverse flags))))
+
+(defvar +imap-flags+
+  '((seen "\\Seen")
+    (answered "\\Answered")
+    (flagged "\\Flagged")
+    (deleted "\\Deleted")
+    (draft "\\Draft")
+    (recent "\\Recent")
+    (noselect "\\Noselect")
+    (* "\\*")))
+
+(defrender imap-flags! (flags)
+  #\(
+  (:sep " " flags)
+  #\))
+
+(defun filter-imap-flags (flags)
+  (mapcar (lambda (a)
+	    (aif (cdr (assoc a +imap-flags+))
+		 it
+		 a))
+	  flags))
 
 (defcommand imap ()
   ((stream :host local :accessor imap.stream :initarg :stream
@@ -227,34 +276,11 @@
 ;;                NO - select failure, now in authenticated state: no
 ;;                     such mailbox, can't access mailbox
 ;;                BAD - command unknown or arguments invalid
-(defatom imap-flag? ()
-  (and (not (eq c #.(char-code #\)))) (visible-char? c)))
-
-(defparser imap-select-flags? (flags c (acc (make-accumulator)))
-  #\(
-  (:zom (:not #\))
-	(:or (:and (:seq "\\Seen") (:do (push 'seen flags)))
-	     (:and (:seq "\\Answered") (:do (push 'answered flags)))
-	     (:and (:seq "\\Flagged") (:do (push 'flagged flags)))
-	     (:and (:seq "\\Deleted") (:do (push 'deleted flags)))
-	     (:and (:seq "\\Draft") (:do (push 'draft flags)))
-	     (:and (:seq "\\Recent") (:do (push 'recent flags)))
-	     (:and (:seq "\\Noselect") (:do (push 'noselect flags)))
-	     (:and (:seq "\\*") (:do (push '* flags)))
-	     (:and (:zom (:type imap-flag? c)
-			 (:collect c acc))
-		   (:do (push acc flags)
-			(setf acc (make-accumulator)))))
-	(:lwsp?))
-  (:return (if (null flags)
-	       'non-existent-imap-flag
-	       (nreverse flags))))
-
 (defparser imap-select? (cont status flags exists recent unseen
 			      uidvalidity uidnext permanent-flags)
   (:zom #\* (:lwsp?)
 	(:or (:and (:seq "FLAGS") (:lwsp?)
-		   (:imap-select-flags? flags)
+		   (:imap-flags? flags)
 		   (:if (eq flags 'non-existent-imap-flag)
 			(:do (setf flags nil))))
 	     (:checkpoint (:fixnum? exists) (:lwsp?) (:seq "EXISTS") (:commit))
@@ -270,7 +296,7 @@
 			      (:fixnum? uidnext)
 			      (:imap-eat-until-newline?))
 			(:and (:seq "[PERMANENTFLAGS ")
-			      (:imap-select-flags? permanent-flags)
+			      (:imap-flags? permanent-flags)
 			      (:if (eq permanent-flags 'non-existent-imap-flag)
 				   (:do (setf permanent-flags nil)))
 			      (:imap-eat-until-newline?)))))
@@ -377,7 +403,7 @@
 ;;                BAD - command unknown or arguments invalid
 (defparser imap-list? (cont status flags c reference mailbox result)
   (:zom #\* (:lwsp?) (:or (:seq "LSUB") (:seq "LIST"))
-	(:lwsp?) (:imap-select-flags? flags) (:lwsp?)
+	(:lwsp?) (:imap-flags? flags) (:lwsp?)
 	(:or (:quoted? reference)
 	     (:and (:do (setf reference (make-accumulator)))
 		   (:zom (:type visible-char? c)
@@ -484,10 +510,40 @@
 ;;                NO - append error: can't append to that mailbox, error
 ;;                     in flags or date/time or message text
 ;;                BAD - command unknown or arguments invalid
-;; TODO: Fixme
 (defcommand imap-append (imap-mailbox-command)
-  ()
+  ((flags :host local :accessor imap.flags :initarg :flags :initform nil)
+   (timestamp :host local :accessor imap.timestamp :initarg :timestamp :initform nil)
+   (envelope :host local :accessor imap.envelope :initarg :envelope
+	     :initform (error "Please specify :envelope")))
   (:default-initargs :message "APPEND"))
+
+(defrender imap-append! (cont message mailbox flags length)
+  (:string! cont) #\Space
+  (:string! message) #\Space
+  (:string! mailbox) #\Space
+  (:imap-flags! flags) #\Space #\{
+  (:fixnum! length) #\}  
+  #\Newline)
+
+(defparser imap-append-ready? ()
+  (:seq "+ ")
+  (:zom (:not #\Newline)
+	(:type (or space? visible-char?)))
+  (:return t))
+
+(defrender imap-append-envelope! (envelope)
+  (:string! envelope))
+
+(defmethod run ((self imap-append))
+  (with-core-stream (s "")
+    (envelope! s (imap.envelope s))
+    (imap-append! (imap.stream self) (imap.continuation self)
+		  (imap.message self)
+		  (imap.mailbox self) (filter-imap-flags (ensure-list (imap.flags self)))
+		  (length (return-stream s)))
+    (imap-append-ready? (imap.stream self))
+    (imap-append-envelope! (imap.stream self) (return-stream s))
+    (imap? (imap.stream self))))
 
 ;; 6.4.    Client Commands - Selected State
 
@@ -614,7 +670,6 @@
 ;;    Result:     OK - store completed
 ;;                NO - store error: can't store that data
 ;;                BAD - command unknown or arguments invalid
-;; TODO: get flags as symbols
 (defparameter +imap-store-commands+
   '((set "FLAGS")
     (silent-set "FLAGS.SILENT")
@@ -628,7 +683,7 @@
 	(:fixnum? id) (:lwsp?)
 	(:seq "FETCH") (:lwsp?)
 	(:seq "(FLAGS ")
-	(:imap-select-flags? flags)
+	(:imap-flags? flags)
 	(:do (push (cons id flags) result))
 	#\)
 	(:lwsp?))
@@ -667,7 +722,7 @@
 					       (cdr (imap.sequence self)))
 				       (format nil "~D" (imap.sequence self)))
 	       (cadr (assoc (imap.command self) +imap-store-commands+))
-	       (imap.flags self)))
+	       (filter-imap-flags (ensure-list (imap.flags self)))))
 
 ;; 6.4.7.  COPY Command
 
@@ -704,8 +759,9 @@
 ;;    Result:     OK - UID command completed
 ;;                NO - UID command error
 ;;                BAD - command unknown or arguments invalid
-
-
+;; TODO: Implement UID
+(defcommand imap-uid (imap)
+  ())
 
 (defun test-imap ()
   (let ((s (make-core-stream
@@ -731,7 +787,7 @@
 	  (imap-check :stream s)
 	  (imap-search :stream s :query "FROM \"evrim\"")
 	  (imap-fetch :stream s :sequence 2457 :macro "ALL")
-	  (imap-store :stream s :sequence 2457 :command 'set :flags '("\\Seen"))
+	  (imap-store :stream s :sequence 2457 :command 'set :flags '(seen))
 	  (imap-copy :stream s :sequence 2457 :mailbox "Sent")
 	  (imap-expunge :stream s)
 	  (imap-logout :stream s))))
