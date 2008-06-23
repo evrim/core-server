@@ -239,6 +239,7 @@
 	     (:and (:seq "\\Deleted") (:do (push 'deleted flags)))
 	     (:and (:seq "\\Draft") (:do (push 'draft flags)))
 	     (:and (:seq "\\Recent") (:do (push 'recent flags)))
+	     (:and (:seq "\\Noselect") (:do (push 'noselect flags)))
 	     (:and (:seq "\\*") (:do (push '* flags)))
 	     (:and (:zom (:type imap-flag? c)
 			 (:collect c acc))
@@ -374,14 +375,42 @@
 ;;    Result:     OK - list completed
 ;;                NO - list failure: can't list that reference or name
 ;;                BAD - command unknown or arguments invalid
+(defparser imap-list? (cont status flags c reference mailbox result)
+  (:zom #\* (:lwsp?) (:or (:seq "LSUB") (:seq "LIST"))
+	(:lwsp?) (:imap-select-flags? flags) (:lwsp?)
+	(:or (:quoted? reference)
+	     (:and (:do (setf reference (make-accumulator)))
+		   (:zom (:type visible-char? c)
+			 (:collect c reference))))
+	(:or (:quoted? mailbox)
+	     (:and (:do (setf mailbox (make-accumulator)))
+		   (:zom (:type visible-char? c)
+			 (:collect c mailbox))))
+	(:do (push (list (if (eq 'non-existent-imap-flag flags)
+			     nil
+			     flags) reference mailbox) result)))
+  (:lwsp?)
+  (:imap-status-line? cont status)
+  (:return (cons cont (cons status (nreverse result)))))
+
 (defcommand imap-list (imap-mailbox-command)
   ((reference :accessor imap.reference :initarg :reference
-	      :initform nil :host local))
-  (:default-initargs :mailbox nil :message "LIST"))
+	      :initform "" :host local))
+  (:default-initargs :mailbox "" :message "LIST" :parser #'imap-list?))
 
-;; (defmethod render ((self imap-list))
-;;   (imap! (imap.stream self) (imap.continuation self)
-;; 	 (format nil "~A ~A ")))
+(defrender imap-list! (cont message reference mailbox)
+  (:string! cont)
+  (:char! #\Space)
+  (:string! message)
+  (:char! #\Space)
+  (:quoted! reference)
+  (:char! #\Space)
+  (:quoted! mailbox)
+  (:char! #\Newline))
+
+(defmethod render ((self imap-list))
+  (imap-list! (imap.stream self) (imap.continuation self)
+	      (imap.message self) (imap.reference self) (imap.mailbox self)))
 
 ;; 6.3.9.  LSUB Command
 
@@ -391,6 +420,9 @@
 ;;    Result:     OK - lsub completed
 ;;                NO - lsub failure: can't list that reference or name
 ;;                BAD - command unknown or arguments invalid
+(defcommand imap-lsub (imap-list)
+  ()
+  (:default-initargs :message "LSUB"))
 
 ;; 6.3.10. STATUS Command
 
@@ -452,6 +484,7 @@
 ;;                NO - append error: can't append to that mailbox, error
 ;;                     in flags or date/time or message text
 ;;                BAD - command unknown or arguments invalid
+;; TODO: Fixme
 (defcommand imap-append (imap-mailbox-command)
   ()
   (:default-initargs :message "APPEND"))
@@ -509,6 +542,28 @@
 ;;                NO - search error: can't search that [CHARSET] or
 ;;                     criteria
 ;;                BAD - command unknown or arguments invalid
+(defparser imap-search? (num result cont status)
+  #\* (:lwsp?) (:seq "SEARCH") (:lwsp?)
+  (:zom (:fixnum? num)
+	(:do (push num result))
+	(:type space?))
+  (:lwsp?)
+  (:imap-status-line? cont status)
+  (:return (cons cont (cons status (nreverse result)))))
+
+(defcommand imap-search (imap)
+  ((charset :accessor imap.charset :initarg :charset :host local
+	    :initform nil)
+   (query :accessor imap.query :initarg :query :host local
+	  :initform (error "Please specify query")))
+  (:default-initargs :message "SEARCH" :parser #'imap-search?))
+
+(defmethod render ((self imap-search))
+  (imap! (imap.stream self) (imap.continuation self)
+	 (format nil "~A ~A" (imap.message self)
+		 (if (imap.charset self)
+		     (format nil "~A ~A" (imap.charset self) (imap.query self))
+		     (imap.query self)))))
 
 ;; 6.4.5.  FETCH Command
 
@@ -519,6 +574,37 @@
 ;;                NO - fetch error: can't fetch that data
 ;;                BAD - command unknown or arguments invalid
 
+;; TODO: Handle BODY replies, parse result
+;; "(FLAGS (\\Seen) INTERNALDATE \"20-Jun-2008 14:06:51 +0300\" RFC822.SIZE 7143 ENVELOPE (\"Fri, 20 Jun 2008 13:47:02 +0300\" \"=?windows-1254?Q?ileri_Excel_ve_=DDnternet_Pazarlama?=\" ((\"Bilisim Seminer\" NIL \"news\" \"zeru-news.com\")) ((\"Bilisim Seminer\" NIL \"news\" \"zeru-news.com\")) ((NIL NIL \"news\" \"zerumail.com\")) ((NIL NIL \"evrim\" \"core.gen.tr\")) NIL NIL NIL \"<d258cd436b112a116f6b88e50012cbd1@zeru-news.com>\"))"
+(defparser imap-fetch? (id result c (acc (make-accumulator))
+			   cont status)
+  (:zom #\* (:lwsp?)
+	(:fixnum? id) (:lwsp?) (:seq "FETCH") (:lwsp?)
+	(:zom (:type (or space? visible-char?) c)
+	      (:collect c acc))
+	(:do (push (cons id acc) result))
+	(:lwsp?))
+  (:imap-status-line? cont status)
+  (:return (cons cont (cons status (nreverse result)))))
+
+(defcommand imap-fetch (imap)
+  ((sequence :initarg :sequence :accessor imap.sequence :host local
+	     :initform (error "Please specify sequence"))
+   (macro :initarg :macro :accessor imap.macro :host local
+	  :initform (error "Please specify data item names or macro")))
+  (:default-initargs :message "FETCH" :parser #'imap-fetch?))
+
+(defmethod render ((self imap-fetch))
+  (imap! (imap.stream self) (imap.continuation self)
+	 (format nil "~A ~A ~A"
+		 (imap.message self)
+		 (if (consp (imap.sequence self))
+		     (format nil "~D:~D"
+			     (car (imap.sequence self))
+			     (cdr (imap.sequence self)))
+		     (imap.sequence self))
+		 (imap.macro self))))
+
 ;; 6.4.6.  STORE Command
 
 ;;    Arguments:  sequence set
@@ -528,6 +614,61 @@
 ;;    Result:     OK - store completed
 ;;                NO - store error: can't store that data
 ;;                BAD - command unknown or arguments invalid
+;; TODO: get flags as symbols
+(defparameter +imap-store-commands+
+  '((set "FLAGS")
+    (silent-set "FLAGS.SILENT")
+    (append "+FLAGS")
+    (silent-append "+FLAGS.SILENT")
+    (remove "-FLAGS")
+    (silent-remove "-FLAGS.SILENT")))
+
+(defparser imap-store? (id flags result cont status)
+  (:zom #\* (:lwsp?)
+	(:fixnum? id) (:lwsp?)
+	(:seq "FETCH") (:lwsp?)
+	(:seq "(FLAGS ")
+	(:imap-select-flags? flags)
+	(:do (push (cons id flags) result))
+	#\)
+	(:lwsp?))
+  (:imap-status-line? cont status)
+  (:return (cons cont (cons status (nreverse result)))))
+
+(defcommand imap-store (imap)
+  ((sequence :host local :initform (error "Please specify :sequence")
+	     :accessor imap.sequence :initarg :sequence)
+   (command :host local :initform (error "Please specify :comand")
+	    :accessor imap.command :initarg :command)
+   (flags :host local :initform (error "Please specify :flags")
+	  :accessor imap.flags :initarg :flags))
+  (:default-initargs :message "STORE" :parser #'imap-store?))
+
+(defrender imap-store! (cont message sequence command flags)
+  (:string! cont)
+  (:char! #\Space)
+  (:string! message)
+  (:char! #\Space)
+  (:string! sequence)
+  (:char! #\Space)
+  (:string! command)
+  (:char! #\Space)
+  (:char! #\()
+  (:sep " " flags)
+  (:char! #\))
+  (:char! #\Newline))
+
+(defmethod render ((self imap-store))
+  (assert (member (imap.command self) +imap-store-commands+ :key #'car))
+  (imap-store! (imap.stream self) (imap.continuation self)
+	       (imap.message self) (if (consp (imap.sequence self))
+				       (format nil "~D:~D"
+					       (car (imap.sequence self))
+					       (cdr (imap.sequence self)))
+				       (format nil "~D" (imap.sequence self)))
+	       (cadr (assoc (imap.command self) +imap-store-commands+))
+	       (imap.flags self)))
+
 ;; 6.4.7.  COPY Command
 
 ;;    Arguments:  sequence set
@@ -537,6 +678,23 @@
 ;;                NO - copy error: can't copy those messages or to that
 ;;                     name
 ;;                BAD - command unknown or arguments invalid
+(defcommand imap-copy (imap)
+  ((sequence :accessor imap.sequence :host local :initarg :sequence
+	     :initform (error "Please specify :sequence"))
+   (mailbox :accessor imap.mailbox :host local :initarg :mailbox
+	    :initform (error "Please specify :mailbox")))
+  (:default-initargs :message "COPY"))
+
+(defmethod render ((self imap-copy))
+  (imap! (imap.stream self) (imap.continuation self)
+	 (format nil "~A ~A ~A"
+		 (imap.message self)
+		 (if (consp (imap.sequence self))
+		     (format nil "~D:~D"
+			     (car (imap.sequence self))
+			     (cdr (imap.sequence self)))
+		     (imap.sequence self))
+		 (imap.mailbox self))))
 
 ;; 6.4.8.  UID Command
 
@@ -568,7 +726,13 @@
 	    (imap-delete :stream s :mailbox folder2))
 	  (imap-select :stream s :mailbox "INBOX")
 	  (imap-status :stream s :mailbox "INBOX")
+	  (imap-list :stream s)
+	  (imap-lsub :stream s)
 	  (imap-check :stream s)
+	  (imap-search :stream s :query "FROM \"evrim\"")
+	  (imap-fetch :stream s :sequence 2457 :macro "ALL")
+	  (imap-store :stream s :sequence 2457 :command 'set :flags '("\\Seen"))
+	  (imap-copy :stream s :sequence 2457 :mailbox "Sent")
 	  (imap-expunge :stream s)
 	  (imap-logout :stream s))))
 

@@ -256,3 +256,15 @@
 ;; 554 Transaction failed (Or, in the case of a connection-opening
 ;; 			    response, "No SP service here")
 
+(defun test-smtp ()
+  (let ((s (connect "node2.core.gen.tr" 25))
+	(en (make-instance 'envelope
+			   :from "evrim@core.gen.tr"
+			   :to "aycan@core.gen.tr"
+			   :display-name "zebedisplayname"
+			   :text "zoooo"
+			   :subject "keh keh al sana subject")))
+    (list (smtp? *s)
+	  (smtp-ehlo :stream s)
+	  (smtp-send :envelope en :stream s)
+	  (smtp-quit :stream s))))
