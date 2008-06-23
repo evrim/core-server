@@ -165,3 +165,39 @@ doesn't exist, it is created."
 			     (concat (match-string 0 fn) "~")))))
 	  (let ((fname (make-backup-file-name-1 file)))
 	    (concat (file-name-directory fname) "." (file-name-nondirectory fname) "~")))))
+
+;; irc.core.gen.tr developer connection
+(when (locate-library "erc")
+  (require 'erc)
+  (defun core-irc ()
+    (interactive)
+    (erc-tls :server "irc.core.gen.tr" 
+	     :port 8994
+	     :nick (getenv "USERNAME")
+	     :full-name (getenv "USER")))
+  ;; timestamp on left etc...
+  (setq 
+   erc-insert-timestamp-function 'erc-insert-timestamp-left
+   erc-timestamp-format "%H:%M "
+   erc-timestamp-only-if-changed-flag nil
+   erc-hide-timestamps nil)
+
+  ;; diğer yapılandırma değerleri
+  (custom-set-variables
+   '(erc-prompt-for-nickserv-password nil)
+   '(erc-auto-query (quote window-noselect))
+   '(erc-track-mode t)
+   '(erc-log-mode t)
+   '(erc-server-auto-reconnect nil)
+   '(erc-timestamp-mode t)
+   '(erc-echo-timestamps t)
+   '(erc-auto-discard-away t)
+   '(erc-autoaway-idle-seconds 3600)
+   '(erc-auto-set-away t)
+   '(erc-enable-logging (quote erc-log-all-but-server-buffers))
+   '(erc-log-insert-log-on-open nil)
+   '(erc-dcc-get-default-directory "~/dcc/")
+   '(erc-log-channels-directory "~/.irclogs/")
+   '(erc-modules '(autoaway autojoin button capab-identify completion fill irccontrols log match netsplit stamp notify page ring scrolltobottom services stamp track truncate))
+   '(erc-kill-queries-on-quit t)
+   '(erc-kill-server-buffer-on-quit t)))
