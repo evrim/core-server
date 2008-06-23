@@ -173,7 +173,7 @@ that uses GIT (http://git.or.cz) as SCM"))
 		    :documentation "External format for stream")
    (peer-class :initarg :peer-class :initform 'stream-peer
 	       :documentation "Class to instantiate as peer thread.")
-   (debug :initarg :debug :initform nil
+   (debug :initarg :debug :initform t
 	  :documentation "Debugging flag of socket server")
    ;;   (request-timeout-length :initarg :request-timeout-length :initform 90)
    (%socket :initform nil) (%peers :initform nil) (%socket-thread :initform nil)
