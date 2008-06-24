@@ -44,7 +44,7 @@
       (= c 1)))
 
 (defatom octet? ()
-  (> c -1) (< c 256))
+  (and (> c -1) (< c 256)))
 
 (defatom char? ()
   (and (> c -1) (< c 128)))
