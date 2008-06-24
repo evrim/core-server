@@ -171,11 +171,11 @@
 ;;       escaped       = "%" hex hex
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defparser escaped? (hex)  
-    (:and #\% (:hex-value? hex) (:return hex))))
+    #\% (:hex-value? hex) (:return hex)))
 
 (defparser digit-value? (d)
-  (:and (:type digit? d)
-	(:return (- (the (unsigned-byte 8) d) 48))))
+  (:type digit? d)
+  (:return (- (the (unsigned-byte 8) d) 48)))
 
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defparser fixnum? ((acc (make-accumulator)) c)
