@@ -49,6 +49,17 @@
 		  (equal (core-server::char! s #\X) #.(char-code #\X))))))
   t)
 
+(deftest list-stream-test
+    (let ((s (make-core-stream '(1 (2 3) (4 5)))))
+      (list (checkpoint-stream s)
+	    (read-stream s)
+	    (rewind-stream s)
+	    (checkpoint-stream s)
+	    (read-stream s)
+	    (commit-stream s)
+	    (read-stream s)))
+    (0 1 0 0 1 0 (2 3)))
+
 ;; (deftest test-cps-stream  
 ;;     (with-call/cc
 ;;       (let ((s (core-server::make-core-cps-stream ""))
