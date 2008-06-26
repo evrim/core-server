@@ -56,9 +56,13 @@
 	    (rewind-stream s)
 	    (checkpoint-stream s)
 	    (read-stream s)
-	    (commit-stream s)
-	    (read-stream s)))
-    (0 1 0 0 1 0 (2 3)))
+	    (progn
+	      (write-stream s 6)
+	      (commit-stream s))
+	    (read-stream s)
+	    (progn (write-stream s '(7 8))
+		   (return-stream s))))
+    (0 1 0 0 1 0 (4 5) (1 6 (4 5) (7 8))))
 
 ;; (deftest test-cps-stream  
 ;;     (with-call/cc

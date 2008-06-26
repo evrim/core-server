@@ -458,6 +458,16 @@
 (defmethod write-stream ((self core-list-io-stream) (c (eql nil)))
   self)
 
+(defmethod write-stream ((self core-list-io-stream) (list list))
+  (if (transactionalp self)
+      (setf (s-v '%buffer) (append (s-v '%buffer) (list list)))
+      (if (> (length (s-v '%list)) (s-v '%index))
+	  (setf (nth (the fixnum (s-v '%index)) (s-v '%list)) list)
+	  (setf (s-v '%list) (append (s-v '%list) (list list)))))
+  
+  (incf (the fixnum (s-v '%index))) ;; paradoxal
+  self)
+
 (defmethod write-stream ((self core-list-io-stream) atom)
   (if (transactionalp self)
       (setf (s-v '%buffer)
@@ -791,8 +801,9 @@
 	    (standard-object (list 'core-cps-object-io-stream :object target)))
 	  args)))
 
-(deftrace streams '(peek-stream read-stream write-stream checkpoint-stream
-		    rewind-stream commit-stream close-stream)) ;;current-checkpoint
+(deftrace streams
+    '(read-stream write-stream close-stream)) ;;current-checkpoint
 
-(deftrace streams-tx '(peek-stream checkpoint-stream rewind-stream commit-stream close-stream
-			   current-checkpoint))
+(deftrace streams-tx
+    '(peek-stream checkpoint-stream rewind-stream commit-stream close-stream
+      current-checkpoint))
