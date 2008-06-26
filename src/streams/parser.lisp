@@ -236,13 +236,13 @@
 	     (:and (:type octet? c) (:collect c acc))))
   (:return acc))
 
-(defparser split-by-line (c (acc (make-accumulator)) lst)
+(defparser lines? (c (acc (make-accumulator)) lst)
   (:zom (:or (:and #\Newline (:do (push acc lst)
 				  (setq acc (make-accumulator))))
 	     (:and (:type octet? c) (:collect c acc))))
   (:return lst))
 
-(defparser split-by-space (c (acc (make-accumulator)) lst)
+(defparser words? (c (acc (make-accumulator)) lst)
   (:lwsp?)
   (:zom (:or (:and #\Space (:do (push acc lst)
 				(setq acc (make-accumulator))))
