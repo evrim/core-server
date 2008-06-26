@@ -158,7 +158,7 @@ when requested"
 ;;       (format t "send/suspend escaping~%")
        ;;     (commit-stream/cc +context+ (rets +context+))
 ;;       (describe +context+)
-       (escape (returns +context+))
+       (escape (reverse (returns +context+)))
        (break "send/suspend failed."))
 ;;     (describe +context+)
      ))
