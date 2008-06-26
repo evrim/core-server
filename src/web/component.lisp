@@ -151,9 +151,8 @@
 	  (remote-methods-of-class (class-name self))
 	  :initial-value nil))
 
-(defmethod/cc send/component ((self component))  
-  (<:js
-    (send/ctor self (remote-slots self) (local-methods self) (remote-methods self))))
+(defmethod/cc send/component ((self component))
+  (send/ctor self (remote-slots self) (local-methods self) (remote-methods self)))
 
 (defmethod/cc send/ctor ((self component) remote-slots local-methods remote-methods)    
   (js:js*
@@ -195,8 +194,6 @@
 		,@(remove :default-initargs new-rest :key #'car))
 	 (defun ,name (&key ,@(local-slots-of-class name) ,@(remote-slots-of-class name))
 	   (apply #'make-instance ',name (list ,@(ctor-arguments name))))
-	 (defclass ,html-symbol (component-dom-element)
-	   ())
 	 (defun/cc ,html-symbol (&key ,@(local-slots-of-class name) ,@(remote-slots-of-class name))
 	     (let ((component (funcall (function ,name) ,@(ctor-arguments name))))
 	       (make-instance 'component-dom-element
@@ -206,8 +203,7 @@
 								   (remote-slots component)
 								   (local-methods component)
 								   (remote-methods component))
-							;;							(javascript component)
-							) 
+							(javascript component)) 
 ;;					      (<:style :type "text/css" (stylesheet component))
 					      (html component)))))
 	 (export ',html-symbol (find-package :tr.gen.core.server.html))

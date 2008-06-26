@@ -331,12 +331,12 @@
 (deftag <:html dir lang)
 (defmethod dom-element! ((stream core-stream) (element <:html) &optional (indentation 0))
 ;;  (string! stream "<?xml version=\"1.0\" encoding=\"utf-8\"?>")
-  (char! stream #\Newline)  
+;;  (char! stream #\Newline)  
 ;;;   (string! stream "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\"
 ;;;     \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">")
-  (string! stream "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"
-     \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">")   
-  (char! stream #\Newline)
+;;;   (string! stream "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"
+;;;      \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">")   
+;;;   (char! stream #\Newline)
   (call-next-method stream element indentation))
 
 (deftag <:i :core :event :i18n)
