@@ -141,6 +141,9 @@
 (defgrammar-form do-form ()
   (&rest children))
 
+(defgrammar-form optional-form ()
+  (&rest children))
+
 ;;-----------------------------------------------------------------------------
 ;; Debugging Operators
 ;;-----------------------------------------------------------------------------
@@ -187,6 +190,12 @@
 
 (defgrammar-form sep-form ()
   (seperator children))
+
+(defgrammar-form oneof-form ()
+  (vals &optional target))
+
+(defgrammar-form satisfy-form ()
+  (slambda &optional target))
 
 ;;-----------------------------------------------------------------------------
 ;; Stream DSL Operator Compilers
@@ -373,6 +382,39 @@
 
 (defgrammar-expander collect-form
   `(or (push-atom ,(source form) ,(target form)) t))
+
+(defgrammar-expander oneof-form
+  (cond
+    ((listp (vals form))
+     (error 'notimplementedyet))
+    ((stringp (vals form))
+     (funcall expander
+	      (walk-grammar
+	       `(:or ,@(mapcar #'(lambda (x)
+				   `(:and ,x (:do ,(if (target form)
+						       `(setq ,(target form) ,x)))))
+			       (reduce #'(lambda (acc item)
+					   (cons item acc))
+				       (vals form) :initial-value nil))))
+	      expander stream continue checkpoint))
+    ((numberp (vals form))
+     (error 'notimplementedyet))))
+
+(defgrammar-expander satisfy-form
+  `(if (funcall ,(slambda form) (peek-stream ,stream))
+       ,(if (target form)
+	    `(prog1 ,continue
+	       (setq ,(target form) (read-stream ,stream)))
+	    continue)
+       ,(not continue)))
+
+(defgrammar-expander optional-form
+  (funcall expander
+	   (walk-grammar
+	    `(:checkpoint
+	      ,@(children form)
+	      (:commit)))
+	   expander stream continue checkpoint))
 
 ;; (defparser crlf? ()
 ;;   (:or (:checkpoint #\Return #\Newline (:commit)) #\Newline)
