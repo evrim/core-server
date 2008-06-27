@@ -197,7 +197,7 @@ that uses GIT (http://git.or.cz) as SCM"))
 (defclass custom-http-peer (http-peer)
   ())
 
-(defclass http-server (web-server socket-server)
+(defclass http-server (web-server socket-server logger-server)
   ((applications :accessor server.applications :initform '()))
   (:default-initargs :port 3001 :peer-class '(custom-http-peer)))
 
