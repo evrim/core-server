@@ -374,7 +374,6 @@
        (require :swank)
        (require :core-server)
        (require :core)
-       ;;       (require :dojo-stub)
        (values))
 
      (build-core-server)
@@ -398,7 +397,6 @@
        (start *server*)
        (if (status *server*)
 	   (progn
-	     ;;	     (funcall (find-symbol "REGISTER-ME" (find-package 'dojo-stub)) *server*)
 	     (terpri)
 	     (describe *server*)
 	     (format t "Core Server Copyright (C) 2006-2008  Metin Evrim Ulu, Aycan iRiCAN
@@ -749,7 +747,6 @@ exit 0
        ;; add projects
        (push-all ,(merge-pathnames (layout.projects self) (layout.root self))))
 
-
      (asdf:oos 'asdf:load-op :asdf-binary-locations)
      (setf (symbol-value (find-symbol "*CENTRALIZE-LISP-BINARIES*" (find-package 'asdf)))
 	   t)
@@ -764,7 +761,6 @@ exit 0
        (require :swank)
        (require :core-server)
        (require :core)
-       ;;       (require :dojo-stub)
        (values))
 
      (build-core-server)
@@ -788,7 +784,6 @@ exit 0
        (start *server*)
        (if (status *server*)
 	   (progn
-	     ;;	     (funcall (find-symbol "REGISTER-ME" (find-package 'dojo-stub)) *server*)
 	     (terpri)
 	     (describe *server*)
 	     (write-line "Server started!")
