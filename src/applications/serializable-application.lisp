@@ -187,15 +187,7 @@
 	 :directories ',(serializable-web-application.directories self)
 	 :use ',(serializable-web-application.use self)
 	 :depends-on ',(serializable-web-application.depends-on self)
-	 :urls nil
-	 ;; :dispatchers (cons (make-instance 'regexp-dispatcher :url-string "^index.*$"
-;; 					   :handler (lambda ()
-;; 						      (arnesi::with-call/cc
-;; 							(let ((self nil))
-;; 							  (with-request-params nil (context.request *context*)
-;; 							    (call 'main-window))))))
-;; 			    (ucw::standard-dispatchers))
-	 ))
+	 :urls nil))
      (defvar *app* (make-instance ',(application-class self)))
      (defun register-me (&optional (server *server*))
        (core-server::register server *app*))
