@@ -20,6 +20,7 @@
 
 ;; Add distribution based features
 (eval-when (:compile-toplevel :load-toplevel :execute)
+  (pushnew :core-server *features*)
   (cond
     ((probe-file "/etc/pardus-release")
      (pushnew :pardus *features*))

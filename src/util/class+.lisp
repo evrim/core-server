@@ -61,6 +61,9 @@
     (mapcar (lambda (class) (gethash class +class-registry+))
 	    (getf class :supers)))
 
+  (defun list-or-atom-key (a)
+    (if (listp a) (car a) a))
+  
   (defun class-search (name type &optional (key #'list-or-atom-key))
     "Class tree search function for class 'name'. 'type' can be:
 i)  :local-slots - Returns local slots of the class
@@ -78,9 +81,6 @@ vi) :remote-methods - Return remote-methods of the class"
 		     nil)
 		   #'class-successor #'append)
       lst))
-
-  (defun list-or-atom-key (a)
-    (if (listp a) (car a) a))
 
   (defun local-slots-of-class (name)
     "Returns local slots of the class 'name'"
@@ -142,9 +142,6 @@ client-type is :primitive"
 				      slot)
 				 slot))
 			  (class-search name :local-slots))))
-      (describe local-initargs)
-      (describe default-initargs)
-      (describe slots)
       (reduce #'(lambda (acc slot)
 		  (aif (keywordp (cdr slot))
 		       (cons (cons (intern (symbol-name (cdr slot)))

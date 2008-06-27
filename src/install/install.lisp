@@ -23,29 +23,33 @@
 ;; Use Google Search to contact the owners of that specific trademark.
 ;; -----------------------------------------------------------------------------
 
-(in-package :cl-user)
-(require :sb-posix)
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (if (null (find-package :core-server))
-      (defpackage :tr.gen.core.server
-	(:use :cl)
-	(:nicknames :core-server)
-	(:export
-	 #:command
-	 #:shell
+
+#-core-server
+(progn
+  (in-package :cl-user)
+  (require :sb-posix)
+  (eval-when (:compile-toplevel :load-toplevel :execute)
+    (if (null (find-package :core-server))
+	(defpackage :tr.gen.core.server
+	  (:use :cl)
+	  (:nicknames :core-server)
+	  (:export
+	   #:command
+	   #:shell
 					;   #:darcs
-	 #:svn
-	 #:tarball
-	 #:defcommand
-	 #:find-file
-	 #:ln
-	 #:chmod
-	 #:cvs
-	 #:useradd))))
+	   #:svn
+	   #:tarball
+	   #:defcommand
+	   #:find-file
+	   #:ln
+	   #:chmod
+	   #:cvs
+	   #:useradd)))))
 
 (in-package :core-server)
 
 ;; Add distribution based features
+#-core-server
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (cond
     ((probe-file "/etc/pardus-release")
@@ -55,96 +59,93 @@
     ((probe-file "/etc/debian_version")
      (pushnew :debian *features*))))
 
-(defvar +verbose+ t "make command executions verbose during installation.")
-(defvar +which+ #P"/usr/bin/which")
-(defparameter +tmp+ (make-pathname :directory '(:absolute "tmp")))
+(defun ensure-list (atom-or-list)
+  (if (atom atom-or-list)
+      (list atom-or-list)
+      atom-or-list))
+
+(defun extract-argument-names (lambda-list)
+  "Returns a list of symbols representing the names of the
+  variables bound by the lambda list LAMBDA-LIST."
+  (nreverse
+   (reduce #'(lambda (acc atom)
+	       (if (eq #\& (aref (symbol-name atom) 0))
+		   acc
+		   (cons atom acc)))
+	   lambda-list :initial-value nil)))
+
+(defmacro deftrace (name methods)
+  "Defines +name-methods+ variable, trace-name, untrace-name functions
+for traceing a closed system"
+  (let ((var-symbol (intern (string-upcase (format nil "+~A-methods+" name))))
+	(trace-symbol (intern (string-upcase (format nil "trace-~A" name))))
+	(untrace-symbol (intern (string-upcase (format nil "untrace-~A" name)))))
+    `(progn
+       (defparameter ,var-symbol ,methods)
+       (defun ,trace-symbol (&optional (methods ,var-symbol))
+	 (mapcar (lambda (e) (eval `(trace ,e))) methods))
+       (defun ,untrace-symbol (&optional (methods ,var-symbol))
+	 (mapcar (lambda (e) (eval `(untrace ,e))) methods)))))
+
+(defmacro aif (consequent then &optional else)
+  "Special if that binds 'consequent' to 'it'"
+  `(let ((it ,consequent))
+     (if it
+	 ,then
+	 ,(if else
+	      else))))
+
+(defmacro awhen (consequent &body body)
+  "Special when that binds 'consequent' to 'it'"
+  `(let ((it ,consequent))
+     (when it
+       ,@body)))
+
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defmethod make-keyword ((str string))
+    "Returns keyword for the string 'str'"
+    (intern (string-upcase str) :keyword))
+
+  (defmethod make-keyword ((sym symbol))
+    "Returns keyword for the symbol 'sym'"
+    (intern (symbol-name sym) :keyword)))
+
+(defun plist-to-alist (plist)
+  "Transforms a plist to an alist, keywords are transformed into symbols"
+  (let (key)
+    (nreverse
+     (reduce #'(lambda (acc atom)
+		 (if (and (null key) (keywordp atom))
+		     (prog1 acc (setf key atom))
+		     (prog1 (cons (cons (intern (symbol-name key)) atom) acc)
+		       (setf key nil))))
+	     plist :initial-value nil))))
+
+(defun alist-to-plist (alist)
+  "Transforms an alist to a plist, key symbols are transformed into keywords"
+  (reduce #'(lambda (acc atom)
+	      (nreverse (cons (cdr atom) (cons (make-keyword (car atom)) (nreverse acc)))))
+	  alist :initial-value nil))
 
 (defmacro s-v (slot-name)
-  "(slot-value self slot-name)"
+  "Expands to (slot-value self slot-name)"
   `(slot-value self ,slot-name))
 
-(defmacro with-current-directory (dir &body body)
-  `(unwind-protect (progn
-		     (sb-posix:chdir ,dir)
-		     (let ((*default-pathname-defaults* ,dir))
-		       ,@body))
+(defmacro with-current-directory (directory &body body)
+  "Executes body while setting current directory to 'directory'"
+  `(unwind-protect
+	(progn
+	  (sb-posix:chdir ,directory)
+	  (let ((*default-pathname-defaults* ,directory))
+	    ,@body))
      (sb-posix:chdir *default-pathname-defaults*)))
 
-(defmacro with-package (package &body body)
-  `(let ((*package* (find-package ,package)))
-     ,@body))
-
-(defmacro make-keyword (symbol)
-  (let ((sym (gensym)))
-    `(let ((,sym ,symbol))       
-       (intern
-	(typecase ,sym
-	  (symbol (string-upcase (symbol-name ,sym)))
-	  (string (string-upcase ,sym))
-	  (t ,sym))
-	:keyword))))
-
-(defun uniq (lst &optional (key #'identity) &aux new)  
-  (mapcar #'(lambda (atom) (pushnew atom new :key key)) lst)
-  (nreverse new))
-
-(defun flatten (lst)
-  "Removes nestings from a list."
-  (cond ((atom lst) lst)
-	((listp (car lst))
-	 (append (flatten (car lst)) (flatten (cdr lst))))
-	(t (append (list (car lst)) (flatten (cdr lst))))))
-
-;; This is the generic search algorithm which is given in PAIP and
-;; AIMA books.
-(defun core-search (states goal-p successors combiner)
-  "Find a state that satisfies the goal-p. Start with states, and
-  search according to successors and combiner"
-  (cond ((null states) 'fail)
-	((funcall goal-p (car states)) (car states))
-	(t (core-search
-	    (funcall combiner
-		     (funcall successors (car states))
-		     (rest states))
-	    goal-p successors combiner))))
-
-;; Standard successors
-(defun class-successors (class &optional (base 'component))
-  (if (eq class (find-class base))
-      nil
-      (sb-mop:class-direct-superclasses class)))
-
-;; INSTALL> (class-superclasses 'c)
-;; (#<STANDARD-CLASS C> #<STANDARD-CLASS B> #<STANDARD-CLASS A>
-;;  #<STANDARD-CLASS COMMAND>)
-(defun class-superclasses (class &optional (base 'component) &aux lst)  
-  (core-search (cons (find-class class)
-		     (copy-list
-		      (sb-mop:class-direct-superclasses (find-class class))))
-	       #'(lambda (atom)
-		   (pushnew atom lst)
-		   nil) 
-	       #'(lambda (class) (class-successors class base))
-	       #'append)
-  (nreverse lst))
-
-;; INSTALL> (class-default-initargs 'c)
-;; ((:ARG-B 'ARG-B-OVERRIDE-BY-C #<FUNCTION {BC06125}>)
-;;  (:ARG-A 'ARG-A-OVERRIDEN-BY-C #<FUNCTION {BC06195}>))
-(defun class-default-initargs (class &optional (base 'component) &aux lst)
-  (core-search (cons (find-class class)
-		     (copy-list
-		      (sb-mop:class-direct-superclasses (find-class class))))
-	       #'(lambda (atom)
-		   (let ((args (copy-list
-				(sb-mop:class-direct-default-initargs atom))))
-		     (when args (setf lst (append args lst))))
-		   nil)
-	       #'(lambda (class) (class-successors class base))
-	       #'append)
-  lst)
-
-(load "command.lisp")
+#-core-server
+(mapc #'(lambda (lisp)
+	  (if (null (load lisp))
+	      (error "Failed to load ~A" lisp)))
+      '("search.lisp" "mop.lisp" "class+.lisp" "command.lisp"))
 
 (defclass sys ()
   ((name :accessor name :initarg :name)
@@ -538,8 +539,11 @@ TARBALL=\"core-server-installer-`date +\"%Y-%m-%d\"`.tar.gz\"
 
 $MKDIR -p $DIR/core-server-installer;
 cd $DIR;
+$CP $CORESERVER_HOME/src/util/search.lisp core-server-installer;
+$CP $CORESERVER_HOME/src/util/mop.lisp core-server-installer;
+$CP $CORESERVER_HOME/src/util/class+.lisp core-server-installer;
 $CP $CORESERVER_HOME/src/install/* core-server-installer;
-$CP $CORESERVER_HOME/src/command.lisp core-server-installer;
+$CP $CORESERVER_HOME/src/commands/command.lisp core-server-installer;
 $CP $CORESERVER_HOME/doc/README core-server-installer;
 $TAR zcf $TARBALL *
 mv $TARBALL /tmp/
