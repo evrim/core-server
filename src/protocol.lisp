@@ -125,9 +125,10 @@
 ;;+----------------------------------------------------------------------------
 ;;| Application Protocol
 ;;+----------------------------------------------------------------------------
-;;
-;; Definition of generic application protocol
-;;
+
+;;-----------------------------------------------------------------------------
+;; Serializable Application Protocol
+;;-----------------------------------------------------------------------------
 (defgeneric serialize-source (app symbol)
   (:documentation "Serialize a new source for application")
   (:method ((self null) symbol) t))
@@ -164,3 +165,19 @@
 
 (defgeneric src/ui/main (app)
   (:documentation "Returns src/ui/main.lisp sexp"))
+
+;;-----------------------------------------------------------------------------
+;; HTTP Application Protocol
+;;-----------------------------------------------------------------------------
+(defgeneric find-session (application id)
+  (:documentation "Returns 'http-session' associated with 'id'"))
+
+(defgeneric find-continuation (application id)
+  (:documentation "Returns (values continuation session) associated with 'id'"))
+
+(defgeneric register-url (application regexp-url lambda)
+  (:documentation "Registers 'regexp-url' to be handled by
+  one-arg (context) lambda"))
+
+(defmethod unregister-url (application regexp-url)
+  (:documentation "Unregisters 'regexp-url' handler"))

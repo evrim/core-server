@@ -82,6 +82,16 @@
    (continuation :accessor continuation :initform nil)
    (returns :accessor returns :initform nil)))
 
+(defclass http-application (web-application)
+  ((urls :accessor application.urls :initarg :urls :initform '())
+   (sessions :accessor application.sessions :initform (make-hash-table :test #'equal))))
+
+(defmethod print-object ((self http-application) stream)
+  (print-unreadable-object (self stream :type t :identity t)
+    (format stream "FQDN:\"~A\" ADMIN: \"~A\""
+	    (web-application.fqdn self)
+	    (web-application.admin-email self))))
+
 (defclass apache-web-application (web-application)
   ((vhost-template-pathname
     :accessor apache-web-application.vhost-template-pathname :initarg :vhost-template-pathname
