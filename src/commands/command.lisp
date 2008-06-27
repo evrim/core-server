@@ -19,7 +19,8 @@
 
 (defvar +verbose+ t "make command executions verbose during installation.")
 (defvar +which+ #P"/usr/bin/which")
-(defparameter +tmp+ (make-pathname :directory '(:absolute "tmp")))
+(defparameter +tmp+ (make-pathname :directory '(:absolute "tmp"))
+  "Temporary directory")
 
 (defclass command ()
   ((input-stream :accessor command.input-stream :initarg :input-stream
