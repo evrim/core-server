@@ -176,16 +176,19 @@ client-type is :primitive"
 
 (defmacro defclass+ (name supers slots &rest rest)
   "Defines a class using Class+ Framework"
-  (multiple-value-bind (slots new-rest) (register-class name supers slots rest)    
-    `(prog1 (defclass ,name (,@supers component)
-	      ,slots
-	      (:default-initargs ,@(alist-to-plist (default-initargs-of-class name)))
-	      ,@(remove :default-initargs new-rest :key #'car))
-       ,(aif (cdr (assoc :ctor rest))
-	     `(defun ,name ,@it
-		(apply #'make-instance ',name (list ,@(extract-argument-names (car it)))))
-	     `(defun ,name (&key ,@(local-slots-of-class name) ,@(remote-slots-of-class name))
-		(apply #'make-instance ',name (list ,@(ctor-arguments name))))))))
+  (eval-when (:load-toplevel :compile-toplevel :execute)
+    (multiple-value-bind (slots new-rest) (register-class name supers slots rest)    
+      `(prog1 (defclass ,name (,@supers component)
+		,slots
+		(:default-initargs ,@(alist-to-plist (default-initargs-of-class name)))
+		,@(remove :default-initargs new-rest :key #'car))
+	 (eval-when (:load-toplevel :compile-toplevel :execute)
+	   (register-class ',name ',supers ',slots ',rest))
+	 ,(aif (cdr (assoc :ctor rest))
+	       `(defun ,name ,@it
+		  (apply #'make-instance ',name (list ,@(extract-argument-names (car it)))))
+	       `(defun ,name (&key ,@(local-slots-of-class name) ,@(remote-slots-of-class name))
+		  (apply #'make-instance ',name (list ,@(ctor-arguments name)))))))))
 
 (deftrace class+
     '(register-class register-remote-method-for-class register-local-method-for-class
