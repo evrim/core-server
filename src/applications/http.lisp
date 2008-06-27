@@ -250,20 +250,26 @@ executing 'body'"
 			  (application.sessions self))))
     (acond
      ((and session (gethash (uri.query (http-request.uri request) +continuation-query-name+)
-			    (continuations session)))
-      (prog1 t
-	(format t "Find k-url:~A ~A~%"
-		(uri.query (http-request.uri request) +continuation-query-name+)
-		it)
-	(funcall it request response)))
+			    (continuations session)))      
+      (log-me (application.server self) 'http-application		
+	      (format nil "fqdn: ~A, k-url: ~A"
+		      (web-application.fqdn self)
+		      (uri.query (http-request.uri request) +continuation-query-name+)))
+      (funcall it request response))
      ((any #'(lambda (url)
 	       (aif (caar (uri.paths (http-request.uri request)))
 		    (and (cl-ppcre:scan-to-strings (cadr url) it :sharedp t) url)))
-	   (application.urls self))
-      (prog1 t      
-	(funcall (caddr it) (make-new-context self request response session))))
-     (t (prog1 t
-	  (directory-handler (make-new-context self request response session)))))))
+	   (application.urls self))      
+      (log-me (application.server self) 'http-application
+	      (format nil "fqdn: ~A, dyn-url: ~A" (web-application.fqdn self)
+		      (http-request.uri request)))
+      (funcall (caddr it) (make-new-context self request response session)))
+     (t
+      (log-me (application.server self) 'http-application
+	      (format nil "fqdn: ~A, static-url: ~A" (web-application.fqdn self)
+		      (http-request.uri request)))
+      (directory-handler (make-new-context self request response session))))
+    t))
 
 (defmacro with-test-context ((context-var uri application) &body body)
   "Executes 'body' with context bound to 'context-var'"
