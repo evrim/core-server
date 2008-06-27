@@ -20,6 +20,28 @@
 ;;+----------------------------------------------------------------------------
 ;;| Utility functions, macros, etc.
 ;;+----------------------------------------------------------------------------
+(defmacro aif (consequent then &optional else)
+  "Special if that binds 'consequent' to 'it'"
+  `(let ((it ,consequent))
+     (if it
+	 ,then
+	 ,(if else
+	      else))))
+
+(defmacro awhen (consequent &body body)
+  "Special when that binds 'consequent' to 'it'"
+  `(let ((it ,consequent))
+     (when it
+       ,@body)))
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defmethod make-keyword ((str string))
+    "Returns keyword for the string 'str'"
+    (intern (string-upcase str) :keyword))
+
+  (defmethod make-keyword ((sym symbol))
+    "Returns keyword for the symbol 'sym'"
+    (intern (symbol-name sym) :keyword)))
 
 (defmacro deftrace (name methods)
   "Defines +name-methods+ variable, trace-name, untrace-name functions
@@ -222,15 +244,6 @@ iv) t      - 06/06/2008 17:30"
       ((null i) big)
     (setq big
 	  (concatenate 'string (subseq big 0 i) new (subseq big (+ i oldlen))))))
-
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defmethod make-keyword ((str string))
-    "Returns keyword for the string 'str'"
-    (intern (string-upcase str) :keyword))
-
-  (defmethod make-keyword ((sym symbol))
-    "Returns keyword for the symbol 'sym'"
-    (intern (symbol-name sym) :keyword)))
 
 ;; TODO: move below to where they belong. -evrim.
 (defun escape-parenscript (string)
