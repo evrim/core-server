@@ -77,7 +77,7 @@
   (let ((class (if (symbolp class) (find-class class) class)))
     (core-search (cons class (copy-list (sb-mop:class-direct-superclasses class)))
 		 #'(lambda (atom) (pushnew atom lst) nil) 
-		 #'(lambda (class) (class-directory-superclasses class base))
+		 #'(lambda (class) (class-direct-superclasses class base))
 		 #'append)
     (nreverse lst)))
 
