@@ -75,14 +75,6 @@
        (declare (special +context+))
        ,@body)))
 
-;; (defmacro with-context ((arg uri application) &body body)
-;;   `(let ((,arg (make-new-context ,application
-;; 				 (make-instance 'http-request :uri ,uri)
-;; 				 (make-response *core-output*)
-;; 				 nil)))
-;;      ,@body))
-
-
 (defmacro defurl (application regexp-url queries &body body)
   "Defines a new entry point to 'application' having url
 'regexp-url'. 'queries' are bounded while executing 'body'"
@@ -283,6 +275,14 @@ executing 'body'"
 	(funcall (caddr it) (make-new-context self request response session))))
      (t (prog1 t
 	  (directory-handler (make-new-context self request response session)))))))
+
+(defmacro with-test-context ((context-var uri application) &body body)
+  "Executes 'body' with context bound to 'context-var'"
+  `(let ((,context-var (make-new-context ,application
+					 (make-instance 'http-request :uri ,uri)
+					 (make-response *core-output*)
+					 nil)))
+     ,@body))
 
 (defun kontinue (&rest args)
   "Continues a contination saves by function/hash or action/hash"
