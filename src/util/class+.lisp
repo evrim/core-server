@@ -90,6 +90,12 @@ vi) :remote-methods - Return remote-methods of the class"
     "Returns remote slots of the class 'name'"
     (class-search name :remote-slots))
 
+  (defun local-initargs-of-class (name)
+    (class-search name :local-initargs))
+
+  (defun remote-initargs-of-class (name)
+    (class-search name :remote-initargs))
+
   (defun default-initargs-of-class (name)
     "Returns default-initargs of the class 'name'"
     (class-search name :default-initargs))
@@ -125,12 +131,33 @@ client-type is :primitive"
 		(remove method-name
 			(getf (gethash name +class-registry+) :remote-methods)))))
 
-  (defun ctor-arguments (name)
-    (reduce #'(lambda (acc slot-def)
-		(cons (make-keyword (car (ensure-list slot-def)))
-		      (cons (car (ensure-list slot-def)) acc)))
-	    (append (remote-slots-of-class name)
-		    (local-slots-of-class name)) :initial-value nil))
+  (defun ctor-keywords (name)
+    (reduce #'(lambda (acc slot)
+		(aif (keywordp (cadr slot))
+		     (cons (intern (symbol-name (cadr slot))) acc)
+		     (cons (cadr slot) acc)))
+	    (append (local-initargs-of-class name)
+		    (remote-initargs-of-class name))
+	    :initial-value nil))
+  
+  (defun ctor-arguments (name &optional lambda-list)
+    (if lambda-list
+	(let ((arguments (extract-argument-names lambda-list)))
+	  (reduce #'(lambda (acc slot)
+		      (if (member (intern (symbol-name (cadr slot)))
+				  arguments)
+			  (cons (cadr slot)
+				(cons (intern (symbol-name (cadr slot)))
+				      acc))
+			  acc))
+		(append (local-initargs-of-class name)
+			(remote-initargs-of-class name)) :initial-value nil))
+	(reduce #'(lambda (acc slot)
+		    (cons (cadr slot)
+			  (cons (intern (symbol-name (cadr slot)))
+				acc)))
+		(append (local-initargs-of-class name)
+			(remote-initargs-of-class name)) :initial-value nil)))
   
   (defun register-class (name supers slots rest)
     (flet ((filter-slot (slot-definition)
@@ -166,29 +193,54 @@ client-type is :primitive"
 				  (eq 'both (getf (cdr slot) :host)))
 			      (cons (car slot) acc)
 			      acc))
+		      slots :initial-value nil)))
+	   (local-initargs (slots)
+	     (nreverse
+	      (reduce #'(lambda (acc slot)
+			  (if (or (eq 'local (getf (cdr slot) :host))
+				  (eq 'both (getf (cdr slot) :host)))
+			      (aif (getf (cdr slot) :initarg)
+				   (cons (list (car slot) it) acc)
+				   (cons (list (car slot) (make-keyword (car slot)))
+					 acc))
+			      acc))
+		      slots :initial-value nil)))	   
+	   (remote-initargs (slots)
+	     (nreverse
+	      (reduce #'(lambda (acc slot)
+			  (if (or (eq 'remote (getf (cdr slot) :host))
+				  (eq 'both (getf (cdr slot) :host)))
+			      (aif (getf (cdr slot) :initarg)
+				   (cons (list (car slot) it) acc)
+				   (cons (list (car slot) (make-keyword (car slot)))
+					 acc))
+			      acc))
 		      slots :initial-value nil))))
-      (setf (getf (gethash name +class-registry+) :supers) supers
-	    (getf (gethash name +class-registry+) :default-initargs) (plist-to-alist (cdr (assoc :default-initargs rest)))
+      (setf (getf (gethash name +class-registry+) :supers) supers 
 	    (getf (gethash name +class-registry+) :local-slots) (local-slots slots)
 	    (getf (gethash name +class-registry+) :remote-slots) (remote-slots slots)
-	    (getf (gethash name +class-registry+) :client-types) (mapcar #'client-type slots))
-      (values (mapcar #'filter-slot slots) (reduce #'filter-rest rest :initial-value nil)))))
+	    (getf (gethash name +class-registry+) :local-initargs) (local-initargs slots)
+	    (getf (gethash name +class-registry+) :remote-initargs) (remote-initargs slots)	    
+	    (getf (gethash name +class-registry+) :client-types) (mapcar #'client-type slots)
+	    (getf (gethash name +class-registry+) :default-initargs)
+	    (plist-to-alist (cdr (assoc :default-initargs rest))))
+      (values (mapcar (compose #'filter-slot #'copy-list) slots)
+	      (reduce #'filter-rest rest :initial-value nil)))))
 
 (defmacro defclass+ (name supers slots &rest rest)
-  "Defines a class using Class+ Framework"
-  (eval-when (:load-toplevel :compile-toplevel :execute)
-    (multiple-value-bind (slots new-rest) (register-class name supers slots rest)    
-      `(prog1 (defclass ,name (,@supers component)
-		,slots
-		(:default-initargs ,@(alist-to-plist (default-initargs-of-class name)))
-		,@(remove :default-initargs new-rest :key #'car))
-	 (eval-when (:load-toplevel :compile-toplevel :execute)
-	   (register-class ',name ',supers ',slots ',rest))
-	 ,(aif (cdr (assoc :ctor rest))
-	       `(defun ,name ,@it
-		  (apply #'make-instance ',name (list ,@(extract-argument-names (car it)))))
-	       `(defun ,name (&key ,@(local-slots-of-class name) ,@(remote-slots-of-class name))
-		  (apply #'make-instance ',name (list ,@(ctor-arguments name)))))))))
+  "Defines a class using Class+ Framework"  
+  (multiple-value-bind (new-slots new-rest) (register-class name supers slots rest)    
+    `(prog1 (defclass ,name (,@supers component)
+	      ,new-slots
+	      (:default-initargs ,@(alist-to-plist (default-initargs-of-class name)))
+	      ,@(remove :default-initargs new-rest :key #'car))
+       (eval-when (:load-toplevel :compile-toplevel :execute)
+	 (register-class ',name ',supers ',slots ',rest))
+       ,(aif (cdr (assoc :ctor rest))
+	     `(defun ,name ,@it
+		(make-instance ',name ,@(ctor-arguments name (car it))))
+	     `(defun ,name (&key ,@(ctor-keywords name))
+		(make-instance ',name ,@(ctor-arguments name)))))))
 
 (deftrace class+
     '(register-class register-remote-method-for-class register-local-method-for-class
