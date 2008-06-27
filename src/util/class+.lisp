@@ -240,7 +240,8 @@ client-type is :primitive"
 	    (getf (gethash name +class-registry+) :client-types) (mapcar #'client-type slots)
 	    (getf (gethash name +class-registry+) :default-initargs)
 	    (plist-to-alist (cdr (assoc :default-initargs rest))))
-      (values (mapcar (compose #'filter-slot #'copy-list) slots)
+      (values (mapcar (lambda (slot) (filter-slot (copy-list slot)))
+		      slots)
 	      (reduce #'filter-rest rest :initial-value nil)))))
 
 (defmacro defclass+ (name supers slots &rest rest)
