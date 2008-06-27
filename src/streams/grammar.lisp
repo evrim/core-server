@@ -194,6 +194,9 @@
 (defgrammar-form oneof-form ()
   (vals &optional target))
 
+(defgrammar-form noneof-form ()
+  (vals &optional target))
+
 (defgrammar-form satisfy-form ()
   (slambda &optional target))
 
@@ -393,12 +396,27 @@
 	       `(:or ,@(mapcar #'(lambda (x)
 				   `(:and ,x (:do ,(if (target form)
 						       `(setq ,(target form) ,x)))))
-			       (reduce #'(lambda (acc item)
-					   (cons item acc))
-				       (vals form) :initial-value nil))))
+			       (nreverse
+				(reduce #'(lambda (acc item)
+					    (cons item acc))
+					(vals form) :initial-value nil)))))
 	      expander stream continue checkpoint))
     ((numberp (vals form))
      (error 'notimplementedyet))))
+
+(defgrammar-expander noneof-form
+  (let ((peeq (gensym)))
+    (cond
+      ((stringp (vals form))
+       `(let ((,peeq (peek-stream ,stream)))
+	  (if (not (or ,@(mapcar #'(lambda (x)
+				     `(= ,peeq ,(char-code x)))
+				 (nreverse
+				  (reduce #'(lambda (acc item)
+					      (cons item acc))
+					  (vals form) :initial-value nil)))))
+	      (prog1 t
+		(setq ,(target form) (read-stream ,stream)))))))))
 
 (defgrammar-expander satisfy-form
   `(if (funcall ,(slambda form) (peek-stream ,stream))
