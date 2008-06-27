@@ -29,6 +29,9 @@
 (defvar +session-query-name+ "s"
   "Query key for sessions")
 
+(defvar +session-timeout+ (* 10 60 1000)
+  "Session timeout in milisecons")
+
 (defvar +context+ nil
   "A special variable that holds HTTP context")
 
@@ -230,16 +233,12 @@ executing 'body'"
 
 (defmethod gc ((self http-application))
   "Garbage collector for HTTP application, removes expired sessions/continuations"
-  (let* ((session-timeout (* 10 60 1000))
-	 (sessions (application.sessions self)))
-    ;; bu gc her dispatch'te mi caliscak?
-    ;; %40 ihtimalle calisabilir
-
-    ;; tell me who is expired!
+  (let* ((sessions (application.sessions self)))
     (mapc (rcurry #'remhash sessions)
 	  (let (expired)
 	    (maphash #'(lambda (k v)
-			 (when (> (- (get-universal-time) (timestamp v)) session-timeout) (push k expired)))
+			 (when (> (- (get-universal-time) (timestamp v)) +session-timeout+)
+			   (push k expired)))
 		     sessions)
 	    expired))))
 
