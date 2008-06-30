@@ -17,20 +17,17 @@
 
 (in-package :core-server)
 
-(defun href (base &rest params)
-  (with-output-to-string (href)
-    (write-string base href)
-    (when params
-      (write-char #\? href)
-      (loop
-	 for (key value . rest) on params by #'cddr
-	 do (etypecase key
-              (string (write-string key href))
-              (symbol (write-string (string-downcase key) href))) 
-	 do (write-char #\= href)
-	 do (princ value href)
-	 when rest
-	 do (write-char #\& href)))))
+;;+----------------------------------------------------------------------------
+;;| HTML 4 Library
+;;+----------------------------------------------------------------------------
+;;
+;; This file contains implementation of W3C HTML 4 Standard.
+;; http://www.w3.org/TR/html4/
+;;
+;; This file built onto Core Server DOM implementation.
+;;
+;; http://www.w3.org/TR/2000/WD-DOM-Level-1-20000929/level-one-html.html
+;;
 
 (defclass dom-element ()
   ((tag :accessor tag :initarg :tag :initform nil)
@@ -128,20 +125,16 @@
 	     #\>
 	     (:return (apply #'make-dom-element tag (nreverse attrs) (nreverse children))))))
 
-(defparameter *dom-parsers*
+(deftrace dom-parsers
   '(dom-element? tag-name? attribute? attribute-value? attribute-name? text-node?
     html-comment? make-dom-element dom-element!))
-
-(defun trace-dom-parsers () (mapcar (lambda (fun) (eval `(trace ,fun))) *dom-parsers*))
-
-(defun untrace-dom-parsers () (mapcar (lambda (fun) (eval `(untrace ,fun))) *dom-parsers*))
 
 (defparameter +indentation-increment+ 1)
 
 (defmethod dom-element! ((stream core-stream) (element t) &optional (indentation 0))
   (declare (ignore indentation))
 ;;  (break element)
-  element)
+  stream)
 
 (defmethod dom-element! ((stream core-stream) (element string) &optional (indentation 0))
   (declare (ignore indentation))
@@ -221,6 +214,7 @@
        (change-class dom-element it))
   (setf (children dom-element) (mapcar #'validate-dom-tree (children dom-element)))
   dom-element)
+
 
 (eval-when (:compile-toplevel :execute :load-toplevel)
   (defvar +html-attributes+
@@ -435,6 +429,20 @@
 			(dom-element! ,stream ,element)))
 		 body))))
 
+(defun href (base &rest params)
+  (with-output-to-string (href)
+    (write-string base href)
+    (when params
+      (write-char #\? href)
+      (loop
+	 for (key value . rest) on params by #'cddr
+	 do (etypecase key
+              (string (write-string key href))
+              (symbol (write-string (string-downcase key) href))) 
+	 do (write-char #\= href)
+	 do (princ value href)
+	 when rest
+	 do (write-char #\& href)))))
 
 ;; (defclass dojo-element (dom-element)
 ;;   ())
