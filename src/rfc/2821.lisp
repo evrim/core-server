@@ -21,9 +21,10 @@
 ;;| RFC 2821 SMTP Protocol
 ;;+----------------------------------------------------------------------------
 ;;
-;; This file implement only client side operations
+;; This file implements client side operations
 ;;
 
+;; 4.1 SMTP Commands
 (defcommand smtp ()
   ((code :host remote :accessor smtp.code :initarg :code :initform nil)
    (message :host local :accessor smtp.message :initarg :message :initform nil)
@@ -60,17 +61,13 @@
 (defrender smtp! (message)
   (:string! message) (:char! #\Newline))
 
-(defparser line? (c (acc (make-accumulator)))
-  (:zom (:not #\Newline)
-	(:type octet? c) (:collect c acc))
-  (:return acc))
-
 (defmethod run ((self smtp))
   (if (smtp.message self)
       (smtp! (smtp.stream self) (smtp.message self)))
   (or (smtp-ehlo? (smtp.stream self))
       (smtp? (smtp.stream self))))
 
+;; 4.1.1.1  Extended HELLO (EHLO) or HELLO (HELO)
 (defcommand smtp-ehlo (smtp)
   ()
   (:default-initargs :message "EHLO localhost"))
