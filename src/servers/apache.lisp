@@ -67,12 +67,12 @@
   "Creates an index.html file for 'app' which redirectory to
 'default-entry-point' slot of 'app'"
   (when (apache-web-application.default-entry-point app)
-    (let ((redirector-pathname (merge-pathnames 
-				(make-pathname :name "index"
-					       :type "html"
-					       :directory (list :relative (web-application.fqdn app)))
-				(apache-server.htdocs-pathname self)))
-	  (s (make-core-file-output-stream redirector-pathname)))      
+    (let* ((redirector-pathname (merge-pathnames 
+				 (make-pathname :name "index"
+						:type "html"
+						:directory (list :relative (web-application.fqdn app)))
+				 (apache-server.htdocs-pathname self)))
+	   (s (make-core-file-output-stream redirector-pathname)))      
       (with-html-output s	  
 	(<:html
 	 (<:head
