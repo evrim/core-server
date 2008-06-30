@@ -5,8 +5,6 @@
        (core-server::+js+ ,statement)
      ,result))
 
-
-;; Patlayan testler
 (test-js js-evrim-1
   (unless (blorg.is-correct) (alert "gee"))
   "if (!blorg.isCorrect()) {
@@ -516,6 +514,12 @@ a + b + c")
   (array (array 2 3)
 	 (array "foobar" "bratzel bub"))
   "[ [ 2, 3 ], [ 'foobar', 'bratzel bub' ] ]")
+
+(defmacro test-js-trans (name statement result)
+  `(deftest ,name
+       (core-server::+js+ ,statement)
+     ,result))
+
 
 ;;; -------------------------
 ;;; Below is not working yet.

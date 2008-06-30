@@ -17,6 +17,13 @@
 
 (in-package :core-server)
 
+;;+-----------------------------------------------------------------------------
+;;| [Core-serveR] Javascript Renderer
+;;| Author: Evrim Ulu <evrim@core.gen.tr>
+;;| Date: 05/2008
+;;+-----------------------------------------------------------------------------
+
+;; Hash tables that hold macros, infix and syntax operators
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defvar *javascript-macros* (make-hash-table))
   (defvar *javascript-infix* (make-hash-table))
@@ -31,7 +38,11 @@
   (export 'try)
   (export 'default))
 
+;;-----------------------------------------------------------------------------
+;; Javascript Infix Operators
+;;-----------------------------------------------------------------------------
 (defmacro defjsinfix (name &optional (js-operator nil))
+  "Define a 'Javascript Infix' operator"
   `(setf (gethash ',name *javascript-infix*) ',(or js-operator name)))
 
 (defjsinfix +)
@@ -49,7 +60,13 @@
 (defjsinfix or "||")
 (defjsinfix and "&&")
 
+;;-----------------------------------------------------------------------------
+;; Javascript Syntax operators
+;; These are used to make the library more parenscript friendly
+;; and to cover javascript hacks.
+;;-----------------------------------------------------------------------------
 (defmacro defjssyntax (name args &body body)
+  "Define a 'Javascript Syntax' operator"
   `(setf (gethash ',name *javascript-syntax*)
 	 #'(lambda (arguments expander)
 	     (declare (ignorable expander))
@@ -57,7 +74,9 @@
 	       ,@body))))
 
 (defjssyntax array (&rest a)
-  `(:and ,@(mapcar (rcurry expander expander) a)))
+  `(:and "[ " (:sep ", "
+		   ',(mapcar (rcurry expander expander) a))
+	 " ]"))
 
 (defjssyntax aref (target slot)
   `(:and ,(funcall expander target expander)
@@ -109,8 +128,6 @@
 (defjssyntax new (expression)
   `(:and "new " ,(funcall expander expression expander)))
 
-;; TODO: Below syntax should go into walker!
-;; -evrim
 (defjssyntax create (&rest arguments)
   `(:and "{ " (:sep (format nil ",~%")
 		    ',(reverse
@@ -157,7 +174,6 @@
       `(:and ,(funcall expander object expander) "[" ,(funcall expander slot expander) "]")))
 
 (defjssyntax switch (object &rest cases)
-  (describe cases)
   `(:and
     "switch (" ,(funcall expander object expander) ") {" #\Newline
     ,@(mapcar (lambda (case)
@@ -212,7 +228,11 @@
 		    `(:and " finally {" #\Newline
 			   ,(funcall expander finally expander) #\Newline "}"))))))
 
+;;-----------------------------------------------------------------------------
+;; Javascript macros
+;;-----------------------------------------------------------------------------
 (defmacro defjsmacr0 (name args &body body)
+  "Define a 'Javascript macro' operator"
   (with-unique-names (rest)
     `(setf (gethash ',name *javascript-macros*)
 	   #'(lambda (&rest ,rest)
@@ -250,7 +270,12 @@
 		 slots)
      ,@body))
 
+;;-----------------------------------------------------------------------------
+;; Javascript expanders for Lisp2 Forms
+;; Note: These are used along with walk-form-no-expand
+;;-----------------------------------------------------------------------------
 (defmacro defjavascript-expander (class (&rest slots) &body body)
+  "Define a javascript expander (ie. unwalker) which is fed to renderer"
   `(defmethod expand-javascript ((form ,class) (expand function))
      (declare (ignorable expand))
 ;;     (format t "inside ~A~%" ',class)
@@ -261,7 +286,6 @@
   form)
 
 (defjavascript-expander constant-form (value)
-  (describe value)
   (typecase value
     (string
      (format nil "'~A'" value))
@@ -310,7 +334,11 @@
 (defjavascript-expander lambda-application-form (operator arguments)
   `(:and ;;    "("
 	 ,(funcall expand operator expand) 
-	 "(" (:sep "," ',(mapcar (rcurry expand expand) arguments)) ");"))
+	 "("
+	 (:sep "," ',(mapcar (rcurry expand expand) arguments))
+	 ,(if (typep (parent form) 'application-form)
+	      ")"
+	      ");")))
 
 (defjavascript-expander lambda-function-form (arguments body declares)
   `(:and "function (" 
@@ -634,7 +662,46 @@
 	       ',(mapcar (rcurry expand expand) body))
 	 ";" #\Newline "}"))
 
+;;-----------------------------------------------------------------------------
+;; Javascript Functionalization
+;;-----------------------------------------------------------------------------
+;; This is a preprocessor to solve the return problem of javascript ie:
+;;
+;; (print ((lambda (a) a) 1))
+;;
+;; should print 1, but javascript is broken, so we add returns implicitly.
+(defmacro defjavascript-transformer (class (&rest slots) &body body)
+  "Define a javascript transformer which is fed to expander"
+  `(defmethod transform-javascript ((form ,class) (transform function))
+     (declare (ignorable transform))
+     ;;     (format t "inside ~A~%" ',class)
+     (with-slots ,slots form
+       ,@body)))
+
+(defjavascript-transformer form ()
+  form)
+
+(defjavascript-transformer implicit-progn-mixin (body)
+  (describe body)
+  form)
+
+(defjavascript-transformer lambda-function-form (arguments declares body)
+  (describe body)
+  (describe arguments)
+  form)
+
+(defun return-trans (&rest body)
+  (unwalk-form
+   (transform-javascript
+    (walk-form-no-expand `(progn ,@body))
+    #'transform-javascript)))
+
+;;-----------------------------------------------------------------------------
+;; Javascript Render Interface
+;; This is the line where fun starts
+;;-----------------------------------------------------------------------------
 (defmacro +js+ (&body body)
+  "Convert body to javascript and return it as a string"
   `(with-core-stream (s "")
      (funcall (lambda ()
 		(block rule-block		  
@@ -646,14 +713,15 @@
      (return-stream s)))
 
 (defun <:js+ (&rest body)
+  "Convert body to javascript and return it as a string, 
+this is parenscript/ucw+ backward compatiblity macro."
   (with-unique-names (output)
-    (describe body)
     (eval
      `(let ((,output (if +context+ (http-response.stream (response +context+)) *core-output*)))
 	(funcall (lambda ()
 		   (block rule-block
 		     ,(expand-render
-		       (walk-grammar
+3		       (walk-grammar
 			`(:and ,@(mapcar (rcurry #'expand-javascript #'expand-javascript)
 					 (mapcar #'walk-form-no-expand body))
 			       #\Newline))
@@ -661,6 +729,7 @@
 		     nil)))))))
 
 (defmacro defun/javascript (name params &body body)
+  "Defun a function in both worlds (lisp/javascript)"
   `(prog1
      (defun ,name ,params ,@body)
      (defun ,(intern (string-upcase (format nil "~A!" name))) (s ,@params)
