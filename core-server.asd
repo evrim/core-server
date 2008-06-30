@@ -82,7 +82,7 @@
                                   :components
                                   ((:file "2109") ;;cookie
                                    (:file "2396") ;;uri
-                                   (:file "822")  ;;text messages
+;;                                   (:file "822")  ;;text messages
                                    (:file "2617") ;;http auth
                                    (:file "2616") ;;http
                                    (:file "2045") ;;mime-part1
