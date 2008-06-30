@@ -71,13 +71,14 @@
 				(make-pathname :name "index"
 					       :type "html"
 					       :directory (list :relative (web-application.fqdn app)))
-				(apache-server.htdocs-pathname self))))
-      (with-core-stream (s redirector-pathname)
-	(with-html-output s	  
-	  (<:html
-	   (<:head
-	    (<:meta :http--equiv "Refresh"
-		    :content (format nil "0;URL=~A" (apache-web-application.default-entry-point app)))))))
+				(apache-server.htdocs-pathname self)))
+	  (s (make-core-file-output-stream redirector-pathname)))      
+      (with-html-output s	  
+	(<:html
+	 (<:head
+	  (<:meta :http--equiv "Refresh"
+		  :content (format nil "0;URL=~A" (apache-web-application.default-entry-point app))))))
+      (close-stream s)
       (fix-apache-permissions redirector-pathname))))
 
 (defmethod create-vhost-config ((self apache-server) (app apache-web-application))
