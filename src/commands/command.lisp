@@ -131,6 +131,53 @@
 (defparameter +find+ (whereis "find"))
 (defparameter +cp+ (whereis "cp"))
 
+(defcommand useradd (shell)
+  ((username :host local :initarg :username
+				  :initform (error "Username must be provided."))
+   (group :host local :initarg :group :initform nil)
+   (extra-groups :host local :initarg :extra-groups :initform '())
+   (home-directory :host local :initarg :home-directory :initform nil)
+   (user-group :host local :initarg :user-group :initform nil)
+   (create-home :host local :initarg :create-home :initform nil)
+   (comment :host local :initarg :comment :initform nil))
+  (:default-initargs :cmd (whereis "useradd")))
+
+(defmethod run ((self useradd))
+  (setf (s-v 'args)
+	  (append
+	   (append
+	    (s-v 'args)
+	    (reduce
+	     #'(lambda (acc item)
+		 (if (s-v (car item))
+		     (cons (cadr item) acc)
+		     acc))	  
+	     '((user-group "-n") (create-home "-m"))
+	     :initial-value (reduce
+			     #'(lambda (acc item)
+				 (if (s-v (car item))
+				     (cons (cadr item)
+					   (if (listp (s-v (car item)))
+					       (cons (reduce
+						      #'(lambda (acc i)
+							  (format nil "~A,~A" acc i))
+						      (s-v (car item))) acc)
+					       (cons (s-v (car item)) acc)))
+				     acc))
+			     '((group "-g") (extra-groups "-G") (home-directory "-d")
+			       (comment "-c")) :initial-value nil)))
+	   (list (s-v 'username))))
+  (call-next-method))
+
+(defcommand groupadd (shell)
+  ((groupname :host local :initarg :groupname
+	      :initform (error "Group name must be provided.")))
+  (:default-initargs :cmd (whereis "groupadd") :errorp nil))
+
+(defmethod run ((self groupadd))
+  (setf (s-v 'args) (append (s-v 'args) (list (s-v 'groupname))))
+  (call-next-method))
+
 (defcommand find-file (shell)
   ((name :host local :initform (error "must specify a filename pattern.")))
   (:default-initargs :cmd +find+ :verbose nil))

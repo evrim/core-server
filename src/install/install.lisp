@@ -15,15 +15,19 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-;; -----------------------------------------------------------------------------
+;; ----------------------------------------------------------------------------
 ;; Installation Script for Core Server Project at http://www.core.gen.tr
 ;; Author: Evrim Ulu <evrim@core.gen.tr>
 ;;
 ;; Trademarks for the externals systems do belong to their owners.
-;; Use Google Search to contact the owners of that specific trademark.
-;; -----------------------------------------------------------------------------
+;; Use Google(tm) Search (http://www.google.com) to contact the owners
+;; of that specific trademark.
+;; ----------------------------------------------------------------------------
 
-
+;;-----------------------------------------------------------------------------
+;; Functions that installer needs starts here
+;; There are not loaded during normal Core-Server Startup
+;;-----------------------------------------------------------------------------
 #-core-server
 (progn
   (in-package :cl-user)
@@ -59,108 +63,125 @@
     ((probe-file "/etc/debian_version")
      (pushnew :debian *features*))))
 
-(defun ensure-list (atom-or-list)
-  (if (atom atom-or-list)
-      (list atom-or-list)
-      atom-or-list))
+#-core-server
+(progn
+  (defun ensure-list (atom-or-list)
+    (if (atom atom-or-list)
+	(list atom-or-list)
+	atom-or-list))
 
-(defun extract-argument-names (lambda-list)
-  "Returns a list of symbols representing the names of the
+  (defun extract-argument-names (lambda-list)
+    "Returns a list of symbols representing the names of the
   variables bound by the lambda list LAMBDA-LIST."
-  (nreverse
-   (reduce #'(lambda (acc atom)
-	       (if (eq #\& (aref (symbol-name atom) 0))
-		   acc
-		   (cons atom acc)))
-	   lambda-list :initial-value nil)))
-
-(defmacro deftrace (name methods)
-  "Defines +name-methods+ variable, trace-name, untrace-name functions
-for traceing a closed system"
-  (let ((var-symbol (intern (string-upcase (format nil "+~A-methods+" name))))
-	(trace-symbol (intern (string-upcase (format nil "trace-~A" name))))
-	(untrace-symbol (intern (string-upcase (format nil "untrace-~A" name)))))
-    `(progn
-       (defparameter ,var-symbol ,methods)
-       (defun ,trace-symbol (&optional (methods ,var-symbol))
-	 (mapcar (lambda (e) (eval `(trace ,e))) methods))
-       (defun ,untrace-symbol (&optional (methods ,var-symbol))
-	 (mapcar (lambda (e) (eval `(untrace ,e))) methods)))))
-
-(defmacro aif (consequent then &optional else)
-  "Special if that binds 'consequent' to 'it'"
-  `(let ((it ,consequent))
-     (if it
-	 ,then
-	 ,(if else
-	      else))))
-
-(defmacro awhen (consequent &body body)
-  "Special when that binds 'consequent' to 'it'"
-  `(let ((it ,consequent))
-     (when it
-       ,@body)))
-
-
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defmethod make-keyword ((str string))
-    "Returns keyword for the string 'str'"
-    (intern (string-upcase str) :keyword))
-
-  (defmethod make-keyword ((sym symbol))
-    "Returns keyword for the symbol 'sym'"
-    (intern (symbol-name sym) :keyword)))
-
-(defun plist-to-alist (plist)
-  "Transforms a plist to an alist, keywords are transformed into symbols"
-  (let (key)
     (nreverse
      (reduce #'(lambda (acc atom)
-		 (if (and (null key) (keywordp atom))
-		     (prog1 acc (setf key atom))
-		     (prog1 (cons (cons (intern (symbol-name key)) atom) acc)
-		       (setf key nil))))
-	     plist :initial-value nil))))
+		 (if (eq #\& (aref (symbol-name atom) 0))
+		     acc
+		     (cons atom acc)))
+	     lambda-list :initial-value nil)))
 
-(defun alist-to-plist (alist)
-  "Transforms an alist to a plist, key symbols are transformed into keywords"
-  (reduce #'(lambda (acc atom)
-	      (nreverse (cons (cdr atom) (cons (make-keyword (car atom)) (nreverse acc)))))
-	  alist :initial-value nil))
+  (defmacro deftrace (name methods)
+    "Defines +name-methods+ variable, trace-name, untrace-name functions
+for traceing a closed system"
+    (let ((var-symbol (intern (string-upcase (format nil "+~A-methods+" name))))
+	  (trace-symbol (intern (string-upcase (format nil "trace-~A" name))))
+	  (untrace-symbol (intern (string-upcase (format nil "untrace-~A" name)))))
+      `(progn
+	 (defparameter ,var-symbol ,methods)
+	 (defun ,trace-symbol (&optional (methods ,var-symbol))
+	   (mapcar (lambda (e) (eval `(trace ,e))) methods))
+	 (defun ,untrace-symbol (&optional (methods ,var-symbol))
+	   (mapcar (lambda (e) (eval `(untrace ,e))) methods)))))
 
-(defmacro s-v (slot-name)
-  "Expands to (slot-value self slot-name)"
-  `(slot-value self ,slot-name))
+  (defmacro aif (consequent then &optional else)
+    "Special if that binds 'consequent' to 'it'"
+    `(let ((it ,consequent))
+       (if it
+	   ,then
+	   ,(if else
+		else))))
 
-(defmacro with-current-directory (directory &body body)
-  "Executes body while setting current directory to 'directory'"
-  `(unwind-protect
-	(progn
-	  (sb-posix:chdir ,directory)
-	  (let ((*default-pathname-defaults* ,directory))
-	    ,@body))
-     (sb-posix:chdir *default-pathname-defaults*)))
+  (defmacro awhen (consequent &body body)
+    "Special when that binds 'consequent' to 'it'"
+    `(let ((it ,consequent))
+       (when it
+	 ,@body)))
+
+
+  (eval-when (:compile-toplevel :load-toplevel :execute)
+    (defmethod make-keyword ((str string))
+      "Returns keyword for the string 'str'"
+      (intern (string-upcase str) :keyword))
+
+    (defmethod make-keyword ((sym symbol))
+      "Returns keyword for the symbol 'sym'"
+      (intern (symbol-name sym) :keyword)))
+
+  (defun plist-to-alist (plist)
+    "Transforms a plist to an alist, keywords are transformed into symbols"
+    (let (key)
+      (nreverse
+       (reduce #'(lambda (acc atom)
+		   (if (and (null key) (keywordp atom))
+		       (prog1 acc (setf key atom))
+		       (prog1 (cons (cons (intern (symbol-name key)) atom) acc)
+			 (setf key nil))))
+	       plist :initial-value nil))))
+
+  (defun alist-to-plist (alist)
+    "Transforms an alist to a plist, key symbols are transformed into keywords"
+    (reduce #'(lambda (acc atom)
+		(nreverse (cons (cdr atom) (cons (make-keyword (car atom)) (nreverse acc)))))
+	    alist :initial-value nil))
+
+  (defmacro s-v (slot-name)
+    "Expands to (slot-value self slot-name)"
+    `(slot-value self ,slot-name))
+
+  (defmacro with-current-directory (directory &body body)
+    "Executes body while setting current directory to 'directory'"
+    `(unwind-protect
+	  (progn
+	    (sb-posix:chdir ,directory)
+	    (let ((*default-pathname-defaults* ,directory))
+	      ,@body))
+       (sb-posix:chdir *default-pathname-defaults*))))
 
 #-core-server
 (mapc #'(lambda (lisp)
 	  (if (null (load lisp))
 	      (error "Failed to load ~A" lisp)))
       '("search.lisp" "mop.lisp" "class+.lisp" "command.lisp"))
+;;-----------------------------------------------------------------------------
+;; Functions that installer needs ends here
+;;-----------------------------------------------------------------------------
 
+
+;;-----------------------------------------------------------------------------
+;; System Definition
+;;-----------------------------------------------------------------------------
 (defclass sys ()
   ((name :accessor name :initarg :name)
    (repo-type :accessor repo-type :initarg :repo-type
 	      :initform (error "specify repo-type"))
    (repo :accessor repo :initarg :repo)
    (homepage :accessor homepage :initarg :homepage)
-   (module :accessor module :initarg :module :initform nil)))
+   (module :accessor module :initarg :module :initform nil))
+  (:documentation "Represents an undivisible part of a layout. It can
+  be library, or a bunch of static files or other external system."))
 
 (defmethod print-object ((self sys) stream)
   (print-unreadable-object (self stream :type t :identity t)
     (format stream "~A is a ~A sys."
 	    (name self) (repo-type self))))
 
+;;-----------------------------------------------------------------------------
+;; System Constructor
+;;-----------------------------------------------------------------------------
 (defun make-system (name type repo &key homepage module)
+  "Return a new system having 'name', 'type' and 'repo'
+location. 'Homepage' and 'module' for systems are optional. 'module'
+is needed in some systems like CVS"
   (make-instance 'sys
 		 :name (if (stringp name)
 			   (intern (string-upcase name))
@@ -172,17 +193,23 @@ for traceing a closed system"
 		 :homepage homepage
 		 :module module))
 
-(defgeneric target-directory (sys))
+;;-----------------------------------------------------------------------------
+;; System Protocol
+;;-----------------------------------------------------------------------------
+(defgeneric target-directory (sys)
+  (:documentation "Getter for target-directory of this system"))
+
+(defgeneric fetch (sys &optional path)
+  (:documentation "Fetchs this system from its 'repository'/'module'"))
+
 (defmethod target-directory ((self sys))
   (make-pathname :directory (list :relative
 				  (string-downcase (symbol-name (name self))))))
 
-(defgeneric fetch (sys &optional path))
 
-(defmethod fetch :around ((sys sys) &optional path)
-  (let ((path (or path *default-pathname-defaults*)))
-    (with-current-directory path
-      (call-next-method))))
+(defmethod fetch :around ((sys sys) &optional path)  
+  (with-current-directory (or path *default-pathname-defaults*)
+    (call-next-method)))
 
 (defmethod fetch ((self sys) &optional path)
   (declare (ignorable path))
@@ -197,6 +224,9 @@ for traceing a closed system"
     (svn (svn :repo (repo self) :target (target-directory self)))
     (tar (tarball :repo (repo self) :target (target-directory self)))))
 
+;;-----------------------------------------------------------------------------
+;; System Layout
+;;-----------------------------------------------------------------------------
 (defclass layout ()
   ((bin :accessor layout.bin :initarg :bin :initform #P"bin/")
    (etc :accessor layout.etc :initarg :etc :initform #P"etc/")
@@ -221,9 +251,12 @@ for traceing a closed system"
    (core-server.sh :accessor layout.core-server.sh :initarg :core-server.sh
 		   :initform #P"core-server")
    (registry :initform '() :documentation "Systems registry.")
-   (root :initarg :root :initform (error "One must specify a root directory"))))
+   (root :initarg :root :initform (error "One must specify a root directory")))
+  (:documentation "Represents a Core Server layout"))
   
 (defun normalize-target-directory (dir)
+  "Return a normalized version of 'dir' for example:
+ #P\"/home/gee -> #P\"/home/gee/"
   (let ((dir (pathname dir)))
     (cond
       ((and (null (pathname-name dir))
@@ -237,20 +270,15 @@ for traceing a closed system"
 							   (pathname-type dir)))
 					     (list (pathname-name dir)))))))))
 
+;;-----------------------------------------------------------------------------
+;; System Layout Constructor
+;;-----------------------------------------------------------------------------
 (defun make-layout (root)
   (make-instance 'layout :root (normalize-target-directory root)))
 
-(defmethod unregister-system ((self layout) (sys sys))
-  (setf (s-v 'registry)
-	(delete sys (s-v 'registry) :key #'name :test #'equal)))
-
-(defmethod register-system ((self layout) (sys sys))
-  (unregister-system self sys)
-  (pushnew sys (s-v 'registry) :key #'name))
-
-(defmethod find-system ((self layout) sysname)
-  (find-if #'(lambda (s) (string= (name s) sysname)) (s-v 'registry)))
-
+;;-----------------------------------------------------------------------------
+;; System Layout Accessors
+;;-----------------------------------------------------------------------------
 (defmethod layout.root ((self layout))
   (if (sb-posix:getenv "CORESERVER_HOME")
       (pathname (sb-posix:getenv "CORESERVER_HOME"))
@@ -281,6 +309,51 @@ for traceing a closed system"
 
 (defmethod layout.systems ((self layout))
   (merge-pathnames (s-v 'systems) (layout.lib self)))
+
+;;-----------------------------------------------------------------------------
+;; System Layout Protocol
+;;-----------------------------------------------------------------------------
+(defgeneric unregister-system (layout system)
+  (:documentation "Unregisters a 'system' from a 'layout'"))
+
+(defgeneric register-system (layout system)
+  (:documentation "Registers a 'system' to a 'layout'"))
+
+(defgeneric find-system (layout system-name)
+  (:documentation "Returns the system associated with 'system-name' in
+  'layout'"))
+
+(defgeneric read-systems (layout)
+  (:documentation "Reads system definitions from 
+'(layout.lib.conf layout)'"))
+
+(defgeneric write-systems (layout)
+  (:documentation "Writes current system definitions to
+ '(layout.lib.conf layout)'"))
+
+(defgeneric checkout-system (layout system)
+  (:documentation "Checks out 'system' of 'layout'"))
+
+(defgeneric checkout-systems (layout)
+  (:documentation "Checks out all systems in the registry of 'layout'"))
+
+(defgeneric link-systems (layout)
+  (:documentation "Creates links for every system in the registry of
+this 'layout' to '(layout.systems self)'"))
+
+;;-----------------------------------------------------------------------------
+;; System Layout Protocol Implementation
+;;-----------------------------------------------------------------------------
+(defmethod unregister-system ((self layout) (sys sys))
+  (setf (s-v 'registry)
+	(delete sys (s-v 'registry) :key #'name :test #'equal)))
+
+(defmethod register-system ((self layout) (sys sys))
+  (unregister-system self sys)
+  (pushnew sys (s-v 'registry) :key #'name))
+
+(defmethod find-system ((self layout) sysname)
+  (find-if #'(lambda (s) (string= (name s) sysname)) (s-v 'registry)))
 
 (defun tokenize (string)
   (let ((pos (min (or (position #\Space string) (1- (length string)))
@@ -326,17 +399,51 @@ for traceing a closed system"
 			:target (layout.systems self))))
 	      systems))))
 
-;; Templates
+;;-----------------------------------------------------------------------------
+;; System Layout Template Helpers
+;;-----------------------------------------------------------------------------
 (defun write-template-sexp (template pathname)
+  "Writes sexp (cdr 'template') to 'pathname'"
   (with-open-file (s pathname :direction :output :if-exists :supersede
 		     :if-does-not-exist :create)
     (mapcar #'(lambda (line) (format s "~W~%" line)) (cdr template))))
 
 (defun write-template-string (template pathname)
+  "Writes string 'template' to 'pathname'"
   (with-open-file (s pathname :direction :output :if-exists :supersede
 		     :if-does-not-exist :create)
     (format s "~A~%" template)))
 
+;;-----------------------------------------------------------------------------
+;; System Layout Template Protocol
+;;-----------------------------------------------------------------------------
+(defgeneric end.lisp (layout)
+  (:documentation "Returns etc/end.lisp sexp"))
+
+(defgeneric start.lisp (layout)
+  (:documentation "Returns etc/start.lisp sexp"))
+
+(defgeneric core-server.sh (layout)
+  (:documentation "Returns contents of bin/core-server.sh"))
+
+(defgeneric emacs.sh (layout)
+  (:documentation "Returns contents of bin/emacs.sh"))
+
+(defgeneric make-installer.sh (layout)
+  (:documentation "Returns contents of bin/make-installer.sh"))
+
+(defgeneric write-templates (layout)
+  (:documentation "Writes all templates to associated pathnames"))
+
+(defgeneric create-directories (layout)
+  (:documentation "Creates all directories that this 'layout' needs"))
+
+(defgeneric install (layout)
+  (:documentation "Installs this 'layout' to '(layout.target-directory layout)'"))
+
+;;-----------------------------------------------------------------------------
+;; System Layout Template Implementation
+;;-----------------------------------------------------------------------------
 (defmethod end.lisp ((self layout))
   `(progn
      (in-package :core-server)
@@ -350,16 +457,16 @@ for traceing a closed system"
      (require :asdf)
      (pushnew ,(layout.systems self) asdf:*central-registry* :test #'equal)
 
-     (flet ((push-all (systems-dir)
-	      (dolist (dir-candidate
-			(directory (concatenate 'string (namestring systems-dir) "*/")))
-		;; skip dirs starting with a _
-		(let ((name (car (last (pathname-directory dir-candidate)))))
-		  (unless (equal #\_ (elt name 0))
-		    (pushnew dir-candidate asdf:*central-registry* :test 'equal))))))
-       ;; add projects
-       (push-all ,(merge-pathnames (layout.projects self) (layout.root self))))
-
+     (defun scan-projects (systems-dir)
+       (dolist (dir-candidate
+		 (directory (concatenate 'string (namestring systems-dir) "*/")))
+	 ;; skip dirs starting with a _
+	 (let ((name (car (last (pathname-directory dir-candidate)))))
+	   (unless (equal #\_ (elt name 0))
+	     (pushnew dir-candidate asdf:*central-registry* :test 'equal)))))
+     
+     ;; add projects
+     (scan-projects ,(merge-pathnames (layout.projects self) (layout.root self)))
 
      (asdf:oos 'asdf:load-op :asdf-binary-locations)
      (setf (symbol-value (find-symbol "*CENTRALIZE-LISP-BINARIES*" (find-package 'asdf)))
@@ -510,8 +617,7 @@ case \"$1\" in
 esac
 cd $OLDPWD
 exit 0
-"
-	(layout.root self) (layout.start.lisp self) (layout.root self)))
+" (layout.root self) (layout.start.lisp self) (layout.root self)))
 
 (defmethod emacs.sh ((self layout))
   (format nil "
@@ -520,8 +626,7 @@ if [ -z $CORESERVER_HOME ]; then
   export CORESERVER_HOME=\"~A\"
 fi
 emacs -q -l $CORESERVER_HOME/etc/emacs/core-server.el
-"
-	  (layout.root self)))
+" (layout.root self)))
 
 (defmethod make-installer.sh ((self layout))
   (format nil "
@@ -586,62 +691,27 @@ echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
   (ln :source (merge-pathnames #P"core-server/doc" (layout.lib self))
       :target (layout.root self)))
 
-(defcommand useradd (shell)
-  ((username :host local :initarg :username
-				  :initform (error "Username must be provided."))
-   (group :host local :initarg :group :initform nil)
-   (extra-groups :host local :initarg :extra-groups :initform '())
-   (home-directory :host local :initarg :home-directory :initform nil)
-   (user-group :host local :initarg :user-group :initform nil)
-   (create-home :host local :initarg :create-home :initform nil)
-   (comment :host local :initarg :comment :initform nil))
-  (:default-initargs :cmd (whereis "useradd")))
-
-(defmethod run ((self useradd))
-  (setf (s-v 'args)
-	  (append
-	   (append
-	    (s-v 'args)
-	    (reduce
-	     #'(lambda (acc item)
-		 (if (s-v (car item))
-		     (cons (cadr item) acc)
-		     acc))	  
-	     '((user-group "-n") (create-home "-m"))
-	     :initial-value (reduce
-			     #'(lambda (acc item)
-				 (if (s-v (car item))
-				     (cons (cadr item)
-					   (if (listp (s-v (car item)))
-					       (cons (reduce
-						      #'(lambda (acc i)
-							  (format nil "~A,~A" acc i))
-						      (s-v (car item))) acc)
-					       (cons (s-v (car item)) acc)))
-				     acc))
-			     '((group "-g") (extra-groups "-G") (home-directory "-d")
-			       (comment "-c")) :initial-value nil)))
-	   (list (s-v 'username))))
-  (call-next-method))
-
-(defcommand groupadd (shell)
-  ((groupname :host local :initarg :groupname
-	      :initform (error "Group name must be provided.")))
-  (:default-initargs :cmd (whereis "groupadd") :errorp nil))
-
-(defmethod run ((self groupadd))
-  (setf (s-v 'args) (append (s-v 'args) (list (s-v 'groupname))))
-  (call-next-method))
-
+;;-----------------------------------------------------------------------------
+;; Server System Layout
+;;-----------------------------------------------------------------------------
+;;
+;; This layout is used to install/manage Core Server and severeal unix servers
+;;
 (defclass server-layout (layout)
   ()
   (:default-initargs :server-type :mod-lisp
     :server-port 3001
     :server-address "127.0.0.1"))
 
+;;-----------------------------------------------------------------------------
+;; Server System Layout Constructor
+;;-----------------------------------------------------------------------------
 (defun make-server-layout (root)
   (make-instance 'server-layout :root (normalize-target-directory root)))
 
+;;-----------------------------------------------------------------------------
+;; Server System Layout Implementation
+;;-----------------------------------------------------------------------------
 (defmethod core-server.sh ((self server-layout))
   (format nil "#!/bin/bash
 help ()
@@ -730,9 +800,7 @@ case \"$1\" in
 esac
 cd $OLDPWD
 exit 0
-"
-	(layout.root self) (layout.root self)
-	(layout.start.lisp self) (layout.root self)))
+" (layout.root self) (layout.root self) (layout.start.lisp self) (layout.root self)))
 
 (defmethod start.lisp ((self server-layout))
   `(progn     
@@ -741,15 +809,16 @@ exit 0
      (require :asdf)
      (pushnew ,(layout.systems self) asdf:*central-registry* :test #'equal)
 
-     (flet ((push-all (systems-dir)
-	      (dolist (dir-candidate
-			(directory (concatenate 'string (namestring systems-dir) "*/")))
-		;; skip dirs starting with a _
-		(let ((name (car (last (pathname-directory dir-candidate)))))
-		  (unless (equal #\_ (elt name 0))
-		    (pushnew dir-candidate asdf:*central-registry* :test 'equal))))))
-       ;; add projects
-       (push-all ,(merge-pathnames (layout.projects self) (layout.root self))))
+     (defun scan-projects (systems-dir)
+       (dolist (dir-candidate
+		 (directory (concatenate 'string (namestring systems-dir) "*/")))
+	 ;; skip dirs starting with a _  (ie _darcs)
+	 (let ((name (car (last (pathname-directory dir-candidate)))))
+	   (unless (equal #\_ (elt name 0))
+	     (pushnew dir-candidate asdf:*central-registry* :test 'equal)))))
+     
+     ;; add projects
+     (scan-projects ,(merge-pathnames (layout.projects self) (layout.root self)))
 
      (asdf:oos 'asdf:load-op :asdf-binary-locations)
      (setf (symbol-value (find-symbol "*CENTRALIZE-LISP-BINARIES*" (find-package 'asdf)))
