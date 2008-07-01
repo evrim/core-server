@@ -107,12 +107,6 @@
 ;;                    %d33-39 /       ; The rest of the US-ASCII
 ;;                    %d42-91 /       ;  characters not including "(",
 ;;                    %d93-126        ;  ")", or "\"
-;; ccontent        =  ctext / quoted-pair / comment
-;; comment         =  "(" *([FWS] ccontent) [FWS] ")"
-;; CFWS            =  *([FWS] comment) (([FWS] comment) / FWS)
-;; ctext           =  <any CHAR excluding "(",     ; => may be folded
-;;                    ")", "\" & CR, & including
-;;                    linear-white-space>
 
 ;; (fws? (make-core-stream (format nil "   ~% ")))
 (defparser fws? ()
@@ -120,22 +114,28 @@
 	      (:zom (:type white-space?))
 	      (:crlf?))
 	     (:oom (:type white-space?)))
-       (:obs-fws?)))
+       (:obs-fws?))
+  (:return t))
 
+;; ctext           =  <any CHAR excluding "(",     ; => may be folded
+;;                    ")", "\" & CR, & including
+;;                    linear-white-space>
 (defparser ctext? (c)
   (:or (:no-ws-ctl?)
        (:noneof "()\\" c))
   (:return c))
 
+;; ccontent        =  ctext / quoted-pair / comment
 (defparser ccontent? (c text)
   (:or (:ctext? c)
        (:quoted-pair? c)
        (:comment? text))
   (:return (cons c text)))
 
+;; comment         =  "(" *([FWS] ccontent) [FWS] ")"
 (defparser comment? (c (acc (make-accumulator)))
   #\(
-  (:collect #\( acc)
+;;  (:collect #\( acc) ;; do not collect lexer
   (:zom (:optional (:fws?))
 	(:ccontent? c)
 	(:if (left? c)
@@ -146,16 +146,22 @@
 			      (vector-push-extend item acc))
 			  (cdr c) :initial-value nil))))
   (:optional (:fws?))
-  (:collect #\) acc)
   #\)
+;;  (:collect #\) acc) ;; do not collect lexer
   (:return acc))
 
+(defun comment! (stream text)
+  (char! stream #\()
+  (string! stream text)
+  (char! stream #\)))
+
+;; CFWS            =  *([FWS] comment) (([FWS] comment) / FWS)
 ;; TODO: collect comments.
 (defparser cfws? ()
-  (:zom (:optional (:fws?))
-	(:comment?))
-  (:or (:optional (:fws?))
-       (:fws?)))
+  (:oom (:or (:and (:optional (:fws?))
+		   (:comment?))
+	     (:fws?)))
+  (:return t))
 
 ;; 3.2.4. Atom
 ;; atext           =       ALPHA / DIGIT / ; Any character except controls,
@@ -288,16 +294,16 @@
 
 ;; helper
 (defparser twodigitint? (d1 d2)
-  (:and (:type digit? d1)
-	(:type digit? d2)
-	(:return (unsafe-digits2int (list d1 d2)))))
+  (:type digit? d1)
+  (:type digit? d2)
+  (:return (unsafe-digits2int (list d1 d2))))
 
 (defparser fourdigitint? (d1 d2 d3 d4)
-  (:and (:type digit? d1)
-	(:type digit? d2)
-	(:type digit? d3)
-	(:type digit? d4)
-	(:return (unsafe-digits2int (list d1 d2 d3 d4)))))
+  (:type digit? d1)
+  (:type digit? d2)
+  (:type digit? d3)
+  (:type digit? d4)
+  (:return (unsafe-digits2int (list d1 d2 d3 d4))))
 
 ;; (eq (rfc2822-date-time? (make-core-stream "Mon, 21 Sep 1980 10:01:02 +0230")) 2547376262)
 (defparser rfc2822-date-time? (dow d time)
@@ -892,9 +898,9 @@
   (:return c))
 
 (defparser obs-phrase? (c cs)
-  (:word c)
+  (:word? c)
   (:do (push c cs))
-  (:zom (:or (:and (:word c)
+  (:zom (:or (:and (:word? c)
 		   (:do (push c cs)))
 	     #\.
 	     (:cfws?)))
@@ -917,7 +923,8 @@
 (defparser obs-fws? ()
   (:oom (:type white-space?))
   (:zom (:crlf?)
-	(:oom (:type white-space?))))
+	(:oom (:type white-space?)))
+  (:return t))
 
 ;; 4.3. Obsolete Date and Time
 ;; obs-day-of-week =       [CFWS] day-name [CFWS]
@@ -1223,3 +1230,10 @@
   #\:
   (:unstructured? val)
   (:return (list fn val)))
+
+(deftrace rfc2822-parsers
+    '(fws? ctext? ccontent? comment? cfws? atext? atom? dot-atom? dot-atom-text?
+      qtext? qcontent? quoted-string? word? phrase? utext? unstructured? twodigitint?
+      fourdigitint? rfc2822-date-time? rfc2822-day-of-week? rfc2822-day-name?
+      rfc2822-date? rfc2822-year? rfc2822-month? rfc2822-month-name?
+      rfc2822-day? rfc2822-time? rfc2822-time-of-day? rfc2822-hour? rfc2822-minute?))
