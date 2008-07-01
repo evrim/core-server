@@ -246,7 +246,7 @@
      (return-from ,checkpoint ,continue)))
 
 (defgrammar-expander rewind%-form
-  `(rewind-stream ,stream))
+  `(prog1 ,continue (rewind-stream ,stream)))
 
 (defgrammar-expander rewind-form
   `(progn
