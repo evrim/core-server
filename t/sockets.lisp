@@ -4,7 +4,7 @@
 (defparameter *listen-port* 5555)
 
 (deftest resolv-hostname
-    (let ((h #(212 175 40 11))
+    (let ((h #(139 179 139 251))
 	  (result (resolve-hostname "www.core.gen.tr")))
       (reduce #'(lambda (x y)
 		  (if x y nil))

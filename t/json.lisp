@@ -41,7 +41,7 @@
 			    '(("abc" 1)
 			      ("def" 2)
 			      ("hij" 3)))
-  "{ \"abc\": 1 \"def\": 2 \"hij\": 3 }")
+  "{ \"abc\": 1, \"def\": 2, \"hij\": 3 }")
 
 ;;; ;; RFC Test Data
 (defvar +json-test1+ "

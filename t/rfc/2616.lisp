@@ -2,9 +2,8 @@
 
 (deftest http-media-range?
     (with-core-stream (s "text/html; q=0.8; a=test;level=2")
-      (equal (list "text" "html" '(("level" . "2") ("a" . "test") ("q" . 0.8)))
-	     (multiple-value-list (core-server::http-media-range? s))))
-  t)
+      (multiple-value-list (core-server::http-media-range? s)))
+  ("text" "html" (("level" . "2") ("a" . "test") ("q" . 0.8))))
 
 ;;;
 ;;; test request headers
@@ -13,65 +12,59 @@
 ;; ACCEPT
 (deftest http-accept?
     (with-core-stream (s "text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, */*;q=0.5")
-      (equal (http-accept? s)
-	     '(("*" "*" (("q" . 0.5)))
-	       ("text" "html" (("q" . 0.4) ("level" . "2")))
-	       ("text" "html" (("level" . "1")))
-	       ("text" "html" (("q" . 0.7)))
-	       ("text" "*" (("q" . 0.3))))))
-  t)
+      (http-accept? s))
+  (("*" "*" (("q" . 0.5)))
+   ("text" "html" (("q" . 0.4) ("level" . "2")))
+   ("text" "html" (("level" . "1")))
+   ("text" "html" (("q" . 0.7)))
+   ("text" "*" (("q" . 0.3)))))
 
 ;; ACCEPT-CHARSET
 (deftest http-accept-charset?
     (with-core-stream (s "iso-8859-5, unicode-1-1;q=0.8")
-      (equal (http-accept-charset? s)
-	     '(("iso-8859-5" . 1.0) ("unicode-1-1" . 0.8))))
-  t)
+      (http-accept-charset? s))
+  (("iso-8859-5" . 1.0) ("unicode-1-1" . 0.8)))
 
 ;; ACCEPT-ENCODING
 (deftest http-accept-encoding?
     (with-core-stream (s "gzip;q=1.0, identity; q=0.5, *;q=0")
-      (equal (http-accept-encoding? s)
-	     '(("gzip" . 1.0) ("identity" . 0.5) ("*" . 0.0))))
-  t)
+      (http-accept-encoding? s))
+  (("gzip" . 1.0) ("identity" . 0.5) ("*" . 0.0)))
 
 ;; ACCEPT-LANGUAGE
 (deftest http-accept-language?
     (with-core-stream (s "tr, en-us;q=0.1, en;q=0.7")
-      (equal (http-accept-language? s)
-	     '(("tr" . 1.0) ("en-us" . 0.1) ("en" . 0.7))))
-  t)
+      (http-accept-language? s))
+  (("tr" . 1.0) ("en-us" . 0.1) ("en" . 0.7)))
 
 ;; AUTHORIZATION
 (deftest http-authorization?
     (with-core-stream (s "Digest mac=\"asd\",
 cam=\"dsa\"")
-      (equal (http-authorization? s)
-	     '("Digest" ("cam" . "dsa") ("mac" . "asd"))))
-  t)
+      (http-authorization? s))
+  ("Digest" ("cam" . "dsa") ("mac" . "asd")))
 
 ;; EXPECT
 (deftest http-expect?
-    (and (with-core-stream (s "asd=asd;q=324")
-	   (equal (http-expect? s)
-		  '(("asd" . "asd") ("q" . "324"))))
-	 (with-core-stream (s "100-continue")
-	   (string= (http-expect? s)
-		    '100-continue))) 
-  t)
+    (with-core-stream (s "asd=asd;q=324")
+      (http-expect? s))
+  (("asd" . "asd") ("q" . "324")))
+
+(deftest http-expect-100-continue?    
+    (with-core-stream (s "100-continue")
+      (http-expect? s))
+  core-server::100-continue)
 
 ;; FROM
 (deftest http-from?
     (with-core-stream (s "<bill.gates@microsoft.com>")
-      (equal (http-from? s)
-	     '((("bill.gates" "microsoft" "com")))))
-  t)
+      (slot-value (http-from? s) 'core-server::addr))
+  "bill.gates@microsoft.com")
 
 (deftest http-host?
     (with-core-stream (s "www.core.gen.tr:80")
-      (equal (http-host? s)
-	     '("www.core.gen.tr" . 80)))
-  t)
+      (http-host? s))
+  ("www.core.gen.tr" . 80))
 
 ;; IF-MATCH
 (deftest http-etag?
@@ -98,9 +91,8 @@ cam=\"dsa\"")
 ;; IF-MODIFIED-SINCE
 (deftest http-if-modified-since?
     (with-core-stream (s "Sat, 29 Oct 1994 19:43:31 GMT")
-      (equal (http-if-modified-since? s)
-	     2989849411))
-  t)
+      (http-if-modified-since? s))
+  2992448611)
 
 ;; IF-NONE-MATCH
 (deftest http-if-none-match?
@@ -120,21 +112,20 @@ cam=\"dsa\"")
 
 ;; IF-RANGE
 (deftest http-if-range?
-    (and (with-core-stream (s "Tue, 01 Feb 2008 04:20:00 GMT")
-	   (equal (http-if-range? s)
-		  3408142800))
-	 (with-core-stream (s "W/\"ranger\"")
-	   (equal (http-if-range? s)
-		  '("ranger" . t))))
-  t)
+    (with-core-stream (s "Tue, 01 Feb 2008 04:20:00 GMT")
+      (http-if-range? s))
+  3410828400)
 
+(deftest http-if-range2?
+    (with-core-stream (s "W/\"ranger\"")
+      (http-if-range? s))
+  ("ranger" . t))
 
 ;; IF-UNMODIFIED-SINCE
 (deftest http-if-unmodified-since
     (with-core-stream (s "Tue, 01 Feb 2008 04:20:00 GMT")
-      (equal (http-if-unmodified-since? s)
-	     3408142800))
-  t)
+      (http-if-unmodified-since? s))
+  3410828400)
 
 ;; MAX-FORWARDS
 (deftest http-max-forwards?
@@ -177,17 +168,20 @@ cam=\"foo\"")
   t)
 
 ;; USER-AGENT
-(deftest http-user-agent?
-    (and (with-core-stream (s "Opera/9.21 (X11; Linux i686; U; en)")
-	   (equal (http-user-agent? s)
-		  '((BROWSER . OPERA) (VERSION (9 21)) (OS . "Linux i686"))))
-	 (with-core-stream (s "Mozilla/5.0 (X11; U; Linux i686; tr-TR; rv:1.8.1.2) Gecko/20070511 SeaMonkey/1.1.1")
-	   (equal (http-user-agent? s)
-		  '((BROWSER . SEAMONKEY) (MOZ-VER (5 0)) (OS . "Linux i686") (REVISION (1 8 1 2)) (VERSION (1 1 1)))))
-	 (with-core-stream (s "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.1.4322; .NET CLR 2.0.50727)")
-	   (equal (http-user-agent? s)
-		  '((BROWSER . IE) (MOZ-VER (4 0)) (VERSION (6 0)) (OS . "Windows NT 5.1"))))) 
-  t)
+(deftest http-user-agent-opera?
+    (with-core-stream (s "Opera/9.21 (X11; Linux i686; U; en)")
+      (http-user-agent? s))
+  ((BROWSER . OPERA) (VERSION (9 21)) (OS . "Linux i686")))
+
+(deftest http-user-agent-seamonkey?
+    (with-core-stream (s "Mozilla/5.0 (X11; U; Linux i686; tr-TR; rv:1.8.1.2) Gecko/20070511 SeaMonkey/1.1.1")
+      (http-user-agent? s))
+  ((BROWSER . SEAMONKEY) (MOZ-VER (5 0)) (OS . "Linux i686") (REVISION (1 8 1 2)) (VERSION (1 1 1))))
+
+(deftest http-user-agent-ie?    
+    (with-core-stream (s "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.1.4322; .NET CLR 2.0.50727)")
+      (http-user-agent? s))
+  ((BROWSER . IE) (MOZ-VER (4 0)) (VERSION (6 0)) (OS . "Windows NT 5.1")))
 
 ;;;
 ;;; test response headers
@@ -283,86 +277,90 @@ cam=\"foo\""))
 ;;;
 
 ;; CACHE-CONTROL
-(deftest http-cache-control?
-    (and
-     ;; cache-requests
-     (and (with-core-stream (s "no-cache")
-	    (equal (http-cache-control? s)
-		   '(NO-CACHE)))
-	  (with-core-stream (s "no-store")
-	    (equal (http-cache-control? s)
-		   '(NO-STORE)))
-	  (with-core-stream (s "max-age=3600")
-	    (equal (http-cache-control? s)
-		   '(MAX-AGE . 3600))))
-     )
-  t)
+(deftest http-cache-control-no-cache?
+    (with-core-stream (s "no-cache")
+      (http-cache-control? s))
+  ((NO-CACHE)))
 
-(deftest http-cache-control!
-    ;;cache-responses
-    (and (with-core-stream (s "")
-	   (http-cache-control! s 'PUBLIC)
-	   (equal (return-stream s)
-		  "public"))
-	 (with-core-stream (s "")
-	   (http-cache-control! s '(NO-CACHE . ("extension" . "value")))
-	   (equal (return-stream s)
-		  "no-cache,extension=\"value\""))
-	 (with-core-stream (s "")
-	   (http-cache-control! s '(PRIVATE . ("here" . "Iam")))
-	   (equal (return-stream s)
-		  "private,here=\"Iam\"")))
-  t)
+(deftest http-cache-control-max-age?
+    (with-core-stream (s "max-age=3600")
+      (http-cache-control? s))
+  ((MAX-AGE . 3600)))
+
+(deftest http-cache-control-no-store?
+    (with-core-stream (s "no-store")
+      (http-cache-control? s))
+  ((NO-STORE)))
+
+(deftest http-cache-control-public!
+    (with-core-stream (s "")
+      (http-cache-control! s 'PUBLIC)
+      (return-stream s))
+  "public")
+
+(deftest http-cache-control-no-cache!
+    (with-core-stream (s "")
+      (http-cache-control! s '((NO-CACHE . ("extension" . "value"))))
+      (return-stream s))
+  "no-cache,extension=\"value\"")
+
+(deftest http-cache-control-private!
+    (with-core-stream (s "")
+      (http-cache-control! s '((PRIVATE . ("here" . "Iam"))))
+      (return-stream s))
+  "private,here=\"Iam\"")
 
 ;; CONNECTION
 (deftest http-connection?
     (with-core-stream (s "close")
-      (equal (http-connection? s)
-	     "close"))
-  t)
+      (http-connection? s))
+  "close")
+
 (deftest http-connection!
     (with-core-stream (s "")
       (http-connection! s 'CLOSE)
-      (equal (return-stream s)
-	     "close"))
-    t)
+      (return-stream s))
+  "close")
 
 ;; DATE
 (deftest http-date?
     (with-core-stream (s "Tue, 01 Feb 2008 04:20:00 GMT")
-      (equal (http-date? s) 
-	     3408142800))
-  t)
+      (http-date? s))
+  3410828400)
+
 (deftest http-date!
     (with-core-stream (s "")
       (http-date! s (encode-universal-time 0 20 6 1 1 2008))
-      (equal (return-stream s)
-	     "Tue, 01 Feb 2008 04:20:00 GMT"))
-  t)
+      (return-stream s))
+  "Tue, 01 Feb 2008 04:20:00 GMT")
 
 ;; PRAGMA
-(deftest http-pragma?
-    (and (with-core-stream (s "no-cache")
-	   (equal (http-pragma? s)
-		  '(NO-CACHE)))
-	 (with-core-stream (s "name=val")
-	   (equal (http-pragma? s)
-		  '("name" . "val")))
-	 (with-core-stream (s "name=\"quoted\"")
-	   (equal (http-pragma? s)
-		  '("name" . "quoted"))))
-  t)
+(deftest http-pragma-no-cache?
+    (with-core-stream (s "no-cache")
+      (http-pragma? s))
+  (NO-CACHE))
 
-(deftest http-pragma!
-    (and (with-core-stream (s "")
-	   (http-pragma! s '(NO-CACHE))
-	   (equal (return-stream s)
-		  "no-cache"))
-	 (with-core-stream (s "")
-	   (http-pragma! s '("name" . "val"))
-	   (equal (return-stream s)
-		  "name=val")))
-  t)
+(deftest http-pragma-key-val?
+    (with-core-stream (s "name=val")
+      (http-pragma? s))
+  ("name" . "val"))
+
+(deftest http-pragma?
+    (with-core-stream (s "name=\"quoted\"")
+      (http-pragma? s))
+  ("name" . "quoted"))
+
+(deftest http-pragma-no-cache!
+    (with-core-stream (s "")
+      (http-pragma! s '(NO-CACHE))
+      (return-stream s))
+  "no-cache")
+
+(deftest http-pragma-key-val!
+    (with-core-stream (s "")
+      (http-pragma! s '("name" . "val"))
+      (return-stream s))
+  "name=val")
 
 ;; TRAILER
 (deftest http-trailer?
@@ -416,13 +414,14 @@ cam=\"foo\""))
   t)
 
 ;; VIA
+;; Aycan: Please FIX comment?, its not correct
 (deftest http-via?
     (with-core-stream (s "HTTP/1.1 core.gen.tr:80 (core server site), 1.1 nasa, 1.0 cgrid (asd)") 
-      (equal (http-via? s)
-	     '((("HTTP" . "1.1") ("core.gen.tr" . 80) "core server site")
-	       ((nil . "1.1") ("nasa") NIL)
-	       ((nil . "1.0") ("cgrid") "asd"))))
-  t)
+      (http-via? s))
+  ;; ((("HTTP" . "1.1") ("core.gen.tr" . 80) "core server site")
+;;    ((nil . "1.1") ("nasa") NIL)
+;;    ((nil . "1.0") ("cgrid") "asd"))
+  "Aycan: Please FIX http-via? test via fixing comment?, its not correct")
 
 (deftest http-via!
     (with-core-stream (s "")
@@ -436,9 +435,8 @@ cam=\"foo\""))
 ;; WARNING
 (deftest http-warning?
     (with-core-stream (s "199 www.core.gen.tr:80 \"warn text\" \"Tue, 01 Feb 2008 04:20:00 GMT\"")
-      (equal (http-warning? s)
-	     '((199 ("www.core.gen.tr" . 80) "warn text" 3408142800))))
-  t)
+      (http-warning? s))
+  ((199 ("www.core.gen.tr" . 80) "warn text" 3410828400)))
 
 (deftest http-warning!
     (with-core-stream (s "")
@@ -447,7 +445,7 @@ cam=\"foo\""))
 	     "199 www.core.gen.tr:80 \"warn text\" \"Tue, 01 Feb 2008 02:20:00 GMT\""))
   t)
 
-(deftest http-response-render?
+(deftest http-response-render!
     (let ((date (encode-universal-time 0 20 6 1 1 2008))
 	  (response (make-instance 'http-response)))
       (with-core-stream (s "")
@@ -457,28 +455,25 @@ cam=\"foo\""))
 		(CONNECTION . CLOSE)))
 	(setf (http-response.response-headers response)
 	      `((SERVER . "(CORE-SERVER . (0 2))")))
-	(setf (http-message.entities response)
+	(setf (http-response.entity-headers response)
 	      `((CONTENT-TYPE . ("text" "html" . (("charset" . "UTF-8"))))))
 	(core-server::http-response-headers! s response)
-	(describe (return-stream s))
-	(equal (return-stream s)
-	       "HTTP/1.1 200 OK
+	(return-stream s)))
+  "HTTP/1.1 200 OK
 CACHE-CONTROL: private
 DATE: Tue, 01 Feb 2008 04:20:00 GMT
-CONNECTION: CLOSE
+CONNECTION: close
 SERVER: (CORE-SERVER . (0 2))
 CONTENT-TYPE: text/html;charset=UTF-8
-")))
-  t)
+")
 
 (deftest x-www-form-urlencoded?
     (with-core-stream (s "username=kazim&password=sananelazim&email=kazim%40patates.com&Sent=sent")
-      (equal (core-server::x-www-form-urlencoded? s)
-	     '(("username" . "kazim")
-	       ("password" . "sananelazim") 
-	       ("email" . "kazim@patates.com")
-	       ("Sent" . "sent"))))
-  t)
+      (core-server::x-www-form-urlencoded? s))
+  (("username" . "kazim")
+   ("password" . "sananelazim") 
+   ("email" . "kazim@patates.com")
+   ("Sent" . "sent")))
 
 (defvar *http-request*
   "POST /ee.gee HTTP/1.0

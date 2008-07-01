@@ -10,7 +10,7 @@
 
 ;; test basic stream operations with a scenario
 (deftest string-stream
-    (let ((s (make-instance 'core-server::core-string-io-stream :string "ABCDEF")))
+    (with-core-stream (s "ABCDEF")
       (and (equal (peek-stream s) #.(char-code #\A))
 	   (equal (peek-stream s) #.(char-code #\A))
 	   (equal (read-stream s) #.(char-code #\A))
@@ -34,7 +34,7 @@
 	  (file-name (format nil "/tmp/~A" (symbol-name (gensym "stream-test-")))))
       (write-string-to-file file-data file-name :if-exists :supersede :if-does-not-exist :create)
       (and (equal file-data (read-string-from-file file-name))
-	   (let ((s (make-core-stream (pathname file-name)))) 
+	   (let ((s (make-core-stream (pathname file-name))))
 	     (and (equal (checkpoint-stream s) 0)	   
 		  (equal (read-stream s) #.(char-code #\A)) 	
 		  (equal (rewind-stream s) 0) 
@@ -45,8 +45,7 @@
 		  (equal (rewind-stream s) 1)
 		  (equal (read-stream s) #.(char-code #\B))
 		  (equal (rewind-stream s) 0)
-		  (equal (read-stream s) #.(char-code #\B))
-		  (equal (core-server::char! s #\X) #.(char-code #\X))))))
+		  (equal (read-stream s) #.(char-code #\B))))))
   t)
 
 (deftest list-stream-test
@@ -91,3 +90,36 @@
 		   s)))))
     (describe (with-call/cc (rewind-stream/cc s ret1)))
     (describe (with-call/cc (rewind-stream/cc s ret0)))))
+
+(defclass abc ()
+  (gee eeg moo))
+
+;; SERVER> (with-core-stream (s (make-instance 'standard-object))
+;; 	  (render-object! s)
+;; 	  (return-stream s))
+;; #<ABC {10030A8021}>
+;; SERVER> (describe *)
+;; #<ABC {10030A8021}> is an instance of class #<STANDARD-CLASS ABC>.
+;; The following slots have :INSTANCE allocation:
+;;  GEE    1
+;;  EEG    2
+;;  MOO    3
+(defrender render-object! ()
+  (:class! 'abc)
+  (:slot! 'gee 1)
+  (:slot! 'eeg 2)
+  (:slot! 'moo 3))
+
+;; SERVER> (describe *abc)
+;; #<ABC {100520E1C1}> is an instance of class #<STANDARD-CLASS ABC>.
+;; The following slots have :INSTANCE allocation:
+;;  GEE    1
+;;  EEG    2
+;;  MOO    3
+;; SERVER> (parse-object? (make-core-stream *abc))
+;; (1 2 3)
+(defparser parse-object? (gee eeg moo)
+  (:slot? 'gee gee)
+  (:slot? 'eeg eeg)
+  (:slot? 'moo moo)
+  (:return (list gee eeg moo)))
