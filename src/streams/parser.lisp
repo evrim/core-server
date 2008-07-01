@@ -184,11 +184,15 @@
 	  (:collect c acc))
     (:return (parse-integer acc))))
 
+(defparser string? (c (acc (make-accumulator)))
+  (:zom (:type visible-char? c)
+	(:collect c acc))
+  (:return acc))
+
 (defparser float? ((acc (make-accumulator)) c)
   (:and (:zom (:type digit? c) (:collect c acc))
 	(:and #\. (:collect #\. acc))
-	(:and (:type digit? c) (:collect c acc))
-	(:zom (:type digit? c) (:collect c acc)))
+	(:oom (:type digit? c) (:collect c acc)))
   (:return acc))
 
 (eval-when (:load-toplevel :compile-toplevel :execute)
@@ -211,25 +215,34 @@
   (:oom (:escaped? c) (:collect c acc))
   (:return acc))
 
-(defparser quoted? ((value (make-accumulator :byte)) c b)
-  (:or
-   (:and
-    #\"
-    (:zom (:or
-	   (:checkpoint
-	    (:and #\\ #\"
-		  (:do (push-atom #\" value))
-		  (:commit)))
-	   (:and #\" (:return (octets-to-string value :utf-8)))
-	   (:and (:or ;;		  (:and (:utf-escaped? b c) (:collect b value))
-;;		  (:escaped? c)
- 		      (:type (or visible-char? space?) c))
-		 (:collect c value)))))
-   (:and (:zom (:or ;;		(:and (:utf-escaped? b c) (:collect b value))
-;;		(:escaped? c)
-		    (:type (or visible-char? space?) c))
-	       (:collect c value))
-	 (:return (octets-to-string value :utf-8)))))
+;; (defparser quoted? ((value (make-accumulator :byte)) c b)
+;;   (:or
+;;    (:and
+;;     #\"
+;;     (:zom (:or
+;; 	   (:checkpoint
+;; 	    (:and #\\ #\"
+;; 		  (:do (push-atom #\" value))
+;; 		  (:commit)))
+;; 	   (:and #\" (:return (octets-to-string value :utf-8)))
+;; 	   (:and (:or ;;		  (:and (:utf-escaped? b c) (:collect b value))
+;; 		  ;;		  (:escaped? c)
+;; 		  (:type (or visible-char? space?) c))
+;; 		 (:collect c value)))))
+;;    (:and (:zom (:or ;;		(:and (:utf-escaped? b c) (:collect b value))
+;; 		(:escaped? c)
+;; 		(:type (or visible-char? space?) c))
+;; 	       (:collect c value))
+;; 	 (:return (octets-to-string value :utf-8)))))
+(defparser quoted? (c (acc (make-accumulator :byte)))
+  (:or (:and #\"
+	     (:zom (:not #\")
+		   (:type octet? c)
+		   (:collect c acc))
+	     (:return (octets-to-string acc :utf-8)))
+       (:and (:zom (:type (or visible-char? space?) c)
+		   (:collect c acc))
+	     (:return (octets-to-string acc :utf-8)))))
 
 (defparser parse-line? (c (acc (make-accumulator)))
   (:zom (:or (:and #\Newline (:return acc))
