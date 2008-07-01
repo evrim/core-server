@@ -163,6 +163,8 @@
    #:uri!
    ;; [RFC 822]
    #:mailbox?
+   #:comment?
+   #:comment!
    ;; [RFC 2616]
    ;; Classes
    #:http-request
@@ -178,6 +180,7 @@
    #:http-request.entity-headers
    #:http-response.response-headers
    #:http-response.status-code
+   #:http-response.entity-headers
 ;;; helpers
    #:escape-parenscript
    ;; Http Request
@@ -275,6 +278,7 @@
    #:ACCEPT-LANGUAGE
    #:AUTHORIZATION
    #:EXPECT
+   #:100-CONTINUE
    #:FROM
    #:HOST
    #:IF-MATCH
