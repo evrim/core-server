@@ -186,3 +186,5 @@
       nil)))
 
 ;; tests are in rfc 2388.
+(deftrace mime-parsers
+    '(mimes? mime? mime-binary-data? mime-headers? mime-boundary? mime-search))

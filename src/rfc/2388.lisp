@@ -60,3 +60,6 @@
 				 nil)))
 	    mimes)
       mimes)))
+
+(deftrace rfc2388
+    '(rfc2388-mimes? rfc2388-content-disposition?))
