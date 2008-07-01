@@ -144,7 +144,7 @@
 	     (:and (:seq "no-transform") (:do (push (cons 'no-transform nil) result)))
 	     (:and (:seq "only-if-cached") (:do (push (cons 'only-if-cached nil) result))))
 	(:zom (:type (or tab? space?)))
-	#\,
+	(:optional #\,)
 	(:zom (:type (or tab? space?))))
   (:return (nreverse result)))
 
@@ -153,30 +153,31 @@
     proxy-revalidate max-age s-maxage))
 
 (defun http-cache-control! (stream cache-controls)
-  (flet ((cache-control! (cache-control-cons)
-	   (if (atom cache-control-cons)
-		(typecase cache-control-cons
-		  (null t)
-		  (symbol (symbol! stream cache-control-cons))
-		  (string (string! stream cache-control-cons)))      
-		(typecase (cdr cache-control-cons)
-		  (fixnum (symbol! stream (car cache-control-cons))
-			  (char! stream #\=)
-			  (fixnum! stream (cdr cache-control-cons)))
-		  (cons (symbol! stream (car cache-control-cons))
-			(char! stream #\,)
-			(string! stream (cadr cache-control-cons))
-			(char! stream #\=)
-			(quoted! stream (cddr cache-control-cons)))
-		  (string (symbol! stream (car cache-control-cons))
-			  (char! stream #\=)
-			  (quoted! stream (cdr cache-control-cons)))
-		  (t (error "Invalid Cache-Control declaration!"))))))
-    (cache-control! (car cache-controls))
-    (mapcar (lambda (cache-control-cons)
-	      (string! stream ", ")
-	      (cache-control! cache-control-cons))
-	    (cdr cache-controls))))
+  (let ((cache-controls (ensure-list cache-controls)))
+    (flet ((cache-control! (cache-control-cons)
+	     (if (atom cache-control-cons)
+		 (typecase cache-control-cons
+		   (null t)
+		   (symbol (symbol! stream cache-control-cons))
+		   (string (string! stream cache-control-cons)))      
+		 (typecase (cdr cache-control-cons)
+		   (fixnum (symbol! stream (car cache-control-cons))
+			   (char! stream #\=)
+			   (fixnum! stream (cdr cache-control-cons)))
+		   (cons (symbol! stream (car cache-control-cons))
+			 (char! stream #\,)
+			 (string! stream (cadr cache-control-cons))
+			 (char! stream #\=)
+			 (quoted! stream (cddr cache-control-cons)))
+		   (string (symbol! stream (car cache-control-cons))
+			   (char! stream #\=)
+			   (quoted! stream (cdr cache-control-cons)))
+		   (t (error "Invalid Cache-Control declaration!"))))))
+      (cache-control! (car cache-controls))
+      (mapcar (lambda (cache-control-cons)
+		(string! stream ", ")
+		(cache-control! cache-control-cons))
+	      (cdr cache-controls)))))
 
 ;; 14.10 Connection
 ;; Connection = "Connection" ":" 1#(connection-token)
@@ -221,9 +222,15 @@
 ;;                     | "May" | "Jun" | "Jul" | "Aug"
 ;;                     | "Sep" | "Oct" | "Nov" | "Dec"
 (defun find-rfc1123-month (str)
-  (1+ (position (string-downcase str) '("jan" "feb" "mar" "apr" "may" "jun" "jul"
+  (aif (position (string-downcase str) '("jan" "feb" "mar" "apr" "may" "jun" "jul"
 					"aug" "sep" "oct" "nov" "dec")
-		:test #'equal)))
+		:test #'equal)
+       (1+ it)))
+
+(eval-when (:load-toplevel :compile-toplevel :execute)
+  (defvar +rfc1123-day-names+ '("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun"))
+  (defvar +rfc1123-month-names+ '("Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul"
+				  "Aug" "Sep" "Oct" "Nov" "Dec")))
 
 ;; Sun, 06 Nov 1994 08:49:37 GmT  ; RFC 822, updated by RFC 1123
 (defrule rfc1123-date? ((acc (make-accumulator)) c
@@ -236,7 +243,7 @@
   (:lwsp?) (:fixnum? year) (:lwsp?)
   (:fixnum? hour) #\: (:fixnum? minute) #\: (:fixnum? second) 
   (:lwsp?) (:seq "GMT") (:lwsp?)
-  (:return (encode-universal-time second minute hour day month year)))
+  (:return (encode-universal-time second minute hour day month year 0)))
 
 ;; Sunday, 06-Nov-94 08:49:37 GmT ; RFC 850, obsoleted by RFC 1036
 (defrule rfc850-date? (day month year hour minute second
@@ -251,7 +258,7 @@
   (:lwsp?)
   (:fixnum? hour) #\: (:fixnum? minute) #\: (:fixnum? second)
   (:lwsp?) (:seq "GMT") (:lwsp?)
-  (:return (encode-universal-time second minute hour day month year)))
+  (:return (encode-universal-time second minute hour day month year 0)))
 
 ;;        Sun Nov  6 08:49:37 1994       ; ANSI C's asctime() format
 (defrule asctime-date? ((acc (make-accumulator)) c
@@ -264,18 +271,13 @@
   (:fixnum? hour) #\: (:fixnum? minute) #\: (:fixnum? second)
   (:lwsp?)
   (:fixnum? year)
-  (:return (encode-universal-time second minute hour day month year)))
+  (:return (encode-universal-time second minute hour day month year 0)))
 
 (defrule http-date? (timestamp)
   (:or (:rfc1123-date? timestamp)   
        (:rfc850-date? timestamp)
        (:asctime-date? timestamp))
   (:return timestamp))
-
-(eval-when (:load-toplevel :compile-toplevel :execute)
-  (defvar +rfc1123-day-names+ '("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun"))
-  (defvar +rfc1123-month-names+ '("Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul"
-				  "Aug" "Sep" "Oct" "Nov" "Dec")))
 
 ;;Sun, 06 Nov 1994 08:49:37 GmT
 (defun http-date! (stream timestamp)
@@ -827,14 +829,14 @@
   (:checkpoint
    (:seq "compatible;") (:lwsp?) (:seq "MSIE") (:lwsp?)
    (:version? version)
-   (:and #\; (:lwsp?)
-	 (:user-agent-token? os) (:lwsp?)
-	 (:zom (:user-agent-token? token))
-	 #\)
-	 (:return (list (cons 'browser 'ie)
-			(list 'moz-ver moz-ver)
-			(list 'version version)
-			(cons 'os os))))))
+   #\;
+   (:lwsp?) (:user-agent-token? os) (:lwsp?)
+   (:zom (:user-agent-token? token))
+   #\)
+   (:return (list (cons 'browser 'ie)
+		  (list 'moz-ver moz-ver)
+		  (list 'version version)
+		  (cons 'os os)))))
 
 ;; ff:     Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1) Gecko/20061010 Firefox/2.0
 ;; => ((BROWSER . FIREFOX) (MOZ-VER (5 0)) (OS . "Linux i686") (REVISION (1 8 1)) (VERSION (2 0)))
