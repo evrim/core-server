@@ -35,9 +35,6 @@
 (defvar +context+ nil
   "A special variable that holds HTTP context")
 
-(defvar +html-output+ nil
-  "A special variable that holds HTML output stream")
-
 (defvar +k+ nil
   "A special variable that holds current continuation")
 
@@ -72,10 +69,9 @@
   "Defines a new entry point to 'application' having url
 'regexp-url'. 'queries' are bounded while executing 'body'"
   `(register-url ,application ,regexp-url
-		 (lambda (context)
-		   (let ((+html-output+ (http-response.stream (response context))))
-		     (declare (special +html-output+))
-		     (with-context context		       
+		 (lambda (context)		   
+		   (with-context context
+		     (with-html-output (http-response.stream (response +context+))
 		       (with-query ,queries (request +context+)
 			 ,@body))))))
 
