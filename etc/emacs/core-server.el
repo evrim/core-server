@@ -174,7 +174,8 @@ doesn't exist, it is created."
     (erc-tls :server "irc.core.gen.tr" 
 	     :port 8994
 	     :nick (getenv "USERNAME")
-	     :full-name (getenv "USER")))
+	     :full-name (getenv "USER"))
+    (view-buffer "#core"))
   ;; timestamp on left etc...
   (setq 
    erc-insert-timestamp-function 'erc-insert-timestamp-left
