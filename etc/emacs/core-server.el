@@ -201,3 +201,5 @@ doesn't exist, it is created."
    '(erc-modules '(autoaway autojoin button capab-identify completion fill irccontrols log match netsplit stamp notify page ring scrolltobottom services stamp track truncate))
    '(erc-kill-queries-on-quit t)
    '(erc-kill-server-buffer-on-quit t)))
+
+(core-irc)
