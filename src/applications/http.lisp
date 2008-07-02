@@ -54,6 +54,7 @@
 (defmethod find-continuation ((self http-application) id)
   "Returns the continuation associated with 'id'"
   (maphash #'(lambda (k session)
+	       (declare (ignorable k))
 	       (aif (gethash id (continuations session))
 		    (return-from find-continuation (values it session))))
 	   (application.sessions self)))
