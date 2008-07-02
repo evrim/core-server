@@ -74,7 +74,7 @@
    (timestamp :accessor timestamp :initform (get-universal-time))
    (data :accessor session-data :initform (make-hash-table :test #'equal))))
 
-(defclass http-context (core-cps-stream)
+(defclass http-context ();;    (core-cps-stream)
   ((request :accessor request :initarg :request :initform nil)
    (response :accessor response :initarg :response :initform nil)
    (session :accessor session :initarg :session :initform nil)

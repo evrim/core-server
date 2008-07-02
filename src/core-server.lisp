@@ -178,9 +178,11 @@
    #:http-request.uri
    #:http-request.headers
    #:http-request.entity-headers
+   #:http-request.stream
    #:http-response.response-headers
    #:http-response.status-code
    #:http-response.entity-headers
+   #:http-response.stream
 ;;; helpers
    #:escape-parenscript
    ;; Http Request
@@ -501,6 +503,8 @@
    #:make-new-context
    #:copy-context
    #:session
+   #:request
+   #:response
    #:send/suspend
    #:javascript/suspend
    #:json/suspend

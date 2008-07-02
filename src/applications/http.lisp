@@ -115,12 +115,17 @@ when requested"
 
 (defmethod copy-context ((self http-context))
   "Returns a copy of the HTTP context 'self'"
-  (let ((s (copy-core-stream self)))
-    (change-class s (find-class 'http-context))
+  ;; (let ((s (copy-core-stream self)))
+;;     (change-class s (find-class 'http-context))
+;;     (setf (slot-value s 'application) (s-v 'application)
+;; 	  (slot-value s 'session) (s-v 'session)
+;; 	  (slot-value s 'continuation) (s-v 'continuation))
+;;     s)
+  (let ((s (make-instance 'http-context)))
     (setf (slot-value s 'application) (s-v 'application)
-	  (slot-value s 'session) (s-v 'session)
-	  (slot-value s 'continuation) (s-v 'continuation))
-    s))
+ 	  (slot-value s 'session) (s-v 'session)
+ 	  (slot-value s 'continuation) (s-v 'continuation))
+     s))
 
 (defmethod session ((self http-context))
   "Return the session of the HTTP context 'self', creates if none exists"
@@ -129,24 +134,24 @@ when requested"
 	(setf s (make-new-session)
 	      (slot-value self 'session) s
 	      (gethash (id s) (application.sessions (application self))) s)
-	(setf (timestamp s) (get-universal-time)))
-    s))
+	(prog1 s (setf (timestamp s) (get-universal-time))))))
 
 (defmacro send/suspend (&body body)
   "Saves current continuation, executes 'body', terminates."
-  `(prog1
-     (let/cc k
-       (setf (continuation +context+) k)
-;;       (format t "send/suspend called~%")
-       ;;     (checkpoint-stream/cc +context+ k)
-       ,@body
-;;       (format t "send/suspend escaping~%")
-       ;;     (commit-stream/cc +context+ (rets +context+))
-;;       (describe +context+)
-       (escape (reverse (returns +context+)))
-       (break "send/suspend failed."))
-;;     (describe +context+)
-     ))
+  (with-unique-names (result)
+    `(let ((,result (multiple-value-list
+		     (let/cc k
+		       (setf (continuation +context+) k)
+		       ;;       (format t "send/suspend called~%")
+		       ;;     (checkpoint-stream/cc +context+ k)
+		       (with-html-output (http-response.stream (response +context+))
+			 ,@body)
+		       ;;       (format t "send/suspend escaping~%")
+		       ;;     (commit-stream/cc +context+ (rets +context+))
+		       (escape (reverse (returns +context+)))
+		       (break "send/suspend failed.")))))
+       (setf +context+ (car ,result))
+       (apply #'values (cdr ,result)))))
 
 (defmacro function/hash (parameters &body body)
   "Registers a continuation at macro-expansion time and binds
@@ -165,7 +170,7 @@ when requested"
 	   (pushnew (cons ,name (lambda ,(mapcar #'car parameters)
 				  (apply ,kont
 					 (make-instance 'http-request :uri (make-instance 'uri))
-					 (make-response) (list ,@(mapcar #'car parameters)))))
+					 (make-response *core-output*) (list ,@(mapcar #'car parameters)))))
 		    (returns +context+)))))))
 
 (defmacro action/hash (parameters &body body)
@@ -186,7 +191,7 @@ executing 'body'"
 	     (pushnew (cons ,name (lambda ,(mapcar #'car parameters)
 				    (apply ,kont
 					   (make-instance 'http-request :uri (make-instance 'uri))
-					   (make-response) (list ,@(mapcar #'car parameters)))))
+					   (make-response *core-output*) (list ,@(mapcar #'car parameters)))))
 		      (returns +context+))))))))
 
 (defmacro function/url (parameters &body body)
@@ -208,7 +213,7 @@ executing 'body'"
 ;; 		 (remhash (car ret) (continuations (session +context+))))
 ;; 	     (returns +context+))
      ;; (rewind-stream/cc +context+ (list ,@values))
-     (apply #'kall (continuation +context+) (list ,@values))))
+     (kall (continuation +context+) +context+ ,@values)))
 
 (defun/cc javascript/suspend (lambda)
   "Javascript version of send/suspend, sets content-type to text/javascript"
@@ -284,7 +289,7 @@ executing 'body'"
   (if (functionp (car args))
       (apply (car args)
 	     (cons (make-instance 'http-request :uri (make-instance 'uri))
-		   (cons (make-response) (rest args))))
+		   (cons (make-response *core-output*) (rest args))))
       (destructuring-bind (number result &rest parameters) args
 	  (let ((fun (cdr (nth number result))))
 	    (if (null fun)
