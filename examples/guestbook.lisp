@@ -1,3 +1,6 @@
+;; Just compile it with C-c C-k or load it with C-c C-l and then visit
+;; http://localhost:8080/guestbook/guestbook
+
 (defpackage :guestbook
   (:use :cl :core-server :arnesi :js)
   (:shadowing-import-from #:arnesi #:new))
