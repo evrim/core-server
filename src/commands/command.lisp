@@ -57,10 +57,10 @@
 		(run (make-instance ',name ,@(ctor-arguments name))))))))
   
 (defcommand shell ()
-  ((cmd :host local :initform (error "State shell cmd."))
-   (args :host local :initform '())
-   (wait :host none :initform t :initarg :wait)
-   (exit-code :host remote :initform -1)
+  ((cmd :host local :accessor cmd :initform (error "State shell cmd."))
+   (args :host local :accessor args :initform '())
+   (wait :host none :accessor wait :initform t :initarg :wait)
+   (exit-code :host remote :accessor exit-code :initform -1)
    (errorp :host local :initform t)
    (process :accessor process :initform nil)))
 
