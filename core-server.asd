@@ -76,7 +76,13 @@
                          (:file "server")
                          (:file "parenscript")
                          (:file "javascript")
-                         (:file "html")
+			 (:module :markup
+				  :serial t
+				  :components
+				  ((:file "dom")
+				   (:file "html")
+				   (:file "css")
+				   (:file "rss")))
                          (:module :rfc
                                   :serial t
                                   :components
