@@ -78,7 +78,6 @@
    ;; [Stream Helpers]
    #:with-core-stream
    #:with-core-stream/cc
-   #:with-html-output
    ;; [Class]
    #:defclass+
    #:register-class
@@ -103,6 +102,37 @@
    #:me-p
    #:defmethod/unit
    #:run
+   ;; [Dom Markup]
+   #:dom-element
+   #:dom.tag
+   #:dom.namespace
+   #:dom.attributes
+   #:dom.children
+   #:make-dom-element
+   #:dom-successor
+   #:dom-element!
+   #:dom-element?
+   ;; [Html markup]
+   #:html-element
+   #:empty-html-element
+   #:defhtml-tag
+   #:defhtml-empty-tag
+   #:html?
+   #:html!
+   #:with-html-output
+   ;; [CSS markup]
+   #:css-element
+   #:css.selector
+   #:css.attributes
+   #:css.children
+   #:css
+   #:css?
+   #:css!
+   ;; [RSS markup]
+   #:rss-element
+   #:defrss-tag
+   #:rss?
+   #:rss!
    ;; [RFC 2109]
    #:cookie
    #:cookie.name
