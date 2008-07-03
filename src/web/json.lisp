@@ -22,8 +22,8 @@
 
 ;; JSon Protocol Data Types
 (defrule json-string? (q c acc)
-  (:checkpoint (:seq "\"\"") (:return 'null)) ;; -hek.
-  (:or (:and (:quoted? q) (:return q))
+  (:or (:and (:seq "\"\"") (:return 'null)) ;; -hek.
+       (:and (:quoted? q) (:return q))
        (:and (:do (setq acc (make-accumulator :byte)))
 	     (:type (or visible-char? space?) c)
 	     (:collect c acc)
@@ -78,9 +78,11 @@
 (defrule json-array? (val lst)
   (:lwsp?) #\[ (:lwsp?)
   (:zom (:not #\])
-	(:json? val)	
+	(:json? val)
 	(:do (push val lst))
-	(:lwsp?) (:checkpoint #\, (:commit)) (:lwsp?))
+	(:lwsp?)
+	(:checkpoint #\, (:commit))
+	(:lwsp?))
   (:return (nreverse lst)))
 
 
@@ -98,7 +100,7 @@
       (string! stream " ]"))))
 
 (defrule json-key? (c (acc (make-accumulator)))
-  (:checkpoint (:quoted-string? c) (:lwsp?) #\: (:return c))
+  (:checkpoint (:quoted? c) (:lwsp?) #\: (:return c))
   (:not #\:)
   (:type visible-char? c) (:collect c acc)
   (:zom (:not #\:) (:type visible-char? c) (:collect c acc))
@@ -126,7 +128,7 @@
 	     (json! stream value)))
       (let ((keys (hash-table-keys hash-table))
 	    (values (hash-table-values hash-table)))
-	(string! stream "{")
+	(string! stream "{ ")
 	(one (car keys) (car values))
 	(mapcar (lambda (k v)
 		  (string! stream ", ")
@@ -170,13 +172,5 @@
   (let ((s (make-core-stream string)))
     (json? s)))
 
-(defvar +json-parsers+ '(json? json-array? json-key? json-object?
-			 json-number? json-boolean? json-string?))
-
-(defun trace-json-parsers ()
-  (mapcar (lambda (p)
-	    (eval `(trace ,p))) +json-parsers+))
-
-(defun untrace-json-parsers ()
-  (mapcar (lambda (p)
-	    (eval `(untrace ,p))) +json-parsers+))
+(deftrace json-parsers '(json? json-array? json-key? json-object?
+    json-number? json-boolean? json-string?))
