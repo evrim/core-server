@@ -53,7 +53,7 @@
 
 (defun dom-successor (element)
   "Returns successors of dom 'element'"
-  (if (typep element 'dom-element) (children element)))
+  (if (typep element 'dom-element) (dom.children element)))
 
 ;;-----------------------------------------------------------------------------
 ;; DOM Parser
@@ -69,7 +69,9 @@
    (:oom (:or (:type alphanum? c)
 	      (:and #\- (:do (setq c #\-))))
 	 (:collect c attribute)))
-  (:return (values attribute namespace)))
+  (:return (if namespace
+	       (format nil "~A:~A" namespace attribute)
+	       attribute)))
 
 (defrule dom-attribute-value? (c (val (make-accumulator)))
   (:or (:and
@@ -86,15 +88,15 @@
 	(:collect c val))))
   (:return val))
 
-(defrule dom-attribute? (name value namespace)
-  (:dom-attribute-name? name namespace)
+(defrule dom-attribute? (name value)
+  (:dom-attribute-name? name)
   #\=
   (:dom-attribute-value? value)
-  (:return (cons name (cons value namespace))))
+  (:return (cons name value)))
 
-(defrule dom-tag-name? (name namespace)
-  (:dom-attribute-name? name namespace)
-  (:return (values name namespace)))
+(defrule dom-tag-name? (name)
+  (:dom-attribute-name? name)
+  (:return name))
 
 (defrule dom-lwsp? (c)
   (:oom (:or (:and (:type (or space? tab?)))
@@ -144,7 +146,9 @@
   (:zom (:lwsp?)
 	(:dom-attribute? attr)
 	(:do (push attr attrs)))
-  (:or (:and (:lwsp?) (:seq "/>") (:return (make-dom-element tag namespace (nreverse attrs))))
+  (:or (:and (:lwsp?)
+	     (:seq "/>")
+	     (:return (make-dom-element tag namespace (nreverse attrs))))
        (:and #\>
 	     (:zom (:lwsp?)
 		   (:or (:dom-element? child)

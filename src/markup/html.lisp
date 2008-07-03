@@ -264,6 +264,9 @@
   (let ((dom (dom-element? stream)))
     (if dom (validate-html dom))))
 
+(defmethod html! ((stream core-stream) (element html-element))
+  (dom-element! stream element))
+
 (defmacro with-html-output (stream &body body)
   "Renders html elements in 'body' to 'stream'"
   (with-unique-names (element)

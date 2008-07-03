@@ -154,6 +154,7 @@
                                      (:file "parser")
                                      (:file "streams")
                                      (:file "sockets")
+				     (:file "markup")
                                      (:file "json")
                                      (:file "units")
                                      (:module :rfc
@@ -170,6 +171,10 @@
                                      ;; (:file "core")
                                      )))
   :depends-on (:core-server :rt))
+
+;; (defmethod perform ((op asdf::load-op) (system (eql (find-system :core-server.test))))
+;;   (core-server::with-package (find-package :core-server.test)
+;;     (rt:do-tests)))
 
 ;; (defmethod perform ((op asdf:test-op) (system (eql (find-system :core-server))))
 ;;   (asdf:oos 'asdf:load-op :core-server.test)
