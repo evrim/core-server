@@ -28,25 +28,28 @@
   ()
   (:documentation "RSS Base Class"))
 
-(defmacro defrss-tag (name &rest attributes)
-  "This macro is used to define HTML Element with 'attributes'"
-  (let ((attributes (make-html-attributes attributes))
-	(symbol (intern (symbol-name name) :tr.gen.core.server.rss)))
-    `(prog1 (defclass ,symbol (rss-element)
-	      ())
-       (defun ,symbol (&rest args)
-	 (multiple-value-bind (attributes children) (tag-attributes args)
-	   (destructuring-bind (&key ,@attributes) attributes
-	     (make-instance ',symbol
-			    :tag ,(symbol-name name)
-			    :attributes (remove-if (lambda (attr)
-						     (if (null (cdr attr))
-							 t))
-						   (list ,@(mapcar (lambda (attr)
-								     `(cons ,(symbol-to-js attr) ,attr))
-								   attributes)))
-			    :children (flatten children)))))
-       (export ',symbol (find-package :tr.gen.core.server.rss)))))
+(eval-when (:load-toplevel :compile-toplevel :execute)
+  (defmacro defrss-tag (name &rest attributes)
+    "This macro is used to define HTML Element with 'attributes'"
+    (let ((attributes (make-html-attributes attributes))
+	  (symbol (intern (symbol-name name) :tr.gen.core.server.rss)))
+      (export symbol (find-package :tr.gen.core.server.rss))
+      `(prog1 (defclass ,symbol (rss-element)
+		())
+	 (defun ,symbol (&rest args)
+	   (multiple-value-bind (attributes children) (tag-attributes args)
+	     (destructuring-bind (&key ,@attributes) attributes
+	       (make-instance ',symbol
+			      :tag ,(symbol-name name)
+			      :attributes (remove-if (lambda (attr)
+						       (if (null (cdr attr))
+							   t))
+						     (list ,@(mapcar (lambda (attr)
+								       `(cons ,(symbol-to-js attr) ,attr))
+								     attributes)))
+			      :children (flatten children)))))
+	 (eval-when (:compile-toplevel :load-toplevel :execute)
+	   (export ',symbol (find-package :tr.gen.core.server.rss)))))))
 
 (defmethod validate-rss ((dom-element t))
   (warn "Unknown RSS Element:~A" dom-element)
