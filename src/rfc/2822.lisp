@@ -103,25 +103,23 @@
 ;; 3.2.3. Folding white space and comments
 ;; FWS             =  ([*WSP CRLF] 1*WSP) /   ; Folding white space
 ;;                    obs-FWS
+
+
+;; (fws? (make-core-stream (format nil "   ~% ")))
+(defparser fws? (c)
+  (:or (:and (:optional
+	      (:zom (:type white-space? c))
+	      (:crlf?))
+	     (:oom (:type white-space? c)))
+       (:obs-fws?))
+  (:return (or c t)))
+
 ;; ctext           =  NO-WS-CTL /     ; Non white space controls
 ;;                    %d33-39 /       ; The rest of the US-ASCII
 ;;                    %d42-91 /       ;  characters not including "(",
 ;;                    %d93-126        ;  ")", or "\"
-
-;; (fws? (make-core-stream (format nil "   ~% ")))
-(defparser fws? ()
-  (:or (:and (:optional
-	      (:zom (:type white-space?))
-	      (:crlf?))
-	     (:oom (:type white-space?)))
-       (:obs-fws?))
-  (:return t))
-
-;; ctext           =  <any CHAR excluding "(",     ; => may be folded
-;;                    ")", "\" & CR, & including
-;;                    linear-white-space>
 (defparser ctext? (c)
-  (:or (:no-ws-ctl?)
+  (:or (:no-ws-ctl? c)
        (:noneof "()\\" c))
   (:return c))
 
@@ -135,8 +133,7 @@
 ;; comment         =  "(" *([FWS] ccontent) [FWS] ")"
 (defparser comment? (c (acc (make-accumulator)))
   #\(
-;;  (:collect #\( acc) ;; do not collect lexer
-  (:zom (:optional (:fws?))
+  (:zom (:optional (:and (:fws? c) (:collect c acc)))
 	(:ccontent? c)
 	(:if (left? c)
 	     (:collect (car c) acc)
@@ -147,7 +144,6 @@
 			  (cdr c) :initial-value nil))))
   (:optional (:fws?))
   #\)
-;;  (:collect #\) acc) ;; do not collect lexer
   (:return acc))
 
 (defun comment! (stream text)

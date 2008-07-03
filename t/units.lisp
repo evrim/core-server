@@ -20,7 +20,6 @@
 	     (stop unit))))
   7)
 
-
 ;; (defparameter *u (make-instance 'test-unit))
 
 ;; (defmethod/unit show-me-cps ((self test-unit) arg1)  

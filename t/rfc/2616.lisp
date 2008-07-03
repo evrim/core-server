@@ -414,14 +414,12 @@ cam=\"foo\""))
   t)
 
 ;; VIA
-;; Aycan: Please FIX comment?, its not correct
 (deftest http-via?
     (with-core-stream (s "HTTP/1.1 core.gen.tr:80 (core server site), 1.1 nasa, 1.0 cgrid (asd)") 
       (http-via? s))
-  ;; ((("HTTP" . "1.1") ("core.gen.tr" . 80) "core server site")
-;;    ((nil . "1.1") ("nasa") NIL)
-;;    ((nil . "1.0") ("cgrid") "asd"))
-  "Aycan: Please FIX http-via? test via fixing comment?, its not correct")
+  ((("HTTP" . "1.1") ("core.gen.tr" . 80) "core server site")
+   ((nil . "1.1") ("nasa") NIL)
+   ((nil . "1.0") ("cgrid") "asd")))
 
 (deftest http-via!
     (with-core-stream (s "")
