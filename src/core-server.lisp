@@ -417,6 +417,9 @@
    #:model
    #:make-database
    #:update-slots
+   ;; db utils
+   #:make-tx
+   #:update-slots
    ;; [Nameserver]
    ;; Classes
    #:name-server

@@ -152,3 +152,23 @@ model."
 			 (warn "slot ~A not found in class ~A" slot-name (class-name clazz))))))))
 	  lst)
     instance))
+
+(defun filter-object (an-atom &optional (key #'get-id))
+  (etypecase an-atom
+    (object-with-id
+     (funcall key an-atom))
+    (standard-object
+     (cerror "Continue?" "Unknown object found when entering transaction: ~A " an-atom)
+     (funcall key an-atom))
+    (t an-atom)))
+
+(defun filter-objects (lst &optional (key #'get-id))
+  (if (atom lst)
+      (filter-object lst key)
+      (nreverse
+       (reduce #'(lambda (acc item)
+                   (cons (filter-object item key) acc))
+               lst :initial-value nil))))
+
+(defun make-tx (function &rest args)
+  (apply #'cl-prevalence::make-transaction function (filter-objects args)))
