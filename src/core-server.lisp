@@ -552,6 +552,7 @@
    #:test-url
    ;; [HTTP Component Framework]
    #:dojo
+   #:jquery
    #:defcomponent
    #:local
    #:remote
