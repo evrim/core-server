@@ -179,5 +179,5 @@
   (:documentation "Registers 'regexp-url' to be handled by
   one-arg (context) lambda"))
 
-(defmethod unregister-url (application regexp-url)
+(defgeneric unregister-url (application regexp-url)
   (:documentation "Unregisters 'regexp-url' handler"))
