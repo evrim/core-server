@@ -113,9 +113,9 @@
 			     :components
 			     ((:file "packages")
 			      (:file "model" :depends-on ("packages"))
+			      (:file "application" :depends-on ("packages" "model"))
 			      (:file "tx" :depends-on ("model"))
-			      (:file "interfaces" :depends-on ("tx"))
-			      (:file "application" :depends-on ("interfaces"))
+			      (:file "interfaces" :depends-on ("tx" "application")) 
 			      (:module :ui
 				       :serial t
 				       :components
@@ -130,9 +130,7 @@
        :depends-on (,(package-keyword self) :core-server :rt))
 
      (defmethod perform ((op asdf:test-op) (system (eql (asdf::find-system ,(package-keyword self)))))
-       (asdf:oos 'asdf:load-op ,(package-test-keyword self))
-       ;; (funcall (intern (string :run!) (string :it.bese.FiveAM)) ,(package-keyword self))
-       )))
+       (asdf:oos 'asdf:load-op ,(package-test-keyword self)))))
 
 (defmethod src/packages ((self serializable-web-application))
   `(progn
