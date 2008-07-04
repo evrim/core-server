@@ -62,7 +62,7 @@ for traceing a closed system"
     ((null lst) acc)
     ((atom lst) (cons lst acc))
     ((listp lst)
-     (flatten (cdr lst) (flatten (car lst) acc)))))
+     (flatten (car lst) (flatten (cdr lst) acc)))))
 
 (defun any (lambda list)
   "Returns any non-null result when lambda is applied to the any element of list"

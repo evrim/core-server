@@ -70,7 +70,7 @@
     (make-instance 'css-element
 		   :selector (car args)
 		   :attributes attributes
-		   :children (nreverse (flatten children)))))
+		   :children (flatten children))))
 
 (defmethod css! ((stream core-stream) (element css-element))
   (dom-element! stream element))

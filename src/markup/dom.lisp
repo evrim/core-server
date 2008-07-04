@@ -49,7 +49,7 @@
 		 :tag tag
 		 :namespace ns
 		 :attributes attributes
-		 :children (reverse (flatten children))))
+		 :children (flatten children)))
 
 (defun dom-successor (element)
   "Returns successors of dom 'element'"
