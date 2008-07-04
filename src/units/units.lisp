@@ -138,7 +138,7 @@
 	  `(defmethod ,name :around ,method-args
 	     (if (me-p ,self)
 		 (call-next-method)
-		 (prog1 (values) (async-method-call ,self ',name ,@(rest arg-names))))))
+		 (dispatch-method-call ,self ',name ,@(rest arg-names)))))
 	 ((eq method-keyword :async)
 	  `(defmethod ,name :around ,method-args
 	     (if (me-p ,self)
@@ -195,6 +195,20 @@
       (send-message self #'unit-execution)
       #'(lambda () (apply #'values (thread-receive))))))
 
+(defmethod dispatch-method-call ((self local-unit) method-name &rest args)  
+  (labels ((unit-execution (unit)
+	     (handler-bind ((error #'(lambda (condition)
+				       (debug-condition
+					(if (slot-value unit '%debug-unit)
+					    (slot-value unit '%debug-unit)
+					    unit)
+					condition
+					(lambda () nil)
+					(lambda () (send-message unit #'unit-execution)))
+				       (return-from unit-execution nil))))
+	       (apply method-name unit args))))
+    (send-message self #'unit-execution)
+    (values)))
 
 (deftrace unit
     '(async-method-call start stop send-message receive-message me-p run
