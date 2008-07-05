@@ -30,35 +30,51 @@
 ;;-----------------------------------------------------------------------------
 ;; About Stream DSL:
 ;;-----------------------------------------------------------------------------
-;; i) Every operator starts with ':', this is due to avoid from symbol conflicts
+;; i) Every operator starts with ':' to avoid symbol/package name conflicts
 ;; ii) walk-grammar walks DSL forms
 ;; ii) Every argument is walked
 ;; iii) To escape to lisp use (:do ..) operator
+;;
 (eval-when (:load-toplevel :compile-toplevel :execute)
+  (defun make-operator-symbol (name)
+    (intern (format nil "~A-OPERATOR" name) (find-package :core-server)))
+
+  (defun operator-ctor (operator)
+    (symbol-function (make-operator-symbol operator)))
+  
   (defun walk-grammar (lst)
-    "Walker for Stream Grammar"
+    "Walker for Stream Grammar"    
     (cond
+      ((and (listp lst) (listp (car lst)) (keywordp (caar lst)))
+       (apply (operator-ctor 'bind)
+	      (list (intern (symbol-name (caar lst)))
+		    :arguments (mapcar #'walk-grammar (cdar lst))
+		    :binds (mapcar #'walk-grammar (cdr lst)))))
       ((and (listp lst) (keywordp (car lst)))
-       (if (find-class (intern (format nil "~A-FORM" (symbol-name (car lst)))
-			       (find-package :core-server)) nil)
-	   (apply (symbol-function (intern (format nil "~A-FORM" (symbol-name (car lst)))
-					   (find-package :core-server)))
-		  (mapcar #'walk-grammar (cdr lst)))
-	   (apply #'bind-form (intern (symbol-name (car lst))) (mapcar #'walk-grammar (cdr lst)))))
+       (if (find-class (make-operator-symbol (symbol-name (car lst))) nil)
+	   (apply (operator-ctor (symbol-name (car lst))) (mapcar #'walk-grammar (cdr lst)))
+	   (apply (operator-ctor 'bind)
+		  (list (intern (symbol-name (car lst)))
+			:arguments (mapcar #'walk-grammar (cdr lst)))))) 
       (t lst))))
 
-(defmacro defgrammar-form (name supers lambda-list)
+(defclass operator ()
+  ()
+  (:documentation "Base class for Grammar AST"))
+
+(defmacro defoperator (name supers lambda-list)
   "Define a stream operator"
-  `(prog1 (defclass ,name (,@supers form)
+  `(prog1 (defclass ,(make-operator-symbol name) (,@(mapcar #'make-operator-symbol supers) operator)
 	    ,(mapcar (lambda (slot)
 		       (list slot :accessor slot :initarg (make-keyword slot)))
 		     (flatten (extract-argument-names lambda-list))))
-     (defun ,name ,lambda-list
-       (make-instance ',name ,@(reduce (lambda (acc slot)
-					 (cons (make-keyword slot)
-					       (cons slot acc)))
-				       (flatten (extract-argument-names lambda-list))
-				       :initial-value nil)))))
+     (defun ,(make-operator-symbol name) ,lambda-list
+       (make-instance ',(make-operator-symbol name)
+		      ,@(reduce (lambda (acc slot)
+				  (cons (make-keyword slot)
+					(cons slot acc)))
+				(flatten (extract-argument-names lambda-list))
+				:initial-value nil)))))
 
 ;;-----------------------------------------------------------------------------
 ;; Classification of Stream Operators
@@ -67,29 +83,29 @@
 ;;-----------------------------------------------------------------------------
 ;; Stream Operators
 ;;-----------------------------------------------------------------------------
-;;   - Bind - Binds the result of the funciton to a variable (ie let)
+;;   - Bind - Binds the result of the funciton to variables (m-v-b)
 ;;   - Checkpoint - Checkpoints current stream while executing its body
 ;;   - Commit - Commits current stream and returns from checkpoint block
 ;;   - Rewind - Rewinds current stream and returns from checkpoint block
-;;   - Rewind-Return - Rewinds current stream and return from checkpoint
+;;   - Rewind-Return - Rewinds current stream, returns from checkpoint
 ;;     block with the 'value'.
 ;;-----------------------------------------------------------------------------
-(defgrammar-form bind-form ()
-  (func &rest args))
+(defoperator bind ()
+  (func &key arguments binds))
 
-(defgrammar-form checkpoint-form ()
+(defoperator checkpoint  ()
   (&rest args))
 
-(defgrammar-form commit-form ()
+(defoperator commit ()
   ())
 
-(defgrammar-form rewind%-form ()
+(defoperator rewind% ()
   ())
 
-(defgrammar-form rewind-form ()
+(defoperator rewind ()
   ())
 
-(defgrammar-form rewind-return-form ()
+(defoperator rewind-return ()
   (value))
 
 ;;-----------------------------------------------------------------------------
@@ -107,41 +123,52 @@
 ;;   - If - Usual if operator
 ;;   - Do - Escape operator, use to escape to lisp2
 ;;-----------------------------------------------------------------------------
-(defgrammar-form and-form ()
+(defoperator and ()
   (&rest args))
 
-(defgrammar-form or-form ()
+(defoperator or ()
   (&rest args))
 
-(defgrammar-form not-form ()
+(defoperator not ()
   (&rest args))
 
-(defgrammar-form return-form ()
+(defoperator return ()
   (value))
 
-(defgrammar-form zero-or-more-form ()
+(defoperator zero-or-more ()
   (&rest children))
 
-(defgrammar-form zom-form (zero-or-more-form)
+(defoperator zom (zero-or-more)
   (&rest children))
 
-(defgrammar-form one-or-more-form ()
+(defoperator one-or-more ()
   (&rest children))
 
-(defgrammar-form oom-form (one-or-more-form)
+(defoperator oom (one-or-more)
   (&rest children))
 
-;; Already defined in arnesi walker, didn't want to break
-(defun if-form (consequent then &optional else)
-  (make-instance 'if-form :consequent consequent :then then :else else))
+(defoperator if ()
+  (consequent then &optional else))
 
-(defgrammar-form cond-form ()
+(defoperator cond ()
   (conditions))
 
-(defgrammar-form do-form ()
+(defoperator do ()
   (&rest children))
 
-(defgrammar-form optional-form ()
+(defoperator map ()
+  (target-list &rest body))
+
+(defoperator sep ()
+  (seperator children))
+
+(defoperator any (map)
+  ())
+
+(defoperator all (map)
+  ())
+
+(defoperator optional ()
   (&rest children))
 
 ;;-----------------------------------------------------------------------------
@@ -150,10 +177,10 @@
 ;;   - Debug - Prints the current peeked element
 ;;   - Current - Describes stream object
 ;;-----------------------------------------------------------------------------
-(defgrammar-form debug-form ()
+(defoperator debug ()
   ())
 
-(defgrammar-form current-form ()
+(defoperator current ()
   ())
 
 ;;-----------------------------------------------------------------------------
@@ -167,37 +194,52 @@
 ;;   - Sci - Same as sequeence-case-insensitive
 ;;   - Collect - Collect source into target, used to make temporary arrays
 ;;-----------------------------------------------------------------------------
-(defgrammar-form type-form ()
+(defoperator type ()
   (type-name &optional target))
 
-(defgrammar-form sequence-case-sensitive-form ()
+(defoperator sequence-case-sensitive ()
   (value))
 
-(defgrammar-form scs-form (sequence-case-sensitive-form)
+(defoperator scs (sequence-case-sensitive)
   (value))
 
-(defgrammar-form seq-form (sequence-case-sensitive-form)
+(defoperator seq (sequence-case-sensitive)
   (value))
 
-(defgrammar-form sequence-case-insensitive-form ()
+(defoperator sequence-case-insensitive ()
   (value))
 
-(defgrammar-form sci-form (sequence-case-insensitive-form)
+(defoperator sci (sequence-case-insensitive)
   (value))
 
-(defgrammar-form collect-form ()
+(defoperator collect ()
   (source target))
 
-(defgrammar-form sep-form ()
-  (seperator children))
+;;-----------------------------------------------------------------------------
+;; Object Stream Operators
+;;-----------------------------------------------------------------------------
+;;   - class? - Binds class of the current object stream
+;;   - class! - Sets the class of the current object stream
+;;-----------------------------------------------------------------------------
+(defoperator class? ()
+  (klass))
 
-(defgrammar-form oneof-form ()
+(defoperator class! ()
+  (klass))
+
+(defoperator slot! ()
+  (slot-name value))
+
+(defoperator slot? ()
+  (slot-name &optional bind))
+
+(defoperator oneof ()
   (vals &optional target))
 
-(defgrammar-form noneof-form ()
+(defoperator noneof ()
   (vals &optional target))
 
-(defgrammar-form satisfy-form ()
+(defoperator satisfy ()
   (slambda &optional target))
 
 ;;-----------------------------------------------------------------------------
@@ -211,65 +253,67 @@
     (:documentation "Compile grammar body"))
 
   (defmethod expand-grammar ((form t) (expander function) (stream symbol)
-			     &optional (continue nil) (checkpoint nil))
+                            &optional (continue nil) (checkpoint nil))
     (declare (ignorable continue checkpoint))
     (error "Please implement appropriate method for expand-grammar")))
 
-(defmacro defgrammar-expander (name &body body)
+(defmacro defgrammar-expander (name (form expander stream continue checkpoint) &body body)
   "Define a stream operator to lisp2 compiler"
-  `(defmethod expand-grammar ((form ,name) expander (stream symbol) &optional (continue nil) (checkpoint nil))
-     (declare (ignorable continue checkpoint))
+  `(defmethod expand-grammar ((,form ,(make-operator-symbol name)) (,expander function) (,stream symbol)
+			      &optional (,continue nil) (,checkpoint nil))
+     (declare (ignorable ,continue ,checkpoint))
      ,@body))
 
-(defgrammar-expander bind-form
+(defgrammar-expander bind (form expander stream continue checkpoint)
   (if (not (fboundp (func form)))
       (setf (func form) (intern (symbol-name (func form)) :core-server)))
   
-  (if (< (length (args form)) 1)
+  (if (< (length (arguments form)) 1)
       `(,(func form) ,stream)
-      `(multiple-value-setq ,(args form) (,(func form) ,stream))))
+      `(multiple-value-setq ,(arguments form) (,(func form) ,stream))))
 
 ;;-----------------------------------------------------------------------------
 ;; Stream Operator Compilers
 ;;-----------------------------------------------------------------------------
-(defgrammar-expander checkpoint-form
+(defgrammar-expander checkpoint (form expander stream continue checkpoint)
   (with-unique-names (checkpoint)
     `(block ,checkpoint
        (checkpoint-stream ,stream)
-       ,(funcall expander (apply #'and-form (args form)) expander stream continue checkpoint)
+       ,(funcall expander (apply (operator-ctor 'and) (args form))
+		 expander stream continue checkpoint)
        (rewind-stream ,stream)
        ,continue)))
 
-(defgrammar-expander commit-form
+(defgrammar-expander commit (form expander stream continue checkpoint)
   `(progn
      (commit-stream ,stream)
      (return-from ,checkpoint ,continue)))
 
-(defgrammar-expander rewind%-form
+(defgrammar-expander rewind% (form expander stream continue checkpoint)
   `(prog1 ,continue (rewind-stream ,stream)))
 
-(defgrammar-expander rewind-form
+(defgrammar-expander rewind (form expander stream continue checkpoint)
   `(progn
      ,(funcall expander (walk-grammar `(:rewind%)) expander stream continue checkpoint)
      (return-from ,checkpoint ,continue)))
 
-(defgrammar-expander rewind-return-form
+(defgrammar-expander rewind-return (form expander stream continue checkpoint)
   (funcall expander (walk-grammar `(:and (:rewind%) (:return ,(value form)))) 
 	   expander stream continue checkpoint))
 
 ;;-----------------------------------------------------------------------------
 ;; Control Operator Compilers
 ;;-----------------------------------------------------------------------------
-(defgrammar-expander and-form
+(defgrammar-expander and (form expander stream continue checkpoint)
   `(and ,@(mapcar (rcurry expander expander stream t checkpoint) (args form))))
 
-(defgrammar-expander or-form
+(defgrammar-expander or (form expander stream continue checkpoint)
   `(or ,@(mapcar (rcurry expander expander stream nil checkpoint) (args form))))
 
-(defgrammar-expander not-form
+(defgrammar-expander not (form expander stream continue checkpoint)
   `(not ,@(mapcar (rcurry expander expander stream continue checkpoint) (args form))))
 
-(defgrammar-expander return-form
+(defgrammar-expander return (form expander stream continue checkpoint)
   (with-unique-names (retval)
     `(let ((,retval (multiple-value-list ,(value form))))
        (cond
@@ -282,54 +326,75 @@
 	      (commit-stream ,stream))))
        (return-from rule-block (apply #'values ,retval)))))
 
-(defgrammar-expander zero-or-more-form
+(defgrammar-expander zero-or-more (form expander stream continue checkpoint)
   `(not (do ()
-	    ((not ,(funcall expander (apply #'and-form (children form))
+	    ((not ,(funcall expander (apply (operator-ctor 'and) (children form))
 			    expander stream continue checkpoint))))))
 
-(defgrammar-expander one-or-more-form
-  (funcall expander (apply #'and-form (append (children form) (list (apply #'zom-form (children form)))))
+(defgrammar-expander one-or-more (form expander stream continue checkpoint)
+  (funcall expander (apply (operator-ctor 'and)
+			   (append (children form)
+				   (list (apply (operator-ctor 'zom) (children form)))))
 	   expander stream continue checkpoint))
 
-(defgrammar-expander if-form
+(defgrammar-expander if (form expander stream continue checkpoint)
   `(prog1 ,continue
      (if ,(consequent form)
 	 ,(funcall expander (then form) expander stream continue checkpoint)
 	 ,(if (arnesi::else form)
 	      (funcall expander (arnesi::else form) expander stream continue checkpoint)))))
 
-(defgrammar-expander cond-form
+(defgrammar-expander cond (form expander stream continue checkpoint)
   `(prog1 ,continue
      (cond
        ,@(mapcar #'(lambda (atom)
 		     (list (car atom)
-			   (funcall expander (apply #'and-form (children form))
+			   (funcall expander (apply (operator-ctor 'and) (children form))
 				    expander stream continue checkpoint)))
 		 (conditions form)))))
 
-(defgrammar-expander do-form
+(defgrammar-expander do (form expander stream continue checkpoint)
   `(prog1 ,continue ,@(children form)))
+
+(defgrammar-expander map (form expander stream continue checkpoint)
+  `(prog1 ,continue
+     (mapcar (lambda (it)
+	       ,@(mapcar (rcurry expander expander stream continue checkpoint)
+			 (body form)))
+	     ,(target-list form))))
+
+(defgrammar-expander any (form expander stream continue checkpoint)
+  `(any (lambda (it)
+	  ,@(mapcar (rcurry expander expander stream continue checkpoint)
+		    (body form)))
+	,(target-list form)))
+
+(defgrammar-expander all (form expander stream continue checkpoint)
+  `(all (lambda (it)
+	  ,@(mapcar (rcurry expander expander stream continue checkpoint)
+		    (body form)))
+	,(target-list form)))
 
 ;;-----------------------------------------------------------------------------
 ;; Debug Operator Compilers
 ;;-----------------------------------------------------------------------------
-(defgrammar-expander debug-form
+(defgrammar-expander debug (form expander stream continue checkpoint)
   `(prog1 ,continue
      (format t "current:~A~%" (peek-stream ,stream))))
 
-(defgrammar-expander current-form
+(defgrammar-expander current (form expander stream continue checkpoint)
   `(prog1 ,continue (describe ,stream)))
 
 ;;-----------------------------------------------------------------------------
 ;; Vector Operator Compilers
 ;;-----------------------------------------------------------------------------
-(defgrammar-expander type-form
+(defgrammar-expander type (form expander stream continue checkpoint)
   `(if (typep (peek-stream ,stream) ',(type-name form))
        ,(if (target form)
 	    `(setq ,(target form) (read-stream ,stream))
 	    `(read-stream ,stream))))
 
-(defgrammar-expander sequence-case-sensitive-form  
+(defgrammar-expander sequence-case-sensitive (form expander stream continue checkpoint)
   (if (stringp (value form))
       (funcall expander
 	       (walk-grammar `(:checkpoint
@@ -352,7 +417,7 @@
 		  (:commit)))
 	       expander stream nil checkpoint)))
 
-(defgrammar-expander sequence-case-insensitive-form
+(defgrammar-expander sequence-case-insensitive (form expander stream continue checkpoint)
   (if (stringp (value form))
       (funcall expander
 	       (walk-grammar
@@ -383,10 +448,10 @@
 		  (:commit)))
 	       expander stream nil checkpoint)))
 
-(defgrammar-expander collect-form
+(defgrammar-expander collect (form expander stream continue checkpoint)
   `(or (push-atom ,(source form) ,(target form)) t))
 
-(defgrammar-expander oneof-form
+(defgrammar-expander oneof (form expander stream continue checkpoint)
   (cond
     ((listp (vals form))
      (error 'notimplementedyet))
@@ -404,7 +469,7 @@
     ((numberp (vals form))
      (error 'notimplementedyet))))
 
-(defgrammar-expander noneof-form
+(defgrammar-expander noneof (form expander stream continue checkpoint)
   (let ((peeq (gensym)))
     (cond
       ((stringp (vals form))
@@ -418,7 +483,7 @@
 	      (prog1 t
 		(setq ,(target form) (read-stream ,stream)))))))))
 
-(defgrammar-expander satisfy-form
+(defgrammar-expander satisfy (form expander stream continue checkpoint)
   `(if (funcall ,(slambda form) (peek-stream ,stream))
        ,(if (target form)
 	    `(prog1 ,continue
@@ -426,13 +491,31 @@
 	    continue)
        ,(not continue)))
 
-(defgrammar-expander optional-form
+(defgrammar-expander optional (form expander stream continue checkpoint)
   (funcall expander
 	   (walk-grammar
 	    `(:checkpoint
 	      ,@(children form)
 	      (:commit)))
 	   expander stream continue checkpoint))
+
+;;-----------------------------------------------------------------------------
+;; Object Stream Operator Compilers
+;;-----------------------------------------------------------------------------
+(defgrammar-expander class? (form expander stream continue checkpoint)
+  `(setq ,(klass form) (slot-value ,stream '%clazz)))
+
+(defgrammar-expander class! (form expander stream continue checkpoint)
+  `(setf (clazz ,stream) ,(klass form)))
+
+(defgrammar-expander slot! (form expander stream continue checkpoint)
+  `(write-stream ,stream (cons ,(slot-name form) ,(value form))))
+
+(defgrammar-expander slot? (form expander stream continue checkpoint)
+  `(when (eq (car (peek-stream ,stream)) ,(slot-name form))
+     ,(if (bind form)
+	  `(setq ,(bind form) (cdr (read-stream ,stream)))
+	  `(read-stream ,stream))))
 
 ;; (defparser crlf? ()
 ;;   (:or (:checkpoint #\Return #\Newline (:commit)) #\Newline)

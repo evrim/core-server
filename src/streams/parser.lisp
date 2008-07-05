@@ -19,7 +19,7 @@
 ;;(declaim (optimize (speed 3) (space 2) (safety 0) (debug 0) (compilation-speed 0)))
 
 ;;;-----------------------------------------------------------------------------
-;;; HENRY G. BAKER PARSER GENERATOR WITH EXTENDED GRAMMER
+;;; HENRY G. BAKER PARSER GENERATOR WITH EXTENDED GRAMMAR
 ;;; http://linux.rice.edu/~rahul/hbaker/Prag-Parse.html
 ;;;-----------------------------------------------------------------------------
 ;;;-----------------------------------------------------------------------------
@@ -118,18 +118,20 @@
     (:documentation "special dsl for parsing"))
 
   (defmethod expand-parser ((form t) (expander function) (stream symbol)
-			    &optional (continue nil) (checkpoint nil))
+			   &optional (continue nil) (checkpoint nil))
     (declare (ignore continue checkpoint))
-    `(when (eq (peek-stream ,stream) ,(char-code form))
+    `(when (eq (peek-stream ,stream) ,(if (characterp form)
+					  (char-code form)
+					  form))
        (read-stream ,stream)))
 
-  (defmethod expand-parser ((form form) (expander function) (stream symbol)
-			    &optional (continue nil) (checkpoint nil))
-    (expand-grammar form #'expand-parser stream continue checkpoint)))
+  (defmethod expand-parser ((form operator) (expander function) (stream symbol)
+			      &optional (continue nil) (checkpoint nil))
+    (expand-grammar form expander stream continue checkpoint)))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defmacro defparser (name args &rest body)
-    "Rule definition macro that provides a common lexical environment for rules."
+    "Parser rule defining macro that provides a common lexical environment for rules."
     (with-unique-names (stream)
       (flet ((rule-args ()
 	       (if args
@@ -208,7 +210,9 @@
     (:do (describe (list f1 f2 f3 f4)))
     (:return 
       ;;	     (+ (- f1 48) (* 8 (- f2 48)) (* 16 (- f3 48)) (* 32 (- f4 48)))
-      (with-input-from-string (s (format nil "#x~C~C~C~C" (code-char f1) (code-char f2) (code-char f3) (code-char f4)))
+      (with-input-from-string (s (format nil "#x~C~C~C~C"
+					 (code-char f1) (code-char f2)
+					 (code-char f3) (code-char f4)))
 	(read s)))))
 
 (defparser escaped-string? (c (acc (make-accumulator :byte)))

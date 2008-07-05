@@ -23,16 +23,19 @@
   (defgeneric expand-render (form expander stream &optional continue checkpoint)
     (:documentation "Special dsl for rendering."))
 
-  (defmethod expand-render ((form form) expander (stream symbol) &optional continue checkpoint)
+  (defmethod expand-render ((form operator) expander (stream symbol) &optional continue checkpoint)
     (expand-grammar form #'expand-render stream continue checkpoint))
 
   (defmethod expand-render ((form t) expander (stream symbol) &optional continue checkpoint)
     `(write-stream ,stream ,form))
 
-  (defmethod expand-render ((form bind-form) expander (stream symbol) &optional continue checpoint)
-    `(,(func form) ,stream ,@(args form)))
+  (defmethod expand-render ((form bind-operator) expander (stream symbol) &optional continue checpoint)
+    (if (not (fboundp (func form)))
+      (setf (func form) (intern (symbol-name (func form)) :core-server)))
+    
+    `(,(func form) ,stream ,@(arguments form)))
 
-  (defmethod expand-render ((form sep-form) expander (stream symbol) &optional continue checkpoint)
+  (defmethod expand-render ((form sep-operator) expander (stream symbol) &optional continue checkpoint)
     (if (symbolp (children form))
 	`(prog1 ,continue
 	   ,(funcall expander (walk-grammar `(car ,(children form)))
@@ -78,14 +81,20 @@
 (defun string! (stream string)
   (write-stream stream (string-to-octets string :utf-8)))
 
-(defun version! (stream version)
-  (fixnum! stream (car version))
-  (reduce #'(lambda (acc atom)
-	      (declare (ignore acc))
-	      (char! stream #\.)
-	      (fixnum! stream atom)
-	      nil)
-	  (cdr version) :initial-value nil))
+;; (defun version! (stream version)
+;;   (fixnum! stream (car version))
+;;   (reduce #'(lambda (acc atom)
+;; 	      (declare (ignore acc))
+;; 	      (char! stream #\.)
+;; 	      (fixnum! stream atom)
+;; 	      nil)
+;; 	  (cdr version) :initial-value nil))
+
+(defrender version! (version)
+  (:fixnum! (car version))
+  (:map (cdr version)
+	(:char! #\.)
+	(:fixnum! it)))
 
 (defun symbol! (stream symbol)
   (string! stream (string-downcase (symbol-name symbol))))
@@ -118,6 +127,10 @@
 (defun hex-value! (stream hex)
   (byte! stream (aref +hex-alphabet+ (floor (/ hex 16))))
   (byte! stream (aref +hex-alphabet+ (rem hex 16))))
+
+(defrender hex-value (hex)
+  (:byte! (aref +hex-alphabet+ (floor (/ hex 16))))
+  (:byte! (aref +hex-alphabet+ (rem hex 16))))
 
 ;;; sugars
 (defmacro with-separator ((var lst sep stream) &body body) 
