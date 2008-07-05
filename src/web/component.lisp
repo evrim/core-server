@@ -287,7 +287,7 @@
     `(progn
        (setf jqueryapi (new (jqueryapi)))
        (defun funcall (url parameters retry-count)
-	 (jqueryapi.jqueryfuncall url parameters retry-count))
+	 (return (jqueryapi.jqueryfuncall url parameters retry-count)))
        (jqueryapi.init))))
 
 (defun/cc dojo (&optional base-url (debug nil) (prevent-back-button 'false)
