@@ -176,6 +176,9 @@
       (incf (the fixnum (s-v '%index)))
       c)))
 
+(defmethod write-stream ((self core-vector-io-stream) (val null))
+  self)
+
 ;; SERVER> (time 
 ;; 	 (let ((a (make-array 0 :element-type 'character :adjustable t :fill-pointer 0)))
 ;; 	  (loop for i from 0 upto 10000000
