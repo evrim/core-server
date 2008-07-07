@@ -69,6 +69,10 @@
                                   :components
                                   ((:file "command")
                                    (:file "hxpath")))
+			 (:module :install
+				  :serial t
+				  :components
+				  ((:file "install")))
                          (:file "vars")
                          (:file "classes")
                          (:file "protocol")
