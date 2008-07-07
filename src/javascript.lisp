@@ -393,12 +393,12 @@
   nil)
 
 ;;;; IF
-(defjavascript-expander if-form (consequent then arnesi::else)
+(defjavascript-expander if-form (consequent then else)
   (if (typep (parent form) 'application-form)
       `(:and "(" ,(funcall expand consequent expand)
 	" ? " ,(funcall expand then expand)
-	" : " ,(if arnesi::else
-		   (funcall expand arnesi::else expand)
+	" : " ,(if else
+		   (funcall expand else expand)
 		   "null") ")")
       `(:and
 	"if "
@@ -408,11 +408,11 @@
 	,(if (not (typep then 'progn-form))
 	     ";")
 	#\Newline "}"
-	,@(if arnesi::else
+	,@(if else
 	      `(" else {"
 		#\Newline
-		,(funcall expand arnesi::else expand)
-		,(if (not (typep arnesi::else 'progn-form))
+		,(funcall expand else expand)
+		,(if (not (typep else 'progn-form))
 		     ";")
 		#\Newline
 		"}")))))
@@ -548,7 +548,7 @@
 ;;;; TODO: FIX setq walker to walk var (easy)
 ;;;; TODO: FIX call/cc to unwalk var before going in. -evrim.
 (defjavascript-expander setq-form (var value)
-  `(:and ,(funcall expand (walk-form-no-expand var) expand) "=" ,(funcall expand value expand)))
+  `(:and ,(funcall expand (walk-form-no-expand var) expand) " = " ,(funcall expand value expand)))
 
 ;;;; SYMBOL-MACROLET
 ;; We ignore the binds, because the expansion has already taken
@@ -670,31 +670,65 @@
 ;; (print ((lambda (a) a) 1))
 ;;
 ;; should print 1, but javascript is broken, so we add returns implicitly.
-(defmacro defjavascript-transformer (class (&rest slots) &body body)
-  "Define a javascript transformer which is fed to expander"
-  `(defmethod transform-javascript ((form ,class) (transform function))
-     (declare (ignorable transform))
-     ;;     (format t "inside ~A~%" ',class)
-     (with-slots ,slots form
-       ,@body)))
+;;
+(eval-when (:load-toplevel :compile-toplevel :execute)
+  (defgeneric find-form-leaf (form)
+    (:documentation "Returns list of termination subforms the 'form'"))
 
-(defjavascript-transformer form ()
-  form)
+  (defmethod find-form-leaf ((form t))
+    form)
 
-(defjavascript-transformer implicit-progn-mixin (body)
-  (describe body)
-  form)
+  (defmethod find-form-leaf ((form implicit-progn-mixin))
+    (find-form-leaf (last1 (body form))))
 
-(defjavascript-transformer lambda-function-form (arguments declares body)
-  (describe body)
-  (describe arguments)
-  form)
+  (defmethod find-form-leaf ((form if-form))
+    (append (ensure-list (find-form-leaf (then form)))
+	    (ensure-list (find-form-leaf (else form)))))
 
-(defun return-trans (&rest body)
-  (unwalk-form
-   (transform-javascript
-    (walk-form-no-expand `(progn ,@body))
-    #'transform-javascript)))
+  (defun fix-javascript-returns (form)
+    "Alters form destructive and adds implicit return statements to 'form'"
+    (flet ((transform-to-implicit-return (form)
+	     (let ((new-form (walk-form-no-expand (unwalk-form form))))
+	       (unless (and (typep form 'application-form)
+			    (eq 'return (operator form)))
+		 (change-class form 'application-form)
+		 (setf (operator form) 'return)
+		 (setf (arguments form) (list new-form)))
+	       new-form)))
+      (let ((funs (ast-search-type form 'lambda-function-form)))
+	(mapcar #'transform-to-implicit-return
+		(flatten (mapcar #'find-form-leaf funs)))
+	form)))
+
+  (defun fix-javascript-methods (form self)
+    (let ((applications (ast-search-type form 'application-form)))
+      (mapcar (lambda (app)
+		(when (and (typep (car (arguments app)) 'variable-reference)
+			   (eq (name (car (arguments app))) self))
+		  (setf (operator app) (intern (format nil "THIS.~A" (operator app)))
+			(arguments app) (cdr (arguments app)))))
+	      applications)
+      form))
+
+;; TODO: Handle (setf a b c d)
+  (defun fix-javascript-accessors (form accessors &optional (get-prefix "GET-") (set-prefix "SET-"))
+    (let ((applications (ast-search-type form 'application-form)))
+      (mapcar (lambda (app)
+		(cond				
+		  ((and (eq 'setf (operator app))
+			(typep (car (arguments app)) 'application-form)
+			(member (operator (car (arguments app))) accessors))
+		   (describe app)
+		   (setf (operator app) (intern (format nil "~A~A" set-prefix (operator (car (arguments app)))))
+			 (arguments app) (cons (car (arguments (car (arguments app))))
+					       (cdr (arguments app)))))
+		  ((and (member (operator app) accessors)
+			(not (and (typep (parent app) 'application-form)
+				  (eq 'setf (operator (parent app))))))
+		   (setf (operator app) (intern (format nil "~A~A" get-prefix (operator app)))))))
+	      applications)
+      form)))
+
 
 ;;-----------------------------------------------------------------------------
 ;; Javascript Render Interface
@@ -721,7 +755,7 @@ this is parenscript/ucw+ backward compatiblity macro."
 	(funcall (lambda ()
 		   (block rule-block
 		     ,(expand-render
-3		       (walk-grammar
+		       (walk-grammar
 			`(:and ,@(mapcar (rcurry #'expand-javascript #'expand-javascript)
 					 (mapcar #'walk-form-no-expand body))
 			       #\Newline))
@@ -732,21 +766,74 @@ this is parenscript/ucw+ backward compatiblity macro."
   "Defun a function in both worlds (lisp/javascript)"
   `(prog1
      (defun ,name ,params ,@body)
-     (defun ,(intern (string-upcase (format nil "~A!" name))) (s ,@params)
+     (defun ,(intern (string-upcase (format nil "~A!" name))) (s)
        (block rule-block		  
 	 ,(expand-render (walk-grammar
 			  (expand-javascript
-			   (walk-form-no-expand
-			    `(setf ',name
-				   (lambda ,params
-				     ,@body)))
+			   (make-instance 'setq-form
+					  :var name
+					  :value (fix-javascript-returns
+						  (walk-form-no-expand
+						   `(lambda ,params
+						      ,@body))))
 			   #'expand-javascript))
 			 #'expand-render 's)))))
 
-;; (defun/javascript fun1 ()
-;;   (setf fun1 (lambda (a b c) (list a b c))))
+;; (defun/javascript fun1 (a)
+;;   (let ((a (lambda (a b c)
+;; 	     (list a b c))))
+;;     (return a)))
+
+(defmacro defun/parenscript (name params &body body)
+  `(prog1
+       (defun ,name ,params ,@body)
+     (defun ,(intern (string-upcase (format nil "~A!" name))) (s)
+       (write-stream s
+		     ,(js:js* `(lambda ,params
+				 ,@body))))))
+
+;; (defun/parenscript fun2 (a)
+;;   (let ((a (lambda (a b c)
+;; 	     (list a b c))))
+;;     (return a)))
 
 ;; (js+ 
 ;;   (+ 1 1)
 ;;   (+ 2 2))
 
+
+(defjsmacr0 $ (id)
+  `(document.get-element-by-id ,id))
+
+(defjsmacr0 debug (&rest rest)
+  `(console.debug ,@rest))
+
+(defjsmacr0 mapcar (lambda lst)
+  `(dojo.map ,lst ,lambda))
+
+
+;; (defmacro defjavascript-transformer (class (&rest slots) &body body)
+;;   "Define a javascript transformer which is fed to expander"
+;;   `(defmethod transform-javascript ((form ,class) (transform function))
+;;      (declare (ignorable transform))
+;;      ;;     (format t "inside ~A~%" ',class)
+;;      (with-slots ,slots form
+;;        ,@body)))
+
+;; (defjavascript-transformer form ()
+;;   form)
+
+;; (defjavascript-transformer implicit-progn-mixin (body)
+;;   (describe body)
+;;   form)
+
+;; (defjavascript-transformer lambda-function-form (arguments declares body)
+;;   (describe body)
+;;   (describe arguments)
+;;   form)
+
+;; (defun return-trans (&rest body)
+;;   (unwalk-form
+;;    (transform-javascript
+;;     (walk-form-no-expand `(progn ,@body))
+;;     #'transform-javascript)))

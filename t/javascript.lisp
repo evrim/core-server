@@ -86,19 +86,19 @@ alert('blorg is not a string');
 
 (test-js operator-expressions-1
   (* 1 2 3)
-  "(1 * 2 * 3)")
+  "1 * 2 * 3")
 
 (test-js operator-expressions-2
   (= 1 2)
-  "(1 == 2)")
+  "1 == 2")
 
 (test-js operator-expressions-3
   (eql 1 2)
-  "(1 === 2)")
+  "1 === 2")
 
 (test-js operator-expressions-5
   (* 1 (+ 2 3 4) 4 (/ 6 7))
-  "(1 * (2 + 3 + 4) * 4 * (6 / 7))")
+  "1 * (2 + 3 + 4) * 4 * (6 / 7)")
 
 (test-js operator-expressions-8
   (incf i)
@@ -178,7 +178,7 @@ alert('blorg is not a string');
   "a = 2;
 b = 3;
 c = 4;
-x = a + b + c")
+x = a + b + c;")
 
 (test-js assignment-3
   (setf a (1+ a))
@@ -186,7 +186,7 @@ x = a + b + c")
 
 (test-js assignment-4
   (setf a (+ a 2 3 4 a))
-  "a = (a + 2 + 3 + 4 + a)")
+  "a = a + 2 + 3 + 4 + a")
 
 (test-js assignment-5
   (setf a (- 1 a))
@@ -399,23 +399,24 @@ document.write('L is ' + blorg[i]);
 alert('zoo');
 }")
 
-(test-js iteration-constructs-3
-  (dolist (l blorg)
-    (document.write (+ "L is " l))
-    (alert "zoo"))
-  "for (var l = 0; l < blorg.length; l = l + 1) {
-document.write('L is ' + l);
-alert('zoo');
-}"
-;;;   "{
-;;;   var tmpArr1 = blorg;
-;;;   for (var tmpI2 = 0; tmpI2 < tmpArr1.length;
-;;;     tmpI2 = tmpI2 + 1) {
-;;;     var l = tmpArr1[tmpI2];
-;;;     document.write('L is ' + l);
-;;;   };
-;;; }"
-  )
+;; Could not test dolist since i consists tmp vars.
+;; (test-js iteration-constructs-3
+;;   (dolist (l blorg)
+;;     (document.write (+ "L is " l))
+;;     (alert "zoo"))
+;;   "for (var l = 0; l < blorg.length; l = l + 1) {
+;; document.write('L is ' + l);
+;; alert('zoo');
+;; }"
+;; ;;;   "{
+;; ;;;   var tmpArr1 = blorg;
+;; ;;;   for (var tmpI2 = 0; tmpI2 < tmpArr1.length;
+;; ;;;     tmpI2 = tmpI2 + 1) {
+;; ;;;     var l = tmpArr1[tmpI2];
+;; ;;;     document.write('L is ' + l);
+;; ;;;   };
+;; ;;; }"
+;;   )
 
 (test-js slot-val-1
   (slot-value a "abc")
@@ -514,58 +515,3 @@ a + b + c")
   (array (array 2 3)
 	 (array "foobar" "bratzel bub"))
   "[ [ 2, 3 ], [ 'foobar', 'bratzel bub' ] ]")
-
-(defmacro test-js-trans (name statement result)
-  `(deftest ,name
-       (core-server::+js+ ,statement)
-     ,result))
-
-
-;;; -------------------------
-;;; Below is not working yet.
-;;; -------------------------
-
-(test-js the-html-generator-1
-  (html ((:a :href "foobar") "blorg"))
-  "'<a href=\"foobar\">blorg</a>'")
-
-(test-js the-html-generator-2
-  (html ((:a :href (generate-a-link)) "blorg"))
-  "'<a href=\"' + generateALink() + '\">blorg</a>'")
-
-(test-js the-html-generator-3
-  (document.write
-  (html ((:a :href "#"
-            :onclick (js-inline (transport))) "link")))
-  "document.write
-('<a href=\"#\" onclick=\"' + 'javascript:transport();' + '\">link</a>')")
-
-(test-js the-html-generator-4
-  (let ((disabled nil)
-      (authorized t))
-   (setf element.inner-h-t-m-l
-         (html ((:textarea (or disabled (not authorized)) :disabled "disabled")
-                "Edit me"))))
-  " {
-   var disabled = null;
-   var authorized = true;
-   element.innerHTML =
-   '<textarea'
-   + (disabled || !authorized ? ' disabled=\"' + 'disabled' + '\"' : '')
-   + '>Edit me</textarea>';
- }")
-
-(test-js the-html-generator-5
-  (css-inline :color "red"
-            :font-size "x-small")
-  "'color:red;font-size:x-small'")
-
-(test-js the-html-generator-6
-  (defun make-color-div(color-name)
-    (return (html ((:div :style (css-inline :color color-name))
-                   color-name " looks like this."))))
-  "function makeColorDiv(colorName) {
-  return '<div style=\"' + ('color:' + colorName) + '\">' + colorName
-    + ' looks like this.</div>';
-}")
-

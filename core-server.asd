@@ -173,6 +173,7 @@
                                      ;; (:file "apache")
                                      ;; (:file "ucw")
                                      ;; (:file "core")
+				     (:file "javascript")
                                      )))
   :depends-on (:core-server :rt))
 

@@ -21,9 +21,6 @@
 (defjsmacro $ (id)
   `(document.get-element-by-id ,id))
 
-(defjsmacr0 $ (id)
-  `(document.get-element-by-id ,id))
-
 (defjsmacro doc-body ()
   `(aref (document.get-elements-by-tag-name "body") 0))
 
@@ -36,9 +33,6 @@
 
 ;; Dojo 1.0
 (defjsmacro debug (&rest rest)
-  `(console.debug ,@rest))
-
-(defjsmacr0 debug (&rest rest)
   `(console.debug ,@rest))
 
 (defjsmacro $$ (id)
@@ -60,9 +54,6 @@
 	  ,c)) ,a))
 
 (defjsmacro mapcar (lambda lst)
-  `(dojo.map ,lst ,lambda))
-
-(defjsmacr0 mapcar (lambda lst)
   `(dojo.map ,lst ,lambda))
 
 ;; (defjsmacro null (arg)
