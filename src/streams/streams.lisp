@@ -581,10 +581,77 @@
 	  (progn ,@body)
        (close-stream ,var))))
 
-(defmacro with-core-stream/cc ((var val) &body body)
-  `(let ((,var (make-core-stream ,val)))
-     (prog1 (progn ,@body)
-       (close-stream ,var))))
+;;;-----------------------------------------------------------------------------
+;;; Indent Stream Mixin
+;;;-----------------------------------------------------------------------------
+;;; This is used to indent outputs like javascript render.
+;;;
+(defclass core-stream-indent-mixin ()
+  ((%indent :initform 0 :initarg :indent)
+   (%increment :initform 2 :initarg :increment)))
+
+(defmethod increase-indent ((self core-stream) &optional n)
+  self)
+
+(defmethod increase-indent ((self core-stream-indent-mixin) &optional (n nil))  
+  (let ((n (or n (s-v '%increment))))
+    (aif (< (incf (s-v '%indent) n) 0)
+	 (setf (s-v '%indent) 0)
+	 it)
+    self))
+
+(defmethod decrease-indent ((self core-stream) &optional n)
+  self)
+
+(defmethod decrease-indent ((self core-stream-indent-mixin) &optional (n nil))
+  (let ((n (or n (s-v '%increment))))  
+    (aif (< (decf (s-v '%indent) n) 0)
+	 (setf (s-v '%indent) 0)
+	 it)
+    self))
+
+(defmethod write-stream ((self core-stream-indent-mixin) atom)
+  (prog1 (call-next-method self atom)
+    (if (or (eq #.(char-code #\Newline) atom) (eq #\Newline atom))
+	(dotimes (i (s-v '%indent))
+	  (call-next-method self #.(char-code #\Space))))))
+
+(defclass core-indented-string-stream (core-stream-indent-mixin core-string-io-stream)
+  ())
+
+(defclass core-indented-file-io-stream (core-stream-indent-mixin core-string-io-stream)
+  ())
+
+(defun make-indented-stream (target &optional (increment 0) (initial 0))
+  (etypecase target
+    (string (make-instance 'core-indented-string-stream :string target
+			   :indent initial :increment increment))
+    (sb-sys::fd-stream (make-instance 'core-indented-fd-io-stream :stream target
+				      ::indent initial :increment increment))))
+
+;;;-----------------------------------------------------------------------------
+;;; Compressed Stream Mixin
+;;;-----------------------------------------------------------------------------
+;;; This is used to compressed outputs like javascript render.
+;;;
+(defclass core-stream-compress-mixin ()
+  ())
+
+(defmethod write-stream ((self core-stream-compress-mixin) atom)  
+  (if (or (eq #.(char-code #\Newline) atom) (eq #\Newline atom))
+      self
+      (call-next-method self atom)))
+
+(defclass core-compressed-string-stream (core-stream-compress-mixin core-string-io-stream)
+  ())
+
+(defclass core-compressed-file-io-stream (core-stream-compress-mixin core-string-io-stream)
+  ())
+
+(defun make-compressed-stream (target)
+  (etypecase target
+    (string (make-instance 'core-compressed-string-stream :string target))
+    (sb-sys::fd-stream (make-instance 'core-compressed-fd-io-stream :stream target))))
 
 (defclass pipe-stream (core-stream)
   ((%input :accessor pipe-stream.input

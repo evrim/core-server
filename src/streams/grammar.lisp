@@ -215,6 +215,12 @@
 (defoperator collect ()
   (source target))
 
+(defoperator indent ()
+  (&optional how-many))
+
+(defoperator deindent ()
+  (&optional how-many))
+
 ;;-----------------------------------------------------------------------------
 ;; Object Stream Operators
 ;;-----------------------------------------------------------------------------

@@ -52,7 +52,15 @@
 	     ,@(mapcar (lambda (atom)
 			 (funcall expander (walk-grammar `(:and ,(seperator form) ,atom))
 				  expander stream continue checkpoint))
-		       (cdr (children form))))))))
+		       (cdr (children form)))))))
+  
+  (defmethod expand-render ((form indent-operator) expander (stream symbol) &optional continue checkpoint)
+    (declare (ignorable checkpoint expander))
+    `(prog1 ,continue (increase-indent ,stream ,(how-many form))))
+
+  (defmethod expand-render ((form deindent-operator) expander (stream symbol) &optional continue checkpoint)
+    (declare (ignorable checkpoint expander))
+    `(prog1 ,continue (decrease-indent ,stream ,(how-many form)))))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defmacro defrender (name args &rest body)
