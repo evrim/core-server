@@ -8,22 +8,22 @@
 (test-js js-evrim-1
   (unless (blorg.is-correct) (alert "gee"))
   "if (!blorg.isCorrect()) {
-alert('gee');
+  alert('gee');
 }")
 
 (test-js js-evrim-2
   (when (blorg.is-correct) (carry-on) (return i))
   "if (blorg.isCorrect()) {
-carryOn();
-return i;
+  carryOn();
+  return i;
 }")
 
 (test-js js-evrim-3
   (if (blorg.is-correct) (carry-on) (return i))
   "if (blorg.isCorrect()) {
-carryOn();
+  carryOn();
 } else {
-return i;
+  return i;
 }")
 
 (test-js js-evrim-4
@@ -35,9 +35,9 @@ return i;
       (alert (+ "blorg is a string: " blorg))
       (alert "blorg is not a string"))
   "if (typeof blorg == String) {
-alert('blorg is a string: ' + blorg);
+  alert('blorg is a string: ' + blorg);
 } else {
-alert('blorg is not a string');
+  alert('blorg is not a string');
 }")
 
 (test-js js-evrim-6
@@ -201,9 +201,9 @@ x = a + b + c;")
 	     (alert (+ "blorg is a string: " blorg))
 	     (alert "blorg is not a string"))
 	 "if (typeof blorg == String) {
-alert('blorg is a string: ' + blorg);
+  alert('blorg is a string: ' + blorg);
 } else {
-alert('blorg is not a string');
+  alert('blorg is not a string');
 }")
 
 (test-js conditional-statements-2
@@ -215,21 +215,33 @@ alert('blorg is not a string');
   (carry-on)
   (return i))
   "if (blorg.isCorrect()) {
-carryOn();
-return i;
+  carryOn();
+  return i;
 }")
 
 (test-js conditional-statements-4
   (unless (blorg.is-correct)
     (alert "blorg is not correct!"))
   "if (!blorg.isCorrect()) {
-alert('blorg is not correct!');
+  alert('blorg is not correct!');
+}")
+
+(test-js conditional-statements-5
+  (cond
+    ((eq a 1)
+     (log-me 'gee))
+    (t 
+     (log-me 'zee)))
+  "if(a === 1) {
+  logMe(gee);
+} else {
+  logMe(zee);
 }")
 
 (test-js function-definition-2
 	 (lambda (a b) (return (+ a b)))
 	 "function (a, b) {
-return a + b;
+  return a + b;
 }")
 
 (test-js conditional-statements-1
@@ -237,10 +249,10 @@ return a + b;
 	     (progn (carry-on) (return i))
 	     (alert "blorg is not correct!"))
 	 "if (blorg.isCorrect()) {
-carryOn();
-return i;
+  carryOn();
+  return i;
 } else {
-alert('blorg is not correct!');
+  alert('blorg is not correct!');
 }")
 
 (test-js variable-declaration-3
@@ -250,11 +262,11 @@ alert('blorg is not correct!');
     (let ((blorg "blitzel"))
       (alert blorg)))
   "if (i == 1) {
-var blorg = 'hallo';
-alert(blorg);
+  var blorg = 'hallo';
+  alert(blorg);
 } else {
-var blorg = 'blitzel';
-alert(blorg);
+  var blorg = 'blitzel';
+  alert(blorg);
 }")
 
 ;; if sorunlu
@@ -265,18 +277,18 @@ alert(blorg);
 	     (progn (defvar blorg "blitzel")
 		    (alert blorg)))
 	 "if (i == 1) {
-var blorg = 'hallo';
-alert(blorg);
+  var blorg = 'hallo';
+  alert(blorg);
 } else {
-var blorg = 'blitzel';
-alert(blorg);
+  var blorg = 'blitzel';
+  alert(blorg);
 }")
 
 (test-js iteration-constructs-5
   (while (film.is-not-finished)
     (this.eat (new (*popcorn))))
   "while (film.isNotFinished()) {
-this.eat(new Popcorn());
+  this.eat(new Popcorn());
 }")
 
 (test-js regular-expression-literals-2
@@ -307,9 +319,9 @@ this.eat(new Popcorn());
 (test-js statements-and-expressions-2
 	 (if 1 2 3)
 	 "if (1) {
-2;
+  2;
 } else {
-3;
+  3;
 }")
 
 (test-js array-literals-1
@@ -335,16 +347,22 @@ blafoo(i);")
 
 (test-js object-literals-1
 	 (create :foo "bar" :blorg 1)
-	 "{ foo : 'bar',
-blorg : 1 }")
+	 "{
+  foo: 'bar',
+  blorg: 1
+}")
 
 (test-js object-literals-2
   (create :foo "hihi"
         :blorg (array 1 2 3)
         :another-object (create :schtrunz 1))
-  "{ foo : 'hihi',
-blorg : [ 1, 2, 3 ],
-anotherObject : { schtrunz : 1 } }")
+  "{
+  foo: 'hihi',
+  blorg: [ 1, 2, 3 ],
+  anotherObject: {
+    schtrunz: 1
+  }
+}")
 
 (test-js single-argument-expression-1
 	 (delete (new (*foobar 2 3 4)))
@@ -377,17 +395,19 @@ anotherObject : { schtrunz : 1 } }")
   (with (create :foo "foo" :i "i")
 	(alert (+ "i is now intermediary scoped: " i))
 	(alert "zoo"))
-  "with ({ foo : 'foo',
-i : 'i' }) {
-alert('i is now intermediary scoped: ' + i);
-alert('zoo');
+  "with ({
+  foo: 'foo',
+  i: 'i'
+}) {
+  alert('i is now intermediary scoped: ' + i);
+  alert('zoo');
 }")
 
 (test-js iteration-constructs-4
   (doeach (i object)
 	  (document.write (+ i " is " (aref object i))))
   "for (var i in object) {
-document.write(i + ' is ' + object[i]);
+  document.write(i + ' is ' + object[i]);
 }")
 
 (test-js iteration-constructs-2
@@ -395,8 +415,8 @@ document.write(i + ' is ' + object[i]);
     (document.write (+ "L is " (aref blorg i)))
     (alert "zoo"))
   "for (var i = 0; i < blorg.length; i = i + 1) {
-document.write('L is ' + blorg[i]);
-alert('zoo');
+  document.write('L is ' + blorg[i]);
+  alert('zoo');
 }")
 
 ;; Could not test dolist since i consists tmp vars.
@@ -418,6 +438,14 @@ alert('zoo');
 ;; ;;; }"
 ;;   )
 
+(test-js iteration-constructs-4
+  (do ((i 0 (+ 1 i)))
+      ((> i 5) i)
+    (print i))
+  "for (var i=0; !(i > 5); i=1 + i) {
+  print(i);
+}")
+
 (test-js slot-val-1
   (slot-value a "abc")
   "a['abc']")
@@ -437,11 +465,11 @@ alert('zoo');
        (:finally
 	(alert "Leaving the try form")))
   "try {
-throw 'i'
+  throw 'i'
 } catch (error) {
-alert('an error happened: ' + error);
+  alert('an error happened: ' + error);
 } finally {
-alert('Leaving the try form');
+  alert('Leaving the try form');
 }")
 
 (test-js regular-expression-literals-1
@@ -452,7 +480,7 @@ alert('Leaving the try form');
   (defun a-function (a b)
     (return (+ a b)))
   "function aFunction(a, b) {
-return a + b;
+  return a + b;
 }")
 
 (test-js function-calls-and-method-calls-6
@@ -474,7 +502,7 @@ return a + b;
 	   (eql l "Fumitastic")))
     (document.write (+ "L is " l)))
   "for (var i=0, l=blorg[i]; !((i == blorg.length) || (l === 'Fumitastic')); i=i + 1, l=blorg[i]) {
-document.write('L is ' + l);
+  document.write('L is ' + l);
 }")
 
 (test-js the-case-statement-2
@@ -483,9 +511,12 @@ document.write('L is ' + l);
     (2 (alert "I also get here"))
     (default (alert "I always get here")))
   "switch (blorg[i]) {
-case 1: alert('If I get here');
-case 2: alert('I also get here');
-default: alert('I always get here');
+  case 1:
+    alert('If I get here');
+  case 2:
+    alert('I also get here');
+  default:
+    alert('I always get here');
 }")
 
 (test-js the-case-statement-1
@@ -493,13 +524,16 @@ default: alert('I always get here');
     ((1 "one") (alert "one"))
     (2 (alert "two"))
     (t (alert "default clause")))
-  "switch (blorg[i]) {
-case 1: 
-case 'one': alert('one');
-break;
-case 2: alert('two');
-break;
-default: alert('default clause');
+	 "switch (blorg[i]) {
+  case 1:
+  case 'one':
+    alert('one');
+    break;
+  case 2:
+    alert('two');
+    break;
+  default:
+    alert('default clause');
 }")
 
 (test-js object-literals-5
