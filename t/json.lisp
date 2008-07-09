@@ -108,3 +108,9 @@
      ("State" . "CA")
      ("Zip" . "94085")
      ("Country" . "US"))))
+
+(deftest json-dom2js!
+    (with-core-stream (s "")
+      (html! s (<:div :id "5" "GEE"))
+      (return-stream s))
+  "<DIV id=\"5\">GEE</DIV>")
