@@ -1,24 +1,24 @@
 (in-package :core-server.test)
 
 (defmacro test-js (name statement result)
-  `(deftest ,name
-       (core-server::+js+ ,statement)
+  `(deftest ,(intern (format nil "JS-~A" name))
+       (core-server::js ,statement)
      ,result))
 
-(test-js js-evrim-1
+(test-js evrim-1
   (unless (blorg.is-correct) (alert "gee"))
   "if (!blorg.isCorrect()) {
   alert('gee');
 }")
 
-(test-js js-evrim-2
+(test-js evrim-2
   (when (blorg.is-correct) (carry-on) (return i))
   "if (blorg.isCorrect()) {
   carryOn();
   return i;
 }")
 
-(test-js js-evrim-3
+(test-js evrim-3
   (if (blorg.is-correct) (carry-on) (return i))
   "if (blorg.isCorrect()) {
   carryOn();
@@ -26,11 +26,11 @@
   return i;
 }")
 
-(test-js js-evrim-4
+(test-js evrim-4
   (+ i (if (blorg.add-one) 1 2))
   "i + (blorg.addOne() ? 1 : 2)")
 
-(test-js js-evrim-5
+(test-js evrim-5
   (if (= (typeof blorg) *string)
       (alert (+ "blorg is a string: " blorg))
       (alert "blorg is not a string"))
@@ -40,7 +40,7 @@
   alert('blorg is not a string');
 }")
 
-(test-js js-evrim-6
+(test-js evrim-6
  (* 3 5 (+ 1 2))
  "3 * 5 * (1 + 2)")
 

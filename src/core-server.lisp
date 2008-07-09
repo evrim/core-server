@@ -31,7 +31,7 @@
 (defpackage :tr.gen.core.server
   (:nicknames :core-server)
   (:use :common-lisp :cl-prevalence :arnesi :cl-ppcre
-	:sb-bsd-sockets :tr.gen.core.install :bordeaux-threads :js)
+	:sb-bsd-sockets :tr.gen.core.install :bordeaux-threads)
   (:shadowing-import-from #:swank #:send #:receive #:accept-connection)
   (:shadowing-import-from #:arnesi #:name #:body #:self #:new)
   (:import-from #:cl-prevalence #:get-directory)
@@ -134,6 +134,27 @@
    #:defrss-tag
    #:rss?
    #:rss!
+
+   ;; [Javascript]
+   #:js
+   #:defun/javascript
+   #:+indent-javascript+
+   #:js
+   #:js*
+   #:defjsmacro
+   #:true
+   #:false
+   #:undefined
+   #:while
+   #:regex
+   #:--
+   #:create
+   #:with
+   #:doeach
+   #:try
+   #:default
+   #:typeof
+   
    ;; [RFC 2109]
    #:cookie
    #:cookie.name
@@ -615,12 +636,6 @@
    #:quoted-printable!
    ;; The server itself
    *server*
-   ;; Javascript
-   #:defjsmacr0
-   #:js+
-   #:true
-   #:false
-   #:undefined
    ;; Form component (which emails a filled form)
    #:web-form-component
    ;; socialshare
@@ -645,20 +660,20 @@
 (defpackage :tr.gen.core.server.html
   (:nicknames :< :core-server.html)
   (:use :core-server)
-  (:export #:ai #:ah #:js #:js+ #:css))
+  (:export #:ai #:ah #:js #:js+))
 
 (defpackage :tr.gen.core.server.rss
   (:nicknames :<rss :core-server.rss)
   (:use :core-server))
 
-(defpackage :tr.gen.core.server.html.dojo
-  (:nicknames :<dojo :core-server.html.dojo)
-  (:use :core-server :<))
+;; (defpackage :tr.gen.core.server.html.dojo
+;;   (:nicknames :<dojo :core-server.html.dojo)
+;;   (:use :core-server :<))
 
-(defpackage :tr.gen.core.server.html.dijit
-  (:nicknames :<dijit :core-server.html.dijit)
-  (:use :core-server :<))
+;; (defpackage :tr.gen.core.server.html.dijit
+;;   (:nicknames :<dijit :core-server.html.dijit)
+;;   (:use :core-server :<))
 
-(defpackage :tr.gen.core.server.html.dijit.layout
-  (:nicknames :<dijit.layout :core-server.html.dijit.layout)
-  (:use :core-server :<))
+;; (defpackage :tr.gen.core.server.html.dijit.layout
+;;   (:nicknames :<dijit.layout :core-server.html.dijit.layout)
+;;   (:use :core-server :<))

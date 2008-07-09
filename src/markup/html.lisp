@@ -299,7 +299,7 @@
   (let ((dom (dom-element? stream)))
     (if dom (validate-html dom))))
 
-(defmethod html! ((stream core-stream) (element html-element))
+(defmethod html! ((stream core-stream) element)
   (dom-element! stream element))
 
 (defmacro with-html-output (stream &body body)
@@ -322,7 +322,7 @@
 
 (defmethod dom2js ((element html-element))  
   `((lambda ()
-      (let ((elem (document.create-element ,(tag element))))
+      (let ((elem (document.create-element ,(dom.tag element))))
 	,@(mapcar (lambda (attr)
 		    (if (equal (car attr) "class")			 
 			`(setf (slot-value elem 'class-name) ,(cdr attr))
@@ -332,7 +332,7 @@
 		    (if (stringp child)
 			`(elem.append-child (document.create-text-node ,child))
 			`(elem.append-child ,(dom2js child))))
-		  (children element))
+		  (dom.children element))
 	(return elem)))))
 
 (defun href (base &rest params)
@@ -362,7 +362,7 @@
 
 (defmacro <:js (&body body)
   (with-unique-names (output)
-    `(let ((,output (if +context+ (http-response.stream (context.response +context+)) *core-output*)))
+    `(let ((,output (if +context+ (http-response.stream (response +context+)) *core-output*)))
        (prog1 (with-html-output ,output
 		(js:js* ,@body))
 	 (char! ,output #\Newline)))))

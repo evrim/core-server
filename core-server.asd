@@ -78,8 +78,13 @@
                          (:file "protocol")
                          (:file "application")
                          (:file "server")
-                         (:file "parenscript")
-                         (:file "javascript")
+			 (:module :javascript
+				  :serial t
+				  :components
+				  ((:file "util")
+				   (:file "render")
+				   (:file "transform")
+				   (:file "interface")))
 			 (:module :markup
 				  :serial t
 				  :components
@@ -143,7 +148,7 @@
 					     (:file "socialshare")
                                              (:file "form"))))))))
   :depends-on (:bordeaux-threads :cl-prevalence :sb-bsd-sockets
-                                 :arnesi :cl-ppcre :cl-fad :parenscript)
+                                 :arnesi :cl-ppcre :cl-fad)
   :serial t)
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :core-server))))
@@ -173,8 +178,7 @@
                                      ;; (:file "apache")
                                      ;; (:file "ucw")
                                      ;; (:file "core")
-				     (:file "javascript")
-                                     )))
+				     (:file "javascript"))))
   :depends-on (:core-server :rt))
 
 ;; (defmethod perform ((op asdf::load-op) (system (eql (find-system :core-server.test))))

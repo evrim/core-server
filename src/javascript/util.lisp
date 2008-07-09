@@ -22,7 +22,10 @@
 ;;; ecmascript standard:
 ;;; http://www.ecma-international.org/publications/standards/Ecma-262.htm
 
-;;; javascript name conversion
+;;; FIXme: We should clean this or add license information about this
+;;; file -evrim
+
+;; javascript name conversion
 
 (defparameter *special-chars*
   '((#\! . "Bang")

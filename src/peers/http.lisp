@@ -174,14 +174,6 @@ nil if stream data is invalid"
 
 
 ;; FIXmE: what to do with below?
-;; (defparameter *response-body* ;;  "Hello, World!"
-;;   (with-yaclml-output-to-string
-;;     (<:html
-;;      (<:head
-;;       (<:title "Test1"))
-;;      (<:body
-;;       (loop for i from 0 upto 400
-;;  	 do (<:ai "A"))))))
 
 ;; (defparameter *req1*
 ;;   "server-protocol

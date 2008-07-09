@@ -19,24 +19,13 @@
 
 ;;+-----------------------------------------------------------------------------
 ;;| [Core-serveR] Javascript Renderer
-;;| Author: Evrim Ulu <evrim@core.gen.tr>
-;;| Date: 05/2008
 ;;+-----------------------------------------------------------------------------
 
 ;; Hash tables that hold macros, infix and syntax operators
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defvar *javascript-macros* (make-hash-table))
   (defvar *javascript-infix* (make-hash-table))
-  (defvar *javascript-syntax* (make-hash-table))
-  (export 'while)
-  (export 'regex)
-  (export '--)
-  (export 'create)
-  (export 'typeof)
-  (export 'with)
-  (export 'doeach)
-  (export 'try)
-  (export 'default))
+  (defvar *javascript-syntax* (make-hash-table)))
 
 ;;-----------------------------------------------------------------------------
 ;; Javascript Infix Operators
@@ -222,8 +211,9 @@
 	   ,(when catch
 		  (assert (eq :catch (operator catch)))
 		  (let* ((op (operator (car (arguments catch))))
-			 (catch (walk-form-no-expand `(progn
-							,@(unwalk-forms (cdr (arguments catch)))))))
+			 (catch (walk-form-no-expand
+				 `(progn
+				    ,@(unwalk-forms (cdr (arguments catch)))))))
 		    `(:and " catch ("
 			   ,(symbol-to-js op)
 			   ") {" (:indent) #\Newline
@@ -239,7 +229,7 @@
 ;;-----------------------------------------------------------------------------
 ;; Javascript macros
 ;;-----------------------------------------------------------------------------
-(defmacro defjsmacr0 (name args &body body)
+(defmacro defjsmacro (name args &body body)
   "Define a 'Javascript macro' operator"
   (with-unique-names (rest)
     `(setf (gethash ',name *javascript-macros*)
@@ -247,32 +237,32 @@
 	       (destructuring-bind ,args ,rest
 		 ,@body)))))
 
-(defjsmacr0 1+ (arg)
+(defjsmacro 1+ (arg)
   `(+ ,arg 1))
 
-(defjsmacr0 when (a &rest b)
+(defjsmacro when (a &rest b)
   `(if ,a (progn ,@b)))
 
-(defjsmacr0 unless (a &rest b)
+(defjsmacro unless (a &rest b)
   `(if (not ,a) (progn ,@b)))
 
-(defjsmacr0 make-array (&rest a)
+(defjsmacro make-array (&rest a)
   `(new (*array ,@a)))
 
-(defjsmacr0 list (&rest arg)
+(defjsmacro list (&rest arg)
   `(new (*array ,@arg)))
 
-(defjsmacr0 setf (&rest rest)
+(defjsmacro setf (&rest rest)
   `(setq ,@rest))
 
-(defjsmacr0 case (object &rest cases)
+(defjsmacro case (object &rest cases)
   `(switch ,object
      ,@(mapcar (lambda (case)
 		 (append case (list 'break)))
 	       (butlast cases))
      ,(last1 cases)))
 
-(defjsmacr0 with-slots (slots object &body body)
+(defjsmacro with-slots (slots object &body body)
   `(let ,(mapcar (lambda (slot)
 		   (list slot `(slot-value ,object ',slot)))
 		 slots)
@@ -325,7 +315,9 @@
 (defjavascript-expander application-form (operator arguments)
   (acond
    ((gethash operator *javascript-macros*)
-    (funcall expand (walk-form-no-expand (apply it (mapcar #'unwalk-form arguments))) expand))
+    (funcall expand (walk-form-no-expand
+		     (apply it (mapcar #'unwalk-form arguments)))
+	     expand))
    ((gethash operator *javascript-infix*)
     (if (and (typep (parent form) 'application-form)
 	     (gethash (operator (parent form)) *javascript-infix*))
@@ -430,22 +422,7 @@
 		,(if (not (typep else 'progn-form))
 		     ";")
 		(:deindent) #\Newline
-		"}"))
-;;; 	,(if (not (typep then 'implicit-progn-mixin))
-;;; 	     `(:and "{" (:indent) #\Newline
-;;; 		    ,(funcall expand then expand)
-;;; 		    ";" (:deindent) #\Newline
-;;; 		    "}")
-;;; 	     (funcall expand then expand))
-;;; 	,@(if else
-;;; 	      `(" else "
-;;; 		,(if (not (typep else 'implicit-progn-mixin))
-;;; 		     `(:and "{" (:indent) #\Newline
-;;; 			    ,(funcall expand else expand)
-;;; 			    ";" (:deindent) #\Newline
-;;; 			    "}")
-;;; 		     (funcall expand then expand))))
-	)))
+		"}")))))
 
 ;;;; COND
 (defjavascript-expander cond-form (conditions)
@@ -573,7 +550,7 @@
 ;;;; TODO: FIX setq walker to walk var (easy)
 ;;;; TODO: FIX call/cc to unwalk var before going in. -evrim.
 (defjavascript-expander setq-form (var value)
-  `(:and ,(funcall expand (walk-form-no-expand var) expand) " = " ,(funcall expand value expand)))
+  `(:and ,(funcall expand (walk-form-no-expand var form) expand) " = " ,(funcall expand value expand)))
 
 ;;;; SYMBOL-MACROLET
 ;; We ignore the binds, because the expansion has already taken
@@ -774,7 +751,7 @@
 this is parenscript/ucw+ backward compatiblity macro."
   (with-unique-names (output)
     (eval
-     `(let ((,output (if +context+ (http-response.stream (context.response +context+)) *core-output*)))
+     `(let ((,output (if +context+ (http-response.stream (response +context+)) *core-output*)))
 	(funcall (lambda ()
 		   (block rule-block
 		     ,(expand-render
