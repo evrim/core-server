@@ -90,3 +90,33 @@
 		   (setf (operator app) (intern (format nil "~A~A" get-prefix (operator app)))))))
 	      applications)
       form)))
+
+
+;; ;;-----------------------------------------------------------------------------
+;; ;; External Variable For Fast Rendering
+;; ;;-----------------------------------------------------------------------------
+;; (eval-when (:load-toplevel :compile-toplevel :execute)
+;;   (defclass external-variable-reference (variable-reference)
+;;     ())
+ 
+;;   (defjavascript-expander external-variable-reference (name)
+;;     `(:json! ,name))
+
+;; ;; FIxme: put something meaningful here. -evrim.
+;; ;; This transformer overrides free-variable-references. Arguments of defrender/js
+;; ;; are transformed into exnternal-variable-references to that they can
+;; ;; the client. We use json serialized to be fast.
+;;   (defun fix-javascript-external-variables (form variables)
+;;     (let ((references (reduce (lambda (acc var)				
+;; 				(mapcar (lambda (reference)
+;; 					  (if (or (eq (name reference) var) (boundp (name reference)))
+;; 					      (pushnew reference acc)))
+;; 					(ast-search-type form 'free-variable-reference))
+;; 				acc)
+;; 			      variables :initial-value nil)))
+;;       (mapcar (lambda (reference)	      
+;; 		(prog1 (change-class reference 'external-variable-reference)
+;; 		  (describe reference)))
+;; 	      references)
+;;       form)))
+

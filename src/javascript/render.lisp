@@ -49,6 +49,14 @@
 (defjsinfix or "||")
 (defjsinfix and "&&")
 
+(defun seperated-by (seperator args)  
+  `(:and
+    ,@(nreverse
+       (reduce (lambda (acc arg)
+		 (cons arg
+		       (cons seperator acc)))
+	       (cdr args) :initial-value (list (car args))))))
+
 ;;-----------------------------------------------------------------------------
 ;; Javascript Syntax operators
 ;; These are used to make the library more parenscript friendly
@@ -63,8 +71,7 @@
 	       ,@body))))
 
 (defjssyntax array (&rest a)
-  `(:and "[ " (:sep ", "
-		   ',(mapcar (rcurry expander expander) a))
+  `(:and "[ " ,(s-b ", " (mapcar (rcurry expander expander) a))
 	 " ]"))
 
 (defjssyntax aref (target slot)
@@ -109,8 +116,8 @@
 (defjssyntax while (consequent &rest body)
   `(:and "while (" ,(funcall expander consequent expander) ") {"
 	 (:indent) #\Newline
-	 (:sep ,(format nil ";~%")
-	       ',(mapcar (rcurry expander expander) body))
+	 ,(s-b (format nil ";~%")
+	       (mapcar (rcurry expander expander) body))
 	 ";" (:deindent) #\Newline "}"))
 
 (defjssyntax regex (expression)
@@ -121,23 +128,23 @@
 
 (defjssyntax create (&rest arguments)
   `(:and "{" (:indent) #\Newline
-	 (:sep ,(format nil ",~%")
-	       ',(reverse
-		  (mapcar (lambda (b a)
-			    `(:and
-			      ,(funcall expander a expander)
-			      ": "
-			      ,(funcall expander b expander)))
-			  (reduce (lambda (acc atom)
-				    (if (oddp (position atom arguments))
-					(cons atom acc)
-					acc))
-				  arguments :initial-value nil)
-			  (reduce (lambda (acc atom)
-				    (if (evenp (position atom arguments))
-					(cons atom acc)
-					acc))
-				  arguments :initial-value nil))))
+	 ,(seperated-by (format nil ",~%")
+			(reverse
+			 (mapcar (lambda (b a)
+				   `(:and
+				     ,(funcall expander a expander)
+				     ": "
+				     ,(funcall expander b expander)))
+				 (reduce (lambda (acc atom)
+					   (if (oddp (position atom arguments))
+					       (cons atom acc)
+					       acc))
+					 arguments :initial-value nil)
+				 (reduce (lambda (acc atom)
+					   (if (evenp (position atom arguments))
+					       (cons atom acc)
+					       acc))
+					 arguments :initial-value nil))))
 	 (:deindent) #\Newline "}"))
 
 (defjssyntax with (object &rest body)
@@ -165,53 +172,54 @@
   `(:and
     "switch (" ,(funcall expander object expander) ") {"
     (:indent) #\Newline
-    (:sep #\Newline
-	  ',(mapcar (lambda (case)
-		      (cond
-			((or (eq 'default (operator case))
-			     (eq 't (operator case)))
-			 `(:and "default:"
-				(:indent) #\Newline
-				(:sep ,(format nil ";~%")
-				      ',(mapcar (rcurry expander expander) (arguments case)))
-				";" (:deindent)))
-			((atom (operator case))
-			 `(:and "case " ,(funcall expander (walk-form-no-expand (operator case)) expander) ":"
-				(:indent) #\Newline
-				(:sep ,(format nil ";~%")
-				      ',(mapcar (rcurry expander expander) (arguments case)))
-				";" (:deindent)))
-			(t
-			 `(:and
-			   (:sep #\Newline
-				 ',(mapcar (lambda (case)
-					     (if (or (eq 'default case)
-						     (eq 't case))
-						 "default"
-						 `(:and
-						   "case "
-						   ,(funcall expander (walk-form-no-expand case) expander)
-						   ":")))
-					   (operator case)))
-			   (:indent) #\Newline
-			   (:sep (format nil ";~%")
-				 ',(mapcar (rcurry expander expander) (arguments case)))
-			   ";" (:deindent)))))
-		    cases))
+    ,(seperated-by
+      #\Newline
+      (mapcar (lambda (case)
+		(cond
+		  ((or (eq 'default (operator case))
+		       (eq 't (operator case)))
+		   `(:and "default:"
+			  (:indent) #\Newline
+			  ,(seperated-by (format nil ";~%")
+			    (mapcar (rcurry expander expander) (arguments case)))
+			  ";" (:deindent)))
+		  ((atom (operator case))
+		   `(:and "case " ,(funcall expander (walk-js-form (operator case)) expander) ":"
+			  (:indent) #\Newline
+			  ,(seperated-by (format nil ";~%")
+			    (mapcar (rcurry expander expander) (arguments case)))
+			  ";" (:deindent)))
+		  (t
+		   `(:and
+		     ,(seperated-by #\Newline
+		       (mapcar (lambda (case)
+				 (if (or (eq 'default case)
+					 (eq 't case))
+				     "default"
+				     `(:and
+				       "case "
+				       ,(funcall expander (walk-js-form case) expander)
+				       ":")))
+			       (operator case)))
+		     (:indent) #\Newline
+		     ,(seperated-by (format nil ";~%")
+		       (mapcar (rcurry expander expander) (arguments case)))
+		     ";" (:deindent)))))
+	      cases))
     (:deindent) #\Newline "}"))
 
 ;; NOTE: This is very ugly but needed only for backward compat with parenscript
 ;; I'll try to implement handler-bind, catch for the use of the newer compiler.
 ;; -evrim.
 (defjssyntax try (body &optional catch finally)  
-  (let ((body (walk-form-no-expand (unwalk-form body)))) ;; Hack to make progn work.
+  (let ((body (walk-js-form (unwalk-form body)))) ;; Hack to make progn work.
     `(:and "try {" (:indent) #\Newline	   
 	   ,(funcall expander body expander)
 	   (:deindent) #\Newline "}"
 	   ,(when catch
 		  (assert (eq :catch (operator catch)))
 		  (let* ((op (operator (car (arguments catch))))
-			 (catch (walk-form-no-expand
+			 (catch (walk-js-form
 				 `(progn
 				    ,@(unwalk-forms (cdr (arguments catch)))))))
 		    `(:and " catch ("
@@ -221,7 +229,7 @@
 			   (:deindent) #\Newline "}")))
 	   ,(when finally
 		  (assert (eq :finally (operator finally)))
-		  (let ((finally (walk-form-no-expand `(progn ,@(unwalk-forms (arguments finally))))))
+		  (let ((finally (walk-js-form `(progn ,@(unwalk-forms (arguments finally))))))
 		    `(:and " finally {" (:indent) #\Newline
 			   ,(funcall expander finally expander)
 			   (:deindent) #\Newline "}"))))))
@@ -253,7 +261,16 @@
   `(new (*array ,@arg)))
 
 (defjsmacro setf (&rest rest)
-  `(setq ,@rest))
+  (assert (evenp (length rest)))
+  `(progn
+     ,@(let (state)
+	 (nreverse
+	  (reduce (lambda (acc atom)
+		    (if (null state)
+			(prog1 acc (setf state atom))
+			(prog1 (cons `(setq ,state ,atom) acc)
+			  (setq state nil))))
+		  rest :initial-value nil)))))
 
 (defjsmacro case (object &rest cases)
   `(switch ,object
@@ -268,11 +285,21 @@
 		 slots)
      ,@body))
 
+(defun macroexpand-js-1 (form &optional env)
+  (declare (ignore env))
+  (aif (and (listp form) (gethash (car form) *javascript-macros*))
+       (values (apply it (cdr form)) t)
+       (values form nil)))
+
+(defun walk-js-form (form &optional (parent nil) (env (make-walk-env)))
+  (let ((arnesi::*walker-expander* #'macroexpand-js-1))
+    (walk-form form parent env)))
+
 ;;-----------------------------------------------------------------------------
 ;; Javascript expanders for Lisp2 Forms
 ;;-----------------------------------------------------------------------------
 ;;
-;; Note: These are used along with walk-form-no-expand
+;; Note: These are used along with walk-js-form
 ;;
 (defmacro defjavascript-expander (class (&rest slots) &body body)
   "Define a javascript expander (ie. unwalker) which is fed to renderer"
@@ -287,70 +314,81 @@
 
 (defjavascript-expander constant-form (value)
   (typecase value
-    (string
-     (format nil "'~A'" value))
-    (list
-     `(:and "[ " (:sep ", " ',(mapcar (lambda (v)
-				       (symbol-to-js (format nil "~S" v)))
-				     value))  " ]"))
+    (string (format nil "'~A'" value))
+    (null "null")
     (symbol (symbol-to-js value))
+    (list
+     `(:and "[ " ,(seperated-by ", "
+		   (mapcar (lambda (v)
+			     (symbol-to-js (format nil "~S" v)))
+			   value))  " ]"))
     (t (format nil "~A" value))))
 
 (defjavascript-expander variable-reference (name)
   (cond
-    ((equal 't name) "true")
-    ((equal 'nil name) "null")
+    ((eq 't name) "true")
+    ((eq 'nil name) "null")
     (t (symbol-to-js name))))
+
+(defvar +js-free-variables+ nil)
+(defjavascript-expander free-variable-reference (name)
+  (cond
+    ((or (member name +js-free-variables+) (boundp name))
+     `(:json! ,name))
+    (t (call-next-method))))
 
 (defjavascript-expander implicit-progn-mixin (body)
   `(:and "{"
 	 (:indent) #\Newline
-	 (:sep ,(format nil ";~%")
-	       ',(mapcar (rcurry expand expand) body))
+	 ,(seperated-by (format nil ";~%")
+	   (mapcar (rcurry expand expand) body))
 	 ";" (:deindent) #\Newline "}"))
 
 (defun js-infix-op-p (operator)
   (if (gethash operator *javascript-infix*) t))
 
 (defjavascript-expander application-form (operator arguments)
-  (acond
-   ((gethash operator *javascript-macros*)
-    (funcall expand (walk-form-no-expand
-		     (apply it (mapcar #'unwalk-form arguments)))
-	     expand))
+  (acond   
    ((gethash operator *javascript-infix*)
     (if (and (typep (parent form) 'application-form)
 	     (gethash (operator (parent form)) *javascript-infix*))
-	`(:and "(" (:sep ,(format nil " ~A " (if (symbolp it)
-						 (format nil "~A" it)
-						 it))
-			 ',(mapcar (rcurry expand expand) arguments)) ")")     
-	`(:sep ,(format nil " ~A " (if (symbolp it)
-				       (format nil "~S" it)
-				       it))
-	       ',(mapcar (rcurry expand expand) arguments))))   
+	`(:and "(" ,(seperated-by (format nil " ~A " (if (symbolp it)
+							 (format nil "~A" it)
+							 it))
+		     (mapcar (rcurry expand expand) arguments)) ")")     
+	(seperated-by (format nil " ~A " (if (symbolp it)
+					     (format nil "~S" it)
+					     it))
+	  (mapcar (rcurry expand expand) arguments))))   
    ((char= #\. (aref (symbol-to-js operator) 0))
     `(:and ,(funcall expand (car arguments) expand)
 	   ,(symbol-to-js operator) "("
-	   (:sep ", " ',(mapcar (rcurry expand expand) (cdr arguments)))
+	   ,(seperated-by ", " (mapcar (rcurry expand expand) (cdr arguments)))
 	   ")"))
    ((gethash operator *javascript-syntax*) (funcall it arguments expand))
+   ((gethash operator *javascript-macros*)
+    (error "Error while rendering javascript, js macros should be expanded in walker")
+    ;; (funcall expand (walk-js-form
+;; 		     (apply it (mapcar #'unwalk-form arguments))
+;; 		     (parent form))
+;; 	     expand)
+    )
    (t
     `(:and ,(symbol-to-js operator) "("
-	   (:sep ", " ',(mapcar (rcurry expand expand) arguments))
+	   ,(seperated-by ", " (mapcar (rcurry expand expand) arguments))
 	   ")"))))
 
 (defjavascript-expander lambda-application-form (operator arguments)
   `(:and ,(funcall expand operator expand) 
 	 "("
-	 (:sep ", " ',(mapcar (rcurry expand expand) arguments))
+	 ,(seperated-by ", " (mapcar (rcurry expand expand) arguments))
 	 ,(if (typep (parent form) 'application-form)
 	      ")"
 	      ");")))
 
 (defjavascript-expander lambda-function-form (arguments body declares)
   `(:and "function (" 
-	 (:sep ", " ',(mapcar (rcurry expand expand) arguments))
+	 ,(seperated-by ", " (mapcar (rcurry expand expand) arguments))
 	 ") " ,(call-next-method)))
 
 (defjavascript-expander function-argument-form (name)
@@ -432,7 +470,7 @@
 	   (reduce (lambda (acc atom)
 		     (cons `(:and ,(funcall expand (car atom) expand)
 				  " ? ("
-				  (:sep ", " ',(mapcar (rcurry expand expand) (cdr atom)))
+				  ,(seperated-by ", " (mapcar (rcurry expand expand) (cdr atom)))
 				  ") : ")
 			   acc))
 		   (cdr conditions)
@@ -440,7 +478,7 @@
 				   `(:and
 				     ,(funcall expand (caar conditions) expand)
 				     " ? ("
-				     (:sep ", " ',(mapcar (rcurry expand expand) (cdar conditions)))
+				     ,(seperated-by ", " (mapcar (rcurry expand expand) (cdar conditions)))
 				     ") : "))))
 	"null")
       `(:and ,@(nreverse
@@ -448,21 +486,21 @@
 			  (cons (if (and (typep (car atom) 'free-variable-reference)
 					 (eq 't (name (car atom))))
 				    `(:and " else {" (:indent) #\Newline
-					   (:sep (format nil ";~%")
-						 ',(mapcar (rcurry expand expand) (cdr atom)))
+					   ,(seperated-by (format nil ";~%")
+					      (mapcar (rcurry expand expand) (cdr atom)))
 					   ";" (:deindent) #\Newline "}")
 				    `(:and " else if(" ,(funcall expand (car atom) expand)
 					   ") {" (:indent) #\Newline
-					   (:sep (format nil ";~%")
-						 ',(mapcar (rcurry expand expand) (cdr atom)))
+					   ,(seperated-by (format nil ";~%")
+					      (mapcar (rcurry expand expand) (cdr atom)))
 					   ";" (:deindent) #\Newline "}"))
 				acc))
 			(cdr conditions)
 			:initial-value (list
 					`(:and "if(" ,(funcall expand (caar conditions) expand)
 					       ") {" (:indent) #\Newline
-					       (:sep (format nil ";~%")
-						     ',(mapcar (rcurry expand expand) (cdar conditions)))
+					       ,(seperated-by (format nil ";~%")
+						  (mapcar (rcurry expand expand) (cdar conditions)))
 					       ";" (:deindent) #\Newline "}")))))))
 
 ;;;; FLET/LABELS
@@ -484,8 +522,8 @@
 		       "=" ,(funcall expand (cdr bind) expand)
 		       ";" #\Newline))
 	      binds)
-    (:sep ,(format nil ";~%")
-	  ',(mapcar (rcurry expand expand) body))))
+    ,(seperated-by (format nil ";~%")
+      (mapcar (rcurry expand expand) body))))
 
 (defjavascript-expander labels-form (binds body declares)
   `(:and
@@ -494,8 +532,8 @@
 		       "=" ,(funcall expand (cdr bind) expand)
 		       ";" #\Newline))
 	      binds)
-    (:sep ,(format nil ";~%")
-	  ',(mapcar (rcurry expand expand) body))))
+    ,(seperated-by (format nil ";~%")
+      (mapcar (rcurry expand expand) body))))
 
 ;;;; LET/LET*
 (defjavascript-expander let-form (binds body declares)
@@ -505,8 +543,8 @@
 		       " = " ,(funcall expand (cdr bind) expand)
 		       ";" #\Newline))
 	      binds)
-    (:sep ,(format nil ";~%")
-	  ',(mapcar (rcurry expand expand) body))))
+    ,(seperated-by (format nil ";~%")
+      (mapcar (rcurry expand expand) body))))
 
 (defjavascript-expander let*-form (binds body declares)
   `(:and
@@ -515,8 +553,8 @@
 		       " = " ,(funcall expand (cdr bind) expand)
 		       ";" #\Newline))
 	      binds)
-    (:sep ,(format nil ";~%")
-	  ',(mapcar (rcurry expand expand) body))))
+    ,(seperated-by (format nil ";~%")
+       (mapcar (rcurry expand expand) body))))
 
 ;;;; LOAD-TIME-VALUE
 (defjavascript-expander arnesi::load-time-value-form (value read-only-p)
@@ -550,7 +588,9 @@
 ;;;; TODO: FIX setq walker to walk var (easy)
 ;;;; TODO: FIX call/cc to unwalk var before going in. -evrim.
 (defjavascript-expander setq-form (var value)
-  `(:and ,(funcall expand (walk-form-no-expand var form) expand) " = " ,(funcall expand value expand)))
+  `(:and ,(let ((+js-free-variables+ nil))
+	    (funcall expand (walk-js-form var form) expand))
+	 " = " ,(funcall expand value expand)))
 
 ;;;; SYMBOL-MACROLET
 ;; We ignore the binds, because the expansion has already taken
@@ -591,11 +631,12 @@
 ;;;; PROGN
 (defjavascript-expander progn-form (body)
   (if (typep (parent form) 'application-form)
-      `(:and "(" (:sep ", " ',(mapcar (rcurry expand expand) body)) ")")
+      `(:and "(" ,(seperated-by ", " (mapcar (rcurry expand expand) body)) ")")
       `(:and
-	(:sep ,(format nil ";~%")
-	      ',(mapcar (rcurry expand expand) body))
-	";")))
+	,(seperated-by (format nil ";~%")
+	  (mapcar (rcurry expand expand) body))
+	,(if (not (typep (parent form) 'implicit-progn-mixin))
+	     ";"))))
 
 (defjavascript-expander throw-form (tag value)
   `(:and "throw " ,(funcall expand tag expand)))
@@ -617,37 +658,36 @@
 	   (:indent) #\Newline
 	   "var " ,(symbol-to-js var) " = " ,j "[" ,i "];"
 	   #\Newline
-	   (:sep ,(format nil ";~%")
-		 ',(mapcar (rcurry expand expand) body))
-	   ";" (:deindent) #\Newline "}"
-	   )))
+	   ,(seperated-by (format nil ";~%")
+	     (mapcar (rcurry expand expand) body))
+	   ";" (:deindent) #\Newline "}")))
 
 (defjavascript-expander do-form (varlist endlist declares body)
   `(:and "for (var "
-	 (:sep ", "
-	       ',(mapcar (lambda (var)
-			   `(:and ,(symbol-to-js (car var))
-				  "="
-				  ,(funcall expand (cadr var) expand)))
-			 varlist))
+	 ,(seperated-by ", "
+	    (mapcar (lambda (var)
+		      `(:and ,(symbol-to-js (car var))
+			     "="
+			     ,(funcall expand (cadr var) expand)))
+		    varlist))
 	 "; "
 	 "!(" ,(funcall expand (car endlist) expand) "); "
-	 (:sep ", "
-	       ',(mapcar (lambda (var)
-			   `(:and ,(symbol-to-js (car var)) "="
-				  ,(funcall expand (caddr var) expand)))
-			 varlist))
+	 ,(seperated-by ", "
+	    (mapcar (lambda (var)
+		      `(:and ,(symbol-to-js (car var)) "="
+			     ,(funcall expand (caddr var) expand)))
+		    varlist))
 	 ") "
 	 ,(call-next-method)))
 
 (defjavascript-expander defun-form (name arguments declares body)
   `(:and "function " ,(symbol-to-js name) "("
-	 (:sep ", "
-	       ',(mapcar (rcurry expand expand) arguments))
+	 ,(seperated-by ", "
+	    (mapcar (rcurry expand expand) arguments))
 	 ") {"
 	 (:indent) #\Newline
-	 (:sep ,(format nil ";~%")
-	       ',(mapcar (rcurry expand expand) body))
+	 ,(seperated-by (format nil ";~%")
+	    (mapcar (rcurry expand expand) body))
 	 ";" (:deindent) #\Newline "}"))
 
 ;;-----------------------------------------------------------------------------
@@ -835,23 +875,23 @@ this is parenscript/ucw+ backward compatiblity macro."
 ;; (defun return-trans (&rest body)
 ;;   (unwalk-form
 ;;    (transform-javascript
-;;     (walk-form-no-expand `(progn ,@body))
+;;     (walk-js-form `(progn ,@body))
 ;;     #'transform-javascript)))
 
-(defmacro zee ()
-  `(let ((s (make-indented-stream "" 0)))
-     ,(expand-render 
-       (walk-grammar
-	(expand-javascript
-	 (walk-form-no-expand
-	  `(block nil
-	     (list 1 2 3)
-	     (block nil2
-	       (list 3 2 1)
-	       (list 5 6 7))
-	     (block nil3
-	       (list 4 5 6)
-	       (list 5 6 7))))
-	 #'expand-javascript))
-       #'expand-render 's)
-     (return-stream s)))
+;; (defmacro zee ()
+;;   `(let ((s (make-indented-stream "" 0)))
+;;      ,(expand-render 
+;;        (walk-grammar
+;; 	(expand-javascript
+;; 	 (walk-js-form
+;; 	  `(block nil
+;; 	     (list 1 2 3)
+;; 	     (block nil2
+;; 	       (list 3 2 1)
+;; 	       (list 5 6 7))
+;; 	     (block nil3
+;; 	       (list 4 5 6)
+;; 	       (list 5 6 7))))
+;; 	 #'expand-javascript))
+;;        #'expand-render 's)
+;;      (return-stream s)))

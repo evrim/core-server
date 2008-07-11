@@ -26,45 +26,58 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defvar +indent-javascript+ t))
 
-(defmacro js (body)
+(defmacro js (&body body)
   "Converts unevaluated body to javascript and returns it as a string"
-  `(let ((s ,(if +indent-javascript+
-		 `(make-indented-stream "" 2)
-		 `(make-compressed-stream ""))))
-     (funcall (lambda ()
-		(block rule-block		  
-		  ,(expand-render
-		    (walk-grammar
-		     (expand-javascript (walk-form-no-expand body)
-					#'expand-javascript))
-		    #'expand-render 's))))
-     (return-stream s)))
+  (let ((render (expand-render
+		 (optimize-render-1
+		  (walk-grammar
+		   (expand-javascript		    
+		    (walk-js-form `(progn ,@body))
+		    #'expand-javascript)))
+		 #'expand-render 's)))
+    `(let ((s ,(if +indent-javascript+
+		   `(make-indented-stream "" 2)
+		   `(make-compressed-stream ""))))
+       (funcall (lambda ()
+		  (block rule-block		  
+		    ,render)))
+       (return-stream s))))
 
-(defun js* (&rest body)
-  "Converts evaluated body to javascript and returns it as a string"
-  (eval `(js ,@body)))
+(defmacro js* (&body body)
+  `(eval `(js ,,@body)))
+
+(defmacro with-js (vars stream &body body)  
+  (let ((+js-free-variables+ vars))
+    `(block rule-block
+       ,(expand-render
+	 (optimize-render-1
+	  (walk-grammar
+	   (expand-javascript
+	    (walk-js-form `(progn ,@body))
+	    #'expand-javascript)))
+	 #'expand-render stream)
+       ,stream)))
+
+(defmacro defrender/js (name args &body body)
+  (with-unique-names (stream)
+    `(defun ,name (,stream ,@args)
+       (with-js ,(extract-argument-names args) ,stream
+	 ,@body))))
 
 (defmacro defun/javascript (name params &body body)
   "Defun a function in both worlds (lisp/javascript)"
-  `(prog1
-     (defun ,name ,params ,@body)
-     (defun ,(intern (string-upcase (format nil "~A!" name))) (s)
-       (block rule-block		  
-	 ,(expand-render (walk-grammar
-			  (expand-javascript
-			   (make-instance 'setq-form
-					  :var name
-					  :value (fix-javascript-returns
-						  (walk-form-no-expand
-						   `(lambda ,params
-						      ,@body))))
-			   #'expand-javascript))
-			 #'expand-render 's)))))
+  `(prog1 (defun ,name ,params ,@body)
+     (defrender/js ,(intern (string-upcase (format nil "~A/JS" name))) ()
+       (setq ,name (lambda ,params
+		     ,@body)))))
 
-;; (defun/javascript fun1 (a)
-;;   (let ((a (lambda (a b c)
-;; 	     (list a b c))))
-;;     (return a)))
+(defrender/js moo (&optional base-url (debug nil) (back 'false))
+  (list base-url debug back))
+
+(defun/javascript fun1 (a)
+  (let ((b (lambda (b c)
+	     (list b c))))
+    (return (b))))
 
 ;; (defmacro defun/parenscript (name params &body body)
 ;;   `(prog1
