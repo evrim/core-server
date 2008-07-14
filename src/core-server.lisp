@@ -488,6 +488,7 @@
    #:+month-names+
    #:take
    #:drop
+   #:flatten
    
    ;; [Serializable Application]
    #:serializable-web-application
