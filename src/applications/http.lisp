@@ -139,11 +139,11 @@ when requested"
     `(let ((,result (multiple-value-list
 		     (let/cc k
 		       (setf (continuation +context+) k)
-		       ;;       (format t "send/suspend called~%")
+		       ;;     (format t "send/suspend called~%")
 		       ;;     (checkpoint-stream/cc +context+ k)
 		       (with-html-output (http-response.stream (response +context+))
 			 ,@body)
-		       ;;       (format t "send/suspend escaping~%")
+		       ;;     (format t "send/suspend escaping~%")
 		       ;;     (commit-stream/cc +context+ (rets +context+))
 		       (escape (reverse (returns +context+)))
 		       (break "send/suspend failed.")))))
@@ -199,8 +199,6 @@ executing 'body'"
 			    (with-html-output (http-response.stream (response +context+))
 			      ,@body)))))
 	     (prog1 ,name
-;;; 	       (unless (gethash ,name (continuations (session +context+)))
-;;; 		 (setf (gethash ,name (continuations (session +context+))) kont))
 	       (setf (gethash ,name (continuations (session +context+))) kont)
 	       (pushnew (cons ,name (lambda ,(mapcar #'car parameters)
 				      (funcall kont
