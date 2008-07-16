@@ -136,6 +136,38 @@
 ;;
 (defhtml-tag a :core :i18n :event accesskey charset coords href hreflang
 	     name onblur onfocus rel rev shape tabindex target type)
+
+(defmethod dom-element! ((stream core-stream) (element <:a)
+			 &optional (indentation 0))
+  (prog1 stream
+    (if +context+
+	(let ((uri (uri? (make-core-stream (get-attribute element "href")))))
+	  (if (and uri (slot-boundp +context+ 'session))
+	      (call-next-method
+	       stream	     
+	       (set-attribute element "href" 
+			      (with-core-stream (s "")
+				(uri! s (prog1 uri
+					  (setf (uri.queries uri)
+						(cons
+						 (cons
+						  (symbol-to-js +session-query-name+)
+						  (id (session +context+)))		  
+						 (uri.queries uri))
+						(uri.paths uri)
+						(cons
+						 (list
+						  (symbol-to-js
+						   (web-application.fqdn
+						    (application +context+))))
+						 (uri.paths uri)))
+					  ;; (describe uri)
+					  ))
+				(return-stream s)))
+	       indentation)
+	      (call-next-method)))
+	(call-next-method))))
+
 (defhtml-tag abbr :core :event :i18n)
 (defhtml-tag acronym :core :event :i18n)
 (defhtml-tag address :core :event :i18n)
