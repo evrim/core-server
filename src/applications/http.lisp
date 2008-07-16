@@ -234,7 +234,9 @@ executing 'body'"
 ;; 		 (remhash (car ret) (continuations (session +context+))))
 ;; 	     (returns +context+))
      ;; (rewind-stream/cc +context+ (list ,@values))
-     (kall (continuation +context+) +context+ ,@values)))
+     (if (null (continuation +context+))
+	 (error "Surrounding send/suspend not found, can't answer")
+	 (kall (continuation +context+) +context+ ,@values))))
 
 (defun/cc javascript/suspend (lambda)
   "Javascript version of send/suspend, sets content-type to text/javascript"
