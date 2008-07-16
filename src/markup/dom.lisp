@@ -55,6 +55,13 @@
   "Returns successors of dom 'element'"
   (if (typep element 'dom-element) (dom.children element)))
 
+(defmethod get-attribute ((element dom-element) name)
+  (cdr (assoc name (dom.attributes element) :test #'string=)))
+
+(defmethod set-attribute ((element dom-element) name value)
+  (prog1 element
+    (setf (cdr (assoc name (dom.attributes element) :test #'string=)) value)))
+
 ;;-----------------------------------------------------------------------------
 ;; DOM Parser
 ;;-----------------------------------------------------------------------------
