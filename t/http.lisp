@@ -175,3 +175,93 @@
 	      (<:input :type "text" :name "f1" :value "f1-value")
 	      (<:input :type "file" :name "f2")
 	      (<:input :type "submit" :value "Gonder Bakalim"))))))
+
+
+(defurl *app* "gee.core" ()
+  (labels ((abc ()
+	     (send/suspend
+	       (<:div "eben")
+	       (<:a :href (action/url ()
+			    (abc))
+		    "Continue"))))
+    (abc)))
+
+(defurl *app* "omed.core" ()
+  (labels ((gee (a)
+	     (cond
+	       ((eq a 1) (gee 2))
+	       (t (<:p (format nil "~D" (+ a (send/suspend
+					       (<:a :href (function/url ()
+							    (answer (+ a 1)))
+						    "Return"))))))))) 
+    (gee 1)))
+
+(defurl *app* "demo.core" ()
+  (labels ((gee (a b)
+	     (describe (list a b))
+	     (cond
+	       ((> b a)
+		(gee a 0))
+	       (t
+		(gee a
+		     (send/suspend
+		       (<:div "START"
+			      (format nil "~A" a)
+			      (format nil " ~A~%" b))
+		       (<:a :href (action/url ()
+				    (gee 1 2))
+			    "Link1")
+		       (<:a :href (action/url ((var "gee"))
+				    (answer (parse-integer "5")))
+			    "Link2")))))))
+    (gee 10 0)))
+
+(defurl *app* "demo.core" ()
+  (labels ((gee (a b)
+	     (cond
+	       ((> a b)
+		(gee 0 b))
+	       (t
+		(gee (send/suspend
+		       (<:div "START"
+			      (format nil "~A" a)
+			      (format nil " ~A~%" b))
+		       (<:a :href (action/url ()
+				    (gee 1 2))
+			    "Link1")
+		       (<:a :href (action/url ()
+				    (answer 3))
+			    "Link2"))
+		     b)))))
+    (gee 0 0)))
+
+(defurl *app* "demo.core" ()
+  (labels ((gee (a b)
+	     (let ((result (send/suspend	       
+			     (<:div "START"
+				    (format nil "~A" a)
+				    (format nil " ~A~%" b))
+			     (<:a :href (action/url ()
+					  (gee 1 2))
+				  "Link1")
+			     (<:a :href (action/url ()
+					  (answer (cons 3 4)))
+				  "Link2"))))
+	       (gee (car result) (cdr result)))))
+    (gee nil nil)))
+
+(defurl *app* "crud.core" ()
+  (let ((result
+	 (send/suspend
+	   (<:h1 "View of First User")
+	   (user/view (car *users*))
+	   (<:h1 "Edit of Second User")
+	   (user/edit (cadr *users*)))))
+    (send/suspend
+      (<:h1 "User is:" (format nil "~A" result))
+      (let ((result (send/suspend
+		      (user/edit (car *users*)
+				 (action/url ((name "NAME") (pass "PASS"))
+				   (answer 'eben name pass))))))
+	(send/suspend
+	  (<:h1 "test!" (format nil "~A" result)))))))
