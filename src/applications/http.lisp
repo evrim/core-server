@@ -147,62 +147,86 @@ when requested"
 		       ;;     (commit-stream/cc +context+ (rets +context+))
 		       (escape (reverse (returns +context+)))
 		       (break "send/suspend failed.")))))
-       (setf +context+ (car ,result))
+       (setf (request +context+) (request (car ,result))
+	     (response +context+) (response (car ,result)))
        (apply #'values (cdr ,result)))))
 
 (defmacro function/hash (parameters &body body)
   "Registers a continuation at macro-expansion time and binds
 'parameters' while executing 'body'"
-  (with-unique-names (context kont name)
-    `(let ((,name (format nil "fun-~A" (random-string 3)))
-	   (,context (copy-context +context+)))
-       (let ((,kont (lambda (http-request http-response &optional ,@(mapcar #'car parameters))
-		      (setf +context+ ,context)
-		      (setf (request +context+) http-request (response +context+) http-response)
-		      (with-query ,(mapcar #'(lambda (param) (reverse (cons (car param) (reverse param))))
-					   parameters) (request +context+)
-			(with-html-output (http-response.stream (response +context+))
-			  ,@body)))))
-	 (prog1 ,name	   
-	   (setf (gethash ,name (continuations (session ,context))) ,kont)
-	   (pushnew (cons ,name (lambda ,(mapcar #'car parameters)
-				  (apply ,kont
-					 (make-instance 'http-request :uri (make-instance 'uri))
-					 (make-response *core-output*) (list ,@(mapcar #'car parameters)))))
-		    (returns +context+)))))))
+  (with-unique-names (name context)
+    `(if +context+
+	 (let* ((,name (format nil "fun-~A" (random-string 3)))
+		(,context +context+)
+		(kont (lambda (req rep &optional ,@(mapcar #'car parameters))
+			(setf +context+ (copy-context ,context)
+			      (request +context+) req
+			      (response +context+) rep)
+			(with-query ,(mapcar (lambda (param)
+					       (reverse
+						(cons (car param)
+						      (reverse param))))
+					     parameters) (request +context+)
+			  (with-html-output (http-response.stream (response +context+))
+			    ,@body)))))	   
+	   (prog1 ,name	   
+	     (setf (gethash ,name (continuations (session +context+))) kont)
+	     (pushnew (cons ,name (lambda ,(mapcar #'car parameters)
+				    (funcall kont
+					     (make-instance 'http-request
+							    :uri (make-instance 'uri))
+					     (make-response *core-output*)
+					     ,@(mapcar #'car parameters))))
+		      (returns +context+))))
+	 "invalid-function-hash")))
 
 (defmacro action/hash (parameters &body body)
   "Registers a continuation at run time and binds 'parameters' while
 executing 'body'"
-  (with-unique-names (context kont)
+  (with-unique-names (context)
     (let ((name (format nil "act-~A" (random-string 8))))
-      `(let ((,context (copy-context +context+)))
-	 (let ((,kont (lambda (http-request http-response &optional ,@(mapcar #'car parameters))
-			(setf +context+ ,context)
-			(setf (request +context+) http-request (response +context+) http-response)
-			(with-query ,(mapcar #'(lambda (param) (reverse (cons (car param) (reverse param))))
-					     parameters) (request +context+)
-			  (with-html-output (http-response.stream (response +context+))
-			    ,@body)))))
-	   (prog1 ,name
-	     (unless (gethash ,name (continuations (session ,context)))
-	       (setf (gethash ,name (continuations (session ,context))) ,kont))
-	     (pushnew (cons ,name (lambda ,(mapcar #'car parameters)
-				    (apply ,kont
-					   (make-instance 'http-request :uri (make-instance 'uri))
-					   (make-response *core-output*) (list ,@(mapcar #'car parameters)))))
-		      (returns +context+))))))))
+      `(if +context+	   
+	   (let* ((,context +context+)
+		  (kont (lambda (req rep &optional ,@(mapcar #'car parameters))
+			  (setf +context+ (copy-context ,context)
+				(request +context+) req
+				(response +context+) rep)
+			  (with-query ,(mapcar (lambda (param)
+						 (reverse
+						  (cons (car param)
+							(reverse param))))
+					       parameters) (request +context+)
+			    (with-html-output (http-response.stream (response +context+))
+			      ,@body)))))
+	     (prog1 ,name
+;;; 	       (unless (gethash ,name (continuations (session +context+)))
+;;; 		 (setf (gethash ,name (continuations (session +context+))) kont))
+	       (setf (gethash ,name (continuations (session +context+))) kont)
+	       (pushnew (cons ,name (lambda ,(mapcar #'car parameters)
+				      (funcall kont
+					       (make-instance 'http-request
+							      :uri (make-instance 'uri))
+					       (make-response *core-output*)
+					       ,@(mapcar #'car parameters))))
+			(returns +context+))))
+	   "invalid-action-hash"))))
 
 (defmacro function/url (parameters &body body)
   "Returns URI representation of function/hash"
-  `(format nil "?~A=~A&~A=~A"
-	   +session-query-name+ (id (session +context+))
+  `(format nil "?~A:~A$~A:~A"
+	   +session-query-name+ (if +context+
+				    (id (session +context+))
+				    +invalid-session+)
 	   +continuation-query-name+ (function/hash ,parameters ,@body)))
+
+(defvar +invalid-session+ "invalid-session-id")
 
 (defmacro action/url (parameters &body body)
   "Returns URI representation of action/hash"
-  `(format nil "?~A=~A&~A=~A"
-	   +session-query-name+ (id (session +context+))
+  `(format nil "?~A:~A$~A:~A"
+	   +session-query-name+ (if +context+
+				    (id (session +context+))
+				    +invalid-session+)
 	   +continuation-query-name+ (action/hash ,parameters ,@body)))
 
 (defmacro answer (&rest values)
@@ -286,7 +310,7 @@ executing 'body'"
 (defun kontinue (&rest args)
   "Continues a contination saves by function/hash or action/hash"
   (if (functionp (car args))
-      (apply (car args)
+      (apply (car args)	     
 	     (cons (make-instance 'http-request :uri (make-instance 'uri))
 		   (cons (make-response *core-output*) (rest args))))
       (destructuring-bind (number result &rest parameters) args
