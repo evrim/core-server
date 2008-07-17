@@ -170,7 +170,7 @@ when requested"
 			  (with-html-output (http-response.stream (context.response +context+))
 			    ,@body)))))	   
 	   (prog1 ,name	   
-	     (setf (gethash ,name (session.continuations (session +context+))) kont)
+	     (setf (gethash ,name (session.continuations (context.session +context+))) kont)
 	     (pushnew (cons ,name (lambda ,(mapcar #'car parameters)
 				    (funcall kont
 					     (make-instance 'http-request
@@ -199,7 +199,7 @@ executing 'body'"
 			    (with-html-output (http-response.stream (context.response +context+))
 			      ,@body)))))
 	     (prog1 ,name
-	       (setf (gethash ,name (session.continuations (session +context+))) kont)
+	       (setf (gethash ,name (session.continuations (context.session +context+))) kont)
 	       (pushnew (cons ,name (lambda ,(mapcar #'car parameters)
 				      (funcall kont
 					       (make-instance 'http-request
@@ -213,7 +213,7 @@ executing 'body'"
   "Returns URI representation of function/hash"
   `(format nil "?~A:~A$~A:~A"
 	   +session-query-name+ (if +context+
-				    (id (context.session +context+))
+				    (session.id (context.session +context+))
 				    +invalid-session+)
 	   +continuation-query-name+ (function/hash ,parameters ,@body)))
 
@@ -223,7 +223,7 @@ executing 'body'"
   "Returns URI representation of action/hash"
   `(format nil "?~A:~A$~A:~A"
 	   +session-query-name+ (if +context+
-				    (id (context.session +context+))
+				    (session.id (context.session +context+))
 				    +invalid-session+)
 	   +continuation-query-name+ (action/hash ,parameters ,@body)))
 
