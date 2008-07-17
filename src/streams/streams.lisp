@@ -138,7 +138,7 @@
     (prog1 self (write-stream self (char-code a))))
 
   (defmethod write-stream ((self core-standard-output) (a null))
-    nil)
+    self)
   
   (defvar *core-output* (make-instance 'core-standard-output)))
 
