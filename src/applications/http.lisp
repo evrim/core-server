@@ -147,8 +147,8 @@ when requested"
 		       ;;     (commit-stream/cc +context+ (rets +context+))
 		       (escape (reverse (context.returns +context+)))
 		       (break "send/suspend failed.")))))
-       (setf (request +context+) (request (car ,result))
-	     (response +context+) (response (car ,result)))
+       (setf (context.request +context+) (context.request (car ,result))
+	     (context.response +context+) (context.response (car ,result)))
        (apply #'values (cdr ,result)))))
 
 (defmacro function/hash (parameters &body body)
