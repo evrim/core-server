@@ -105,7 +105,7 @@
 			      defmethod/local
 			      defmethod/remote))
 
-(setf *core-server-functions* '(defun/cc))
+(setf *core-server-functions* '(defun/cc <:div <:form <:a))
 
 (defun cl-indent (sym indent) ;; by Pierpaolo Bernardi
   (put sym 'common-lisp-indent-function
