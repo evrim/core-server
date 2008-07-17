@@ -142,7 +142,7 @@ model."
 	(key nil))
     (mapc #'(lambda (item)
 	      (cond
-		((keywordp item)
+		((and (null key) (keywordp item))
 		 (setf key item))
 		(t
 		 (when key

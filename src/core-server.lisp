@@ -112,6 +112,7 @@
    #:dom-successor
    #:dom-element!
    #:dom-element?
+   #:dom2string
    ;; [Html markup]
    #:html-element
    #:empty-html-element
@@ -644,7 +645,7 @@
 (defpackage :tr.gen.core.server.html
   (:nicknames :< :core-server.html)
   (:use :core-server)
-  (:export #:ai #:ah #:js #:js+))
+  (:export #:ai #:ah #:js #:js+ #:css))
 
 (defpackage :tr.gen.core.server.rss
   (:nicknames :<rss :core-server.rss)
