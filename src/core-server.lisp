@@ -530,13 +530,23 @@
    #:make-dispatcher
    #:find-url
    #:http-session
+   #:session
+   #:session.id
+   #:session.timestamp
+   #:session.continuations
+   #:session.data
    #:make-new-session
    #:http-context
+   #:context.request
+   #:context.response
+   #:context.session
+   #:context.application
+   #:context.continuation
+   #:context.returns
    #:+context+
    #:+html-output+
    #:make-new-context
    #:copy-context
-   #:session
    #:request
    #:response
    #:send/suspend
