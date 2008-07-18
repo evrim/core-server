@@ -22,7 +22,7 @@
    (dojo-args :initarg :dojo-args :initform '())))
 
 (defmethod/local render ((self dojo-widget))
-  (with-html-output (http-response.stream (response +context+))
+  (with-html-output (http-response.stream (context.response +context+))
     (<:p "This is a dojo widget.")))
 
 (defmethod/cc send/ctor ((self dojo-widget) remote-slots local-methods remote-methods)

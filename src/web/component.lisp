@@ -39,7 +39,7 @@
   (:method ((self component)) nil))
 
 (defmethod application ((self component))
-  (or (s-v 'application) (application +context+)))
+  (or (s-v 'application) (context.application +context+)))
 
 (eval-when (:execute :compile-toplevel :load-toplevel)
   (defun proxy-method-name (name)
@@ -65,7 +65,7 @@
 		(let ,(mapcar (lambda (arg) `(,arg (json-deserialize ,arg))) args)
 		  (json/suspend
 		   (lambda ()
-		     (json! (http-response.stream (response +context+))
+		     (json! (http-response.stream (context.response +context+))
 			    (apply (symbol-function ',name) (list ,self ,@args)))))))
 	     ,',(if args		    
 		    (cons 'create (reduce #'append
@@ -152,7 +152,7 @@
 	  :initial-value nil))
 
 (defmethod/cc send/component ((self component))
-  (with-html-output (http-response.stream (response +context+))
+  (with-html-output (http-response.stream (context.response +context+))
     (send/ctor self (remote-slots self) (local-methods self) (remote-methods self))))
 
 (defmethod/cc send/ctor ((self component) remote-slots local-methods remote-methods)    
@@ -336,7 +336,7 @@
 	  (load-javascript (+ ,+dojo-path+ "_base.js")))
 	(setf base-url ,(if (and +context+ base-url)
 			    (format nil "/~A/~A"
-				    (web-application.fqdn (application +context+))
+				    (web-application.fqdn (context.application +context+))
 				    base-url)))
 	(dojo.require "dojo.back")
 	(dojo.back.init)

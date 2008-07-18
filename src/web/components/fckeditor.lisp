@@ -30,7 +30,7 @@
 
 ;; TODO: fix this shit!
 (defun/cc handle-fck-browse (path publish-path)
-  (let ((stream (http-response.stream (response +context+))))
+  (let ((stream (http-response.stream (context.response +context+))))
     (labels ((send-error (number &optional message)
 	       (string! stream (format nil "<Error number=\"~A\"" number))
 	       (if message (format nil "text=\"~A\"" message))
@@ -109,9 +109,9 @@
 	       ;; 	     (flush-request-response *context*)
 	       (format t "creating file:~A in folder:~A" file folder)
 	       (return-from handle-fck-browse nil)))
-      (with-query ((command "Command") (type "Type")) (request +context+)      
+      (with-query ((command "Command") (type "Type")) (context.request +context+)      
 	(if (equal command "FileUpload")
-	    (with-query ((folder "CurrentFolder") (file "NewFile")) (request +context+)
+	    (with-query ((folder "CurrentFolder") (file "NewFile")) (context.request +context+)
 	      (create-file (folder-pathname folder) file)))
       
 	(xml/suspend
@@ -121,7 +121,7 @@
 
 	   ;;      (describe (context.request *context*))
 	     
-	   (with-query ((folder "CurrentFolder")) (request +context+)
+	   (with-query ((folder "CurrentFolder")) (context.request +context+)
 	     (string! stream (format nil "<CurrentFolder path=\"~A\" url=\"\"/>~%" folder))
 	     (cond
 	       ((equal command "GetFolders")	   
@@ -130,7 +130,7 @@
 		(folders (folder-pathname folder))
 		(files (folder-pathname folder) type))
 	       ((equal command "CreateFolder")
-		(with-query ((new-folder "NewFolderName")) (request +context+)
+		(with-query ((new-folder "NewFolderName")) (context.request +context+)
 		  (create-folder (folder-pathname folder) new-folder)))
 	       (t (send-error 1 "Error.")))
 	     (string! stream "</Connector>"))))))))
