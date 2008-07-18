@@ -9,17 +9,17 @@
 
 ;; a class for messages and a constructor
 (defclass+ guest-message ()
-  ((sender :host local :accessor sender)
-   (subject :host local :accessor subject)
-   (text :host local :accessor text)
-   (timestamp :host local :accessor timestamp))
+  ((sender :host local)
+   (subject :host local)
+   (text :host local)
+   (timestamp :host local))
   (:ctor (sender subject text &optional (timestamp (get-universal-time)))))
 
 ;; Here we instantiate from local-unit, so that we can write methods
 ;; that will be automatically synchronized
 (defclass+ guestbook (local-unit)
-  ((owner :host local :accessor owner)
-   (messages :host local :accessor messages :initform nil))
+  ((owner :host local)
+   (messages :host local :initform nil))
   (:ctor (owner &optional messages)))
 
 ;; owner email
@@ -30,7 +30,7 @@
 
 ;; here we implement add-message method for the guestbook unit.
 (defmethod/unit add-message :sync ((self guestbook) message)
-  (push message (messages self))
+  (push message (guestbook.messages self))
   message)
 
 ;; http://localhost:8080/guestbook/*
@@ -70,7 +70,7 @@
 	       "Add message")
 	  (<:div :id "messages"
 		 (mapcar #'(lambda (item) (render-message item))
-			 (messages *guestbook*))))))
+			 (guestbook.messages *guestbook*))))))
 
 ;; A form for new messages
 (defun/cc guestbook/add ()
