@@ -774,7 +774,7 @@
 this is parenscript/ucw+ backward compatiblity macro."
   (with-unique-names (output)
     (eval
-     `(let ((,output (if +context+ (http-response.stream (response +context+)) *core-output*)))
+     `(let ((,output (if +context+ (http-response.stream (context.response +context+)) *core-output*)))
 	(funcall (lambda ()
 		   (block rule-block
 		     ,(expand-render

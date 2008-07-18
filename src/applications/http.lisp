@@ -73,7 +73,7 @@
 		 (lambda (context)		   
 		   (with-context context
 		     (with-html-output (http-response.stream (context.response +context+))
-		       (with-query ,queries (contest.request +context+)
+		       (with-query ,queries (context.request +context+)
 			 ,@body))))))
 
 (defmethod register-url ((self http-application) regexp-url lambda)

@@ -152,14 +152,14 @@
 						(cons
 						 (cons
 						  (symbol-to-js +session-query-name+)
-						  (id (session +context+)))		  
+						  (session.id (context.session +context+)))		  
 						 (uri.queries uri))
 						(uri.paths uri)
 						(cons
 						 (list
 						  (symbol-to-js
 						   (web-application.fqdn
-						    (application +context+))))
+						    (context.application +context+))))
 						 (uri.paths uri)))
 					  ;; (describe uri)
 					  ))
@@ -362,7 +362,7 @@
 
 (defmacro <:js (&body body)
   (with-unique-names (output)
-    `(let ((,output (if +context+ (http-response.stream (response +context+)) *core-output*)))
+    `(let ((,output (if +context+ (http-response.stream (context.response +context+)) *core-output*)))
        (prog1 (with-html-output ,output
 		(js:js* ,@body))
 	 (char! ,output #\Newline)))))
