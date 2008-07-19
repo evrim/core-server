@@ -58,7 +58,9 @@
   ((urls :accessor application.urls :initarg :urls :initform '()
 	 :documentation "A list that contains URLs that this application handles")
    (sessions :accessor application.sessions :initform (make-hash-table :test #'equal)
-	     :documentation "A hash-table that holds sessions"))
+	     :documentation "A hash-table that holds sessions")
+   (debug :accessor application.debug :initform t
+	  :documentation "Debugging flag for this application"))
   (:documentation "HTTP Application Class"))
 
 (defmethod print-object ((self http-application) stream)
@@ -156,7 +158,9 @@ that uses GIT (http://git.or.cz) as SCM"))
    (mutex :accessor server.mutex :initarg :mutex :initform (sb-thread:make-mutex :name "Server mutex")
 	  :documentation "Lock used to synchronize some operations on server")
    (auto-start :accessor server.auto-start :initarg :auto-start :initform nil
-	       :documentation "If t, the server would be started when created"))
+	       :documentation "If t, the server would be started when created")
+   (debug  :accessor server.debug :initarg :debug :initform t
+	  :documentation "Debugging flag of generic server"))
   (:documentation "Server Base Class"))
 
 (defmethod print-object ((self server) stream)
@@ -183,8 +187,6 @@ that uses GIT (http://git.or.cz) as SCM"))
 		    :documentation "External format for stream")
    (peer-class :initarg :peer-class :initform 'stream-peer
 	       :documentation "Class to instantiate as peer thread.")
-   (debug :initarg :debug :initform t
-	  :documentation "Debugging flag of socket server")
    ;;   (request-timeout-length :initarg :request-timeout-length :initform 90)
    (%socket :initform nil) (%peers :initform nil) (%socket-thread :initform nil)
    (%debug-unit :initform nil))
