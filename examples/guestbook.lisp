@@ -2,8 +2,7 @@
 ;; http://localhost:8080/guestbook/guestbook
 
 (defpackage :guestbook
-  (:use :cl :core-server :arnesi :js)
-  (:shadowing-import-from #:arnesi #:new))
+  (:use :cl :core-server :arnesi :js))
 
 (in-package :guestbook)
 

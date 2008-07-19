@@ -1,3 +1,6 @@
+;; Pinger example
+;; Demonstrating core-server defcommand and parser
+
 (defpackage :pinger
   (:use #:cl #:core-server #:arnesi))
 

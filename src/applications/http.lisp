@@ -151,12 +151,12 @@ when requested"
 	     (context.response +context+) (context.response (car ,result)))
        (apply #'values (cdr ,result)))))
 
-(defmacro function/hash (parameters &body body)
+(defmacro action/hash (parameters &body body)
   "Registers a continuation at macro-expansion time and binds
 'parameters' while executing 'body'"
   (with-unique-names (name context)
     `(if +context+
-	 (let* ((,name (format nil "fun-~A" (random-string 3)))
+	 (let* ((,name (format nil "act-~A" (random-string 8)))
 		(,context +context+)
 		(kont (lambda (req rep &optional ,@(mapcar #'car parameters))
 			(setf +context+ (copy-context ,context)
@@ -171,20 +171,21 @@ when requested"
 			    ,@body)))))	   
 	   (prog1 ,name	   
 	     (setf (gethash ,name (session.continuations (context.session +context+))) kont)
-	     (pushnew (cons ,name (lambda ,(mapcar #'car parameters)
-				    (funcall kont
-					     (make-instance 'http-request
-							    :uri (make-instance 'uri))
-					     (make-response *core-output*)
-					     ,@(mapcar #'car parameters))))
-		      (context.returns +context+))))
+	     (setf (context.returns +context+)
+		     (cons (cons ,name (lambda ,(mapcar #'car parameters)
+					 (funcall kont
+						  (make-instance 'http-request
+								 :uri (make-instance 'uri))
+						  (make-response *core-output*)
+						  ,@(mapcar #'car parameters))))
+			   (remove-if #'(lambda (x) (equal x ,name)) (context.returns +context+) :key #'car)))))
 	 "invalid-function-hash")))
 
-(defmacro action/hash (parameters &body body)
+(defmacro function/hash (parameters &body body)
   "Registers a continuation at run time and binds 'parameters' while
 executing 'body'"
   (with-unique-names (context)
-    (let ((name (format nil "act-~A" (random-string 8))))
+    (let ((name (format nil "fun-~A" (random-string 3))))
       `(if +context+	   
 	   (let* ((,context +context+)
 		  (kont (lambda (req rep &optional ,@(mapcar #'car parameters))
@@ -200,13 +201,14 @@ executing 'body'"
 			      ,@body)))))
 	     (prog1 ,name
 	       (setf (gethash ,name (session.continuations (context.session +context+))) kont)
-	       (pushnew (cons ,name (lambda ,(mapcar #'car parameters)
-				      (funcall kont
-					       (make-instance 'http-request
-							      :uri (make-instance 'uri))
-					       (make-response *core-output*)
-					       ,@(mapcar #'car parameters))))
-			(context.returns +context+))))
+	       (setf (context.returns +context+)
+		     (cons (cons ,name (lambda ,(mapcar #'car parameters)
+					 (funcall kont
+						  (make-instance 'http-request
+								 :uri (make-instance 'uri))
+						  (make-response *core-output*)
+						  ,@(mapcar #'car parameters))))
+			   (remove-if #'(lambda (x) (equal x ,name)) (context.returns +context+) :key #'car)))))
 	   "invalid-action-hash"))))
 
 (defmacro function/url (parameters &body body)
@@ -309,17 +311,12 @@ executing 'body'"
 					 nil)))
      ,@body))
 
-(defun kontinue (&rest args)
+(defun kontinue (number result &rest parameters)
   "Continues a contination saves by function/hash or action/hash"
-  (if (functionp (car args))
-      (apply (car args)	     
-	     (cons (make-instance 'http-request :uri (make-instance 'uri))
-		   (cons (make-response *core-output*) (rest args))))
-      (destructuring-bind (number result &rest parameters) args
-	  (let ((fun (cdr (nth number result))))
-	    (if (null fun)
-		(error "Continuation not found, please correct name.")
-		(apply fun parameters))))))
+  (let ((fun (cdr (nth number result))))
+    (if (null fun)
+	(error "Continuation not found, please correct name.")
+	(apply fun parameters))))
 
 (defmacro test-url (url application)
   "Conventional macro to test urls wihout using a browser. One may
