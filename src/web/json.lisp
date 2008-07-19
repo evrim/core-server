@@ -157,10 +157,11 @@
       (number (json-number! stream something))
       (dom-element (string! stream (js* (dom2js something))))
       (symbol
-       (ecase something
+       (case something
 	 ((or true false) (json-boolean! stream something))           
 	 (undefined (string! stream "undefined"))
-	 (null (string! stream "null")))))))
+	 (null (string! stream "null"))
+	 (t (string! stream (symbol-to-js something))))))))
 
 
 (defun json-serialize (object)
