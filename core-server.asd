@@ -62,6 +62,7 @@
                                   :components
                                   ((:file "streams")
                                    (:file "grammar")
+				   (:file "util")
                                    (:file "parser")
                                    (:file "render")))
                          (:module :commands
@@ -78,6 +79,10 @@
                          (:file "protocol")
                          (:file "application")
                          (:file "server")
+			 (:module :lisp
+				  :serial t
+				  :components
+				  ((:file "successors")))
 			 (:module :javascript
 				  :serial t
 				  :components
