@@ -169,7 +169,7 @@
   "Math.floor")
 
 (test-js assignment-1
-  (setf a 1)
+  (setq a 1)
   "a = 1")
 
 ;; complete, no optimization though.
@@ -181,15 +181,15 @@ c = 4;
 x = a + b + c;")
 
 (test-js assignment-3
-  (setf a (1+ a))
+  (setq a (1+ a))
   "a = a + 1")
 
 (test-js assignment-4
-  (setf a (+ a 2 3 4 a))
+  (setq a (+ a 2 3 4 a))
   "a = a + 2 + 3 + 4 + a")
 
 (test-js assignment-5
-  (setf a (- 1 a))
+  (setq a (- 1 a))
   "a = 1 - a")
 
 (test-js single-argument-statements-1
@@ -549,3 +549,108 @@ a + b + c")
   (array (array 2 3)
 	 (array "foobar" "bratzel bub"))
   "[ [ 2, 3 ], [ 'foobar', 'bratzel bub' ] ]")
+
+
+
+;; Speed Results
+
+
+;; Case 1: With Core Server Renderer as Indented
+;; SERVER> (let ((s (make-indented-stream "" 2)))
+;; 	  (time 
+;; 	   (dotimes (i 10000)
+;; 	     (dojo s))))
+;; Evaluation took:
+;;   41.749 seconds of real time
+;;   41.870616 seconds of total run time (41.174573 user, 0.696043 system)
+;;   [ Run times consist of 3.480 seconds GC time, and 38.391 seconds non-GC time. ]
+;;   100.29% CPU
+;;   100,205,266,725 processor cycles
+;;   1 page fault <- ????
+;;   4,602,467,504 bytes consed
+;; NIL
+
+;; Case 2: With Parenscript Indented
+;; SERVER> (time 
+;; 	 (dotimes (i 10000)
+;; 	   (dojo-old)))
+;; Evaluation took:
+;;   56.669 seconds of real time
+;;   56.555535 seconds of total run time (55.123445 user, 1.432090 system)
+;;   [ Run times consist of 6.396 seconds GC time, and 50.160 seconds non-GC time. ]
+;;   99.80% CPU
+;;   136,017,920,106 processor cycles
+;;   9,494,900,816 bytes consed
+;; NIL
+
+;; Case 3: Core Streams Overhead With Parenscript
+;; SERVER> (let ((s (make-core-stream "")))
+;; 	  (time 
+;; 	   (dotimes (i 10000)
+;; 	     (string! s (dojo-old)))))
+;; Evaluation took:
+;;   68.424 seconds of real time
+;;   68.764297 seconds of total run time (67.336208 user, 1.428089 system)
+;;   [ Run times consist of 7.472 seconds GC time, and 61.293 seconds non-GC time. ]
+;;   100.50% CPU
+;;   164,231,866,818 processor cycles
+;;   9,688,441,856 bytes consed
+;; NIL
+
+;; Case 4: Stream Overhead with Cached Response
+;; SERVER> (defvar *g (dojo-old))
+;; *G
+;; SERVER> (let ((s (make-core-stream "")))
+;; 	  (time 
+;; 	   (dotimes (i 10000)
+;; 	     (string! s *g))))
+;; Evaluation took:
+;;   11.012 seconds of real time
+;;   11.016689 seconds of total run time (10.952685 user, 0.064004 system)
+;;   [ Run times consist of 0.072 seconds GC time, and 10.945 seconds non-GC time. ]
+;;   100.05% CPU
+;;   26,430,148,782 processor cycles
+;;   175,730,464 bytes consed
+;; NIL
+
+;; Case 5: Compressed Renderer without indentation
+;; SERVER> (let ((s (make-compressed-stream "")))
+;; 	  (time 
+;; 	   (dotimes (i 10000)
+;; 	     (dojo s))))
+;; Evaluation took:
+;;   36.728 seconds of real time
+;;   36.946308 seconds of total run time (36.330270 user, 0.616038 system)
+;;   [ Run times consist of 2.340 seconds GC time, and 34.607 seconds non-GC time. ]
+;;   100.59% CPU
+;;   88,156,341,468 processor cycles
+;;   4,240,289,552 bytes consed
+;; NIL
+
+;; Case 6: After aggressive optimization (optimize-render-1)
+;; SERVER> (let ((s (make-indented-stream "" 2)))
+;; 	  (time
+;; 	   (dotimes (i 10000)
+;; 	     (dojo s))))
+;; Evaluation took:
+;;   40.387 seconds of real time
+;;   40.546534 seconds of total run time (39.778486 user, 0.768048 system)
+;;   [ Run times consist of 3.896 seconds GC time, and 36.651 seconds non-GC time. ]
+;;   100.40% CPU
+;;   96,936,993,369 processor cycles
+;;   4,381,989,984 bytes consed
+;; NIL
+
+;; Case 7: After aggressive optimization (optimize-render-1)
+;; SERVER> (let ((s (make-compressed-stream "")))
+;; 	  (time
+;; 	   (dotimes (i 10000)
+;; 	     (dojo s))))
+;; Evaluation took:
+;;   36.379 seconds of real time
+;;   36.046253 seconds of total run time (35.602225 user, 0.444028 system)
+;;   [ Run times consist of 3.641 seconds GC time, and 32.406 seconds non-GC time. ]
+;;   99.08% CPU
+;;   87,315,012,855 processor cycles
+;;   4,019,826,784 bytes consed
+;; NIL

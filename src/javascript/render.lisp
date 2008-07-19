@@ -57,6 +57,8 @@
 		       (cons seperator acc)))
 	       (cdr args) :initial-value (list (car args))))))
 
+(defun s-b (seperator args)
+  (seperated-by seperator args))
 ;;-----------------------------------------------------------------------------
 ;; Javascript Syntax operators
 ;; These are used to make the library more parenscript friendly
@@ -127,25 +129,27 @@
   `(:and "new " ,(funcall expander expression expander)))
 
 (defjssyntax create (&rest arguments)
-  `(:and "{" (:indent) #\Newline
-	 ,(seperated-by (format nil ",~%")
-			(reverse
-			 (mapcar (lambda (b a)
-				   `(:and
-				     ,(funcall expander a expander)
-				     ": "
-				     ,(funcall expander b expander)))
-				 (reduce (lambda (acc atom)
-					   (if (oddp (position atom arguments))
-					       (cons atom acc)
-					       acc))
-					 arguments :initial-value nil)
-				 (reduce (lambda (acc atom)
-					   (if (evenp (position atom arguments))
-					       (cons atom acc)
-					       acc))
-					 arguments :initial-value nil))))
-	 (:deindent) #\Newline "}"))
+  (if arguments
+      `(:and "{" (:indent) #\Newline
+	     ,(seperated-by (format nil ",~%")
+			    (reverse
+			     (mapcar (lambda (b a)
+				       `(:and
+					 ,(funcall expander a expander)
+					 ": "
+					 ,(funcall expander b expander)))
+				     (reduce (lambda (acc atom)
+					       (if (oddp (position atom arguments))
+						   (cons atom acc)
+						   acc))
+					     arguments :initial-value nil)
+				     (reduce (lambda (acc atom)
+					       (if (evenp (position atom arguments))
+						   (cons atom acc)
+						   acc))
+					     arguments :initial-value nil))))
+	     (:deindent) #\Newline "}")
+      `(:and "{}")))
 
 (defjssyntax with (object &rest body)
   `(:and "with ("
@@ -264,13 +268,13 @@
   (assert (evenp (length rest)))
   `(progn
      ,@(let (state)
-	 (nreverse
-	  (reduce (lambda (acc atom)
-		    (if (null state)
-			(prog1 acc (setf state atom))
-			(prog1 (cons `(setq ,state ,atom) acc)
-			  (setq state nil))))
-		  rest :initial-value nil)))))
+	    (nreverse
+	     (reduce (lambda (acc atom)
+		       (if (null state)
+			   (prog1 acc (setf state atom))
+			   (prog1 (cons `(setq ,state ,atom) acc)
+			     (setq state nil))))
+		     rest :initial-value nil)))))
 
 (defjsmacro case (object &rest cases)
   `(switch ,object
@@ -313,16 +317,18 @@
   (call-next-method))
 
 (defjavascript-expander constant-form (value)
-  (typecase value
-    (string (format nil "'~A'" value))
-    (null "null")
-    (symbol (symbol-to-js value))
-    (list
-     `(:and "[ " ,(seperated-by ", "
-		   (mapcar (lambda (v)
-			     (symbol-to-js (format nil "~S" v)))
-			   value))  " ]"))
-    (t (format nil "~A" value))))
+  (if (eq value t)
+      "true"
+      (typecase value
+	(string (format nil "'~A'" value))
+	(null "null")
+	(symbol (symbol-to-js value))
+	(list
+	 `(:and "[ " ,(seperated-by ", "
+				    (mapcar (lambda (v)
+					      (symbol-to-js (format nil "~S" v)))
+					    value))  " ]"))
+	(t (format nil "~A" value)))))
 
 (defjavascript-expander variable-reference (name)
   (cond
@@ -483,8 +489,8 @@
 	"null")
       `(:and ,@(nreverse
 		(reduce (lambda (acc atom)
-			  (cons (if (and (typep (car atom) 'free-variable-reference)
-					 (eq 't (name (car atom))))
+			  (cons (if (and (typep (car atom) 'constant-form)
+					 (eq 't (value (car atom))))
 				    `(:and " else {" (:indent) #\Newline
 					   ,(seperated-by (format nil ";~%")
 					      (mapcar (rcurry expand expand) (cdr atom)))
@@ -589,7 +595,7 @@
 ;;;; TODO: FIX call/cc to unwalk var before going in. -evrim.
 (defjavascript-expander setq-form (var value)
   `(:and ,(let ((+js-free-variables+ nil))
-	    (funcall expand (walk-js-form var form) expand))
+	    (funcall expand var expand))
 	 " = " ,(funcall expand value expand)))
 
 ;;;; SYMBOL-MACROLET

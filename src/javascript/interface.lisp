@@ -31,15 +31,18 @@
   (let ((render (expand-render
 		 (optimize-render-1
 		  (walk-grammar
-		   (expand-javascript		    
-		    (walk-js-form `(progn ,@body))
-		    #'expand-javascript)))
+		   `(:and
+		     ,@(mapcar (compose
+				(rcurry #'expand-javascript #'expand-javascript)
+				#'fix-javascript-returns
+				#'walk-js-form)
+			       body))))
 		 #'expand-render 's)))
     `(let ((s ,(if +indent-javascript+
-		   `(make-indented-stream "" 2)
-		   `(make-compressed-stream ""))))
+		   `(make-indented-stream (make-core-stream ""))
+		   `(make-compressed-stream (make-core-stream "")))))
        (funcall (lambda ()
-		  (block rule-block		  
+		  (block rule-block
 		    ,render)))
        (return-stream s))))
 
@@ -48,15 +51,20 @@
 
 (defmacro with-js (vars stream &body body)  
   (let ((+js-free-variables+ vars))
-    `(block rule-block
-       ,(expand-render
-	 (optimize-render-1
-	  (walk-grammar
-	   (expand-javascript
-	    (walk-js-form `(progn ,@body))
-	    #'expand-javascript)))
-	 #'expand-render stream)
-       ,stream)))
+    (labels ((expander (form expander)
+	       (expand-render (optimize-render-1 (expand-javascript form expander))
+			      #'expand-render
+			      stream)))
+      `(block rule-block
+	 ,(expand-render
+	   (optimize-render-1
+	    (walk-grammar
+	     (expand-javascript
+	      (fix-javascript-returns
+	       (walk-js-form `(progn ,@body)))
+	      #'expand-javascript)))
+	   #'expander stream)
+	 ,stream))))
 
 (defmacro defrender/js (name args &body body)
   (with-unique-names (stream)
@@ -72,12 +80,14 @@
 		     ,@body)))))
 
 (defrender/js moo (&optional base-url (debug nil) (back 'false))
-  (list base-url debug back))
+  (list base-url debug back)
+  (lambda ()
+    (list 1 2 3)))
 
-(defun/javascript fun1 (a)
-  (let ((b (lambda (b c)
-	     (list b c))))
-    (return (b))))
+;; (defun/javascript fun1 (a)
+;;   (let ((b (lambda (b c)
+;; 	     (list b c))))
+;;     (return (b))))
 
 ;; (defmacro defun/parenscript (name params &body body)
 ;;   `(prog1

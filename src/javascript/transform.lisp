@@ -42,7 +42,7 @@
 
   (defmethod find-form-leaf ((form implicit-progn-mixin))
     (find-form-leaf (last1 (body form))))
-
+  
   (defmethod find-form-leaf ((form if-form))
     (append (ensure-list (find-form-leaf (then form)))
 	    (ensure-list (find-form-leaf (else form)))))
@@ -50,7 +50,7 @@
   (defun fix-javascript-returns (form)
     "Alters form destructive and adds implicit return statements to 'form'"
     (flet ((transform-to-implicit-return (form)
-	     (let ((new-form (walk-form-no-expand (unwalk-form form))))
+	     (let ((new-form (walk-js-form (unwalk-form form) (parent form))))
 	       (unless (and (typep form 'application-form)
 			    (eq 'return (operator form)))
 		 (change-class form 'application-form)
@@ -61,17 +61,22 @@
 	(mapcar #'transform-to-implicit-return
 		(flatten (mapcar #'find-form-leaf funs)))
 	form)))
-
+  
   (defun fix-javascript-methods (form self)
     (let ((applications (ast-search-type form 'application-form)))
       (mapcar (lambda (app)
 		(when (and (typep (car (arguments app)) 'variable-reference)
 			   (eq (name (car (arguments app))) self))
-		  (setf (operator app) (intern (format nil "THIS.~A" (operator app)))
-			(arguments app) (cdr (arguments app)))))
+		  (describe app)
+		  (if (eq (operator app) 'slot-value)
+		      (setf (arguments app) (cons (walk-js-form 'this app)
+						  (cdr (arguments app))))
+		      (setf (operator app) (intern (format nil "THIS.~A" (operator app)))
+			    (arguments app) (cdr (arguments app))))
+		  (describe app)))
 	      applications)
       form))
-
+  
 ;; TODO: Handle (setf a b c d)
   (defun fix-javascript-accessors (form accessors &optional (get-prefix "GET-") (set-prefix "SET-"))
     (let ((applications (ast-search-type form 'application-form)))
