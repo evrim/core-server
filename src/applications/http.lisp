@@ -243,21 +243,23 @@ executing 'body'"
   (send/suspend    
     (setf (cdr (assoc 'content-type (http-response.entity-headers (context.response +context+))))
 	  '("text" "javascript" ("charset" "UTF-8")))
-    (funcall lambda)))
+    (funcall lambda (if (application.debug (application +context+))
+			(make-indented-stream (http-response.stream (response +context+)))
+			(make-compressed-stream (http-response.stream (response +context+)))))))
 
 (defun/cc json/suspend (lambda)
   "Json version of send/suspend, sets content-type to text/json"
   (send/suspend    
     (setf (cdr (assoc 'content-type (http-response.entity-headers (context.response +context+))))
 	  '("text" "json" ("charset" "UTF-8")))
-    (funcall lambda)))
+    (funcall lambda (http-response.stream (response +context+)))))
 
 (defun/cc xml/suspend (lambda)
   "Xml version of send/suspend, sets content-type to text/xml"
   (send/suspend    
     (setf (cdr (assoc 'content-type (http-response.entity-headers (context.response +context+))))
 	  '("text" "xml" ("charset" "UTF-8")))
-    (funcall lambda)))
+    (funcall lambda (http-response.stream (response +context+)))))
 
 (defmethod gc ((self http-application))
   "Garbage collector for HTTP application, removes expired sessions/continuations"
