@@ -140,9 +140,8 @@
   (lambda (context)
     (with-context context
       (javascript/suspend
-       (lambda ()
-	 (send/component (make-instance 'hedee-component :root path :content-id id))
-	 (<:js
-	   `(progn
-	      (setf hedee (new (hedee-component)))
-	      (dojo.add-on-load (lambda () (hedee.setup))))))))))
+       (lambda (stream)
+	 (ctor! stream (make-instance 'hedee-component :root path :content-id id))
+	 (with-js () stream	   
+	   (setf hedee (new (hedee-component)))
+	   (dojo.add-on-load (lambda () (hedee.setup)))))))))

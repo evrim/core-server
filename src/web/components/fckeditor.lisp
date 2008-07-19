@@ -115,7 +115,7 @@
 	      (create-file (folder-pathname folder) file)))
       
 	(xml/suspend
-	 (lambda ()	   
+	 (lambda (stream)	   
 	   (string! stream (format nil "<?xml version=\"1.0\" encoding=\"utf-8\" ?>~%
 <Connector command=\"~A\" resourceType=\"~A\">~%" command type))
 
@@ -141,23 +141,24 @@
 (defmethod/local fck-editor-config-url ((self fckeditor-component))
   (action/url ()
     (javascript/suspend
-     (lambda ()
-       (<:js
-	`(setf (aref *f-c-k-config.*toolbar-sets "CoreDefault")
-	       (array
-		(array "Save" "Undo" "Redo" "-")
-		(array "Cut" "Copy" "Paste" "PasteText" "PasteWord")
-		(array "Bold" "Italic" "Underline" "StrikeThrough")
-		(array "OrderedList" "UnorderedList" "-" "Outdent" "Indent" "Blockquote")
-		(array "JustifyLeft" "JustifyCenter" "JustifyRight" "JustifyFull")
-		(array "TextColor" "BGColor")
-		(array "Image" "Flash" "Table" "Rule")
-		(array "Link" "Unlink" "Anchor")
-		(array "SpecialChar" "ShowBlocks" "-" "Source")
-		"/"
-		(array "FontFormat" "Style" "FontName" "FontSize"))
-	       *f-c-k-config.*skin-path ,(format nil "~Aeditor/skins/silver/" +fckeditor-path+)
-	       *f-c-k-config.*toolbar-can-collapse false))))))
+     (lambda (stream)
+       (let ((path (format nil "~Aeditor/skins/silver/" +fckeditor-path+)))
+	 (with-js (path) stream
+	   (setf (aref *f-c-k-config.*toolbar-sets "CoreDefault")
+		 (array
+		  (array "Save" "Undo" "Redo" "-")
+		  (array "Cut" "Copy" "Paste" "PasteText" "PasteWord")
+		  (array "Bold" "Italic" "Underline" "StrikeThrough")
+		  (array "OrderedList" "UnorderedList" "-" "Outdent" "Indent" "Blockquote")
+		  (array "JustifyLeft" "JustifyCenter" "JustifyRight" "JustifyFull")
+		  (array "TextColor" "BGColor")
+		  (array "Image" "Flash" "Table" "Rule")
+		  (array "Link" "Unlink" "Anchor")
+		  (array "SpecialChar" "ShowBlocks" "-" "Source")
+		  "/"
+		  (array "FontFormat" "Style" "FontName" "FontSize"))
+		 *f-c-k-config.*skin-path path
+		 *f-c-k-config.*toolbar-can-collapse false)))))))
 
 (defmethod/local fck-editor-browser-url ((self fckeditor-component))
   (action/url ()
