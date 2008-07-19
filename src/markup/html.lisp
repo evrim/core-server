@@ -351,18 +351,3 @@
 	 when rest
 	 do (write-char #\& href)))))
 
-;;-----------------------------------------------------------------------------
-;; Remove below, depreciated.
-;;-----------------------------------------------------------------------------
-(defmacro <:ai (&body body)
-  `(list ,@body))
-
-(defmacro <:ah (&body body)
-  `(list ,@body))
-
-(defmacro <:js (&body body)
-  (with-unique-names (output)
-    `(let ((,output (if +context+ (http-response.stream (response +context+)) *core-output*)))
-       (prog1 (with-html-output ,output
-		(js:js* ,@body))
-	 (char! ,output #\Newline)))))

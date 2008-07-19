@@ -23,7 +23,7 @@
   (:documentation "Base component class"))
 
 (defmethod application ((self component))
-  (or (s-v 'application) (application +context+)))
+  (application +context+)))
 
 (eval-when (:execute :compile-toplevel :load-toplevel)
   (defun proxy-method-name (name)
@@ -33,77 +33,7 @@
     (intern (string-upcase (format nil "get-~A" name))))
 
   (defun proxy-setter-name (name)
-    (intern (string-upcase (format nil "set-~A" name)) (find-package :core-server))))
-
-(defmacro defmethod/local (name ((self class-name) &rest args) &body body)    
-  `(progn
-     (eval-when (:compile-toplevel :load-toplevel :execute)
-       (register-local-method-for-class ',class-name ',name))
-     (defgeneric/cc ,name (,class-name ,@args))
-     (defgeneric/cc ,(proxy-method-name name) (,class-name))
-     (defmethod/cc ,(proxy-method-name name) ((,self ,class-name))
-       `(lambda ,',args
-	  (return
-	    (funcall
-	     ,(action/url ,(mapcar (lambda (arg) (list arg (js::symbol-to-js arg))) args)
-		(let ,(mapcar (lambda (arg) `(,arg (json-deserialize ,arg))) args)
-		  (json/suspend
-		   (lambda ()
-		     (json! (http-response.stream (response +context+))
-			    (apply (symbol-function ',name) (list ,self ,@args)))))))
-	     ,',(if args		    
-		    (cons 'create (reduce #'append
-					  (mapcar (lambda (arg)
-						    `(,(make-keyword arg) ,arg))
-						  args)
-					  :initial-value nil)))))))
-     (defmethod/cc ,name ((,self ,class-name) ,@args) ,@body)))
-
-(defmacro defmethod/remote (name ((self class-name) &rest args) &body body)
-  (let ((arg-names (arnesi:extract-argument-names args :allow-specializers t)))
-    `(progn
-       (eval-when (:compile-toplevel :load-toplevel :execute)
-	 (register-remote-method-for-class ',class-name ',name))
-       (defgeneric/cc ,name (,class-name ,@args))
-       (defgeneric/cc ,(proxy-method-name name) (,class-name))
-       (defmethod/cc ,(proxy-method-name name) ((,self ,class-name))	      
-	 `(lambda ,',arg-names
-	    ,',(cons 'progn body)))
-       (defmethod/cc ,name ((,self ,class-name) ,@args)
-	 (javascript/suspend
-	  (lambda ()
-	    (<:js
-	     `(funcall ,(action/url ((result "result")) (answer (json-deserialize result)))
-		       (create :result (serialize (,',name this ,,@args)))))))))))
-
-(defun serialize-to-parenscript (type object)
-  (ecase type
-    (primitive object)
-    (object
-     (etypecase object
-       (list
-	`(create ,@(if (and (listp (car object)) (not (null (caar object))))
-		       (reduce (lambda (acc atom)
-				 (cons (make-keyword (car atom))
-				       (cons (cdr atom) acc)))
-			       object :initial-value nil)
-		       object)))
-       (hash-table
-	`(create ,@(let (acc)
-                     (maphash (lambda (k v) (push (list (make-keyword k) v) acc)) object)
-		     (reduce #'append acc :initial-value nil))))))
-    (array `(array ,@object))))
-
-
-(defmethod class-name ((self component))
-  (class-name (class-of self)))
-
-(defmethod/cc local-slots ((self component))
-  (reduce (lambda (acc slot)
-	    (cons (make-keyword slot) (cons 'null acc)))
-	  (reverse (mapcar (compose #'car #'ensure-list)
-			   (local-slots-of-class (class-name self))))
-	  :initial-value nil))
+    (intern (string-upcase (format nil "set-~A" name)))))
 
 (defgeneric method-proxy (class method)
   (:documentation "Returns Javascript Proxy Lambda of a remote method"))
@@ -166,32 +96,21 @@
 			   (create ,@(remote-slots) ,@(local-methods) ,@(remote-methods)))
 		     (return this.prototype)))))))))
 
-(defmethod/cc send/component ((self component))
-  (with-html-output (http-response.stream (response +context+))
-    (send/ctor self (remote-slots self) (local-methods self) (remote-methods self))))
-
-(defmethod/cc send/ctor ((self component) remote-slots local-methods remote-methods)    
-  (js:js*
-   `(setf ,(class-name self)
-	  (lambda (,@(reduce (lambda (acc slot)
-			       (if (keywordp slot)
-				   (cons (intern (symbol-name slot)) acc)
-				   acc))
-			     remote-slots :initial-value nil))
-	    (setf this.prototype (create ;; ,@(local-slots)
-				  ,@remote-slots
-				  ,@local-methods ,@remote-methods))
-	    ,@(reduce (lambda (acc slot)
-			(if (keywordp slot)
-			    (cons `(if (not (= "undefined" (typeof ,(intern (symbol-name slot)))))
-				       (setf (slot-value this.prototype ',(intern (symbol-name slot)))
-					     ,(intern (symbol-name slot)))) acc)
-			    acc))
-		      remote-slots :initial-value nil)
-	    (return this.prototype)))))
-
-(defclass component-dom-element (dom-element)
-  ())
+(defmacro defmethod/local (name ((self class-name) &rest args) &body body)  
+  (let ((k (gensym (format nil "~A-K-" (symbol-name name)))))
+    `(prog1 (defmethod/cc ,name ((,self ,class-name) ,@args) ,@body)
+       (eval-when (:compile-toplevel :load-toplevel :execute)
+	 (register-local-method-for-class ',class-name ',name ',args))
+       (defmethod method-proxy ((class (eql ',class-name)) (method (eql ',name)))
+	 (values `(lambda ,',args
+		    (funcall ,',k (create
+				   ,@',(nreverse
+					(reduce (lambda (acc arg)
+						  (cons arg (cons (make-keyword arg) acc)))
+						(extract-argument-names args :allow-specializers t)
+						:initial-value nil)))))
+		 ',k))
+       (defcomponent-ctor ,class-name))))
 
 (defmacro defmethod/remote (name ((self class-name) &rest args) &body body)
   (with-unique-names (hash)
@@ -643,86 +562,207 @@
 ;;  	  (return new-value)))
 ;;       (init-core-server))))
 
-(defun/cc dojo (&optional base-url (debug nil) (prevent-back-button 'false)
-		(css (reduce (lambda (acc a)
-			       (cons (concatenate
-				      'string +dojo-path+ ".." a)
-				     acc))
-			     (reverse
-			      '("/dijit/themes/dijit.css"
-				"/dijit/themes/tundra/tundra.css"
-				"/dojox/widget/Toaster/Toaster.css"))
-			     :initial-value '("http://node1.core.gen.tr/coretal/style/coretal.css"))))
-  (<:js
-   `(progn
-      (defun load-javascript (url)
-	  (let ((request nil))
-	    (cond
-	      (window.*x-m-l-http-request ;; Gecko
-	       (setf request (new (*x-m-l-http-request))))
-	      (window.*active-x-object ;; Internettin Explorer
-	       (setf request (new (*active-x-object "Microsoft.XMLHTTP")))))
-	    (if (= null request)
-		(throw (new (*error "Cannot Load Javascript, -core-server 1.0"))))
-	    (setf req request)
-	    (request.open "GET" url false)
-	    (request.send null)
-	    (if (= 200 request.status)
-		(return (eval (+ "{" request.response-text "}"))))
-	    (throw (new (*error (+ "Cannot load javascript:" url " -core-server 1.0"))))))
-      (defun load-css (url)
-	(let ((link (document.create-element "link")))
-	  (setf link.href url
-		link.rel "stylesheet"
-		link.type "text/css")
-	  (.append-child (aref (document.get-elements-by-tag-name "head") 0)
-			 link)
-	  (return link)))
-      (defun init-core-server ()
-	(when (= "undefined" (typeof dojo))
-	  (setf dj-config (create :base-url ,+dojo-path+ :is-debug ,debug
-				  :prevent-back-button-fix ,prevent-back-button
-;;				  :dojo-iframe-history-url "./resources/iframe_history.html"
-				  ))      
-	  (dolist (src (array "bootstrap.js" "loader.js" "hostenv_browser.js" "loader_xd.js"))	
-	    (load-javascript (+ ,+dojo-path+ "_base/_loader/" src)))
-	  (load-javascript (+ ,+dojo-path+ "_base.js")))
-	(setf base-url ,(if (and +context+ base-url)
-			    (format nil "/~A/~A"
-				    (web-application.fqdn (application +context+))
-				    base-url)))
-	(dojo.require "dojo.back")
-	(dojo.back.init)
-	,@(mapcar (lambda (c) `(load-css ,c)) css)
-	(dojo.add-on-load
-	 (lambda ()
-	   (setf document.body.class-name (+ document.body.class-name " tundra")))))
-      (defun serialize (value) (return (dojo.to-json value)))
-      (defun funcall (url parameters retry-count)
-	(let (result)
-	  (debug "server.funcall " url)
-	  (when (dojo.is-object parameters)
-	    (doeach (param parameters)
-		    (setf (slot-value parameters param)
-			  (serialize (slot-value parameters param)))))
-	  (dojo.xhr-post
-	   (create :url (+ base-url url)
-		   :handle-as "text"
-		   :sync t
-		   :timeout 10
-		   :content parameters
-		   :load (lambda (json args)
-;;			   (debug json)
-			   (setf result (eval (+ "{" json "}"))))
-		   :error (lambda (err args)
-			    (if (= err.status 500)				
-				(if (= "undefined" (typeof retry-count))
-				    (return (funcall url parameters 5))
-				    (if (> retry-count 0)
-					(return (funcall url parameters (- retry-count 1)))))
-				(throw (new (*error (+ "Funcall error: " url ", " err))))))))
-	  (return result)))
-      (init-core-server))))
+;; (defgeneric/cc send/component (component)
+;;   (:documentation "Send component to remote."))
+
+;; (defgeneric html (component)
+;;   (:documentation "Returns a html dom-element representation of this component")
+;;   (:method ((self component)) nil))
+
+;; (defgeneric stylesheet (component)
+;;   (:documentation "Returns a css-element representation of this component")
+;;   (:method ((self component)) nil))
+
+;; (defgeneric javascript (component)
+;;   (:documentation "Returns a javascript overrides for this component")
+;;   (:method ((self component)) nil))
+
+;; (defmethod application ((self component))
+;;   (or (s-v 'application) (application +context+)))
+
+
+;; (defmacro defmethod/local (name ((self class-name) &rest args) &body body)
+;;   (progn
+;;     (register-local-method-for-class class-name name)
+;;     `(progn
+;;        (eval-when (:compile-toplevel :load-toplevel :execute)
+;; 	 (register-local-method-for-class ',class-name ',name))
+;;        (defgeneric/cc ,name (,class-name ,@args))
+;;        (defgeneric/cc ,(proxy-method-name name) (,class-name))
+;;        (defmethod/cc ,(proxy-method-name name) ((,self ,class-name))
+;; 	 `(lambda ,',args
+;; 	    (return
+;; 	      (funcall
+;; 	       ,(action/url ,(mapcar (lambda (arg) (list arg (symbol-to-js arg))) args)
+;; 			    (let ,(mapcar (lambda (arg) `(,arg (json-deserialize ,arg))) args)
+;; 			      (json/suspend
+;; 			       (lambda ()
+;; 				 (json! (http-response.stream (response +context+))
+;; 					(apply (symbol-function ',name) (list ,self ,@args)))))))
+;; 	       ,',(if args		    
+;; 		      (cons 'create (reduce #'append
+;; 					    (mapcar (lambda (arg)
+;; 						      `(,(make-keyword arg) ,arg))
+;; 						    args)
+;; 					    :initial-value nil)))))))
+;;        (defmethod/cc ,name ((,self ,class-name) ,@args) ,@body))))
+
+;; (defmacro defmethod/remote (name ((self class-name) &rest args) &body body)
+;;   (let ((arg-names (arnesi:extract-argument-names args :allow-specializers t)))
+;;     `(progn
+;;        (eval-when (:compile-toplevel :load-toplevel :execute)
+;; 	 (register-remote-method-for-class ',class-name ',name))
+;;        (defgeneric/cc ,name (,class-name ,@args))
+;;        (defgeneric/cc ,(proxy-method-name name) (,class-name))
+;;        (defmethod/cc ,(proxy-method-name name) ((,self ,class-name))	      
+;; 	 `(lambda ,',arg-names
+;; 	    ,',(cons 'progn body)))
+;;        (defmethod/cc ,name ((,self ,class-name) ,@args)
+;; 	 (javascript/suspend
+;; 	  (lambda ()
+;; 	    (error "fix defmethod remote")
+;; 	    ;; (<:js+
+;; ;; 	     `(funcall ,(action/url ((result "result")) (answer (json-deserialize result)))
+;; ;; 		       (create :result (serialize (,',name this ,,@args)))))
+;; 	    ))))))
+
+;; (defun serialize-to-parenscript (type object)
+;;   (ecase type
+;;     (primitive object)
+;;     (object
+;;      (etypecase object
+;;        (list
+;; 	`(create ,@(if (and (listp (car object)) (not (null (caar object))))
+;; 		       (reduce (lambda (acc atom)
+;; 				 (cons (make-keyword (car atom))
+;; 				       (cons (cdr atom) acc)))
+;; 			       object :initial-value nil)
+;; 		       object)))
+;;        (hash-table
+;; 	`(create ,@(let (acc)
+;;                      (maphash (lambda (k v) (push (list (make-keyword k) v) acc)) object)
+;; 		     (reduce #'append acc :initial-value nil))))))
+;;     (array `(array ,@object))))
+
+
+;; (defmethod class-name ((self component))
+;;   (class-name (class-of self)))
+
+;; (defmethod/cc local-slots ((self component))
+;;   (reduce (lambda (acc slot)
+;; 	    (cons (make-keyword slot) (cons 'null acc)))
+;; 	  (reverse (mapcar (compose #'car #'ensure-list)
+;; 			   (local-slots-of-class (class-name self))))
+;; 	  :initial-value nil))
+
+;; (defmethod/cc remote-slots ((self component))
+;;   (reduce (lambda (acc slot)
+;; 	    (cons (make-keyword slot)
+;; 		  (cons (serialize-to-parenscript
+;; 			 (client-type-of-slot (class-name self) slot)
+;; 			 (if (slot-boundp self slot)
+;; 			     (slot-value self slot)))
+;; 			acc)))
+;; 	  (reverse (mapcar (compose #'car  #'ensure-list)
+;; 			   (remote-slots-of-class (class-name self))))
+;; 	  :initial-value nil))
+
+;; (defmethod/cc local-methods ((self component))
+;;   (reduce (lambda (acc method)
+;; 	    (cons (make-keyword method)
+;; 		  (cons (funcall
+;; 			 (symbol-function
+;; 			  (proxy-method-name method)) self)
+;; 			acc)))
+;; 	  (local-methods-of-class (class-name self))
+;; 	  :initial-value nil))
+
+;; (defmethod/cc remote-methods ((self component))
+;;   (reduce (lambda (acc method)
+;; 	    (cons (make-keyword method)
+;; 		  (cons (funcall (symbol-function
+;; 				  (proxy-method-name method)) self) acc)))
+;; 	  (remote-methods-of-class (class-name self))
+;; 	  :initial-value nil))
+
+;; (defmethod/cc send/component ((self component))
+;;   (with-html-output (http-response.stream (response +context+))
+;;     (send/ctor self (remote-slots self) (local-methods self) (remote-methods self))))
+
+
+;; (defmethod/cc send/ctor ((self component) remote-slots local-methods remote-methods)    
+;;   (js*
+;;    `(setf ,(class-name self)
+;; 	  (lambda (,@(reduce (lambda (acc slot)
+;; 			       (if (keywordp slot)
+;; 				   (cons (intern (symbol-name slot)) acc)
+;; 				   acc))
+;; 			     remote-slots :initial-value nil))
+;; 	    (setf this.prototype (create ;; ,@(local-slots)
+;; 				  ,@remote-slots
+;; 				  ,@local-methods ,@remote-methods))
+;; 	    ,@(reduce (lambda (acc slot)
+;; 			(if (keywordp slot)
+;; 			    (cons `(cond
+;; 				     ((not (= "undefined" (typeof (get-parameter ,(symbol-to-js slot)))))
+;; 				      (setf (slot-value this.prototype ',(intern (symbol-name slot)))
+;; 					    (get-parameter ,(symbol-to-js slot))))
+;; 				     ((not (= "undefined" (typeof ,(intern (symbol-name slot)))))
+;; 				      (setf (slot-value this.prototype ',(intern (symbol-name slot)))
+;; 					    ,(intern (symbol-name slot))))) acc)
+;; 			    acc))
+;; 		      remote-slots :initial-value nil)
+;; 	    (return this.prototype)))))
+
+;; (defclass component-dom-element (dom-element)
+;;   ())
+
+;; (defmethod dom-element! ((stream core-stream) (element component-dom-element)
+;; 			 &optional (indentation 0))
+;;   (prog1 stream
+;;     (mapcar (lambda (e)
+;; 	      (dom-element! stream e indentation)
+;; 	      (char! stream #\Newline))
+;; 	    (children element))))
+
+;; (defmacro defcomponent (name supers slots &rest rest)
+;;   (multiple-value-bind (slots new-rest) (register-class name supers slots rest)
+;;     (let ((html-symbol (intern (symbol-name name) (find-package :tr.gen.core.server.html))))
+;;       `(prog1 (defclass ,name (,@supers component)
+;; 		,slots
+;; 		(:default-initargs ,@(alist-to-plist (default-initargs-of-class name)))
+;; 		,@(remove :default-initargs new-rest :key #'car))
+;; 	 (defun ,name (&key ,@(local-slots-of-class name) ,@(remote-slots-of-class name))
+;; 	   (apply #'make-instance ',name (list ,@(ctor-arguments name))))
+;; 	 (defun/cc ,html-symbol (&key ,@(local-slots-of-class name) ,@(remote-slots-of-class name))
+;; 	     (let ((component (funcall (function ,name) ,@(ctor-arguments name))))
+;; 	       (make-instance 'component-dom-element
+;; 			      :tag ,(symbol-name name)
+;; 			      :children (list (<:script :type "text/javascript"							
+;; 							(send/ctor component
+;; 								   (remote-slots component)
+;; 								   (local-methods component)
+;; 								   (remote-methods component))
+;; 							(javascript component)) 
+;; ;;					      (<:style :type "text/css" (stylesheet component))
+;; 					      (html component)))))
+;; 	 (export ',html-symbol (find-package :tr.gen.core.server.html))
+;; 	 ,@(mapcar (lambda (slot)
+;; 		     `(progn
+;; 			(defmethod/local ,(proxy-getter-name (car slot)) ((self ,name))
+;; 			  (slot-value self ',(car slot)))
+;; 			(defmethod/local ,(proxy-setter-name (car slot)) ((self ,name) value)
+;; 			  (setf (slot-value self ',(car slot)) value))))
+;; 		   (mapcar #'ensure-list (local-slots-of-class name)))
+;; 	 ,@(mapcar (lambda (slot)
+;; 		     `(progn
+;; 			(defmethod/remote ,(proxy-getter-name (car slot)) ((self ,name))
+;; 			  (return (slot-value this ',(car slot))))
+;; 			(defmethod/remote ,(proxy-setter-name (car slot)) ((self ,name) value)			
+;; 			  (setf (slot-value this ',(car slot)) value)
+;; 			  (set-parameter ,(symbol-to-js (car slot)) value)
+;; 			  (return (slot-value this ',(car slot))))))
+;; 		   (mapcar #'ensure-list (remote-slots-of-class name)))))))
 
 ;; (eval-when (:execute :compile-toplevel :load-toplevel)
 ;;   (defvar +component-registry+ (make-hash-table :test #'equal)))
