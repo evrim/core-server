@@ -74,6 +74,13 @@
    #:core-cps-file-io-stream
    #:make-transformer-stream
    #:make-core-stream
+   
+   ;; [Special Transformers 4 Javascript]   
+   #:make-indented-stream
+   #:make-compressed-stream
+   #:increase-indent
+   #:decrease-indent
+   
    #:make-cps-stream
    ;; [Stream Helpers]
    #:with-core-stream
