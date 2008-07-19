@@ -1,7 +1,7 @@
 (in-package :core-server)
 
 (defpackage :blog
-  (:use :cl :core-server :arnesi :js)
+  (:use :cl :core-server :arnesi)
   (:shadowing-import-from #:arnesi #:new))
 
 (in-package :blog)
