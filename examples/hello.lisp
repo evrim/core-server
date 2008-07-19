@@ -22,16 +22,6 @@
      (<:body
       body))))
 
-(defurl *hello* "guestbook" ()
-  (let ((message (send/suspend
-		   (template
-		    (<:form :action (action/url ((text "text"))
-				      (answer text))
-			    :method "POST"
-			    (<:div (<:textarea :rows "3" :cols "60" :name "text" ""))
-			    (<:div (<:input :type "submit" :value "Sign Guestbook")))))))
-    (template message)))
-
 ;; register application
 (register *server* *hello*)
 

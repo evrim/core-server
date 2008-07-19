@@ -43,15 +43,15 @@
 ;; (ping &key (ping-host (error "Specify host")) (ping-count "1")
 
 (defcommand ping (shell)
-  ((ping-host :initform (error "Specify host") :initarg :ping-host :host local)
-   (ping-count :initform "1" :initarg :ping-count :host local))
+  ((ping-host :initform (error "Specify host") :host local)
+   (ping-count :initform "1" :host local))
   (:default-initargs :cmd +ping+ :verbose nil))
 
 ;; In the run method, we're setting the command arguments according to
 ;; the commands protocol. And then parse output with ping?.
 (defmethod run ((self ping))
   (setf (core-server::args self)
-	(list "-q" "-c" (ping-count self) (ping-host self)))
+	(list "-q" "-c" (ping.ping-count self) (ping.ping-host self)))
   (call-next-method)
   (with-core-stream (s (command.output-stream self))
     (ping? s)))

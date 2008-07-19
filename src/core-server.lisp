@@ -641,6 +641,7 @@
    #:char!
    #:fixnum!
    #:quoted-printable!
+   #:make-accumulator
    ;; The server itself
    *server*
    ;; Form component (which emails a filled form)

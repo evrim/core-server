@@ -1,5 +1,6 @@
 (in-package :core-server)
-
+;; Demonstration of core-server units
+;;
 ;; Protection for concurrent access to a single resource
 (defclass resource-protector (local-unit)
   ((resource :accessor resource-protector.resource :initarg :resource)))
