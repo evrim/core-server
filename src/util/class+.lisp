@@ -119,17 +119,19 @@ client-type is :primitive"
     "Returns remote-methods of the class 'name'"
     (class-search name :remote-methods #'identity))
 
-  (defun register-local-method-for-class (name method-name)
+  (defun register-local-method-for-class (name method-name args)
     (setf (getf (gethash name +class-registry+) :local-methods)
-	  (cons method-name
+	  (cons (cons method-name args)
 		(remove method-name
-			(getf (gethash name +class-registry+) :local-methods)))))
+			(getf (gethash name +class-registry+) :local-methods)
+			:key #'car))))
 
-  (defun register-remote-method-for-class (name method-name)
+  (defun register-remote-method-for-class (name method-name args)
     (setf (getf (gethash name +class-registry+) :remote-methods)
-	  (cons method-name
+	  (cons (cons method-name args)
 		(remove method-name
-			(getf (gethash name +class-registry+) :remote-methods)))))
+			(getf (gethash name +class-registry+) :remote-methods)
+			:key #'car))))
 
   (defun ctor-keywords (name)
     (let* ((local-initargs (local-initargs-of-class name))
@@ -246,7 +248,7 @@ client-type is :primitive"
 (defmacro defclass+ (name supers slots &rest rest)
   "Defines a class using Class+ Framework"  
   (multiple-value-bind (new-slots new-rest) (register-class name supers slots rest)    
-    `(prog1 (defclass ,name (,@supers component)
+    `(prog1 (defclass ,name (,@supers)
 	      ,new-slots
 	      (:default-initargs ,@(alist-to-plist (default-initargs-of-class name)))
 	      ,@(remove :default-initargs new-rest :key #'car))
