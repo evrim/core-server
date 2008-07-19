@@ -19,34 +19,18 @@
 
 ;; Component Procotol
 (defclass component ()
-  ((local-args :accessor component.local-args :initarg :local-args :initform '())
-   (remote-args :accessor component.remote-args :initarg :remote-args :initform '())
-   (application :accessor application :initarg :application :initform nil)))
-
-(defgeneric/cc send/component (component)
-  (:documentation "Send component to remote."))
-
-(defgeneric html (component)
-  (:documentation "Returns a html dom-element representation of this component")
-  (:method ((self component)) nil))
-
-(defgeneric stylesheet (component)
-  (:documentation "Returns a css-element representation of this component")
-  (:method ((self component)) nil))
-
-(defgeneric javascript (component)
-  (:documentation "Returns a javascript overrides for this component")
-  (:method ((self component)) nil))
+  ()
+  (:documentation "Base component class"))
 
 (defmethod application ((self component))
-  (or (s-v 'application) (context.application +context+)))
+  (or (s-v 'application) (application +context+)))
 
 (eval-when (:execute :compile-toplevel :load-toplevel)
   (defun proxy-method-name (name)
-    (intern (string-upcase (format nil "~A-proxy" name)) (find-package :core-server)))
+    (intern (string-upcase (format nil "~A-proxy" name))))
 
   (defun proxy-getter-name (name)
-    (intern (string-upcase (format nil "get-~A" name)) (find-package :core-server)))
+    (intern (string-upcase (format nil "get-~A" name))))
 
   (defun proxy-setter-name (name)
     (intern (string-upcase (format nil "set-~A" name)) (find-package :core-server))))
@@ -65,7 +49,7 @@
 		(let ,(mapcar (lambda (arg) `(,arg (json-deserialize ,arg))) args)
 		  (json/suspend
 		   (lambda ()
-		     (json! (http-response.stream (context.response +context+))
+		     (json! (http-response.stream (response +context+))
 			    (apply (symbol-function ',name) (list ,self ,@args)))))))
 	     ,',(if args		    
 		    (cons 'create (reduce #'append
@@ -121,38 +105,69 @@
 			   (local-slots-of-class (class-name self))))
 	  :initial-value nil))
 
-(defmethod/cc remote-slots ((self component))
-  (reduce (lambda (acc slot)
-	    (cons (make-keyword slot)
-		  (cons (serialize-to-parenscript
-			 (client-type-of-slot (class-name self) slot)
-			 (if (slot-boundp self slot)
-			     (slot-value self slot)))
-			acc)))
-	  (reverse (mapcar (compose #'car  #'ensure-list)
-			   (remote-slots-of-class (class-name self))))
-	  :initial-value nil))
+(defgeneric method-proxy (class method)
+  (:documentation "Returns Javascript Proxy Lambda of a remote method"))
 
-(defmethod/cc local-methods ((self component))
-  (reduce (lambda (acc method)
-	    (cons (make-keyword method)
-		  (cons (funcall
-			 (symbol-function
-			  (proxy-method-name method)) self)
-			acc)))
-	  (local-methods-of-class (class-name self))
-	  :initial-value nil))
+(defgeneric/cc ctor! (core-stream object)
+  (:documentation "Write constructor of an instance ('object') to 'core-stream'"))
 
-(defmethod/cc remote-methods ((self component))
-  (reduce (lambda (acc method)
-	    (cons (make-keyword method)
-		  (cons (funcall (symbol-function
-				  (proxy-method-name method)) self) acc)))
-	  (remote-methods-of-class (class-name self))
-	  :initial-value nil))
+(defmacro defcomponent-ctor (class-name)
+  (with-unique-names (stream)    
+    (flet ((remote-slots ()
+	     ;; Remote Slots of this component	     
+	     (reduce (lambda (acc slot)
+		       (cons (make-keyword (car slot))
+			     (cons `(if (= "undefined" (typeof ,(car slot)))
+					,(cadr slot)
+					,(car slot))
+				   acc)))
+		     (remote-slots-of-class class-name)
+		     :initial-value nil))
+	   (local-methods ()
+	     (reduce (lambda (acc method)
+		       (cons (make-keyword (car method))
+			     (cons (method-proxy class-name (car method)) acc)))
+		     (local-methods-of-class class-name)
+		     :initial-value nil))
+	   (remote-methods ()
+	     (reduce (lambda (acc method)
+		       (cons (make-keyword (car method))
+			     (cons (method-proxy class-name (car method)) acc)))
+		     (nreverse (remote-methods-of-class class-name))
+		     :initial-value nil))
+	   (local-action-binds ()
+	     (mapcar (lambda (method)
+		       (cadr (multiple-value-list (method-proxy class-name (car method)))))
+		     (local-methods-of-class class-name)))
+	   (local-actions ()
+	     (mapcar (lambda (method)
+		       (let ((bind (cadr (multiple-value-list (method-proxy class-name (car method))))))
+			 (list bind `(action/url ,(mapcar (lambda (arg)
+							    (list arg (symbol-to-js arg)))
+							  (cdr method))
+				       (let ,(mapcar (lambda (arg) `(,arg (json-deserialize ,arg)))
+						     (cdr method))
+					 (json/suspend
+					  (lambda (stream)
+					    (json! stream
+						   (,(car method) self ,@(cdr method))))))))))
+		     (local-methods-of-class class-name))))
+      `(defmethod/cc ctor! ((,stream core-stream) (self ,class-name))
+	 (let ,(local-actions)
+	   (with-js ,(local-action-binds) ,stream
+	     (setf ,class-name
+		   (lambda (,@(reduce (lambda (acc slot)
+					(if (keywordp slot)
+					    (cons (intern (symbol-name slot)) acc)
+					    acc))
+				      (mapcar #'cdr (remote-initargs-of-class class-name))
+				      :initial-value nil))
+		     (setf this.prototype
+			   (create ,@(remote-slots) ,@(local-methods) ,@(remote-methods)))
+		     (return this.prototype)))))))))
 
 (defmethod/cc send/component ((self component))
-  (with-html-output (http-response.stream (context.response +context+))
+  (with-html-output (http-response.stream (response +context+))
     (send/ctor self (remote-slots self) (local-methods self) (remote-methods self))))
 
 (defmethod/cc send/ctor ((self component) remote-slots local-methods remote-methods)    
@@ -178,117 +193,455 @@
 (defclass component-dom-element (dom-element)
   ())
 
-(defmethod dom-element! ((stream core-stream) (element component-dom-element)
-			 &optional (indentation 0))
-  (prog1 stream
-    (mapcar (lambda (e)
-	      (dom-element! stream e indentation)
-	      (char! stream #\Newline))
-	    (children element))))
+(defmacro defmethod/remote (name ((self class-name) &rest args) &body body)
+  (with-unique-names (hash)
+    `(prog1 (defmethod/cc ,name ((,self ,class-name) ,@args)
+	      (javascript/suspend
+	       (lambda (stream)
+		 (let ((,hash (action/hash ((result "result"))
+				(answer (json-deserialize result)))))
+		   (with-js (,hash) stream
+		     (funcall hash (create :result (serialize (,name self ,@args)))))))))
+       (eval-when (:compile-toplevel :load-toplevel :execute)
+	 (register-remote-method-for-class ',class-name ',name ',args))
+       (defmethod method-proxy ((class (eql ',class-name)) (method (eql ',name)))
+	 ',(cadr
+	    (unwalk-form	     
+	     (fix-javascript-methods
+	      (walk-js-form
+	       `(lambda ,args
+		  ,@body))
+	      self))))
+       (defcomponent-ctor ,class-name))))
 
 (defmacro defcomponent (name supers slots &rest rest)
-  (multiple-value-bind (slots new-rest) (register-class name supers slots rest)
-    (let ((html-symbol (intern (symbol-name name) (find-package :tr.gen.core.server.html))))
+  (let ((symbol (intern (symbol-name name) (find-package :tr.gen.core.server.html))))
+    (multiple-value-bind (slots new-rest) (register-class name supers slots rest)
+      (export symbol (find-package :tr.gen.core.server.html))
       `(prog1 (defclass ,name (,@supers component)
 		,slots
 		(:default-initargs ,@(alist-to-plist (default-initargs-of-class name)))
 		,@(remove :default-initargs new-rest :key #'car))
-	 (defun ,name (&key ,@(local-slots-of-class name) ,@(remote-slots-of-class name))
-	   (apply #'make-instance ',name (list ,@(ctor-arguments name))))
-	 (defun/cc ,html-symbol (&key ,@(local-slots-of-class name) ,@(remote-slots-of-class name))
-	     (let ((component (funcall (function ,name) ,@(ctor-arguments name))))
-	       (make-instance 'component-dom-element
-			      :tag ,(symbol-name name)
-			      :children (list (<:script :type "text/javascript"							
-							(send/ctor component
-								   (remote-slots component)
-								   (local-methods component)
-								   (remote-methods component))
-							(javascript component)) 
-;;					      (<:style :type "text/css" (stylesheet component))
-					      (html component)))))
-	 (export ',html-symbol (find-package :tr.gen.core.server.html))
+	 (defun ,symbol (&key ,@(local-slots-of-class name))
+	   (make-instance ',name ,@(ctor-arguments name)))
+	 (eval-when (:load-toplevel :compile-toplevel :execute)
+	   (export ',symbol (find-package :tr.gen.core.server.html)))
 	 ,@(mapcar (lambda (slot)
 		     `(progn
 			(defmethod/local ,(proxy-getter-name (car slot)) ((self ,name))
 			  (slot-value self ',(car slot)))
 			(defmethod/local ,(proxy-setter-name (car slot)) ((self ,name) value)
 			  (setf (slot-value self ',(car slot)) value))))
-		   (mapcar #'ensure-list (local-slots-of-class name)))
+		   (local-slots-of-class name))
 	 ,@(mapcar (lambda (slot)
 		     `(progn
 			(defmethod/remote ,(proxy-getter-name (car slot)) ((self ,name))
-			  (return (slot-value this ',(car slot))))
+			  (slot-value self ',(car slot)))
 			(defmethod/remote ,(proxy-setter-name (car slot)) ((self ,name) value)			
-			  (setf (slot-value this ',(car slot)) value)
-			  (set-parameter ,(symbol-to-js (car slot)) value)
-			  (return (slot-value this ',(car slot))))))
-		   (mapcar #'ensure-list (remote-slots-of-class name)))))))
-;;;;
-;;;; Interface for remote services
-;;;;
-(defcomponent ajax-mixin ()
-  ())
+			  (setf (slot-value self ',(car slot)) value))))
+		   (remote-slots-of-class name))
+	 (defcomponent-ctor ,name)))))
 
-;; TODO: first create activexobject, catch exception then create xmlhttprequest.
-(defmethod/remote make-request ((self ajax-mixin))
-  ;; (cond
-  ;;       (window.*x-m-l-http-request ;; Gecko
-  ;;        (setf request (new (*x-m-l-http-request))))
-  ;;       (window.*active-x-object ;; Internettin Explorer
-  ;;        (setf request (new (*active-x-object "Microsoft.XMLHTTP")))))
-  ;;     (if (= null request)
-  ;; 	(throw (new (*error "Exception: Cannot find usable XmlHttpRequest method, -core-server 1.0")))
-  ;; 	(return request))
-  (let ((req null))
-    (try (setf req (new (*active-x-object "Msxml2.XMLHTTP")))
-	 (:catch (e1)
-	   (try (setf req (new (*active-x-object "Microsoft.XMLHTTP")))
-		(:catch (e2)
-		  (setf req null)))))
-    (if (and (not req) (not (= (typeof *x-m-l-http-request) "undefined")))
-	(setf req (new (*x-m-l-http-request))))
-    (return req)))
+(defrender/js dojo (&optional
+		    base-url (debug nil) (prevent-back-button 'false)
+		    (css (reduce (lambda (acc a)
+				   (cons (concatenate
+					  'string +dojo-path+ ".." a)
+					 acc))
+				 (reverse
+				  '("/dijit/themes/dijit.css"
+				    "/dijit/themes/tundra/tundra.css"
+				    "/dojox/widget/Toaster/Toaster.css"))
+				 :initial-value '("http://node1.core.gen.tr/coretal/style/coretal.css")))
+		    &aux (base-url (if (and +context+ base-url)
+				       (format nil "/~A/~A"
+					       (web-application.fqdn (application +context+))
+					       base-url)
+				       base-url)))
+  (defun load-javascript (url)
+    (let ((request nil)
+	  (base-url base-url))
+      ($ base-url)
+      (cond
+	(window.*x-m-l-http-request ;; Gecko
+	 (setf request (new (*x-m-l-http-request))))
+	(window.*active-x-object ;; Internettin Explorer
+	 (setf request (new (*active-x-object "Microsoft.XMLHTTP")))))
+      (if (= null request)
+	  (throw (new (*error "Cannot Load Javascript, -core-server 1.0"))))
+      (setf req request)
+      (request.open "GET" url false)
+      (request.send null)
+      (if (= 200 request.status)
+	  (return (eval (+ "{" request.response-text "}"))))
+      (throw (new (*error (+ "Cannot load javascript:" url " -core-server 1.0"))))))
+  
+  (defun load-css (url)
+    (let ((link (document.create-element "link")))
+      (setf link.href url
+	    link.rel "stylesheet"
+	    link.type "text/css")
+      (.append-child (aref (document.get-elements-by-tag-name "head") 0) link)
+      (return link)))
+  
+  (defun init-core-server ()
+    (when (= "undefined" (typeof dojo))
+      (setf dj-config (create :base-url +dojo-path+
+			      :is-debug debug
+			      :prevent-back-button-fix prevent-back-button
+			      ;;				  :dojo-iframe-history-url "./resources/iframe_history.html"
+			      ))      
+      (dolist (src (array "bootstrap.js" "loader.js" "hostenv_browser.js" "loader_xd.js"))	
+	(load-javascript (+ +dojo-path+ "_base/_loader/" src)))
+      (load-javascript (+ +dojo-path+ "_base.js")))
+    (setf base-url base-url)
+    (dojo.require "dojo.back")
+    (dojo.back.init)
+    (mapcar (lambda (c) (load-css c)) css)
+    (dojo.add-on-load
+     (lambda ()
+       (setf document.body.class-name (+ document.body.class-name " tundra")))))
+  (defun serialize (value) (return (dojo.to-json value)))
+  (defun funcall (url parameters retry-count)
+    (let (result)
+      (debug "server.funcall " url)
+      (when (dojo.is-object parameters)
+	(doeach (param parameters)
+		(setf (slot-value parameters param)
+		      (serialize (slot-value parameters param)))))
+      (dojo.xhr-post
+       (create :url (+ base-url url)
+	       :handle-as "text"
+	       :sync t
+	       :timeout 10
+	       :content parameters
+	       :load (lambda (json args)
+		       ;;			   (debug json)
+		       (setf result (eval (+ "{" json "}"))))
+	       :error (lambda (err args)
+			(if (= err.status 500)				
+			    (if (= "undefined" (typeof retry-count))
+				(return (funcall url parameters 5))
+				(if (> retry-count 0)
+				    (return (funcall url parameters (- retry-count 1)))))
+			    (throw (new (*error (+ "Funcall error: " url ", " err))))))))
+      (return result)))
+  (defun get-parameter (name)
+    (debug "get-param:" name)
+    (let ((params (+ (.substr window.location.hash 1) "&" (.substr window.location.search 1)))
+	  (arr (params.split "&")))
+      (dolist (a arr)
+	(let ((key (aref (a.split "=") 0))
+	      (value (aref (a.split "=") 1)))
+	  (debug (+ "key:" key " val:" value))
+	  (if (= (key.to-lower-case) (name.to-lower-case))
+	      (return value))))))
+  (defun set-parameter (name new-value)
+    (let ((params (.substr window.location.hash 1))
+	  (arr (params.split "&"))
+	  (hash "")
+	  (found nil))
+      (dolist (a arr)
+	(let ((key (aref (a.split "=") 0))
+	      (value (aref (a.split "=") 1)))
+	  (debug key value)
+	  (if (not (= "undefined" (typeof key)))		  
+	      (if (= (key.to-lower-case) (name.to-lower-case))
+		  (setf hash (+ hash (+ key "=" new-value "&"))
+			found t)
+		  (setf hash (+ hash (+ key "=" (if (= "undefined" (typeof value))
+						    "" value) "&")))))))
+      (if (not found) (setf hash (+ hash (+ name "=" new-value))))
+      (setf window.location.hash hash)
+      (return new-value)))
+  (init-core-server))
 
-;; return response directly, don't eval (text? xml?).
-(defmethod/remote send-request ((self ajax-mixin) request url)
-  (request.open "GET" url false)
-  (request.send null)
-  (if (= 200 request.status)
-      (return request)
-      (throw (new (*error (+ "Exception: Cannot send XmlHttpRequest: " url " -core-server 1.0"))))))
 
-(defcomponent jqueryapi (ajax-mixin)
-  ((script-location :host remote
-		    :initform "jquery-latest.min.js"
-		    :initarg :script-location
-		    :documentation "jQuery script location as url")))
+;; ;;;;
+;; ;;;; Interface for remote services
+;; ;;;;
+;; (defcomponent ajax-mixin ()
+;;   ())
 
-(defmethod/remote init ((self jqueryapi))
-  (when (= "undefined" (typeof j-query))
-    (let ((req (this.make-request))
-	  (resp (this.send-request req this.script-location)))
-      (return (eval (+ "{" resp.response-text "}"))))))
+;; ;; TODO: first create activexobject, catch exception then create xmlhttprequest.
+;; (defmethod/remote make-request ((self ajax-mixin))
+;;   ;; (cond
+;;   ;;       (window.*x-m-l-http-request ;; Gecko
+;;   ;;        (setf request (new (*x-m-l-http-request))))
+;;   ;;       (window.*active-x-object ;; Internettin Explorer
+;;   ;;        (setf request (new (*active-x-object "Microsoft.XMLHTTP")))))
+;;   ;;     (if (= null request)
+;;   ;; 	(throw (new (*error "Exception: Cannot find usable XmlHttpRequest method, -core-server 1.0")))
+;;   ;; 	(return request))
+;;   (let ((req null))
+;;     (try (setf req (new (*active-x-object "Msxml2.XMLHTTP")))
+;; 	 (:catch (e1)
+;; 	   (try (setf req (new (*active-x-object "Microsoft.XMLHTTP")))
+;; 		(:catch (e2)
+;; 		  (setf req null)))))
+;;     (if (and (not req) (not (= (typeof *x-m-l-http-request) "undefined")))
+;; 	(setf req (new (*x-m-l-http-request))))
+;;     (return req)))
 
-;; TODO: implement retrycount, possibly using $.ajax.
-(defmethod/remote jqueryfuncall ((self jqueryapi) url parameters retry-count)
-  (let (result)
-    (debug "server.funcall " url)
-    ($.post url
-	    parameters
-	    (lambda (data textstatus)
-	      (setf result (eval (+ "{" data "}"))))
-	    "json")
-    (return result)))
+;; ;; return response directly, don't eval (text? xml?).
+;; (defmethod/remote send-request ((self ajax-mixin) request url)
+;;   (request.open "GET" url false)
+;;   (request.send null)
+;;   (if (= 200 request.status)
+;;       (return request)
+;;       (throw (new (*error (+ "Exception: Cannot send XmlHttpRequest: " url " -core-server 1.0"))))))
 
-(defun/cc jquery (&optional scriptlocation)  
-  (send/component (make-instance 'jqueryapi :script-location scriptlocation))
-  (<:js
-    `(progn
-       (setf jqueryapi (new (jqueryapi)))
-       (defun funcall (url parameters retry-count)
-	 (return (jqueryapi.jqueryfuncall url parameters retry-count)))
-       (jqueryapi.init))))
+;; (defcomponent jqueryapi (ajax-mixin)
+;;   ((script-location :host remote
+;; 		    :initform "jquery-latest.min.js"
+;; 		    :initarg :script-location
+;; 		    :documentation "jQuery script location as url")))
+
+;; (defmethod/remote init ((self jqueryapi))
+;;   (when (= "undefined" (typeof j-query))
+;;     (let ((req (this.make-request))
+;; 	  (resp (this.send-request req this.script-location)))
+;;       (return (eval (+ "{" resp.response-text "}"))))))
+
+;; ;; TODO: implement retrycount, possibly using $.ajax.
+;; (defmethod/remote jqueryfuncall ((self jqueryapi) url parameters retry-count)
+;;   (let (result)
+;;     (debug "server.funcall " url)
+;;     ($.post url
+;; 	    parameters
+;; 	    (lambda (data textstatus)
+;; 	      (setf result (eval (+ "{" data "}"))))
+;; 	    "json")
+;;     (return result)))
+
+;; (defun/cc jquery (&optional scriptlocation)  
+;;   (send/component (make-instance 'jqueryapi :script-location scriptlocation))
+;;   ;; (<:js
+;; ;;     `(progn
+;; ;;        (setf jqueryapi (new (jqueryapi)))
+;; ;;        (defun funcall (url parameters retry-count)
+;; ;; 	 (return (jqueryapi.jqueryfuncall url parameters retry-count)))
+;; ;;        (jqueryapi.init)))
+;;   (error "fix jquery")
+;;   )
+
+;; (defun dojo2 (&optional base-url (debug nil) (prevent-back-button 'false)
+;; 	      (css (reduce (lambda (acc a)
+;; 			     (cons (concatenate
+;; 				    'string +dojo-path+ ".." a)
+;; 				   acc))
+;; 			   (reverse
+;; 			    '("/dijit/themes/dijit.css"
+;; 			      "/dijit/themes/tundra/tundra.css"
+;; 			      "/dojox/widget/Toaster/Toaster.css"))
+;; 			   :initial-value '("http://node1.core.gen.tr/coretal/style/coretal.css"))))
+;;   (js*
+;;    `(progn
+;;       (defun load-javascript (url)
+;; 	(let ((request nil))
+;; 	  (cond
+;; 	    (window.*x-m-l-http-request ;; Gecko
+;; 	     (setf request (new (*x-m-l-http-request))))
+;; 	    (window.*active-x-object ;; Internettin Explorer
+;; 	     (setf request (new (*active-x-object "Microsoft.XMLHTTP")))))
+;; 	  (if (= null request)
+;; 	      (throw (new (*error "Cannot Load Javascript, -core-server 1.0"))))
+;; 	  (setf req request)
+;; 	  (request.open "GET" url false)
+;; 	  (request.send null)
+;; 	  (if (= 200 request.status)
+;; 	      (return (eval (+ "{" request.response-text "}"))))
+;; 	  (throw (new (*error (+ "Cannot load javascript:" url " -core-server 1.0"))))))
+;;       (defun load-css (url)
+;; 	(let ((link (document.create-element "link")))
+;; 	  (setf link.href url
+;; 		link.rel "stylesheet"
+;; 		link.type "text/css")
+;; 	  (.append-child (aref (document.get-elements-by-tag-name "head") 0)
+;; 			 link)
+;; 	  (return link)))
+;;       (defun init-core-server ()
+;; 	(when (= "undefined" (typeof dojo))
+;; 	  (setf dj-config (create :base-url ,+dojo-path+ :is-debug ,debug
+;; 				  :prevent-back-button-fix ,prevent-back-button
+;; 				  ;;				  :dojo-iframe-history-url "./resources/iframe_history.html"
+;; 				  ))      
+;; 	  (dolist (src (array "bootstrap.js" "loader.js" "hostenv_browser.js" "loader_xd.js"))	
+;; 	    (load-javascript (+ ,+dojo-path+ "_base/_loader/" src)))
+;; 	  (load-javascript (+ ,+dojo-path+ "_base.js")))
+;; 	(setf base-url ,(if (and +context+ base-url)
+;; 			    (format nil "/~A/~A"
+;; 				    (web-application.fqdn (application +context+))
+;; 				    base-url)))
+;; 	(dojo.require "dojo.back")
+;; 	(dojo.back.init)
+;; 	,@(mapcar (lambda (c) `(load-css ,c)) css)
+;; 	(dojo.add-on-load
+;; 	 (lambda ()
+;; 	   (setf document.body.class-name (+ document.body.class-name " tundra")))))
+;;       (defun serialize (value) (return (dojo.to-json value)))
+;;       (defun funcall (url parameters retry-count)
+;; 	(let (result)
+;; 	  (debug "server.funcall " url)
+;; 	  (when (dojo.is-object parameters)
+;; 	    (doeach (param parameters)
+;; 		    (setf (slot-value parameters param)
+;; 			  (serialize (slot-value parameters param)))))
+;; 	  (dojo.xhr-post
+;; 	   (create :url (+ base-url url)
+;; 		   :handle-as "text"
+;; 		   :sync t
+;; 		   :timeout 10
+;; 		   :content parameters
+;; 		   :load (lambda (json args)
+;; 			   ;;			   (debug json)
+;; 			   (setf result (eval (+ "{" json "}"))))
+;; 		   :error (lambda (err args)
+;; 			    (if (= err.status 500)				
+;; 				(if (= "undefined" (typeof retry-count))
+;; 				    (return (funcall url parameters 5))
+;; 				    (if (> retry-count 0)
+;; 					(return (funcall url parameters (- retry-count 1)))))
+;; 				(throw (new (*error (+ "Funcall error: " url ", " err))))))))
+;; 	  (return result)))
+;;       (defun get-parameter (name)
+;; 	(debug "get-param:" name)
+;; 	(let ((params (+ (.substr window.location.hash 1) "&" (.substr window.location.search 1)))
+;; 	      (arr (params.split "&")))
+;; 	  (dolist (a arr)
+;; 	    (let ((key (aref (a.split "=") 0))
+;; 		  (value (aref (a.split "=") 1)))
+;; 	      (debug (+ "key:" key " val:" value))
+;; 	      (if (= (key.to-lower-case) (name.to-lower-case))
+;; 		  (return value))))))
+;;       (defun set-parameter (name new-value)
+;; 	(let ((params (.substr window.location.hash 1))
+;; 	      (arr (params.split "&"))
+;; 	      (hash "")
+;; 	      (found nil))
+;; 	  (dolist (a arr)
+;; 	    (let ((key (aref (a.split "=") 0))
+;; 		  (value (aref (a.split "=") 1)))
+;; 	      (debug key value)
+;; 	      (if (not (= "undefined" (typeof key)))		  
+;; 		  (if (= (key.to-lower-case) (name.to-lower-case))
+;; 		      (setf hash (+ hash (+ key "=" new-value "&"))
+;; 			    found t)
+;; 		      (setf hash (+ hash (+ key "=" (if (= "undefined" (typeof value))
+;; 							"" value) "&")))))))
+;; 	  (if (not found) (setf hash (+ hash (+ name "=" new-value))))
+;;  	  (setf window.location.hash hash)
+;;  	  (return new-value)))
+;;       (init-core-server))))
+
+;; (defun dojo-old (&optional base-url (debug nil) (prevent-back-button 'false)
+;; 		 (css (reduce (lambda (acc a)
+;; 				(cons (concatenate
+;; 				       'string +dojo-path+ ".." a)
+;; 				      acc))
+;; 			      (reverse
+;; 			       '("/dijit/themes/dijit.css"
+;; 				 "/dijit/themes/tundra/tundra.css"
+;; 				 "/dojox/widget/Toaster/Toaster.css"))
+;; 			      :initial-value '("http://node1.core.gen.tr/coretal/style/coretal.css"))))
+;;   (js:js*
+;;    `(progn
+;;       (defun load-javascript (url)
+;; 	(let ((request nil))
+;; 	  (cond
+;; 	    (window.*x-m-l-http-request ;; Gecko
+;; 	     (setf request (new (*x-m-l-http-request))))
+;; 	    (window.*active-x-object ;; Internettin Explorer
+;; 	     (setf request (new (*active-x-object "Microsoft.XMLHTTP")))))
+;; 	  (if (= null request)
+;; 	      (throw (new (*error "Cannot Load Javascript, -core-server 1.0"))))
+;; 	  (setf req request)
+;; 	  (request.open "GET" url false)
+;; 	  (request.send null)
+;; 	  (if (= 200 request.status)
+;; 	      (return (eval (+ "{" request.response-text "}"))))
+;; 	  (throw (new (*error (+ "Cannot load javascript:" url " -core-server 1.0"))))))
+;;       (defun load-css (url)
+;; 	(let ((link (document.create-element "link")))
+;; 	  (setf link.href url
+;; 		link.rel "stylesheet"
+;; 		link.type "text/css")
+;; 	  (.append-child (aref (document.get-elements-by-tag-name "head") 0)
+;; 			 link)
+;; 	  (return link)))
+;;       (defun init-core-server ()
+;; 	(when (= "undefined" (typeof dojo))
+;; 	  (setf dj-config (create :base-url ,+dojo-path+ :is-debug ,debug
+;; 				  :prevent-back-button-fix ,prevent-back-button
+;; 				  ;;				  :dojo-iframe-history-url "./resources/iframe_history.html"
+;; 				  ))      
+;; 	  (dolist (src (array "bootstrap.js" "loader.js" "hostenv_browser.js" "loader_xd.js"))	
+;; 	    (load-javascript (+ ,+dojo-path+ "_base/_loader/" src)))
+;; 	  (load-javascript (+ ,+dojo-path+ "_base.js")))
+;; 	(setf base-url ,(if (and +context+ base-url)
+;; 			    (format nil "/~A/~A"
+;; 				    (web-application.fqdn (application +context+))
+;; 				    base-url)))
+;; 	(dojo.require "dojo.back")
+;; 	(dojo.back.init)
+;; 	,@(mapcar (lambda (c) `(load-css ,c)) css)
+;; 	(dojo.add-on-load
+;; 	 (lambda ()
+;; 	   (setf document.body.class-name (+ document.body.class-name " tundra")))))
+;;       (defun serialize (value) (return (dojo.to-json value)))
+;;       (defun funcall (url parameters retry-count)
+;; 	(let (result)
+;; 	  (debug "server.funcall " url)
+;; 	  (when (dojo.is-object parameters)
+;; 	    (doeach (param parameters)
+;; 		    (setf (slot-value parameters param)
+;; 			  (serialize (slot-value parameters param)))))
+;; 	  (dojo.xhr-post
+;; 	   (create :url (+ base-url url)
+;; 		   :handle-as "text"
+;; 		   :sync t
+;; 		   :timeout 10
+;; 		   :content parameters
+;; 		   :load (lambda (json args)
+;; 			   ;;			   (debug json)
+;; 			   (setf result (eval (+ "{" json "}"))))
+;; 		   :error (lambda (err args)
+;; 			    (if (= err.status 500)				
+;; 				(if (= "undefined" (typeof retry-count))
+;; 				    (return (funcall url parameters 5))
+;; 				    (if (> retry-count 0)
+;; 					(return (funcall url parameters (- retry-count 1)))))
+;; 				(throw (new (*error (+ "Funcall error: " url ", " err))))))))
+;; 	  (return result)))
+;;       (defun get-parameter (name)
+;; 	(debug "get-param:" name)
+;; 	(let ((params (+ (.substr window.location.hash 1) "&" (.substr window.location.search 1)))
+;; 	      (arr (params.split "&")))
+;; 	  (dolist (a arr)
+;; 	    (let ((key (aref (a.split "=") 0))
+;; 		  (value (aref (a.split "=") 1)))
+;; 	      (debug (+ "key:" key " val:" value))
+;; 	      (if (= (key.to-lower-case) (name.to-lower-case))
+;; 		  (return value))))))
+;;       (defun set-parameter (name new-value)
+;; 	(let ((params (.substr window.location.hash 1))
+;; 	      (arr (params.split "&"))
+;; 	      (hash "")
+;; 	      (found nil))
+;; 	  (dolist (a arr)
+;; 	    (let ((key (aref (a.split "=") 0))
+;; 		  (value (aref (a.split "=") 1)))
+;; 	      (debug key value)
+;; 	      (if (not (= "undefined" (typeof key)))		  
+;; 		  (if (= (key.to-lower-case) (name.to-lower-case))
+;; 		      (setf hash (+ hash (+ key "=" new-value "&"))
+;; 			    found t)
+;; 		      (setf hash (+ hash (+ key "=" (if (= "undefined" (typeof value))
+;; 							"" value) "&")))))))
+;; 	  (if (not found) (setf hash (+ hash (+ name "=" new-value))))
+;;  	  (setf window.location.hash hash)
+;;  	  (return new-value)))
+;;       (init-core-server))))
 
 (defun/cc dojo (&optional base-url (debug nil) (prevent-back-button 'false)
 		(css (reduce (lambda (acc a)
@@ -336,7 +689,7 @@
 	  (load-javascript (+ ,+dojo-path+ "_base.js")))
 	(setf base-url ,(if (and +context+ base-url)
 			    (format nil "/~A/~A"
-				    (web-application.fqdn (context.application +context+))
+				    (web-application.fqdn (application +context+))
 				    base-url)))
 	(dojo.require "dojo.back")
 	(dojo.back.init)
@@ -547,3 +900,18 @@
 ;; 			(setf (slot-value this ',(car slot)) value)
 ;; 			(return (slot-value this ',(car slot))))))
 ;; 		 (remote-args slots)))))
+
+
+;;	   (local-action-binds ()
+	     ;; (reduce (lambda (acc method)
+;; 		       (cons `(,(car method)
+;; 				(action/url ,(mapcar (lambda (arg) (list arg (symbol-to-js arg))) (cdr method))
+;; 				  (let ,(mapcar (lambda (arg) `(,arg (json-deserialize ,arg))) (cdr method))
+;; 				    (json/suspend
+;; 				     (lambda (stream)
+;; 				       (json! stream (,(car method) self ,@(cdr method))))))))
+;; 			     acc))
+;; 		     (mapcar (lambda (method)
+;; 			       (cons (method-proxy class-name (car method)) method))
+;; 			     (local-methods-of-class class-name)) :initial-value nil)
+;;	   )
