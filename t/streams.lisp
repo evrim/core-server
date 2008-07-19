@@ -63,6 +63,25 @@
 		   (return-stream s))))
     (0 1 0 0 1 0 (4 5) (1 6 (4 5) (7 8))))
 
+(deftest indented-stream-test
+    (let ((s (make-indented-stream (make-core-stream ""))))
+      (write-stream s #\a)
+      (increase-indent s)
+      (write-stream s #\Newline)
+      (write-stream s #\b)
+      (return-stream s))
+  "a
+  b")
+
+(deftest compressed-stream-test
+    (let ((s (make-compressed-stream (make-core-stream ""))))
+	  (write-stream s #\a)
+	  (increase-indent s)
+	  (write-stream s #\Newline)
+	  (write-stream s #\b)
+	  (return-stream s))
+  "ab")
+
 ;; (deftest test-cps-stream  
 ;;     (with-call/cc
 ;;       (let ((s (core-server::make-core-cps-stream ""))
