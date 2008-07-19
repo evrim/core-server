@@ -40,7 +40,8 @@
 	      :fill-pointer 0))
 
 (declaim (inline push-atom))
-(defun push-atom (atom accumulator)
+
+(defun push-atom (atom accumulator)  
   (cond
     ((and (characterp atom) (not (eq 'character (array-element-type accumulator))))
      (reduce #'(lambda (acc atom)
@@ -179,34 +180,9 @@
 (defmethod write-stream ((self core-vector-io-stream) (val null))
   self)
 
-;; SERVER> (time 
-;; 	 (let ((a (make-array 0 :element-type 'character :adjustable t :fill-pointer 0)))
-;; 	  (loop for i from 0 upto 10000000
-;; 	       do (vector-push-extend #\A a))))
-;; Evaluation took:
-;;   0.667 seconds of real time
-;;   0.620038 seconds of user run time
-;;   0.052003 seconds of system run time
-;;   [Run times include 0.056 seconds GC run time.]
-;;   0 calls to %EVAL
-;;   0 page faults and
-;;   268,434,512 bytes consed.
-;; NIL
-;; SERVER> (time 
-;; 	 (let ((a (make-array 0 :element-type 'character :adjustable t :fill-pointer 0)))
-;; 	   (adjust-array a 10000000)
-;; 	   (loop for i from 0 upto 10000000
-;; 	       do (vector-push #\A a))))
-;; Evaluation took:
-;;   0.304 seconds of real time
-;;   0.288018 seconds of user run time
-;;   0.016001 seconds of system run time
-;;   0 calls to %EVAL
-;;   0 page faults and
-;;   80,000,032 bytes consed.
-;; NIL
 (defmethod write-stream ((self core-vector-io-stream) (vector vector))  
-  (prog1 self (reduce #'write-stream vector :initial-value self)))
+  (prog1 self      
+    (reduce #'write-stream vector :initial-value self)))
 
 (defmethod write-stream ((self core-vector-io-stream) atom)
   (if (transactionalp self)
@@ -395,6 +371,9 @@
 		:if-does-not-exist :create
 		:external-format :utf8))))
 
+(defun make-core-file-io-stream (file)
+  (make-instance 'core-file-io-stream :file file))
+
 (defclass core-file-input-stream (core-fd-io-stream)
   ())
 
@@ -514,7 +493,7 @@
 ;;; Object Stream
 ;;;-----------------------------------------------------------------------------
 (defclass core-object-io-stream (core-list-io-stream)
-  ((%clazz :initarg :clazz :initform nil))) ;; underlyng object clazz
+  ((%clazz :accessor clazz :initarg :clazz :initform nil))) ;; underlyng object clazz
 
 (defmethod close-stream ((self core-object-io-stream))
   (setf (s-v '%clazz) nil)
@@ -553,14 +532,6 @@
 (defmethod return-stream ((self core-object-io-stream))
   (list-to-object (s-v '%list) (s-v '%clazz)))
 
-;; (defmacro make-core-stream (target &rest args)
-;;   `(etypecase ,target
-;;      (string (make-instance 'core-string-io-stream :string ,target ,@args))
-;;      (pathname (make-instance 'core-file-io-stream :file ,target))
-;;      (array (make-instance 'core-vector-io-stream :octets ,target))
-;;      (sb-sys::fd-stream (make-instance 'core-fd-io-stream :stream ,target))
-;;      (list (make-instance 'core-list-io-stream :list ,target))
-;;      (standard-object (make-instance 'core-object-io-stream :object ,target))))
 
 (defun make-core-stream (target)
   (etypecase target
@@ -582,77 +553,8 @@
        (close-stream ,var))))
 
 ;;;-----------------------------------------------------------------------------
-;;; Indent Stream Mixin
-;;;-----------------------------------------------------------------------------
-;;; This is used to indent outputs like javascript render.
-;;;
-(defclass core-stream-indent-mixin ()
-  ((%indent :initform 0 :initarg :indent)
-   (%increment :initform 2 :initarg :increment)))
-
-(defmethod increase-indent ((self core-stream) &optional n)
-  self)
-
-(defmethod increase-indent ((self core-stream-indent-mixin) &optional (n nil))  
-  (let ((n (or n (s-v '%increment))))
-    (aif (< (incf (s-v '%indent) n) 0)
-	 (setf (s-v '%indent) 0)
-	 it)
-    self))
-
-(defmethod decrease-indent ((self core-stream) &optional n)
-  self)
-
-(defmethod decrease-indent ((self core-stream-indent-mixin) &optional (n nil))
-  (let ((n (or n (s-v '%increment))))  
-    (aif (< (decf (s-v '%indent) n) 0)
-	 (setf (s-v '%indent) 0)
-	 it)
-    self))
-
-(defmethod write-stream ((self core-stream-indent-mixin) atom)
-  (prog1 (call-next-method self atom)
-    (if (or (eq #.(char-code #\Newline) atom) (eq #\Newline atom))
-	(dotimes (i (s-v '%indent))
-	  (call-next-method self #.(char-code #\Space))))))
-
-(defclass core-indented-string-stream (core-stream-indent-mixin core-string-io-stream)
-  ())
-
-(defclass core-indented-file-io-stream (core-stream-indent-mixin core-string-io-stream)
-  ())
-
-(defun make-indented-stream (target &optional (increment 0) (initial 0))
-  (etypecase target
-    (string (make-instance 'core-indented-string-stream :string target
-			   :indent initial :increment increment))
-    (sb-sys::fd-stream (make-instance 'core-indented-fd-io-stream :stream target
-				      ::indent initial :increment increment))))
-
-;;;-----------------------------------------------------------------------------
-;;; Compressed Stream Mixin
-;;;-----------------------------------------------------------------------------
-;;; This is used to compressed outputs like javascript render.
-;;;
-(defclass core-stream-compress-mixin ()
-  ())
-
-(defmethod write-stream ((self core-stream-compress-mixin) atom)  
-  (if (or (eq #.(char-code #\Newline) atom) (eq #\Newline atom))
-      self
-      (call-next-method self atom)))
-
-(defclass core-compressed-string-stream (core-stream-compress-mixin core-string-io-stream)
-  ())
-
-(defclass core-compressed-file-io-stream (core-stream-compress-mixin core-string-io-stream)
-  ())
-
-(defun make-compressed-stream (target)
-  (etypecase target
-    (string (make-instance 'core-compressed-string-stream :string target))
-    (sb-sys::fd-stream (make-instance 'core-compressed-fd-io-stream :stream target))))
-
+;;; Core Pipe Stream
+;;; -----------------------------------------------------------------------------
 (defclass pipe-stream (core-stream)
   ((%input :accessor pipe-stream.input
 	   :initform (error "Please specify \":input\" stream")
@@ -672,7 +574,7 @@
 
 (defmethod checkpoint-stream ((self pipe-stream))
   (if (transactionalp self)
-      (push (list (s-v '%current)) (s-v '%checkpoints)))
+      (push (s-v '%current) (s-v '%checkpoints)))
   (checkpoint-stream (s-v '%input))
   (checkpoint-stream (s-v '%output))
   (setf (s-v '%current) (length (s-v '%checkpoints)))
@@ -700,176 +602,142 @@
 (defmethod return-stream ((self pipe-stream))
   (return-stream (s-v '%output)))
 
+;; Object IO Extenstions
+(defmethod clazz ((self pipe-stream))
+  (clazz (s-v '%ouput)))
+ 
+(defmethod (setf clazz) (value (self pipe-stream))
+  (setf (clazz (s-v '%output)) value))
+
 (defun make-pipe-stream (input output)
   (make-instance 'pipe-stream :input input :output output))
 
-(defclass core-transformer-stream (local-unit pipe-stream)
-  ((%decoder :accessor transformer.decoder :initarg :decoder
-	     :initform (error "Please specify \":decoder\" function"))
-   (%encoder :accessor transformer.encoder :initarg :encoder :initform nil)
-   (%read-k :initform nil)
-   (%write-k :initform nil))
-  (:default-initargs :auto-start t :name "Transformer Stream"))
+;;;-----------------------------------------------------------------------------
+;;; Core Transformer Stream
+;;; -----------------------------------------------------------------------------
+;;;
+;;; Only output transforming is tested.
+;;;
+(defclass core-transformer-stream (core-stream)
+  ((%output :initform (error "Please specify output stream") :initarg :output)
+   (%encoder :initarg :encoder :initform (error "Please specify encoder lambda"))))
 
-(defmethod/unit read-stream ((self core-transformer-stream))  
-  (format t "read-stream transformer, thread:~A~%" (current-thread))
-  (cond
-    ((s-v '%write-k)
-     (format t "gee:~A~%" (s-v '%write-k))
-     (let ((write-k (s-v '%write-k)))
-       (setf (s-v '%write-k) nil
-	     (s-v '%read-k) +ret+)
-       (funcall write-k t)))
-    ((null (s-v '%read-k))
-     (setf (s-v '%read-k) +ret+)
-     (format t "funku dekoder ret:~A~%" +ret+)
-     (prog1 (funcall (s-v '%decoder) self)
-       (setf (s-v '%read-k) nil
-	     (s-v '%write-k) nil)))
-    (t
-     (format t "funku default~%")
-     (read-stream (s-v '%input)))))
+;; (defmethod peek-stream ((self core-transformer-stream))
+;;   (peek-stream (s-v '%input)))
 
-(defmethod/unit write-stream ((self core-transformer-stream) c)
-  (flet ((ret (val)
-	   (format t "inside write-stream ret val:~A~%" val)
-	   (return-from write-stream val)))
-    (format t "write-stream transformer, thread:~A~%" (current-thread))
-    (cond
-      ((s-v '%read-k)	 
-       (let ((read-k (s-v '%read-k)))
-	 (setf (s-v '%write-k) #'ret)
-	 (setf (s-v '%read-k) nil)
-	 (funcall read-k c)))
-      (t
-       (write-stream (s-v '%output) c)))))
+;; (defmethod read-stream ((self core-transformer-stream))
+;;   (read-stream (s-v '%input)))
 
-(defun make-transformer-stream (decoder input
-				&optional (output (make-instance 'core-list-io-stream)))
-  (make-instance 'core-transformer-stream :input input :output output
-		 :decoder decoder))
+;; (defmethod write-stream ((self core-transformer-stream) c)
+;;   (write-stream (s-v '%output) c))
 
-(defclass core-cps-stream (core-stream)
-  ((%k :initform nil)
-   (%continuations :initform '())))
-
-(defmethod copy-core-stream ((self core-cps-stream))
-  (let ((s (make-instance 'core-cps-stream)))
-    (setf (slot-value s '%k) (s-v '%k)
-	  (slot-value s '%continuations) (copy-list (s-v '%continuations)))
-    s))
-
-(defmethod transactionalp ((self core-cps-stream))
-  (not (null (s-v '%k))))
-
-(defmethod current-k ((self core-cps-stream))
-  (s-v '%k))
-
-(defmethod/cc checkpoint-stream/cc ((self core-cps-stream) k)
+(defmethod checkpoint-stream ((self core-transformer-stream))
   (if (transactionalp self)
-      (push (s-v '%k) (s-v '%continuations)))
+      (push (s-v '%current) (s-v '%checkpoints)))
+;;  (checkpoint-stream (s-v '%input))
+  (checkpoint-stream (s-v '%output))
+  (setf (s-v '%current) (length (s-v '%checkpoints)))
+  (length (s-v '%checkpoints)))
 
-  (setf (s-v '%k) (lambda (&optional values)
-		    (setf (s-v '%k) (pop (s-v '%continuations)))
-		    (kall k values)))
-  (format t "checkpoint:~D~%" (length (s-v '%continuations)))
-  (length (s-v '%continuations)))
+(defmethod rewind-stream ((self core-transformer-stream))
+  (prog1 (length (s-v '%checkpoints))
+    (setf (s-v '%current)
+	  (or (pop (s-v '%checkpoints))
+	      -1))
+;;    (rewind-stream (s-v '%input))
+    (rewind-stream (s-v '%output))))
 
-(defmethod/cc rewind-stream/cc ((self core-cps-stream) &optional values)
-  (if (not (transactionalp self))
-      -1
-      (apply (s-v '%k) (ensure-list values))))
+(defmethod commit-stream ((self core-transformer-stream))
+  (prog1 (length (s-v '%checkpoints))
+    (setf (s-v '%current) (or (pop (s-v '%checkpoints))
+			      -1))
+;;    (commit-stream (s-v '%input))
+    (commit-stream (s-v '%output))))
 
-;; (defmethod/cc rewind-stream/cc ((self core-cps-stream) &optional values)
-;;   (break "rewinding~%")
-;;   (setf *konts* (s-v '%continuations))
-;;   (if (not (transactionalp self))
-;;       -1
-;;       (progn
-;; 	(format t "rewind:~D~%" (1- (length (s-v '%continuations))))
-;; 	(acond	 
-;; 	 ((pop (s-v '%continuations))
-;;  	  (let ((current (s-v '%k)))
-;;  	    (setf (s-v '%k) it)
-;; 	    (format t "kalling:~A, k is :~A" current (s-v '%k))
-;;  	    (apply #'kall current values)))
-;; 	 ((s-v '%k)
-;; 	  (setf (s-v '%k) nil)
-;; 	  (format t "K is :~A" (s-v '%k))
-;; 	  (apply #'kall it values))
-;; 	 (t
-;; 	  (break "y00"))
-;; 	 ))
-;;       ))
+(defmethod close-stream ((self core-transformer-stream))
+  (close-stream (s-v '%output))
+;;  (close-stream (s-v '%input))
+  )
 
-(defun escape (&rest values)
-  (funcall (apply (arnesi::toplevel-k) values))
-  (break "You should not see this, call/cc must be escaped already."))
+(defmethod return-stream ((self core-transformer-stream))
+  (return-stream (s-v '%output)))
 
-(defmethod/cc commit-stream/cc ((self core-cps-stream) &optional value)
-  (describe self)
-  (if (not (transactionalp self))
-      -1
-      (progn
-	(format t "commit:~D~%" (length (s-v '%continuations)))
-	;;	(setf (s-v '%k) (pop (s-v '%continuations)))
-	(escape value))))
+(defmethod write-stream ((self core-transformer-stream) (vector vector))
+  (prog1 self (reduce #'write-stream vector :initial-value self)))
 
-(defclass core-cps-io-stream (core-cps-stream core-vector-io-stream)
+(defmethod write-stream ((self core-transformer-stream) atom)
+  (prog1 self
+    (if (s-v '%encoder)
+	(funcall (s-v '%encoder) (s-v '%output) atom)
+	(call-next-method))))
+
+(defun make-output-transformer (output encoder)
+  (make-instance 'core-transformer-stream :output output :encoder encoder))
+
+;;;----------------------------------------------------------------------------
+;;; Core Indented Stream
+;;; ---------------------------------------------------------------------------
+;;; This is used to indent outputs like javascript render. Writes
+;;; %indent spaces after a #\Newline is written.
+;;;
+(defclass core-indented-stream (core-transformer-stream)
+  ((%indent :initform 0 :initarg :indent)
+   (%increment :initform 2 :initarg :increment)))
+
+(defmethod increase-indent ((self core-stream) &optional n)
+  (declare (ignore n))
+  self)
+
+(defmethod increase-indent ((self core-indented-stream) &optional (n nil))  
+  (let ((n (or n (s-v '%increment))))
+    (aif (< (incf (s-v '%indent) n) 0)
+	 (setf (s-v '%indent) 0)
+	 it)
+    self))
+
+(defmethod decrease-indent ((self core-stream) &optional n)
+  (declare (ignore n))
+  self)
+
+(defmethod decrease-indent ((self core-indented-stream) &optional (n nil))
+  (let ((n (or n (s-v '%increment))))  
+    (aif (< (decf (s-v '%indent) n) 0)
+	 (setf (s-v '%indent) 0)
+	 it)
+    self))
+
+(defmethod write-stream ((self core-indented-stream) (vector vector))
+  (prog1 self (reduce #'write-stream vector :initial-value self)))
+
+(defmethod write-stream ((self core-indented-stream) atom)
+  (prog1 self (funcall (s-v '%encoder) (s-v '%output) atom (s-v '%indent))))
+
+(defun make-indented-stream (output &optional (increment 2) (initial 0))
+  (make-instance 'core-indented-stream
+		 :output output
+		 :increment increment
+		 :indent initial
+		 :encoder #'(lambda (stream atom indent)
+			      (write-stream stream atom)
+			      (if (or (eq #.(char-code #\Newline) atom) (eq #\Newline atom))
+				  (dotimes (i indent)
+				    (write-stream stream #.(char-code #\Space)))))))
+
+;;;-----------------------------------------------------------------------------
+;;; Core Compressed Stream
+;;;-----------------------------------------------------------------------------
+;;; This is used to compressed outputs like javascript render. Eats all #\Newline
+;;;
+(defclass core-compressed-stream (core-transformer-stream)
   ())
 
-;; (defmethod/cc checkpoint-stream/cc ((self core-cps-stream))
-;;   (let/cc k
-;;     (if (transactionalp self)
-;; 	(push k (s-v '%continuations)))
-    
-;;     (setf (s-v '%k) k)
-;;     (kall k (checkpoint-stream self))))
-
-;; (defmethod/cc rewind-stream/cc ((self core-cps-stream))
-;;   (if (not (transactionalp self))
-;;       -1
-;;       (progn
-;; 	(acond
-;; 	 ((pop (s-v '%continuations))
-;; 	  (setf (s-v '%k) it)	  
-;; 	  (kall it (rewind-stream self)))
-;; 	 ((s-v '%k)
-;; 	  (setf (s-v '%k) nil)	  
-;; 	  (kall it (rewind-stream self)))))))
-
-;; (defmethod/cc commit-stream/cc ((self core-cps-stream))
-;;   (if (not (transactionalp self))
-;;       -1
-;;       (prog1 (commit-stream self)
-;; 	(setf (s-v '%k) (pop (s-v '%continuations))))))
-
-(defclass core-cps-string-io-stream (core-string-io-stream core-cps-stream)
-  ())
-
-(defclass core-cps-fd-io-stream (core-cps-stream core-fd-io-stream)
-  ())
-
-(defclass core-cps-file-io-stream (core-cps-stream core-file-io-stream)
-  ())
-
-(defclass core-cps-list-io-stream (core-cps-stream core-list-io-stream)
-  ())
-
-(defclass core-cps-object-io-stream (core-cps-stream core-object-io-stream)
-  ())
-
-(defun make-core-cps-stream (target &rest args)
-  (apply #'make-instance
-	 (append
-	  (etypecase target
-	    (string (list 'core-cps-string-io-stream :string target))
-	    (pathname (list 'core-cps-file-io-stream :file target))
-	    (array (list 'core-cps-vector-io-stream :octets target))
-	    (sb-sys::fd-stream (list 'core-cps-fd-io-stream :stream target))
-	    (list (list 'core-cps-list-io-stream :list target))
-	    (standard-object (list 'core-cps-object-io-stream :object target)))
-	  args)))
+(defun make-compressed-stream (output)
+  (make-instance 'core-compressed-stream
+		 :output output
+		 :encoder #'(lambda (stream atom)
+			      (if (or (eq #.(char-code #\Newline) atom) (eq #\Newline atom))
+				  stream
+				  (write-stream stream atom)))))
 
 (deftrace streams
     '(read-stream write-stream close-stream)) ;;current-checkpoint
@@ -877,3 +745,133 @@
 (deftrace streams-tx
     '(peek-stream checkpoint-stream rewind-stream commit-stream close-stream
       current-checkpoint))
+
+;;;-----------------------------------------------------------------------------
+;;; Core CPS Stream
+;;;-----------------------------------------------------------------------------
+;;; This is used to compressed outputs like javascript render.
+;;;
+;; (defclass core-cps0-stream (core-stream)
+;;   ((%k :initform nil)
+;;    (%continuations :initform '())))
+
+;; (defmethod copy-core-stream ((self core-cps0-stream))
+;;   (let ((s (make-instance 'core-cps-stream)))
+;;     (setf (slot-value s '%k) (s-v '%k)
+;; 	  (slot-value s '%continuations) (copy-list (s-v '%continuations)))
+;;     s))
+
+;; (defmethod transactionalp ((self core-cps0-stream))
+;;   (not (null (s-v '%k))))
+
+;; (defmethod current-k ((self core-cps0-stream))
+;;   (s-v '%k))
+
+;; (defmethod/cc checkpoint-stream/cc ((self core-cps0-stream) k)
+;;   (if (transactionalp self)
+;;       (push (s-v '%k) (s-v '%continuations)))
+
+;;   (setf (s-v '%k) (lambda (&optional values)
+;; 		    (setf (s-v '%k) (pop (s-v '%continuations)))
+;; 		    (kall k values)))
+;;   (format t "checkpoint:~D~%" (length (s-v '%continuations)))
+;;   (length (s-v '%continuations)))
+
+;; (defmethod/cc rewind-stream/cc ((self core-cps0-stream) &optional values)
+;;   (if (not (transactionalp self))
+;;       -1
+;;       (apply (s-v '%k) (ensure-list values))))
+
+;; ;; (defmethod/cc rewind-stream/cc ((self core-cps-stream) &optional values)
+;; ;;   (break "rewinding~%")
+;; ;;   (setf *konts* (s-v '%continuations))
+;; ;;   (if (not (transactionalp self))
+;; ;;       -1
+;; ;;       (progn
+;; ;; 	(format t "rewind:~D~%" (1- (length (s-v '%continuations))))
+;; ;; 	(acond	 
+;; ;; 	 ((pop (s-v '%continuations))
+;; ;;  	  (let ((current (s-v '%k)))
+;; ;;  	    (setf (s-v '%k) it)
+;; ;; 	    (format t "kalling:~A, k is :~A" current (s-v '%k))
+;; ;;  	    (apply #'kall current values)))
+;; ;; 	 ((s-v '%k)
+;; ;; 	  (setf (s-v '%k) nil)
+;; ;; 	  (format t "K is :~A" (s-v '%k))
+;; ;; 	  (apply #'kall it values))
+;; ;; 	 (t
+;; ;; 	  (break "y00"))
+;; ;; 	 ))
+;; ;;       ))
+
+;; (defun escape (&rest values)
+;;   (funcall (apply (arnesi::toplevel-k) values))
+;;   (break "You should not see this, call/cc must be escaped already."))
+
+;; (defmethod/cc commit-stream/cc ((self core-cps0-stream) &optional value)
+;;   (describe self)
+;;   (if (not (transactionalp self))
+;;       -1
+;;       (progn
+;; 	(format t "commit:~D~%" (length (s-v '%continuations)))
+;; 	;;	(setf (s-v '%k) (pop (s-v '%continuations)))
+;; 	(escape value))))
+
+;; (defclass core-cps0-io-stream (core-cps0-stream core-vector-io-stream)
+;;   ())
+
+;; ;; (defmethod/cc checkpoint-stream/cc ((self core-cps-stream))
+;; ;;   (let/cc k
+;; ;;     (if (transactionalp self)
+;; ;; 	(push k (s-v '%continuations)))
+    
+;; ;;     (setf (s-v '%k) k)
+;; ;;     (kall k (checkpoint-stream self))))
+
+;; ;; (defmethod/cc rewind-stream/cc ((self core-cps-stream))
+;; ;;   (if (not (transactionalp self))
+;; ;;       -1
+;; ;;       (progn
+;; ;; 	(acond
+;; ;; 	 ((pop (s-v '%continuations))
+;; ;; 	  (setf (s-v '%k) it)	  
+;; ;; 	  (kall it (rewind-stream self)))
+;; ;; 	 ((s-v '%k)
+;; ;; 	  (setf (s-v '%k) nil)	  
+;; ;; 	  (kall it (rewind-stream self)))))))
+
+;; ;; (defmethod/cc commit-stream/cc ((self core-cps-stream))
+;; ;;   (if (not (transactionalp self))
+;; ;;       -1
+;; ;;       (prog1 (commit-stream self)
+;; ;; 	(setf (s-v '%k) (pop (s-v '%continuations))))))
+
+;; (defclass core-cps-string-io-stream (core-string-io-stream core-cps0-stream)
+;;   ())
+
+;; (defclass core-cps-fd-io-stream (core-cps0-stream core-fd-io-stream)
+;;   ())
+
+;; (defclass core-cps-file-io-stream (core-cps0-stream core-file-io-stream)
+;;   ())
+
+;; (defclass core-cps-list-io-stream (core-cps0-stream core-list-io-stream)
+;;   ())
+
+;; (defclass core-cps-object-io-stream (core-cps0-stream core-object-io-stream)
+;;   ())
+
+;; (defun make-core-cps-stream (target)  	 
+;;   (etypecase target
+;;     (string (make-instance 'core-cps-string-io-stream :string target))
+;;     (pathname (make-instance 'core-cps-file-io-stream :file target))
+;;     (array (make-instance 'core-cps-vector-io-stream :octets target))
+;;     (sb-sys::fd-stream (make-instance 'core-cps-fd-io-stream :stream target))
+;;     (list (make-instance 'core-cps-list-io-stream :list target))
+;;     (standard-object (make-instance 'core-cps-object-io-stream :object target))))
+
+
+;; (defmacro with-core-stream/cc ((var val) &body body)
+;;   `(let ((,var (make-core-stream ,val)))
+;;      (prog1 (progn ,@body)
+;;        (close-stream ,var))))

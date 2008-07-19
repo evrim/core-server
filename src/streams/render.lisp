@@ -27,9 +27,11 @@
     (expand-grammar form #'expand-render stream continue checkpoint))
 
   (defmethod expand-render ((form t) expander (stream symbol) &optional continue checkpoint)
+    (declare (ignorable continue checkpoint))
     `(write-stream ,stream ,form))
 
-  (defmethod expand-render ((form bind-operator) expander (stream symbol) &optional continue checpoint)
+  (defmethod expand-render ((form bind-operator) expander (stream symbol) &optional continue checkpoint)
+    (declare (ignorable continue checkpoint))
     (if (not (fboundp (func form)))
       (setf (func form) (intern (symbol-name (func form)) :core-server)))
     
@@ -44,15 +46,7 @@
 		     ,(funcall expander (walk-grammar `(:and ,(seperator form) atom))
 			       expander stream continue checkpoint))
 		   (cdr ,(children form))))
-	(progn
-	  (if (eq 'quote (car (children form))) (setf (children form) (cadr (children form))))
-	  `(prog1 ,continue
-	     ,(funcall expander (walk-grammar (car (children form)))
-		       expander stream continue checkpoint)
-	     ,@(mapcar (lambda (atom)
-			 (funcall expander (walk-grammar `(:and ,(seperator form) ,atom))
-				  expander stream continue checkpoint))
-		       (cdr (children form)))))))
+	(error ":sep does not support quoted lists, please use macro.")))
   
   (defmethod expand-render ((form indent-operator) expander (stream symbol) &optional continue checkpoint)
     (declare (ignorable checkpoint expander))
@@ -62,6 +56,44 @@
     (declare (ignorable checkpoint expander))
     `(prog1 ,continue (decrease-indent ,stream ,(how-many form)))))
 
+(eval-when (:load-toplevel :compile-toplevel :execute)
+  (defun optimize-render-1 (form)
+    "Optimizes forms and elimiates unnessary class dispatch.
+
+SERVER> (describe (optimize-render-1 (walk-grammar `(:and \"abc\" \"def\" (:and #\Newline \"zee\")))))
+#<AND-OPERATOR {1003713BE1}>
+is an instance of class #<STANDARD-CLASS AND-OPERATOR>.
+The following slots have :INSTANCE allocation:
+ ARGS    (\"abcdef
+zee\")"
+    (let ((ands (operator-search-type form 'and-operator)))
+      (labels ((concat-args (and)
+		 (setf (args and)
+		       (nreverse
+			(reduce (lambda (acc arg)
+				  (cond
+				    ((and (or (stringp (car acc)) (characterp (car acc)))
+					  (or (stringp arg) (characterp arg)))
+				     (cons (format nil "~A~A" (car acc) arg) (cdr acc)))
+				    (t (cons arg acc))))
+				(cdr (args and)) :initial-value (list (car (args and))))))
+		 and)
+	       (flatten-args (and)
+		 (setf (args and)
+		       (nreverse
+			(reduce (lambda (acc arg)
+				  (cond
+				    ((typep arg 'and-operator)
+				     (append (nreverse (args arg)) acc))
+				    ((null arg)
+				     acc)
+				    (t
+				     (cons arg acc))))
+				(args and) :initial-value nil)))
+		 and))
+	(mapc #'concat-args (mapcar #'flatten-args ands))
+	form))))
+
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defmacro defrender (name args &rest body)
     "Rule definition macro that provides a common lexical environment for rules."
@@ -70,7 +102,10 @@
 	 (block rule-block
 	   (let ((cp (current-checkpoint ,stream)))
 	     (declare (ignorable cp))
-	     ,(expand-render (walk-grammar `(:checkpoint ,@body (:commit))) #'expand-render stream)
+	     ,(expand-render
+	       (optimize-render-1
+		(walk-grammar `(:checkpoint ,@body (:commit))))
+	       #'expand-render stream)
 	     ,stream))))))
 
 (defun byte! (stream byte)

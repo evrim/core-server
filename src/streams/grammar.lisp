@@ -43,8 +43,8 @@
     (symbol-function (make-operator-symbol operator)))
   
   (defun walk-grammar (lst)
-    "Walker for Stream Grammar"    
-    (cond
+    "Walker for Stream Grammar"
+    (cond      
       ((and (listp lst) (listp (car lst)) (keywordp (caar lst)))
        (apply (operator-ctor 'bind)
 	      (list (intern (symbol-name (caar lst)))
@@ -62,6 +62,15 @@
   ()
   (:documentation "Base class for Grammar AST"))
 
+(defgeneric operator-successor (operator)
+  (:documentation "Returns successors of this operator"))
+
+(defmethod operator-successor ((operator t))
+  nil)
+
+(defmethod operator-successor :around ((operator t))
+  (nreverse (flatten (call-next-method))))
+
 (defmacro defoperator (name supers lambda-list)
   "Define a stream operator"
   `(prog1 (defclass ,(make-operator-symbol name) (,@(mapcar #'make-operator-symbol supers) operator)
@@ -74,7 +83,11 @@
 				  (cons (make-keyword slot)
 					(cons slot acc)))
 				(flatten (extract-argument-names lambda-list))
-				:initial-value nil)))))
+				:initial-value nil)))
+     (defmethod operator-successor ((operator ,(make-operator-symbol name)))
+       (append ,@(mapcar (lambda (arg)
+			   (list 'ensure-list `(,arg operator)))
+			 (extract-argument-names lambda-list))))))
 
 ;;-----------------------------------------------------------------------------
 ;; Classification of Stream Operators
@@ -288,7 +301,7 @@
        ,(funcall expander (apply (operator-ctor 'and) (args form))
 		 expander stream continue checkpoint)
        (rewind-stream ,stream)
-       ,continue)))
+        ,continue)))
 
 (defgrammar-expander commit (form expander stream continue checkpoint)
   `(progn
