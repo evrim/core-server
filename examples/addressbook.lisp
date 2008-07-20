@@ -3,8 +3,7 @@
 ;; Sample Database Server Demonstration
 
 (defpackage :addressbook
-  (:use :cl :core-server :arnesi :cl-prevalence)
-  (:shadowing-import-from #:cl-prevalence #:name))
+  (:use :cl :core-server :arnesi :cl-prevalence))
 
 (in-package :addressbook)
 
