@@ -24,7 +24,7 @@
 (defun/cc web-display (num)
   (page
    (<:div
-    (<:p (format nil "The sum is ~D" num))
+    (<:p (format nil "The result is ~D" num))
     (<:a :href "sumtwo" "Restart"))))
 
 ;; Read an integer
