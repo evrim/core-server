@@ -23,7 +23,7 @@
   (:documentation "Base component class"))
 
 (defmethod application ((self component))
-  (application +context+)))
+  (application +context+))
 
 (eval-when (:execute :compile-toplevel :load-toplevel)
   (defun proxy-method-name (name)

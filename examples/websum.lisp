@@ -2,7 +2,7 @@
 ;; http://localhost:8080/websum/sumtwo
 
 (defpackage :websum
-  (:use :cl :core-server :arnesi :js))
+  (:use :cl :core-server :arnesi))
 
 (in-package :websum)
 

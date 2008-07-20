@@ -2,7 +2,7 @@
 ;; http://localhost:8080/guestbook/guestbook
 
 (defpackage :guestbook
-  (:use :cl :core-server :arnesi :js))
+  (:use :cl :core-server :arnesi))
 
 (in-package :guestbook)
 
