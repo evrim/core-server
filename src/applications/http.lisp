@@ -133,6 +133,10 @@ when requested"
 	      (gethash (session.id s) (application.sessions (context.application self))) s)
 	(prog1 s (setf (session.timestamp s) (get-universal-time))))))
 
+(defun escape (&rest values)
+   (funcall (apply (arnesi::toplevel-k) values))
+   (break "You should not see this, call/cc must be escaped already."))
+
 (defmacro send/suspend (&body body)
   "Saves current continuation, executes 'body', terminates."
   (with-unique-names (result)
