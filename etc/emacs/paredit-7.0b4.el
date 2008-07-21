@@ -86,7 +86,7 @@
     (define-key keymap "\""         'paredit-doublequote)
     (define-key keymap "\\"         'paredit-backslash)
     (define-key keymap ";"          'paredit-semicolon)
-    (define-key keymap "M-;"        'paredit-comment-dwim)
+    (define-key keymap (kbd "M-;")  'paredit-comment-dwim)
 
     ;; This defies ordinary conventions, but I believe it is justified
     ;; and more convenient this way, to have RET be fancy and C-j
