@@ -377,6 +377,9 @@
   (char! stream +uri-query-equal-seperator+)
   (string! stream (cdr query)))
 
+(defmethod uri! ((stream core-stream) (uri string))
+  (string! stream uri))
+
 (defmethod uri! ((stream core-stream) (uri uri))  
   (with-slots (scheme username password server port paths queries fragments) uri
     (when (and scheme server)
