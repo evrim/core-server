@@ -579,6 +579,8 @@
    #:request
    #:response
    #:send/suspend
+   #:send/forward
+   #:send/finish
    #:javascript/suspend
    #:json/suspend
    #:xml/suspend

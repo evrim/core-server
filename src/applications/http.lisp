@@ -160,6 +160,21 @@ when requested"
 	     (context.response +context+) (context.response (car ,result)))
        (apply #'values (cdr ,result)))))
 
+(defmacro send/forward (&body body)
+  (with-unique-names (result)
+    `(let ((,result (multiple-value-list (send/suspend ,@body))))
+       (send/suspend
+	 (setf (http-response.status-code (context.response +context+)) '(301 . "Moved Permanently"))
+	 (clrhash (session.continuations (context.session +context+)))
+	 (add-response-header (context.response +context+)
+			      'location (action/url () (answer ,result)))
+	 nil))))
+
+(defmacro send/finish (&body body)
+  `(with-html-output (http-response.stream (context.response +context+))
+     (clrhash (session.continuations (context.session +context+)))
+     ,@body))
+
 (defmacro action/hash (parameters &body body)
   "Registers a continuation at macro-expansion time and binds
 'parameters' while executing 'body'"
