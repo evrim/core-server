@@ -74,7 +74,10 @@
 		   (with-context context
 		     (with-html-output (http-response.stream (context.response +context+))
 		       (with-query ,queries (context.request +context+)
-			 ,@body))))))
+			 ,@body))
+		     (setf (context.request +context+) nil
+			   (context.response +context+) nil)
+		     t))))
 
 (defmethod register-url ((self http-application) regexp-url lambda)
   "Registers a new 'regexp-url' to application to execute 'lambda'
