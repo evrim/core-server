@@ -1321,6 +1321,12 @@
 	      (remove-if #'(lambda (a) (eq a key))
 			 (slot-value self 'entity-headers) :key #'car))))
 
+(defmethod add-response-header ((self http-response) key val)
+  (setf (slot-value self 'response-headers)
+	(cons (cons key val)
+	      (remove-if #'(lambda (a) (eq a key))
+			 (slot-value self 'response-headers) :key #'car))))
+
 (defmacro defhttp-header-render (name format header-list) 
   (let ((hname (gensym)))
     `(defun ,name (stream hdr)
