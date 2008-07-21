@@ -149,6 +149,8 @@ when requested"
 			 ,@body)
 		       ;;     (format t "send/suspend escaping~%")
 		       ;;     (commit-stream/cc +context+ (rets +context+))
+		       (setf (context.response +context+) nil
+			     (context.request +context+) nil)
 		       (escape (reverse (context.returns +context+)))
 		       (break "send/suspend failed.")))))
        (setf (context.request +context+) (context.request (car ,result))
