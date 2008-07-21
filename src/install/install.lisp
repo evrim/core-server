@@ -684,11 +684,11 @@ echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
   (write-templates self)
   (chmod :mode "+x" :path (layout.core-server.sh self))
   (shell :cmd +cp+ :args (list "lib.conf" (layout.etc self)))
-  (ln :source (merge-pathnames #P"core-server/etc" (layout.lib self))
-      :target (layout.root self))
   (ln :source (merge-pathnames #P"core-server/src" (layout.lib self))
       :target (layout.root self))
-  (ln :source (merge-pathnames #P"core-server/doc" (layout.lib self))
+  (ln :source (merge-pathnames #P"core-server/t" (layout.lib self))
+      :target (layout.root self))
+  (ln :source (merge-pathnames #P"core-server/examples" (layout.lib self))
       :target (layout.root self)))
 
 ;;-----------------------------------------------------------------------------
