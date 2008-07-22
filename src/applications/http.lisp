@@ -345,12 +345,14 @@ executing 'body'"
 (defmacro test-url (url application)
   "Conventional macro to test urls wihout using a browser. One may
 provide query parameters inside URL as key=value"
-  `(let ((uri (uri? (make-core-stream ,url))))
-     (funcall (find-url ,application (caar (uri.paths uri)))
-	      (make-new-context ,application
-				(make-instance 'http-request :uri uri)
-				(make-response *core-output*)
-				nil))))
+  (progn
+    (assert (stringp url))
+    `(let ((uri (uri? (make-core-stream ,url))))
+       (funcall (find-url ,application (caar (uri.paths uri)))
+		(make-new-context ,application
+				  (make-instance 'http-request :uri uri)
+				  (make-response *core-output*)
+				  nil)))))
 
 ;; TODO: what if /../../../etc/passwd ? filter those.
 (defun directory-handler (context)
