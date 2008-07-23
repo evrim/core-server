@@ -147,8 +147,9 @@ model."
 		((not (null key))		 
 		 (let ((slot-name (intern (symbol-name key))))
 		   (if (sb-pcl::find-slot-definition clazz slot-name)
-		       (setf (slot-value instance slot-name) item)
-		       (warn "slot ~A not found in class ~A" slot-name (class-name clazz)))))
+		       (progn (setf (slot-value instance slot-name) item
+				    key nil))
+		       (error "slot ~A not found in class ~A" slot-name (class-name clazz)))))
 		(t (error "Malformed update-slots slot-vals list"))))
 	  lst)
     instance))
