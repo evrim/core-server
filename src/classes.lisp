@@ -122,9 +122,9 @@ for implementation."))
 				(make-pathname :directory '(:relative "templates"))
 				(make-pathname :directory '(:relative "db"))))
    (use :accessor serializable-web-application.use :initarg :use
-	:initform (list :common-lisp :core-server :cl-prevalence :arnesi :js))
+	:initform (list :common-lisp :core-server :cl-prevalence :arnesi))
    (depends-on :accessor serializable-web-application.depends-on :initarg :depends-on
-	       :initform (list :arnesi :core-server :parenscript)))
+	       :initform (list :arnesi :core-server)))
   (:documentation "Base class for template application - This class is
 used to create a new application. See
 src/applications/serializable-application.lisp for implementation"))
