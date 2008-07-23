@@ -145,7 +145,7 @@ model."
 		((and (null key) (keywordp item))
 		 (setf key item))
 		((not (null key))
-		 (let ((slot-name (intern (symbol-name key))))
+		 (let ((slot-name (intern (symbol-name key) (symbol-package (class-name clazz)))))
 		   (if (sb-pcl::find-slot-definition clazz slot-name)
 		       (setf (slot-value instance slot-name) item
 			     key nil)
