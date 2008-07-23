@@ -620,6 +620,7 @@
    #:hilighter
    ;; [Helpers]
    #:make-keyword
+   #:make-unique-random-string
    ;; [Search]
    #:core-search
    #:string-search

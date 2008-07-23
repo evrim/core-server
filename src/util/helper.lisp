@@ -289,3 +289,26 @@ CORRECTION."))
 
 (defun show-license-conditions ()
   (format t "Please see $CORESERVER_HOME/LICENSE document."))
+
+;;;; needs gc
+;;;;
+;; (defun make-rusg ()
+;;   (let ((table (make-hash-table :test #'equal))
+;; 	(lock (make-lock)))
+;;     (lambda (len)
+;;       (labels ((genstring (len)
+;; 		 (with-recursive-lock-held (lock)
+;; 		   (let ((ns (random-string len)))
+;; 		     (if (gethash ns table)
+;; 			 (progn
+;; 			   (format t "non-unique found, recursing: ~A" ns)
+;; 			   (genstring len))
+;; 			 (progn 
+;; 			   (setf (gethash ns table) t)
+;; 			   ns))))))
+;; 	(genstring len)))))
+
+;; generates len size random, appends unique sym
+(defun make-unique-random-string (len)
+  (let ((sym (gensym (random-string len))))
+    (symbol-name sym)))

@@ -180,7 +180,7 @@ when requested"
 'parameters' while executing 'body'"
   (with-unique-names (name context)
     `(if +context+
-	 (let* ((,name (format nil "act-~A" (random-string 8)))
+	 (let* ((,name (format nil "act-~A" (make-unique-random-string 8)))
 		(,context +context+)
 		(kont (lambda (req rep &optional ,@(mapcar #'car parameters))
 			(setf +context+ (copy-context ,context)
@@ -209,7 +209,7 @@ when requested"
   "Registers a continuation at run time and binds 'parameters' while
 executing 'body'"
   (with-unique-names (context)
-    (let ((name (format nil "fun-~A" (random-string 3))))
+    (let ((name (format nil "fun-~A" (make-unique-random-string 3))))
       `(if +context+	   
 	   (let* ((,context +context+)
 		  (kont (lambda (req rep &optional ,@(mapcar #'car parameters))
