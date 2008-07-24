@@ -162,13 +162,14 @@ when requested"
 
 (defmacro send/forward (&body body)
   (with-unique-names (result)
-    `(let ((,result (multiple-value-list (send/suspend ,@body))))
-       (send/suspend
-	 (setf (http-response.status-code (context.response +context+)) '(301 . "Moved Permanently"))
-	 (clrhash (session.continuations (context.session +context+)))
-	 (add-response-header (context.response +context+)
-			      'location (action/url () (answer ,result)))
-	 nil))))
+    `(progn
+       (clrhash (session.continuations (context.session +context+)))
+       (let ((,result (multiple-value-list (send/suspend ,@body))))
+	 (send/suspend
+	   (setf (http-response.status-code (context.response +context+)) '(301 . "Moved Permanently")) 
+	   (add-response-header (context.response +context+)
+				'location (action/url ()
+					    (answer (apply #'values ,result)))))))))
 
 (defmacro send/finish (&body body)
   `(with-html-output (http-response.stream (context.response +context+))

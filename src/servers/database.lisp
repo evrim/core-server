@@ -142,15 +142,15 @@ model."
 	(key nil))
     (mapc #'(lambda (item)
 	      (cond
-		((and (null key) (keywordp item))
-		 (setf key item))
-		((not (null key))
-		 (let ((slot-name (intern (symbol-name key) (symbol-package (class-name clazz)))))
-		   (if (sb-pcl::find-slot-definition clazz slot-name)
-		       (setf (slot-value instance slot-name) item
-			     key nil)
-		       (error "slot ~A not found in class ~A" slot-name (class-name clazz)))))
-		(t (error "Malformed update-slots slot-vals list"))))
+	       ((and (null key) (keywordp item))
+		(setf key item))
+	       ((not (null key))
+		(let ((slot-name (intern (symbol-name key) (symbol-package (class-name clazz)))))
+		  (if (sb-pcl::find-slot-definition clazz slot-name)
+		      (setf (slot-value instance slot-name) item
+			    key nil)
+		    (error "slot ~A not found in class ~A" slot-name (class-name clazz)))))
+	       (t (error "Malformed update-slots slot-vals list"))))
 	  lst)
     instance))
 
