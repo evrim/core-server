@@ -1,4 +1,4 @@
-+[Core serveR] GNU/Linux Installer ===========================================#
++==[Core serveR] GNU/Linux Installer =========================================#
 |                                                                             |
 | Date: 2007-10-22                                                            |
 | Author: evrim@core.gen.tr                                                   |
@@ -53,19 +53,19 @@ for more informations about your specific distribution.
 
 The following methodology can be used to install the server.
 
-##User Installation
+## User Installation
 After you met requirements, do
   #sh ./install.sh ~/core-server/
 
 This would install core-server to your home directory. 
 
-##System Wise Installation
+## System Wide Installation
 As *root*, after you met requirements,
  #sh ./install.sh /home/core/core-server/
 
 This would install core-server to a user named core's home directory. Note
 that server installation will create a user and a group named "core". This
-used would be used to operate the server. 
+user would be used to operate the server. 
 
 + COMMERCIAL SUPPORT =======================================================#
 

@@ -107,7 +107,6 @@ for traceing a closed system"
        (when it
 	 ,@body)))
 
-
   (eval-when (:compile-toplevel :load-toplevel :execute)
     (defmethod make-keyword ((str string))
       "Returns keyword for the string 'str'"
@@ -152,6 +151,7 @@ for traceing a closed system"
 	  (if (null (load lisp))
 	      (error "Failed to load ~A" lisp)))
       '("search.lisp" "mop.lisp" "class+.lisp" "command.lisp"))
+
 ;;-----------------------------------------------------------------------------
 ;; Functions that installer needs ends here
 ;;-----------------------------------------------------------------------------
@@ -874,6 +874,7 @@ exit 0
 ;; chown :apache /etc/apache2/vhosts.d
 ;; chmod g+w /etc/apache2/vhosts.d
 (defvar +sudoers+ "core   ALL= NOPASSWD: /usr/sbin/apache2ctl, /etc/init.d/apache2, /etc/init.d/postfix, /etc/init.d/svscan, /usr/bin/find, /bin/chmod, /bin/chown")
+
 (defmethod write-templates ((self server-layout))
   (write-template-sexp (start.lisp self) (layout.start.lisp self))
   (write-template-sexp (end.lisp self) (layout.end.lisp self))
@@ -884,7 +885,6 @@ exit 0
   (write-template-string (make-installer.sh self)
 			 (merge-pathnames #P"make-installer.sh"
 					  (layout.bin self))))
-
 
 (defmethod configure-debian-apache ((self server-layout))
   (with-open-file (s #P"/etc/apache2/mods-enabled/mod_lisp2.load"
