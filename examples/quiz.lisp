@@ -35,7 +35,7 @@
 
 ;; Display the result
 (defun/cc send-result (wrongs)
-  (send/finish
+  (send/forward
    (page
     (<:div
      (if wrongs
@@ -52,7 +52,7 @@
 
 ;; Read an integer
 (defun/cc send-question (question)
-  (send/forward
+  (send/suspend
    (page
     (<:form :method "POST"
 	    :action (action/url ((ans "ans"))
@@ -72,8 +72,19 @@
 	  (push (list q ans) answers))))
     answers))
 
+(defun/cc begin-quiz ()
+  (send/suspend
+    (page
+     (<:div
+      (<:p "Welcome to the Quiz Example.")
+      (<:form :method "POST"
+	      :action (action/url ()
+			(answer nil))
+	      (<:input :type "submit" :value "Begin"))))))
+
 ;; Register a handler
 (defurl *quiz-app* "begin" ()
+  (begin-quiz)
   (let ((wrongs (reverse (ask-questions *questions*))))
     (send-result wrongs)))
 
