@@ -382,6 +382,7 @@
    #:REVISION
    #:IE
    #:SEAMONKEY
+   #:LANG
    ;; 
    ;; [Protocol]
    ;; Classes

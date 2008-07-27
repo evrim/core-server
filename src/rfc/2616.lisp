@@ -182,10 +182,13 @@
 ;; 14.10 Connection
 ;; Connection = "Connection" ":" 1#(connection-token)
 ;; connection-token  = token
-(defrule http-connection? ((acc (make-accumulator)) c)
-  (:type http-header-name? c) (:collect c acc)
-  (:zom (:type http-header-name? c) (:collect c acc))
-  (:return acc))
+(defrule http-connection? (tokens c)
+  (:token? c)
+  (:do (push c tokens))
+  (:zom #\, (:lwsp?)
+	(:token? c)
+	(:do (push c tokens)))
+  (:return tokens))
 
 (defun http-connection! (stream connection)
   (typecase connection
@@ -294,7 +297,7 @@
 ;; Pragma            = "Pragma" ":" 1#pragma-directive
 ;; pragma-directive  = "no-cache" | extension-pragma
 ;; extension-pragma  = token [ "=" ( token | quoted-string ) ]
-(defrule extension-pragma? ((attr (make-accumulator)) val c)
+(defrule extension-pragma? ((attr (make-accumulator)) val)
   (:lwsp?)
   (:http-field-name? attr)
   #\=
@@ -329,6 +332,7 @@
       (progn
 	(string! stream (car fields))
 	(reduce #'(lambda (acc item)
+		    (declare (ignore acc))
 		    (char! stream #\,)
 		    (string! stream item))
 		(cdr fields) :initial-value nil))))
@@ -754,7 +758,7 @@
 	      (:do (push (cons l r) c)))))
   (:return c))
 
-(defrule http-byte-ranges-specifier? (c bytes-unit ranges)
+(defrule http-byte-ranges-specifier? (bytes-unit ranges)
   (:http-bytes-unit? bytes-unit)
   #\=
   (:http-byte-range-set? ranges)
@@ -864,17 +868,29 @@
 			 (cons 'os os)
 			 (list 'revision revision)))))))
 
-;; opera:  Opera/9.21 (X11; Linux i686; U; en)
-;; => ((BROWSER . OPERA) (VERSION (9 21)) (OS . "Linux i686"))
-(defrule opera-user-agent? (version os)
+;; opera:  Opera/9.21 (X11; Linux i686; U; en-us)
+;;         Opera/9.51 (Windows NT 5.1; U; en)
+;; => ((BROWSER . OPERA) (VERSION (9 21)) (OS "X11" "Linux i686") (LANG . "en-us"))
+(defrule opera-user-agent? (version os lang tok)
   (:seq "Opera/")
   (:version? version)
-  (:lwsp?) #\( (:user-agent-token?)
-  (:user-agent-token? os)
-  (:zom (:type http-header-value?))
+  (:lwsp?) #\(
+  (:zom
+   (:user-agent-token? tok)
+   (:do (push tok os)))
+  (:do (progn (setf lang (pop os))
+	      (pop os))) ;; remove unused "U;"
+  #\)
   (:return (list (cons 'browser 'opera)
 		 (list 'version version)
-		 (cons 'os os))))
+		 (cons 'os (reverse os))
+		 (cons 'lang lang))))
+
+(defrule unparsed-user-agent? (c (str (make-accumulator)))
+  (:zom (:or (:type (or visible-char? white-space?) c))
+	(:collect c str))
+  (:return (list (cons 'browser 'unknown)
+		 (cons 'string str))))
 
 (defrule http-user-agent? (agent)  
   (:or (:ie-user-agent? agent)
@@ -1090,6 +1106,7 @@
   (char! stream #\/)
   (string! stream (cadr typesubtype-charset-cons))
   (reduce #'(lambda (acc item)
+	      (declare (ignore acc))
 	      (char! stream #\;)
 	      (string! stream (car item))
 	      (char! stream #\=)
@@ -1244,14 +1261,10 @@
 		   (:do (setq value (make-accumulator :byte)))
 		   (:zom (:type http-header-value? c) (:collect c value)) 
 		   (:do (push (cons key value) uh))))
-	(:crlf?)
-	(:checkpoint
-	 (:type octet?)
-	 (:or #\Newline	      
-	      (:and #\Return #\Newline))
-	 ;;	 (:crlf?)
-	 (:return (values method uri version (nreverse gh)
-			  (nreverse rh) (nreverse eh) (nreverse uh))))))
+	(:crlf?))
+  (:crlf?)
+  (:return (values method uri version (nreverse gh)
+		   (nreverse rh) (nreverse eh) (nreverse uh))))
 
 (defrule http-unknown-header? ((key (make-accumulator)) (value (make-accumulator :byte)) c)
   (:oom (:type http-header-name? c) (:collect c key))

@@ -171,7 +171,7 @@ cam=\"foo\"")
 (deftest http-user-agent-opera?
     (with-core-stream (s "Opera/9.21 (X11; Linux i686; U; en)")
       (http-user-agent? s))
-  ((BROWSER . OPERA) (VERSION (9 21)) (OS . "Linux i686")))
+  ((BROWSER . OPERA) (VERSION (9 21)) (OS . ("X11" "Linux i686")) (LANG . "en")))
 
 (deftest http-user-agent-seamonkey?
     (with-core-stream (s "Mozilla/5.0 (X11; U; Linux i686; tr-TR; rv:1.8.1.2) Gecko/20070511 SeaMonkey/1.1.1")
@@ -314,7 +314,7 @@ cam=\"foo\""))
 (deftest http-connection?
     (with-core-stream (s "close")
       (http-connection? s))
-  "close")
+  ("close"))
 
 (deftest http-connection!
     (with-core-stream (s "")
