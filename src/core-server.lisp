@@ -149,6 +149,7 @@
    #:js
    #:js*
    #:defjsmacro
+   #:defrender/js
    #:true
    #:false
    #:undefined
