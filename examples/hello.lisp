@@ -13,14 +13,13 @@
 
 ;; create a handler
 (defurl *hello* "hello" ()
-  (with-html-output +html-output+
-    "Hello, World!"))
+  (template
+   (<:p "Hello, World!")))
 
 (defun/cc template (body)
-  (with-html-output +html-output+
-    (<:html
-     (<:body
-      body))))
+  (<:html
+   (<:body
+    body)))
 
 ;; register application
 (register *server* *hello*)
