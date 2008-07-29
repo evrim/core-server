@@ -552,6 +552,8 @@
    ;; [HTTP Application]
    #:http-application
    #:find-session
+   #:query-session
+   #:update-session
    #:find-continuation
    #:with-context ;; helper for defurl
    #:with-query	  ;; helper macro

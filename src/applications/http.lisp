@@ -51,6 +51,14 @@
   "Returns the session associated with 'id'"
   (gethash id (application.sessions self)))
 
+(defmacro update-session (key val)
+  "Update a session variable."
+  `(setf (gethash ,key (session.data (context.session +context+))) ,val))
+
+(defmacro query-session (key)
+  "Query a session variable."
+  `(gethash ,key (session.data (context.session +context+))))
+
 (defmethod find-continuation ((self http-application) id)
   "Returns the continuation associated with 'id'"
   (maphash #'(lambda (k session)
