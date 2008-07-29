@@ -261,7 +261,7 @@
 			   :display-name "zebedisplayname"
 			   :text "zoooo"
 			   :subject "keh keh al sana subject")))
-    (list (smtp? *s)
+    (list (smtp? s)
 	  (smtp-ehlo :stream s)
 	  (smtp-send :envelope en :stream s)
 	  (smtp-quit :stream s))))
