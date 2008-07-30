@@ -148,6 +148,7 @@ for traceing a closed system"
 
 #-core-server
 (mapc #'(lambda (lisp)
+	  (format t "Loading file ~A.~%" lisp)
 	  (if (null (load lisp))
 	      (error "Failed to load ~A" lisp)))
       '("search.lisp" "mop.lisp" "class+.lisp" "command.lisp"))
@@ -650,7 +651,7 @@ $CP $CORESERVER_HOME/src/util/class+.lisp core-server-installer;
 $CP $CORESERVER_HOME/src/install/* core-server-installer;
 $CP $CORESERVER_HOME/src/commands/command.lisp core-server-installer;
 $CP $CORESERVER_HOME/doc/README core-server-installer;
-$TAR zcf $TARBALL *
+$TAR zcf $TARBALL --exclude='*~~' *
 mv $TARBALL /tmp/
 echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
 " (layout.root self)))
