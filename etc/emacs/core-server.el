@@ -45,8 +45,8 @@
 (show-paren-mode t)
 
 ;; SLIME
-(add-to-list 'load-path (concat (getenv "CORESERVER_HOME") "lib/slime/slime/"))
-(add-to-list 'load-path (concat (getenv "CORESERVER_HOME") "lib/slime/slime/contrib/"))
+(add-to-list 'load-path (concat (getenv "CORESERVER_HOME") "lib/slime/"))
+(add-to-list 'load-path (concat (getenv "CORESERVER_HOME") "lib/slime/contrib/"))
 (require 'slime)
 (add-hook 'slime-load-hook (lambda () 
 			     (require 'slime-fuzzy)
