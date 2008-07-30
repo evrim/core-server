@@ -45,6 +45,7 @@
                                   ((:file "helper")
                                    (:file "turkiye")
                                    (:file "search")
+				   (:file "arnesi-aux")
                                    (:file "mop")
                                    (:file "class+")))
                          (:module :compat
