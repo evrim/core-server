@@ -603,7 +603,7 @@ case \"$1\" in
         ;;
     status)
         PP=`cat $PID`
-        if [ -z \"`/bin/cat /proc/$PP/status 2&> /dev/null`\" ]; then
+        if [ ! -f /proc/$PP/status ]; then
             echo \"[ Core-server ] *not* running\"
             exit 1
         else 
