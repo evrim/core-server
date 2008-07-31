@@ -88,7 +88,8 @@
 
 (defun core ()
   (interactive)
-  (slime-connect "127.0.0.1" 4005)
+  (slime-connect "127.0.0.1" 4006)
+  (slime-sync-to-top-level 8)
   (slime-repl-set-package "core-server"))
 
 (setq speedbar-track-mouse-flag t)
