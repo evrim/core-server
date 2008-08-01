@@ -55,7 +55,7 @@
 
 ;; In the run method, we're setting the command arguments according to
 ;; the commands protocol. And then parse output with ping?.
-(defmethod run-command ((self ping))
+(defmethod run-command ((self ping) args)
   (call-next-method)
   (with-core-stream (s (command.output-stream self))
     (ping? s)))
