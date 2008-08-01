@@ -61,7 +61,7 @@
 (defrender smtp! (message)
   (:string! message) (:char! #\Newline))
 
-(defmethod run ((self smtp))
+(defmethod run-command ((self smtp) args)
   (if (smtp.message self)
       (smtp! (smtp.stream self) (smtp.message self)))
   (or (smtp-ehlo? (smtp.stream self))
@@ -80,7 +80,7 @@
   ((username :host local :initarg :username :initform nil)
    (password :host local :initarg :password :initform nil)))
 
-(defmethod run ((self smtp-auth-plain))
+(defmethod run-command ((self smtp-auth-plain) args)
   (when (and (s-v 'username) (s-v 'password))    
     (smtp! (s-v 'stream)
 	   (with-core-stream (s "")
@@ -97,7 +97,7 @@
 (defcommand smtp-auth-login (smtp-auth-plain)
   ())
 
-(defmethod run ((self smtp-auth-login))
+(defmethod run-command ((self smtp-auth-login) args)
   (when (and (s-v 'username) (s-v 'password))
     (smtp! (s-v 'stream) "AUTH LOGIN")
     (let ((code (smtp? (s-v 'stream))))
@@ -118,7 +118,7 @@
   ((email :host local :initarg :email))
   (:default-initargs :message "MAIL FROM:"))
 
-(defmethod run ((self smtp-mail-from))
+(defmethod run-command ((self smtp-mail-from) args)
   (when (s-v 'email) 
     (smtp! (s-v 'stream) (format nil "~A<~A>" (smtp.message self) (s-v 'email)))
     (smtp? (s-v 'stream))))
@@ -127,7 +127,7 @@
   ((email :host local :initarg :email))
   (:default-initargs :message "RCPT TO:"))
 
-(defmethod run ((self smtp-rcpt-to))
+(defmethod run-command ((self smtp-rcpt-to) args)
   (when (s-v 'email) 
     (smtp! (s-v 'stream) (format nil "~A<~A>" (smtp.message self) (s-v 'email)))
     (smtp? (s-v 'stream))))
@@ -185,7 +185,7 @@
   ((envelope :host local :initarg :envelope))
   (:default-initargs :message "DATA"))
 
-(defmethod run ((self smtp-send))
+(defmethod run-command ((self smtp-send) args)
   (with-accessors ((from envelope.from) (to envelope.to)) (s-v 'envelope)
     (smtp-mail-from :email (format nil " <~A>" from) :stream (s-v 'stream))
     (mapcar (lambda (rcpt)

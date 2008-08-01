@@ -50,11 +50,12 @@
    (ping-count :initform "1" :host local))
   (:default-initargs :cmd +ping+ :verbose nil))
 
+(defmethod render-arguments ((self ping))
+  (list "-q" "-c" (s-v 'ping-count) (s-v 'ping-host)))
+
 ;; In the run method, we're setting the command arguments according to
 ;; the commands protocol. And then parse output with ping?.
-(defmethod run ((self ping))
-  (setf (core-server::args self)
-	(list "-q" "-c" (ping.ping-count self) (ping.ping-host self)))
+(defmethod run-command ((self ping))
   (call-next-method)
   (with-core-stream (s (command.output-stream self))
     (ping? s)))

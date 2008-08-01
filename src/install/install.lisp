@@ -393,7 +393,7 @@ this 'layout' to '(layout.systems self)'"))
 
 (defmethod link-systems ((self layout))
   (with-current-directory  (layout.lib self)
-    (let ((systems (find-file :name "*.asd")))
+    (let ((systems (find-file :pattern "*.asd")))
       (mapcar #'(lambda (sys)
 		  (unless (search "_darcs" sys)
 		    (ln :source (merge-pathnames (pathname sys) (layout.lib self))

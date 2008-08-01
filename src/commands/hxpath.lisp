@@ -77,20 +77,20 @@
 ;; EXAMPLE: ./HXPath -Hw "//div[@id='content']/" /tmp/zeben.html
 ;;
 (defcommand hxpath (shell)
-  ((xquery :initform (error "Specify query") :initarg :xquery :host local)
-   (uri  :initform (error "specify uri") :initarg :uri :host local))
-  (:default-initargs :cmd +hxpath+ :args '( "--use-curl" "--output-html" "--no-xml-pi" "-Hw"
-					   "--indent")
-		     :verbose nil))
+  ((xquery :host local :initform (error "Specify query") )
+   (uri :host local :initform (error "specify uri")))
+  (:default-initargs :cmd +hxpath+
+    :args '( "--use-curl" "--output-html" "--no-xml-pi" "-Hw" "--indent") :verbose nil))
 
-(defmethod run ((self hxpath))
-  (setf (args self)
-	(append 
-	 (args self)
-	 (list (xquery self) (uri self))))
+(defmethod render-arguments ((self hxpath))
+  (append 
+   (args self)
+   (list (s-v 'xquery) (s-v 'uri))))
+
+(defmethod run-command ((self hxpath) args)
   (handler-bind ((error
 		  #'(lambda (condition) (declare (ignore condition))
-		      (return-from run nil))))
+		      (return-from run-command nil))))
     (call-next-method))
   (hxpath? (make-core-stream (command.output-stream self))))
 
@@ -99,20 +99,20 @@
 					
 ;; core@node5 ~/core-server/bin $ echo "hobaaa" |./xmltr content /tmp/ge.html /tmp/zeben.html   
 (defcommand xmltr (shell)
-  ((id :host local :initform :id)
-   (in :initform :in :host local)
-   (out :initform :out :host local)
-   (text :initform :text :host local))
-  (:default-initargs :cmd +xmltr+ :verbose nil))
+  ((id :host local)
+   (in :host local)
+   (out :host local)
+   (text :host local))
+  (:default-initargs :cmd +xmltr+ :verbose nil :wait nil))
 
-(defmethod run ((self xmltr))
-  (setf (args self)
-	(append 
-	 (args self)
-	 (list (id self) (in self) (out self))))
-  (setf (wait self) nil)
+(defmethod render-arguments ((self xmltr))
+  (append 
+   (args self)
+   (list (s-v 'id) (s-v 'in) (s-v 'out))))
+
+(defmethod run-command ((self xmltr) args)
   (call-next-method)
-  (format (command.input-stream self) "~A" (text self))
+  (format (command.input-stream self) "~A" (s-v 'text))
   (close (command.input-stream self))
 ;;   (let ((cs (core-server::make-core-stream (command.input-stream self))))
 ;;     (core-server::string! cs (text self))

@@ -93,14 +93,16 @@
 ;; Svstat Command
 ;;-----------------------------------------------------------------------------
 (defcommand svstat (shell)
-  ((svstat-pathname :host local :initform (whereis "svstat") :initarg :svstat-pathname))
+  ((svstat-pathname :host local :initform (whereis "svstat")))
   (:default-initargs :cmd +sudo+ :verbose nil))
 
 (defrule svstat? ()
   (:oom (:not #\:) (:type octet?)) (:lwsp?) (:seq "up") (:return t))
 
-(defmethod run ((self svstat))
-  (setf (args self) (cons (s-v 'svstat-pathname) (args self)))
+(defmethod render-arguments ((self svstat))
+  (list (s-v 'svstat-pathname)))
+  
+(defmethod run-command ((self svstat) args)
   (call-next-method)
   (svstat? (make-core-stream (command.output-stream self))))
 
@@ -172,26 +174,27 @@
 (defcommand tinydns-add-mixin ()
   ((root :initform #P"/service/tinydns/root/")))
 
-(defmethod run ((self tinydns-add-mixin))
+(defmethod render-arguments ((self tinydns-add-mixin))
+  (list (slot-value self 'add-pathname)))
+
+(defmethod run-command ((self tinydns-add-mixin) args)
   (with-current-directory (slot-value self 'root)
-    (setf (args self) (cons (slot-value self 'add-pathname)
-			    (args self)))
     (call-next-method)))
 
 (defcommand tinydns.add-mx (tinydns-add-mixin shell)
-  ((add-pathname :host local :initform #P"/service/tinydns/root/add-mx" :initarg :add-pathname))
+  ((add-pathname :host local :initform #P"/service/tinydns/root/add-mx"))
   (:default-initargs :cmd +sudo+ :verbose nil))
 
 (defcommand tinydns.add-host (tinydns-add-mixin shell)
-  ((add-pathname :host local :initform #P"/service/tinydns/root/add-host" :initarg :add-pathname))
+  ((add-pathname :host local :initform #P"/service/tinydns/root/add-host"))
   (:default-initargs :cmd +sudo+ :verbose nil))
 
 (defcommand tinydns.add-alias (tinydns-add-mixin shell)
-  ((add-pathname :host local :initform #P"/service/tinydns/root/add-alias" :initarg :add-pathname))
+  ((add-pathname :host local :initform #P"/service/tinydns/root/add-alias"))
   (:default-initargs :cmd +sudo+ :verbose nil))
 
 (defcommand tinydns.add-ns (tinydns-add-mixin shell)
-  ((add-pathname :host local :initform #P"/service/tinydns/root/add-ns" :initarg :add-pathname))
+  ((add-pathname :host local :initform #P"/service/tinydns/root/add-ns"))
   (:default-initargs :cmd +sudo+ :verbose t))
 
 ;;-----------------------------------------------------------------------------
@@ -200,13 +203,13 @@
 (defmethod add-mx ((self tinydns-server) fqdn &optional ip)
   (with-server-lock (self)
     (tinydns.add-mx :add-pathname (merge-pathnames #P"root/add-mx"
-						      (tinydns-server.root-pathname self))
+						   (tinydns-server.root-pathname self))
 		    :args (list fqdn ip))))
 
 (defmethod add-host ((self tinydns-server) fqdn ip)
   (with-server-lock (self)
     (tinydns.add-host :add-pathname (merge-pathnames #P"root/add-host"
-							  (tinydns-server.root-pathname self))
+						     (tinydns-server.root-pathname self))
 		      :args (list fqdn ip))))
 
 (defmethod add-alias ((self tinydns-server) fqdn ip)

@@ -111,16 +111,10 @@
 	  flags))
 
 (defcommand imap ()
-  ((stream :host local :accessor imap.stream :initarg :stream
-	   :initform (error "Please specify stream"))
-   (message :host local :accessor imap.message :initarg :message 
-	    :initform (error "Please specify message"))
-   (continuation :host local :accessor imap.continuation
-		 :initarg :continuation
-		 :initform (random-string 4))
-   (parser :accessor imap.parser
-	   :initform #'imap?
-	   :initarg :parser)))
+  ((stream :host local :initform (error "Please specify stream"))
+   (message :host local :initform (error "Please specify message"))
+   (continuation :host local :initform (random-string 4))
+   (parser :initform #'imap?)))
 
 (defmethod render ((self imap))
   (imap! (imap.stream self) (imap.continuation self) (imap.message self)))
@@ -139,7 +133,7 @@
       t
       (error "Got BAD response for ~A" self)))
 
-(defmethod run ((self imap))  
+(defmethod run-command ((self imap) args)
   (render self)
   (let ((result (parser self)))
     (validate-continuation self (car result))
@@ -205,7 +199,7 @@
   ()
   (:default-initargs :message "LOGOUT" :parser #'imap-logout?))
 
-(defmethod run ((self imap-logout))
+(defmethod run-command ((self imap-logout) args)
   (prog1 (call-next-method)
     (close-stream (imap.stream self))))
 
@@ -250,7 +244,7 @@
 	     :initform (error "Please specify password")))
   (:default-initargs :message "LOGIN"))
 
-(defmethod run ((self imap-login))
+(defmethod run-command ((self imap-login) args)
   (prog1 t
     (setf (imap.message self)
 	  (format nil "~A ~A ~A" (imap.message self)
@@ -534,7 +528,7 @@
 (defrender imap-append-envelope! (envelope)
   (:string! envelope))
 
-(defmethod run ((self imap-append))
+(defmethod run-command ((self imap-append) args)
   (with-core-stream (s "")
     (envelope! s (imap.envelope s))
     (imap-append! (imap.stream self) (imap.continuation self)
