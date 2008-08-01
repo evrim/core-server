@@ -169,7 +169,7 @@ that uses GIT (http://git.or.cz) as SCM"))
 		  :documentation "TCP reuse address option")
    (backlog :initarg :backlog :initform 1
 	    :documentation "TCP backlog option")
-   (peers-max :initarg :peers-max :initform 32
+   (peers-max :initarg :peers-max :initform 6
 	      :documentation "Number of peers that this server manages")
    (element-type :initarg :element-type :initform '(unsigned-byte 8)
 		 :documentation "Data type for socket stream")
