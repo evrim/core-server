@@ -38,7 +38,7 @@
 	    ((or (keywordp arg) (symbolp arg)) (string-downcase (symbol-name arg)))
 	    ((pathnamep arg) (namestring arg))
 	    (t arg))))
-	(mapcar #'filter-arg args)))
+    (mapcar #'filter-arg args)))
 
 (defclass command ()
   ((input-stream :accessor command.input-stream :initarg :input-stream :initform nil)
@@ -80,7 +80,7 @@
        ,(aif (cdr (assoc :ctor rest))
 	     `(defun ,name ,@it
 		(let ((obj (make-instance ',name ,@(ctor-arguments name (car it)))))
-		 (run-command obj (filter-arguments (render-arguments obj)))))
+		  (run-command obj (filter-arguments (render-arguments obj)))))
 	     `(defun ,name (&key ,@(ctor-keywords name))
 		(let ((obj (make-instance ',name ,@(ctor-arguments name))))
 		  (run-command obj (filter-arguments (render-arguments obj)))))))))
@@ -125,7 +125,7 @@
 	     ((pathnamep cmd) (namestring cmd))
 	     (t (error "Please provide cmd slot")))))
     (if (s-v 'verbose)
-	(format t "Executing command: ~A ~{~A~^ ~}~%" (s-v 'cmd) (render-arguments self)))
+	(format t "Executing command: ~A ~{~A~^ ~}~%" (s-v 'cmd) (filter-arguments (render-arguments self))))
     (setf (shell.process self)
 	  (sb-ext:run-program (ensure-cmd (shell.cmd self))
 			      args
@@ -299,7 +299,8 @@
 (defcommand darcs (shell)
   ((op :host local :initform "get")
    (repo :host local :initform nil)
-   (target :host local :initform nil))
+   (target :host local :initform nil)
+   (partial :host local :initform t))
   (:default-initargs :cmd +darcs+))
 
 (defmethod render-arguments ((self darcs))
@@ -308,7 +309,9 @@
 	  ((equal (darcs.op self) "get")
 	   (if (or (null (darcs.repo self)) (null (darcs.target self)))
 	       (error "Please specify repo/target."))
-	   (list (darcs.repo self) (darcs.target self)))
+	   (if (s-v 'partial)
+	       (list "--partial" (darcs.repo self) (darcs.target self))
+	       (list (darcs.repo self) (darcs.target self))))
 	  ((equal (darcs.op self) "unpull")
 	   nil))))
 

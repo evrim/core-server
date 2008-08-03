@@ -46,8 +46,8 @@
 ;; (ping &key (ping-host (error "Specify host")) (ping-count "1")
 
 (defcommand ping (shell)
-  ((ping-host :initform (error "Specify host") :host local)
-   (ping-count :initform "1" :host local))
+  ((ping-host :host local :initform (error "Specify host"))
+   (ping-count :host local :initform "1"))
   (:default-initargs :cmd +ping+ :verbose nil))
 
 (defmethod render-arguments ((self ping))

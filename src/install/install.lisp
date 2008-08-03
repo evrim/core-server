@@ -207,7 +207,6 @@ is needed in some systems like CVS"
   (make-pathname :directory (list :relative
 				  (string-downcase (symbol-name (name self))))))
 
-
 (defmethod fetch :around ((sys sys) &optional path)  
   (with-current-directory (or path *default-pathname-defaults*)
     (call-next-method)))
@@ -220,8 +219,7 @@ is needed in some systems like CVS"
   (format t "+-------------------------------------------------+~%")
   (ecase (repo-type self)
     (cvs (cvs :repo (repo self) :module (module self) :target (name self)))
-    (darcs (darcs :repo (repo self) :target (target-directory self)
-		  :args '("--partial")))
+    (darcs (darcs :repo (repo self) :target (target-directory self) :partial t))
     (svn (svn :repo (repo self) :target (target-directory self)))
     (tar (tarball :repo (repo self) :target (target-directory self)))))
 
