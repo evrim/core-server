@@ -26,7 +26,8 @@
    #:home
    #:in-home
    #:register-libs
-   #:register-projects))
+   #:register-projects
+   #:environment-variable-not-found))
 
 (in-package :bootstrap)
 
@@ -65,6 +66,7 @@
 (defun coreserver-home-aux (var)
   (restart-case (or (getenv var)
 		    (error 'environment-variable-not-found :var var))
+    (continue () nil)
     (store-value (val)
       :report (lambda (s) (format s "Specify a value for ~A" var))
       :interactive (lambda ()

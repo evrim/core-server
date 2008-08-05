@@ -279,10 +279,14 @@ is needed in some systems like CVS"
 ;; System Layout Accessors
 ;;-----------------------------------------------------------------------------
 (defmethod layout.root ((self layout))
-  (aif (bootstrap:home) (pathname it) (s-v 'root)))
+  (aif (handler-bind ((error #'(lambda (c) (declare (ignore c)) (invoke-restart 'continue))))
+	 (bootstrap:home)) 
+       (pathname it)
+       (s-v 'root)))
 
 (defmethod layout.lib.conf ((self layout))
-  (aif (bootstrap:home)
+  (aif (handler-bind ((error #'(lambda (c) (declare (ignore c)) (invoke-restart 'continue))))
+	 (bootstrap:home))
        (merge-pathnames (s-v 'lib.conf) (layout.root self))
        (s-v 'lib.conf)))
 

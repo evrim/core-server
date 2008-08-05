@@ -154,8 +154,6 @@
   (which :name name))
 
 (defvar +darcs+ (whereis "darcs"))
-(defvar +svn+ (whereis "svn"))
-(defvar +cvs+ (whereis "cvs"))
 (defvar +wget+ (whereis "wget"))
 (defvar +tar+ (whereis "tar"))
 (defvar +mv+ (whereis "mv"))
@@ -286,7 +284,7 @@
    (repo :host local :initform (error "repo can't be nil"))
    (module :host local)
    (target :host local :initform (error "target can't be nil")))
-  (:default-initargs :cmd +cvs+))
+  (:default-initargs :cmd (whereis "cvs")))
 
 (defmethod render-arguments ((self cvs))
   (list (format nil "-d:~A:~A:~A@~A" (cvs.repo-type self) (cvs.username self)
@@ -322,7 +320,7 @@
   ((op :host local :initform "co")
    (repo :host local :initform (error "repo can't be nil"))
    (target :host local :initform (error "target can't be nil")))
-  (:default-initargs :cmd +svn+))
+  (:default-initargs :cmd (whereis "svn")))
 
 (defmethod render-arguments ((self svn))
   (list (svn.op self) (svn.repo self) (svn.target self)))

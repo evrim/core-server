@@ -23,7 +23,7 @@
 
 unset CORESERVER_HOME
 SBCL=`which sbcl 2> /dev/null`
-REQS="darcs svn cvs wget tar mv rm ln find chmod chown screen su"
+REQS="darcs wget tar mv rm ln find chmod chown screen su"
 FEATURES=":sb-thread :sb-unicode"
 SYSTEM_REQS="apache2ctl sudo useradd groupadd apxs2"
 
@@ -106,7 +106,7 @@ if [ "root" = `whoami` ]; then
     for i in $SYSTEM_REQS; do check_requirement $i; done;
 fi
 
-if [ ! 1 -eq $# ]; then 
+if [ ! 1 -eq $# ]; then
   usage
 fi
 
