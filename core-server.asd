@@ -154,8 +154,7 @@
                                              (:file "hedee")
 					     (:file "socialshare")
                                              (:file "form"))))))))
-  :depends-on (:bordeaux-threads :cl-prevalence :sb-bsd-sockets
-                                 :arnesi :cl-ppcre :cl-fad)
+  :depends-on (:swank :bordeaux-threads :cl-prevalence :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad)
   :serial t)
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :core-server))))
