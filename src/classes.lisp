@@ -257,7 +257,7 @@ implementation"))
   ((log-stream :accessor log-stream :initarg :log-stream :initform nil) ;;*core-output*
    (log-path :accessor log-path :initarg :log-path
 	     :initform (merge-pathnames (make-pathname :directory '(:relative "var" "log"))
-					(sb-posix:getenv "CORESERVER_HOME"))))
+					(bootstrap:home))))
   (:documentation "Log Server mixin class - Mix this class with your
 server to enable logging features. See src/servers/logger.lisp for
 implementation"))

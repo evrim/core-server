@@ -24,23 +24,17 @@
 ;; This file contains system specific global variables.
 
 
-;; TODO: move them to etc/start.lisp -evrim
-;; FIXmE: how does core server behave in the abcense of envvar?
-(eval-always
- (if (null (sb-posix:getenv "CORESERVER_HOME"))
-     (error "CORESERVER_HOME environment variable is unset. Please set.")))
-
 (defun load-end.lisp (&rest args)
   (declare (ignore args))
   (load (merge-pathnames "etc/end.lisp"
-			 (sb-posix:getenv "CORESERVER_HOME"))))
+			 (bootstrap:home))))
 
 #+sbcl
 (progn
   (require :sb-posix)
   (sb-unix::enable-interrupt sb-posix:sigterm #'core-server::load-end.lisp)
   (with-open-file (s (merge-pathnames #P"var/core-server.pid"
-				      (pathname (sb-posix:getenv "CORESERVER_HOME")))
+				      (bootstrap:home))
 		     :direction :output :if-exists :supersede
 		     :if-does-not-exist :create)
     (format s "~D" (sb-posix:getpid))))
