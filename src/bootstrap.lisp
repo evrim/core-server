@@ -18,7 +18,7 @@
 (in-package :cl-user)
 (require :sb-posix)
 (require :asdf)
-(setf asdf::*central-registry* nil)
+
 (defpackage :tr.gen.core.server.bootstrap
   (:nicknames :bootstrap)
   (:use :cl)
