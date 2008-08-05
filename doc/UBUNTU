@@ -1,64 +1,35 @@
-+[Core-serveR] GNU/Ubuntu Installation========================================#
-|                                                                             |
-| Date: 2007-10-15                                                            |
-| Author: evrim@core.gen.tr                                                   |
-| Web: http://www.core.gen.tr/                                                |
-|                                                                             |
-+=============================================================================#
++[Core-serveR] GNU/Ubuntu Installation=====================================#
+|                                                                          |
+| Date: 2008-08-05                                                         |
+| Author: aycan@core.gen.tr                                                |
+| Web: http://labs.core.gen.tr/                                            |
+|                                                                          |
++==========================================================================#
 
-I have installed from Ubuntu Server CD,
-which comes with edgy.
+Using Ubuntu Hardy (8.04.1 Server) you should follow those steps
+below:
 
-Unfortunately, 
-edgy does not have
-a threaded apache
-So i've tried to switch 
-to feisty
+# Install base dependencies
+sudo aptitude install sbcl darcs screen gcc
+
+# Install EMACS (optional some say)
+sudo aptitude install emacs-snapshot
 
 +-----------------------------------------+
 | Userwide installation methodology.      |
 +-----------------------------------------+
-# SBCL - Note that version must be > 1.0
-# SBCL <1.0 does not do --dynamic-space-size'ing
-# which makes a server impossible to run.
-apt-get install sbcl
 
-# Dependencies
-apt-get install darcs subversion cvs screen gcc 
-
-# Emacs (optional some say)
-apt-get install emacs-snapshot
-
-# Finally,
-sh ./install.sh /home/core/core-server/
+# Invoke install script with a regular user
+sh ./install.sh ~/core-server/
 
 +-----------------------------------------+
 | Serverwide installation methodology.    |
 +-----------------------------------------+
-#+Only Edgy Upgraders
-# Management
-cd /etc/apt/
-cp sources.list sources.edgy
-cat sources.list |sed -e 's/edgy/feisty/' > sources.feisty
-rm sources.list && \
-ln -s sources.feisty sources.list
 
-# Upgrading
-apt-get update && apt-get dist-upgrade && \
-apt-get install -f
-dpkg --configure -a
-#reboot
+# Install Apache2-threaded-dev
+sudo aptitude install apache2-threaded-dev apache2-mpm-worker
 
-#+Feisty Configuration
-# Apache2-threaded-dev
-apt-get install apache2-threaded-dev
+# Invoke install script with "root" user
+sudo sh ./install.sh /home/core/core-server/
 
-#+When trouble
-# Universe is not enough
-echo "deb http://us.arhive.ubuntu.com/ubuntu/ feisty main universe" \
->> /etc/apt/sources.list
-echo "deb-src http://us.archive.ubuntu.co/ubuntu/ feisty main universe" \
->> /etc/apt/sources.list
-
-#+++Finally,
-sh ./install.sh /home/core/core-server/
+# now you can use "core" user to start core-server
