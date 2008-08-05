@@ -164,7 +164,7 @@
      
      (defvar *db-location* (merge-pathnames
 			    (make-pathname :directory '(:relative "var" ,(web-application.fqdn self) "db"))
-			    (sb-posix:getenv (string-upcase "CORESERVER_HOME"))))
+			    (bootstrap:home)))
      (defclass ,(application-class self) (http-application
 					  apache-web-application
 					  database-server
