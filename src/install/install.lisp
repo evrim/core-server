@@ -279,13 +279,13 @@ is needed in some systems like CVS"
 ;; System Layout Accessors
 ;;-----------------------------------------------------------------------------
 (defmethod layout.root ((self layout))
-  (aif (handler-bind ((error #'(lambda (c) (declare (ignore c)) (invoke-restart 'use-nil))))
+  (aif (handler-bind ((error #'(lambda (c) (declare (ignore c)) (invoke-restart 'bootstrap:use-nil))))
 	 (bootstrap:home)) 
        (pathname it)
        (s-v 'root)))
 
 (defmethod layout.lib.conf ((self layout))
-  (aif (handler-bind ((error #'(lambda (c) (declare (ignore c)) (invoke-restart 'use-nil))))
+  (aif (handler-bind ((error #'(lambda (c) (declare (ignore c)) (invoke-restart 'bootstrap:use-nil))))
 	 (bootstrap:home))
        (merge-pathnames (s-v 'lib.conf) (layout.root self))
        (s-v 'lib.conf)))

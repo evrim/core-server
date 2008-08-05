@@ -25,6 +25,8 @@
   (:export
    #:home
    #:in-home
+   #:set-env-var
+   #:use-nil
    #:register-libs
    #:register-projects
    #:environment-variable-not-found))
@@ -66,7 +68,7 @@
 (defun coreserver-home-aux (var)
   (restart-case (or (getenv var)
 		    (error 'environment-variable-not-found :var var))
-    (set-value (val)
+    (set-env-var (val)
       :report (lambda (s) (format s "Specify a value for ~A" var))
       :interactive (lambda ()
 		     (format t "Enter value:")
