@@ -39,6 +39,7 @@
                         :serial t
                         :components
 			((:file "core-server")
+			 (:file "bootstrap")
                          (:module :util
                                   :serial t
                                   :components
