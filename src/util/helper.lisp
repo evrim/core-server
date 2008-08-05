@@ -276,8 +276,8 @@ iv) t      - 06/06/2008 17:30"
   (sb-ext:run-program +sudo+ (cons (namestring +chmod+)
 				   (list "660" (namestring pathname)))))
 
-(defun show-license-warranty ()
-  (format t "THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT
+(defun show-license-warranty (&optional (stream t))
+  (format stream "THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT
 PERMITTED BY APPLICABLE LAW.  EXCEPT WHEN OTHERWISE STATED IN WRITING
 THE COPYRIGHT HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM \"AS IS\"
 WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING,
@@ -287,8 +287,16 @@ AND PERFORMANCE OF THE PROGRAM IS WITH YOU.  SHOULD THE PROGRAM PROVE
 DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY SERVICING, REPAIR OR
 CORRECTION."))
 
-(defun show-license-conditions ()
-  (format t "Please see $CORESERVER_HOME/LICENSE document."))
+(defun show-license-conditions (&optional (stream t))
+  (format stream "Please see $CORESERVER_HOME/LICENSE document."))
+
+(defun show-license-to-repl (&optional (stream t))
+  (format stream "Core Server Copyright (C) 2006-2008  Metin Evrim Ulu, Aycan iRiCAN
+
+This program comes with ABSOLUTELY NO WARRANTY; for details type
+`(show-license-warranty)'.  This is free software, and you are welcome
+to redistribute it under certain conditions; type
+`(show-license-conditions)' for details.~%~%"))
 
 ;;;; needs gc
 ;;;;

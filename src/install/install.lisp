@@ -151,7 +151,7 @@ for traceing a closed system"
 	  (format t "Loading file ~A.~%" lisp)
 	  (if (null (load lisp))
 	      (error "Failed to load ~A" lisp)))
-      '("search.lisp" "mop.lisp" "class+.lisp" "command.lisp"))
+      '("bootstrap.lisp" "search.lisp" "mop.lisp" "class+.lisp" "command.lisp"))
 
 ;;-----------------------------------------------------------------------------
 ;; Functions that installer needs ends here
@@ -279,14 +279,12 @@ is needed in some systems like CVS"
 ;; System Layout Accessors
 ;;-----------------------------------------------------------------------------
 (defmethod layout.root ((self layout))
-  (if (sb-posix:getenv "CORESERVER_HOME")
-      (pathname (sb-posix:getenv "CORESERVER_HOME"))
-      (s-v 'root)))
+  (aif (bootstrap:home) (pathname it) (s-v 'root)))
 
 (defmethod layout.lib.conf ((self layout))
-  (if (sb-posix:getenv "CORESERVER_HOME")
-      (merge-pathnames (s-v 'lib.conf) (layout.root self))
-      (s-v 'lib.conf)))
+  (aif (bootstrap:home)
+       (merge-pathnames (s-v 'lib.conf) (layout.root self))
+       (s-v 'lib.conf)))
 
 (defmethod layout.etc ((self layout))
   (merge-pathnames (s-v 'etc) (layout.root self)))
@@ -455,73 +453,42 @@ this 'layout' to '(layout.systems self)'"))
      (in-package :cl-user)
      (require :sb-posix)
      (require :asdf)
-     (pushnew ,(layout.systems self) asdf:*central-registry* :test #'equal)
+     (load (merge-pathnames (make-pathname :directory '(:relative :up "src") :name "bootstrap" :type "lisp")
+			    (make-pathname :directory (pathname-directory *load-pathname*))))
 
-     (defun scan-projects (systems-dir)
-       (dolist (dir-candidate
-		 (directory (concatenate 'string (namestring systems-dir) "*/")))
-	 ;; skip dirs starting with a _
-	 (let ((name (car (last (pathname-directory dir-candidate)))))
-	   (unless (equal #\_ (elt name 0))
-	     (pushnew dir-candidate asdf:*central-registry* :test 'equal)))))
-     
-     ;; add projects
-     (scan-projects ,(merge-pathnames (layout.projects self) (layout.root self)))
+     (bootstrap:register-libs ,(merge-pathnames (s-v 'systems) (s-v 'lib)))
+     (bootstrap:register-projects ,(s-v 'projects))
 
-     (asdf:oos 'asdf:load-op :asdf-binary-locations)
-     (setf (symbol-value (find-symbol "*CENTRALIZE-LISP-BINARIES*" (find-package 'asdf)))
-	   t)
+     (require :asdf-binary-locations)
+     (require :core-server)
      ;;     (setf asdf:*source-to-target-mappings* '((#p"/opt/sbcl/lib/sbcl/" nil)))
      ;;     /usr/share/sbcl-source/-> debian
-
-     ;; Set Environment
-     (if (null (sb-posix:getenv "CORESERVER_HOME"))
-	 (sb-posix:putenv ,(format nil "CORESERVER_HOME=~A" (layout.root self))))
      
-     (defun build-core-server ()
-       (require :swank)
-       (require :core-server)
-       (require :core)
-       (values))
+     (setf (symbol-value (find-symbol "*CODING-SYSTEM*" (find-package 'swank)))
+	   ,(layout.swank-encoding self))
+     (funcall (find-symbol "CREATE-SERVER" (find-package 'swank))
+	      :port ,(layout.swank-port self) :dont-close t)
 
-     (build-core-server)
      (in-package :core-server)
+
+     (defclass core-server ,(if (eq (layout.server-type self) :mod-lisp)
+				`(apache-server http-server)
+				`(http-server))
+       ()
+       (:default-initargs :name "Core-serveR" :port 8080))
+     (defvar *server* (make-instance 'core-server))
      
-     (defun swank ()
-       (setf (symbol-value (find-symbol "*CODING-SYSTEM*" (find-package 'swank)))
-	     ,(layout.swank-encoding self))
-       (funcall (find-symbol "CREATE-SERVER" (find-package 'swank))
-		:port ,(layout.swank-port self) :dont-close t)
-       (values))
-
-     (defun load-core-server ()
-       (defclass core-server ,(if (eq (layout.server-type self) :mod-lisp)
-				  `(apache-server http-server)
-				  `(http-server))
-	 ()
-	 (:default-initargs :name "Core-serveR" :port 8080))
-
-       (defvar *server* (make-instance 'core-server))
-       (start *server*)
-       (if (status *server*)
-	   (progn
-	     (terpri)
-	     (describe *server*)
-	     (format t "Core Server Copyright (C) 2006-2008  Metin Evrim Ulu, Aycan iRiCAN
-
-This program comes with ABSOLUTELY NO WARRANTY; for details type
-`(show-license-warranty)'.  This is free software, and you are welcome
-to redistribute it under certain conditions; type
-`(show-license-conditions)' for details.~%~%")
-	     (write-line "Server started!")
-	     (terpri))
-	   (progn
-	     (terpri)
-	     (write-line "Unable to start server.")
-	     (terpri))))
+     (start *server*)
      
-     (swank)
-     (load-core-server)))
+     (if (status *server*)
+	 (progn
+	   (terpri)
+	   (describe *server*)
+	   (show-license-to-repl)
+	   (write-line "Server started!")
+	   (terpri))
+	 (progn (terpri) (write-line "Unable to start server.") (terpri)))
+     ))
 
 (defmethod core-server.sh ((self layout))
   (format nil "#!/bin/bash
@@ -644,6 +611,7 @@ TARBALL=\"core-server-installer-`date +\"%Y-%m-%d\"`.tar.gz\"
 
 $MKDIR -p $DIR/core-server-installer;
 cd $DIR;
+$CP $CORESERVER_HOME/src/bootstrap.lisp core-server-installer;
 $CP $CORESERVER_HOME/src/util/search.lisp core-server-installer;
 $CP $CORESERVER_HOME/src/util/mop.lisp core-server-installer;
 $CP $CORESERVER_HOME/src/util/class+.lisp core-server-installer;
@@ -809,67 +777,44 @@ exit 0
      (in-package :cl-user)
      (require :sb-posix)
      (require :asdf)
-     (pushnew ,(layout.systems self) asdf:*central-registry* :test #'equal)
+     (load (merge-pathnames (make-pathname :directory '(:relative :up "src") :name "bootstrap" :type "lisp")
+			    (make-pathname :directory (pathname-directory *load-pathname*))))
 
-     (defun scan-projects (systems-dir)
-       (dolist (dir-candidate
-		 (directory (concatenate 'string (namestring systems-dir) "*/")))
-	 ;; skip dirs starting with a _  (ie _darcs)
-	 (let ((name (car (last (pathname-directory dir-candidate)))))
-	   (unless (equal #\_ (elt name 0))
-	     (pushnew dir-candidate asdf:*central-registry* :test 'equal)))))
-     
-     ;; add projects
-     (scan-projects ,(merge-pathnames (layout.projects self) (layout.root self)))
+     (bootstrap:register-libs ,(merge-pathnames (s-v 'systems) (s-v 'lib)))
+     (bootstrap:register-projects ,(s-v 'projects))
 
-     (asdf:oos 'asdf:load-op :asdf-binary-locations)
-     (setf (symbol-value (find-symbol "*CENTRALIZE-LISP-BINARIES*" (find-package 'asdf)))
-	   t)
+     (require :asdf-binary-locations)
+     (require :core-server)
      ;;     (setf asdf:*source-to-target-mappings* '((#p"/opt/sbcl/lib/sbcl/" nil)))
      ;;     /usr/share/sbcl-source/-> debian
-
-     ;; Set Environment
-     (if (null (sb-posix:getenv "CORESERVER_HOME"))
-	 (sb-posix:putenv ,(format nil "CORESERVER_HOME=~A" (layout.root self))))
      
-     (defun build-core-server ()
-       (require :swank)
-       (require :core-server)
-       (require :core)
-       (values))
+     (setf (symbol-value (find-symbol "*CODING-SYSTEM*" (find-package 'swank)))
+	   ,(layout.swank-encoding self))
+     (funcall (find-symbol "CREATE-SERVER" (find-package 'swank))
+	      :port ,(layout.swank-port self) :dont-close t)
 
-     (build-core-server)
      (in-package :core-server)
-     
-     (defun swank ()
-       (setf (symbol-value (find-symbol "*CODING-SYSTEM*" (find-package 'swank)))
-	     ,(layout.swank-encoding self))
-       (funcall (find-symbol "CREATE-SERVER" (find-package 'swank))
-		:port ,(layout.swank-port self) :dont-close t)
-       (values))
 
-     (defun load-core-server ()
-       (defclass core-server ,(if (eq (layout.server-type self) :mod-lisp)
-				  `(apache-server http-server)
-				  `(http-server))
-	 ()
-	 (:default-initargs :name "Core-serveR"))
-
-       (defvar *server* (make-instance 'core-server))
-       (start *server*)
-       (if (status *server*)
-	   (progn
-	     (terpri)
-	     (describe *server*)
-	     (write-line "Server started!")
-	     (terpri))
-	   (progn
-	     (terpri)
-	     (write-line "Unable to start server.")
-	     (terpri))))
+     (defclass core-server ,(if (eq (layout.server-type self) :mod-lisp)
+				`(apache-server http-server)
+				`(http-server))
+       ()
+       (:default-initargs :name "Core-serveR"))
      
-     (swank)
-     (load-core-server)))
+     (defvar *server* (make-instance 'core-server))
+     
+     (start *server*)
+     
+     (if (status *server*)
+	 (progn
+	   (terpri)
+	   (describe *server*)
+	   (show-license-to-repl)
+	   (write-line "Server started!")
+	   (terpri))
+	 (progn (terpri) (write-line "Unable to start server.") (terpri)))
+
+     ))
 
 ;; chown :apache /var/www
 ;; chmod g+w /var/www
