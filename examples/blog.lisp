@@ -1,32 +1,25 @@
+;; http://localhost:8080/blog/index.core
 (in-package :core-server)
 
 (defpackage :blog
-  (:use :cl :core-server :arnesi)
-  (:shadowing-import-from #:arnesi #:new))
+  (:use :cl :core-server :arnesi :cl-prevalence))
 
 (in-package :blog)
 
-(defclass blog-application (http-application apache-web-application)
-  ()
-  (:default-initargs :fqdn "blog"
-    :admin-email "evrim@core.gen.tr"))
+(defvar *app* (make-instance 'http-application :fqdn "blog" :admin-email "evrim@core.gen.tr"))
 
-(defvar *app* (make-instance 'blog-application))
-
-(defun register-me () (register *server* *app*))
-
-(defclass+ comment (cl-prevalence::object-with-id)
-  ((author :host local :accessor comment.author :initarg :author :initform (error "please specify :author"))
-   (text :host local :accessor comment.test :initarg :text :initform (error "please specify :text"))
-   (timestamp :accessor comment.timestamp :initarg :timestamp :initform (get-universal-time)))
+(defclass+ comment (object-with-id)
+  ((author :host local :initform (error "please specify :author"))
+   (text :host local :initform (error "please specify :text"))
+   (timestamp :initform (get-universal-time)))
   (:ctor (author text)))
 
-(defclass+ blog (cl-prevalence::object-with-id)
-  ((author :host local :accessor blog.author :initarg :author :initform (error "please specify :author"))
-   (title :host local :accessor blog.title :initarg :title :initform (error "Please specify :title"))
-   (text :host local :accessor blog.text :initarg :text :initform (error "please specify :text"))
-   (timestamp :accessor blog.timestamp :initarg :timestamp :initform (get-universal-time))
-   (comments :accessor blog.comments :initarg :comments :initform '()))
+(defclass+ blog (object-with-id)
+  ((author :host local :initform (error "please specify :author"))
+   (title :host local :initform (error "Please specify :title"))
+   (text :host local :initform (error "please specify :text"))
+   (timestamp :initform (get-universal-time))
+   (comments :initform '()))
   (:ctor (author title text)))
 
 (defparameter *blogs*
@@ -35,7 +28,7 @@
 
 (defun/cc blog/short (blog &optional (len 500))
   (<:div :class "blog view"
-	 :id (format nil "blog-~A" (core-server::get-id blog))
+	 :id (format nil "blog-~A" (get-id blog))
 	 (<:div :class "title" (blog.title blog))
 	 (<:div :class "author" (blog.author blog) " - ")
 	 (<:div :class "timestamp" (time->string (blog.timestamp blog) :long :en))
@@ -47,7 +40,7 @@
 
 (defun/cc blog/view (blog)
   (<:div :class "blog view"
-	 :id (format nil "blog-~A" (core-server::get-id blog))
+	 :id (format nil "blog-~A" (get-id blog))
 	 (<:div :class "title" (blog.title blog))
 	 (<:div :class "author" (blog.author blog) " - ")
 	 (<:div :class "timestamp" (time->string (blog.timestamp blog) :long :en))
@@ -55,7 +48,7 @@
 
 (defun/cc blog/edit (blog)
   (<:div :class "blog edit"
-	 :id (format nil "blog-~A" (core-server::get-id blog))
+	 :id (format nil "blog-~A" (get-id blog))
    (<:form :method "POST"
 	   :action (action/url ((author "author") (text "text") (title "title"))
 		     (answer (list'save author title text)))
@@ -167,5 +160,7 @@ tinyMCE.init({
 	theme_advanced_resizing : true,
 });
 ")
+
+(register *server* *app*)
 ;; TODO: fix core-cps-io-stream of http context
 ;; TODO: fix session preservance via cookies
