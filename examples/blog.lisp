@@ -83,7 +83,7 @@
    (<:ul
     (mapcar #'(lambda (blog seq)
 		(<:li
-		 (<:a :href (function/url () (answer (cons 'view blog)))
+		 (<:a :href (action/url () (answer (cons 'view blog)))
 		      (blog.title blog))))
 	    blogs (core-server::seq n)))))
 

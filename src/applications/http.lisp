@@ -185,8 +185,8 @@ when requested"
      ,@body))
 
 (defmacro action/hash (parameters &body body)
-  "Registers a continuation at macro-expansion time and binds
-'parameters' while executing 'body'"
+  "Registers a continuation at run time and binds 'parameters' while
+executing 'body'"
   (with-unique-names (name context)
     `(if +context+
 	 (let* ((,name (format nil "act-~A" (make-unique-random-string 8)))
@@ -215,8 +215,8 @@ when requested"
 	 "invalid-function-hash")))
 
 (defmacro function/hash (parameters &body body)
-  "Registers a continuation at run time and binds 'parameters' while
-executing 'body'"
+  "Registers a continuation at macro-expansion time and binds
+'parameters' while executing 'body'"
   (with-unique-names (context)
     (let ((name (format nil "fun-~A" (make-unique-random-string 3))))
       `(if +context+	   
