@@ -246,21 +246,23 @@ executing 'body'"
 
 (defmacro function/url (parameters &body body)
   "Returns URI representation of function/hash"
-  `(format nil "?~A:~A$~A:~A"
-	   +session-query-name+ (if +context+
-				    (session.id (context.session +context+))
-				    +invalid-session+)
-	   +continuation-query-name+ (function/hash ,parameters ,@body)))
+  `(cons +context+
+	 (format nil "?~A:~A$~A:~A"
+		 +session-query-name+ (if +context+
+					  (session.id (context.session +context+))
+					  +invalid-session+)
+		 +continuation-query-name+ (function/hash ,parameters ,@body))))
 
 (defvar +invalid-session+ "invalid-session-id")
 
 (defmacro action/url (parameters &body body)
   "Returns URI representation of action/hash"
-  `(format nil "?~A:~A$~A:~A"
-	   +session-query-name+ (if +context+
-				    (session.id (context.session +context+))
-				    +invalid-session+)
-	   +continuation-query-name+ (action/hash ,parameters ,@body)))
+  `(cons +context+
+	 (format nil "?~A:~A$~A:~A"
+		 +session-query-name+ (if +context+
+					  (session.id (context.session +context+))
+					  +invalid-session+)
+		 +continuation-query-name+ (action/hash ,parameters ,@body))))
 
 (defmacro answer (&rest values)
   "Continues from the continuation saved by action/hash or function/hash"
