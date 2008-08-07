@@ -15,11 +15,6 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-;; Core-serveR Emacs Configuration
-;;(setenv "LANG" "tr_TR.UTF-8")
-;;(setenv "LC_ALL" "tr_TR.UTF-8")
-
 (if (null (getenv "CORESERVER_HOME"))
     (error "Environment variable CORESERVER_HOME is not set."))
 
@@ -172,10 +167,9 @@ doesn't exist, it is created."
   (require 'erc)
   (defun core-irc ()
     (interactive)
-    (erc-tls :server "irc.core.gen.tr" 
-	     :port 8994
-	     :nick (getenv "USERNAME")
-	     :full-name (getenv "USER")))
+    (if (fboundp #'erc-tls)
+	(erc-tls :server "irc.core.gen.tr" :port 8994)
+        (erc :server "irc.core.gen.tr" :port 7000)))
   ;; timestamp on left etc...
   (setq 
    erc-insert-timestamp-function 'erc-insert-timestamp-left
