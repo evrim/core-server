@@ -495,8 +495,10 @@ this 'layout' to '(layout.systems self)'"))
 
      ;; start core server manager webapp
      (require :manager)
-     (start manager::*app*)
-     (manager::register-me)))
+     (in-package :manager)
+     (register-me)
+
+     (in-package :core-server)))
 
 (defmethod core-server.sh ((self layout))
   (format nil "#!/bin/bash
@@ -668,7 +670,7 @@ echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
 	:target (layout.root self))
     (ln :source (merge-pathnames (merge-pathnames #P"examples" #P"core-server/") (s-v 'lib))
 	:target (layout.root self)))
-  ;; symling to the core server manager
+  ;; symlink to the core server manager
   (with-current-directory (merge-pathnames (s-v 'projects) (layout.root self))
     (ln :source (merge-pathnames #P"src/manager/" (layout.root self))
 	:target (merge-pathnames (s-v 'projects) (layout.root self)))))
