@@ -20,28 +20,39 @@
 ;;+----------------------------------------------------------------------------
 ;;| Utility functions, macros, etc.
 ;;+----------------------------------------------------------------------------
-(defmacro aif (consequent then &optional else)
-  "Special if that binds 'consequent' to 'it'"
-  `(let ((it ,consequent))
-     (if it
-	 ,then
-	 ,(if else
-	      else))))
-
-(defmacro awhen (consequent &body body)
-  "Special when that binds 'consequent' to 'it'"
-  `(let ((it ,consequent))
-     (when it
-       ,@body)))
-
 (eval-when (:compile-toplevel :load-toplevel :execute)
+  (defmacro aif (consequent then &optional else)
+    "Special if that binds 'consequent' to 'it'"
+    `(let ((it ,consequent))
+       (if it
+	   ,then
+	   ,(if else
+		else))))
+
+  (defmacro awhen (consequent &body body)
+    "Special when that binds 'consequent' to 'it'"
+    `(let ((it ,consequent))
+       (when it
+	 ,@body)))
+
   (defmethod make-keyword ((str string))
     "Returns keyword for the string 'str'"
     (intern (string-upcase str) :keyword))
 
   (defmethod make-keyword ((sym symbol))
     "Returns keyword for the symbol 'sym'"
-    (intern (symbol-name sym) :keyword)))
+    (intern (symbol-name sym) :keyword))
+
+  (defun reduce0 (lambda list)
+    (reduce lambda list :initial-value nil))
+
+  (defun filter (lambda list)
+    (nreverse
+     (reduce0 (lambda (acc atom)
+		(if (funcall lambda atom)
+		    (cons atom acc)
+		    acc))
+	      list))))
 
 (defmacro deftrace (name methods)
   "Defines +name-methods+ variable, trace-name, untrace-name functions
