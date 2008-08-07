@@ -492,7 +492,11 @@ this 'layout' to '(layout.systems self)'"))
 	   (write-line "Server started!")
 	   (terpri))
 	 (progn (terpri) (write-line "Unable to start server.") (terpri)))
-     ))
+
+     ;; start core server manager webapp
+     (require :manager)
+     (start manager::*app*)
+     (manager::register-me)))
 
 (defmethod core-server.sh ((self layout))
   (format nil "#!/bin/bash
@@ -663,7 +667,11 @@ echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
     (ln :source (merge-pathnames (merge-pathnames #P"t" #P"core-server/") (s-v 'lib))
 	:target (layout.root self))
     (ln :source (merge-pathnames (merge-pathnames #P"examples" #P"core-server/") (s-v 'lib))
-	:target (layout.root self))))
+	:target (layout.root self)))
+  ;; symling to the core server manager
+  (with-current-directory (merge-pathnames (s-v 'projects) (layout.root self))
+    (ln :source (merge-pathnames #P"src/manager/" (layout.root self))
+	:target (merge-pathnames (s-v 'projects) (layout.root self)))))
 
 ;;-----------------------------------------------------------------------------
 ;; Server System Layout
