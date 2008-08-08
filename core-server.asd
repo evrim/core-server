@@ -31,7 +31,7 @@
 
 (defsystem :core-server
   :description "Core Server"
-  :version "0"
+  :version "0.1"
   :author "Evrim Ulu <evrim@core.gen.tr>"
   :licence "MIT License"
   :components ((:static-file "core-server.asd")
