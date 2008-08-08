@@ -337,7 +337,7 @@
   (dom-element! stream element))
 
 (defmacro with-html-output (stream &body body)
-  "Renders html elements in 'body' to 'stream'"
+  "Renders dom elements in 'body' to 'stream'"
   (with-unique-names (element)
     `(progn
        ,@(mapcar #'(lambda (elem)

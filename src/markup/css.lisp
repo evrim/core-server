@@ -53,7 +53,7 @@
 		(char! stream #\;)
 		(char! stream #\Newline))))
 	(css.attributes element))
-  (string! stream "};")
+  (string! stream "}")
   (char! stream #\Newline)
   (char! stream #\Newline)
   (when (css.children element)

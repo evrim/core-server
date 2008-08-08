@@ -27,17 +27,6 @@
       "Core-serveR - URL Not Found")))
   response)
 
-;; (defmethod eval-request ((self custom-http-peer) (request http-request))
-;;   (let ((response (call-next-method))
-;; 	(path (caar (uri.paths (http-request.uri request)))))
-;;     (if (any #'(lambda (app)
-;; 		 (when (string= path (web-application.fqdn app))
-;; 		   (with-html-output (http-response.stream response)
-;; 		     (dispatch app request response))))
-;; 	     (server.applications (peer.server self)))
-;; 	response
-;; 	(render-404 self request response))))
-
 (defmethod eval-request ((self custom-http-peer) (request http-request))
   (let ((response (call-next-method))
 	(host (caadr (assoc 'HOST (http-request.headers request))))
@@ -46,21 +35,23 @@
       ;; dispatch by app-name like http://servername/app-fqdn/js.core
       ((any #'(lambda (app)
 		(when (string= app-name (web-application.fqdn app)) 
-		  (with-html-output (http-response.stream response)
-		    (pop (uri.paths (http-request.uri request)))
-		    (dispatch app request response))))
+		  (pop (uri.paths (http-request.uri request)))
+		  (dispatch app request response)))
 	    (server.applications (peer.server self)))
        response)
       ;; dispatch by hostname like http://servername/js.core
       ((and (stringp host)
 	    (any #'(lambda (app)
 		     (when (string= host (web-application.fqdn app)) 
-		       (with-html-output (http-response.stream response)
-			 (dispatch app request response))))
+		       (dispatch app request response)))
 		 (server.applications (peer.server self))))
        response)
       ;; catch-all via 404
-      (t (render-404 request response)))))
+      (t
+       (progn
+	 (log-me (peer.server self) 'http-peer
+		 (format nil "request uri: ~A" (http-request.uri request)))
+	 (render-404 request response))))))
 
 ;;-----------------------------------------------------------------------------
 ;; Server Protocol Implementation
