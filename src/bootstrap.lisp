@@ -16,7 +16,6 @@
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 (in-package :cl-user)
-(require :sb-posix)
 (require :asdf)
 
 (defpackage :tr.gen.core.server.bootstrap
