@@ -31,6 +31,9 @@
   (:documentation "HTTP Peer - This peer handles HTTP requests and
 evaulates to a HTTP response. Its' server is an instance of http-server"))
 
+(defvar +default-encoding-for-remote-mimes+
+  :utf-8 "FIXME: Browser shoudl supply in which encoding did it encode data.")
+
 (defmethod parse-request ((self http-peer) stream)
   "Returns a fresh RFC 2616 HTTP Request object parsing from 'stream',
 nil if stream data is invalid"
@@ -54,9 +57,28 @@ nil if stream data is invalid"
 	       ;; set max-read to content-length for termination
 	       (setf (slot-value stream '%max-read) (1- content-length))
 	       (setf (http-message.entities request)
-		     (rfc2388-mimes? stream
-				     (cdr
-				      (assoc "boundary" (caddr content-type) :test #'string=)))))
+		     (rfc2388-mimes?
+		      stream
+		      (cdr
+		       (assoc "boundary" (caddr content-type) :test #'string=))))
+	       (setf (uri.queries uri)
+		     (append (uri.queries uri)
+			     (reduce0 (lambda (acc media)						     
+					(cond
+					  ((mime.filename media)
+					   (cons (cons (mime.name media) media)
+						 acc))
+					  ((mime.name media)
+					   (cons (cons (mime.name media)
+						       (octets-to-string (mime.data media)
+									 +default-encoding-for-remote-mimes+))
+						 acc))
+					  (t
+					   (warn "Unkown media received:~A" media)
+					   acc)))
+				      (filter (lambda (a)
+						(typep a 'top-level-media))
+					      (http-message.entities request))))))
 	      ;; content-type = '("application" "x-www-form-urlencoded")
 	      ((and (string-equal "application" (car content-type))
 		    (string-equal "x-www-form-urlencoded" (string-upcase (cadr content-type)))
@@ -64,8 +86,8 @@ nil if stream data is invalid"
 	       ;; eat lineer whayt spaces.
 	       (lwsp? stream)
 	       ;; set max-read to content-length for termination	       
-	       (setf (slot-value stream '%max-read) (1- content-length))
-      	       (setf (uri.queries uri) (append (uri.queries uri)
+	       (setf (slot-value stream '%max-read) (1- content-length)
+		     (uri.queries uri) (append (uri.queries uri)
 					       (x-www-form-urlencoded? stream))))))
 	  (setf (http-message.general-headers request) general-headers
 		(http-message.unknown-headers request) unknown-headers

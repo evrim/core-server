@@ -55,6 +55,9 @@
 	      (car (reverse (assoc 'disposition (mime.headers mime) :test #'string-equal)))
 	      :test #'string-equal)))
 
+(defmethod mime.content-type ((mime mime))
+  (mime.header mime 'content-type))
+
 (defmethod mime.serialize ((mime mime) path)
   (with-core-stream (s path)
     (reduce #'(lambda (stream atom)
