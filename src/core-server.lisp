@@ -190,11 +190,19 @@
    ;; [RFC 2046]
 ;;;; classes and methods
    #:mime
-   #:mime.headers
    #:top-level-media
-   #:mime.data
    #:composite-level-media
+;;;; accessors
+   #:mime.headers
+   #:mime.data
    #:mime.children
+;;;; helpers methods
+   #:mime.header
+   #:mime.filename
+   #:mime.name
+   #:mime.content-type
+   #:mime.serialize      
+
 ;;;; utilities
    #:mimes?
    #:make-top-level-media
