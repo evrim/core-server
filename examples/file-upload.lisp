@@ -24,7 +24,7 @@
 (defun/cc read-file (msg)
   (send/suspend
     (page
-     (<:form :enctype "multipart/form-data" 
+     (<:form :enctype "multipart/form-data"
 	     :method "POST"
 	     :action (action/url ((descr "descr") (photo "photo"))
 		       (answer (cons descr photo)))
@@ -41,7 +41,7 @@
 	    (<:p (car media))
 	    ;; Preview with an inline image: <IMG SRC=\"data:image/jpg;base64,[...]\">
 	    (<:img :src (cdr media) :alt "Preview image")
-	    ;; A form to handle saving
+	    ;; Save file to "/tmp/"
 	    (<:form :method "POST"
 		    :action (action/url ()
 			      (let* ((tlm (cdr media))
@@ -49,15 +49,23 @@
 				(mime.serialize tlm path))
 			      (answer t))
 		    (<:input :type "submit" :name "save" :value "Save"))
+	    ;; Cancel operation
 	    (<:form :method "POST"
 		    :action (action/url () (answer nil))
 		    (<:input :type "submit" :value "Cancel"))))))
 
+(defun/cc result-page (msg)
+  (page
+   (<:div
+    (<:a :href "/fupload/upload" "Return to Main")
+    (<:p msg))))
+
 ;; Register a handler
 (defurl *fupload-app* "upload" ()
-  (if (preview (read-file "Send us your photo with a description line:"))
-      (page "File saved succesfuly.")
-      (page "Operation cancelled.")))
+  (result-page
+   (if (preview (read-file "Send us your photo with a description line:"))
+       "File saved succesfuly."
+       "Operation cancelled.")))
 
 ;; Register our application to the server
 (register *server* *fupload-app*)
