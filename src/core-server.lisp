@@ -604,6 +604,7 @@
    #:dispatch
    #:kontinue
    #:test-url
+   #:make-inline-image
    ;; [HTTP Component Framework]
    #:dojo
    #:jquery
