@@ -76,7 +76,7 @@
 		(string! stream (car attr))
 		(char! stream #\=)
 		(char! stream #\")
-		(string! stream (cdr attr))
+		(dom-element! stream (cdr attr))
 		(char! stream #\"))
 	      (dom.attributes element))
       (string! stream "/>"))))
@@ -306,6 +306,22 @@
 (defhtml-tag var :core :event :i18n onmouseover onmouseout)
 (defhtml-tag embed src width height type quality bgcolor name align
 	     allow-script-access pluginspage)
+
+;;-----------------------------------------------------------------------------
+;; HTML 4 Extra Tags a.k.a. Bonuses
+;;-----------------------------------------------------------------------------
+;;
+
+;; Inline Images having src as a rfc 2046 toplevel media
+;;----------------------------------------------------------------------------
+;; (<:img :media *a-toplevel-media-from-rfc2046*)
+(defmethod dom-element! ((stream core-stream) (media top-level-media) &optional (indentation 0))
+  (declare (ignore indentation))
+  (string! stream "data:")
+  (string! stream (format nil "~{~A~^/~}" (mime.content-type media)))
+  (string! stream ";base64,")
+  (base64! stream (mime.data media))
+  stream)
 
 ;;-----------------------------------------------------------------------------
 ;; Html Validator
