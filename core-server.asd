@@ -92,13 +92,6 @@
 				   (:file "render")
 				   (:file "transform")
 				   (:file "interface")))
-			 (:module :markup
-				  :serial t
-				  :components
-				  ((:file "dom")
-				   (:file "html")
-				   (:file "css")
-				   (:file "rss")))
                          (:module :rfc
                                   :serial t
                                   :components
@@ -111,6 +104,13 @@
                                    (:file "2046") ;;mime-part2
                                    (:file "2388") ;;multpart/form-data
 				   (:file "2821"))) ;;smtp
+			 (:module :markup
+				  :serial t
+				  :components
+				  ((:file "dom")
+				   (:file "html")
+				   (:file "css")
+				   (:file "rss")))
                          (:module :applications
                                   :components
                                   ((:file "serializable-application")
