@@ -247,10 +247,17 @@
    #:http-request.headers
    #:http-request.entity-headers
    #:http-request.stream
+   #:http-request.header
+   #:http-request.cookies
+   #:http-request.cookie
    #:http-response.response-headers
    #:http-response.status-code
    #:http-response.entity-headers
    #:http-response.stream
+   #:http-response.add-cookie
+   #:http-response.add-entity-header
+   #:http-response.add-response-header
+   #:http-response.set-content-type
 ;;; helpers
    #:escape-parenscript
    ;; Http Request
@@ -557,7 +564,7 @@
    #:unregister
    #:server.applications
    
-   ;; [HTTP Application]
+   ;; [HTTP Application & Web Framework]
    #:http-application
    #:find-session
    #:query-session
@@ -581,6 +588,7 @@
    #:context.request
    #:context.response
    #:context.session
+   #:context.session-boundp
    #:context.application
    #:context.continuation
    #:context.returns
@@ -596,6 +604,7 @@
    #:javascript/suspend
    #:json/suspend
    #:xml/suspend
+   #:css/suspend
    #:function/hash
    #:action/hash
    #:function/url

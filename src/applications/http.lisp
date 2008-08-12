@@ -137,12 +137,31 @@ when requested"
 
 (defmethod context.session ((self http-context))
   "Return the session of the HTTP context 'self', creates if none exists"
-  (let ((s (slot-value self 'session)))
-    (if (null s)
-	(setf s (make-new-session)
-	      (slot-value self 'session) s
-	      (gethash (session.id s) (application.sessions (context.application self))) s)
-	(prog1 s (setf (session.timestamp s) (get-universal-time))))))
+  (acond
+   ((slot-value self 'session)
+    (setf (session.timestamp it) (get-universal-time))
+    it)
+   (t
+    (let ((session (make-new-session)))
+      (setf (context.session self) session)      
+      (setf (gethash (session.id session) (application.sessions (context.application self)))
+	    session)
+      session))))
+
+(defmethod (setf context.session) :after ((session t) (self http-context))
+  (http-response.add-cookie (context.response self)
+			    (make-cookie +session-query-name+ ""
+					 :comment "Core Server Session Cookie"
+					 :max-age 0)))
+
+(defmethod (setf context.session) :after ((session http-session) (self http-context))
+  (http-response.add-cookie (context.response self)
+			    (make-cookie +session-query-name+ (session.id session)
+					 :comment "Core Server Session Cookie")))
+
+(defmethod context.session-boundp ((self http-context))
+  "Returns a boolean representing whether a session is created or not"
+  (not (null (s-v 'session))))
 
 (defun escape (&rest values)
    (funcall (apply (arnesi::toplevel-k) values))
@@ -277,26 +296,33 @@ executing 'body'"
 
 (defun/cc javascript/suspend (lambda)
   "Javascript version of send/suspend, sets content-type to text/javascript"
+  (http-response.set-content-type (context.response +context+)
+				  '("text" "javascript" ("charset" "UTF-8")))
   (send/suspend    
-    (setf (cdr (assoc 'content-type (http-response.entity-headers (context.response +context+))))
-	  '("text" "javascript" ("charset" "UTF-8")))
     (funcall lambda (if (application.debug (context.application +context+))
 			(make-indented-stream (http-response.stream (context.response +context+)))
 			(make-compressed-stream (http-response.stream (context.response +context+)))))))
 
-(defun/cc json/suspend (lambda)
+(defmacro json/suspend (&body body)
   "Json version of send/suspend, sets content-type to text/json"
-  (send/suspend    
-    (setf (cdr (assoc 'content-type (http-response.entity-headers (context.response +context+))))
-	  '("text" "json" ("charset" "UTF-8")))
-    (funcall lambda (http-response.stream (context.response +context+)))))
+  `(progn
+     (http-response.set-content-type (context.response +context+)
+				     '("text" "json" ("charset" "UTF-8")))
+     (send/suspend ,@body)))
 
-(defun/cc xml/suspend (lambda)
+(defmacro xml/suspend (&body body)
   "Xml version of send/suspend, sets content-type to text/xml"
-  (send/suspend    
-    (setf (cdr (assoc 'content-type (http-response.entity-headers (context.response +context+))))
-	  '("text" "xml" ("charset" "UTF-8")))
-    (funcall lambda (http-response.stream (context.response +context+)))))
+  `(progn
+     (http-response.set-content-type (context.response +context+)
+				     '("text" "xml" ("charset" "UTF-8")))
+     (send/suspend ,@body)))
+
+(defmacro css/suspend (&body body)
+  "Css version of send/suspend, sets content-type to text/css"
+  `(progn
+     (http-response.set-content-type (context.response +context+)
+				     '("text" "css" ("charset" "UTF-8")))
+     (send/suspend ,@body)))
 
 (defmethod gc ((self http-application))
   "Garbage collector for HTTP application, removes expired sessions/continuations"
@@ -309,12 +335,18 @@ executing 'body'"
 		     sessions)
 	    expired))))
 
+(defmethod find-session-id ((request http-request))
+  "Returns session id string provided in request query or by cookie that has set before"
+  (or (uri.query (http-request.uri request) +session-query-name+)
+      (aif (http-request.cookie request +session-query-name+)
+	   (cookie.value it))))
+
 (defmethod dispatch ((self http-application) (request http-request) (response http-response))
   "Dispatch 'request' to 'self' application with empty 'response'"
   (when (> (random 100) 40)
     (gc self))
-  (let ((session (gethash (uri.query (http-request.uri request) +session-query-name+)
-			  (application.sessions self))))
+  
+  (let ((session (gethash (find-session-id request) (application.sessions self))))
     (acond
      ((and session (gethash (uri.query (http-request.uri request) +continuation-query-name+)
 			    (session.continuations session)))      
@@ -347,7 +379,7 @@ executing 'body'"
      ,@body))
 
 (defun kontinue (number result &rest parameters)
-  "Continues a contination saves by function/hash or action/hash"
+  "Continues a contination saved by function/hash or action/hash"
   (let ((fun (cdr (nth number result))))
     (if (null fun)
 	(error "Continuation not found, please correct name.")

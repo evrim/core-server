@@ -148,7 +148,7 @@ nil if stream data is invalid"
 (defmethod render-response ((self http-peer) stream response request)
   "Renders HTTP/Mod-Lisp 'response' to 'stream'"
   (let ((content-length (length (slot-value (http-response.stream response) '%write-buffer))))
-    (add-entity-header response 'content-length content-length)
+    (http-response.add-entity-header response 'content-length content-length)
     (render-headers self stream response)
     (commit-stream stream)
     (if (not (eq 'head (http-request.method request)))

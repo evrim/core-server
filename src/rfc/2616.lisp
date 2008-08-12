@@ -506,7 +506,7 @@
     '(ACCEPT ACCEPT-CHARSET ACCEPT-ENCODING ACCEPT-LANGUAGE AUTHORIZATION
       EXPECT FROM HOST IF-MATCH IF-MODIFIED-SINCE IF-NONE-MATCH IF-RANGE
       IF-UNMODIFIED-SINCE MAX-FORWARDS PROXY-AUTHORIZATION RANGE REFERER
-      TE USER-AGENT))) ;; len=19
+      TE USER-AGENT COOKIE))) ;; len=19
 
 ;; 14.1 Accept
 ;; Accept           = "Accept" ":"
@@ -898,13 +898,18 @@
        (:opera-user-agent? agent))
   (:return agent))
 
+;; RFC 2109 Cookie - rfc/2109.lisp
+(defrule http-cookie? (cookie)
+  (:cookie? cookie)
+  (:return cookie))
+
 ;;;-----------------------------------------------------------------------------
 ;;; 5.3 HTTP RESPONSE HEADERS
 ;;;-----------------------------------------------------------------------------
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defvar +http-response-headers+
     '(ACCEPT-RANGES AGE ETAG LOCATION PROXY-AUTHENTICATE RETRY-AFTER SERVER
-      VARY WWW-AUTHENTICATE))) ;; len=9
+      VARY WWW-AUTHENTICATE SET-COOKIE))) ;; len=9
 
 ;; 14.5 Accept Ranges
 ;; Accept-Ranges     = "Accept-Ranges" ":" acceptable-ranges
@@ -978,6 +983,10 @@
 ;; WWW-Authenticate  = "WWW-Authenticate" ":" 1#challenge
 (defun http-www-authenticate! (stream challenge)
   (http-challenge! stream challenge))
+
+;; RFC 2109 Cookie - rfc/2109.lisp
+(defun http-set-cookie! (stream cookie)
+  (cookie! stream cookie))
 
 ;;;-----------------------------------------------------------------------------
 ;;; 7.1 HTTP ENTITY HEADERS
@@ -1224,6 +1233,15 @@
    (entity-headers :accessor http-request.entity-headers :initform '())
    (stream :accessor http-request.stream :initform nil :initarg :stream)))
 
+(defmethod http-request.header ((request http-request) key)
+  (cadr (assoc key (http-request.headers request))))
+
+(defmethod http-request.cookies ((request http-request))
+  (http-request.header request 'cookie))
+
+(defmethod http-request.cookie ((request http-request) name)
+  (find name (http-request.cookies request) :key #'cookie.name :test #'string=))
+
 (defrule http-request-first-line? (method uri proto)
   (:http-method? method) (:lwsp?) (:uri? uri) (:lwsp?)
   (:http-protocol? proto) (:return (values method uri (cadr proto))))
@@ -1328,17 +1346,28 @@
 		   :initarg :entity-headers)
    (stream :accessor http-response.stream :initform nil :initarg :stream)))
 
-(defmethod add-entity-header ((self http-response) key val)
+(defmethod http-response.add-entity-header ((self http-response) key val)
   (setf (slot-value self 'entity-headers)
 	(cons (cons key val)
 	      (remove-if #'(lambda (a) (eq a key))
 			 (slot-value self 'entity-headers) :key #'car))))
 
-(defmethod add-response-header ((self http-response) key val)
+(defmethod http-response.add-response-header ((self http-response) key val)
   (setf (slot-value self 'response-headers)
 	(cons (cons key val)
 	      (remove-if #'(lambda (a) (eq a key))
 			 (slot-value self 'response-headers) :key #'car))))
+
+(defmethod http-response.set-content-type ((self http-response) content-type)
+  (http-response.add-entity-header self 'content-type content-type))
+
+(defmethod http-response.add-cookie ((self http-response) (cookie cookie))
+  (setf (slot-value self 'response-headers)
+	(cons (cons 'set-cookie cookie)
+	      (remove-if #'(lambda (a)
+			     (and (typep (cdr a) 'cookie)
+				  (string= (cookie.name (cdr a)) (cookie.name cookie))))
+			 (slot-value self 'response-headers)))))
 
 (defmacro defhttp-header-render (name format header-list) 
   (let ((hname (gensym)))
