@@ -59,10 +59,9 @@
   (mime.header mime 'content-type))
 
 (defmethod mime.serialize ((mime mime) path)
-  (let ((s (make-core-file-output-stream path)))    
-    (reduce #'(lambda (stream atom)
-		(prog1 stream (write-stream stream atom)))
-	    (mime.data mime) :initial-value s)
+  (let ((s (make-core-file-output-stream path)))
+    (write-stream s (mime.data mime))
+    (close-stream s)
     path))
 
 (defclass top-level-media (mime)
