@@ -426,11 +426,3 @@ provide query parameters inside URL as key=value"
 		    (write-stream output seq))))
 	      (render-404 (context.request context) (context.response context)))))))
 
-(defun make-inline-image (media)
-  "Constructs an inline image tag from a top-level-media object. Ex:
-  <IMG SRC=\"data:image/gif;base64,[...]\">. Used in web applications
-  for previewing uploaded images etc..."
-  (let ((mime (format nil "~{~A~^/~}" (mime.content-type media))))
-    (with-core-stream (s "")
-      (base64! s (core-server::mime.data media))
-      (<:img :src (format nil "data:~A;base64,~A" mime (return-stream s))))))

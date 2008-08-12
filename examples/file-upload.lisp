@@ -40,7 +40,7 @@
      (<:div :id "frame"
 	    (<:p (car media))
 	    ;; Preview with an inline image: <IMG SRC=\"data:image/jpg;base64,[...]\">
-	    (make-inline-image (cdr media))
+	    (<:img :src (cdr media) :alt "Preview image")
 	    ;; A form to handle saving
 	    (<:form :method "POST"
 		    :action (action/url ()
