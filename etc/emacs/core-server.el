@@ -137,6 +137,22 @@
      (setq page-name (buffer-name (current-buffer))))
   "<a href=\"" page-name "#" anchor "\" onclick=\"return coretal.loadPage('" anchor "');\">" str "</a>")
 
+(define-skeleton skeleton-comment-1
+    "Insert a Comment Header"
+  "Header Text: "
+  ";; +----------------------------------------------------------------------------
+;; |" str "
+;; +----------------------------------------------------------------------------"
+  )
+
+(define-skeleton skeleton-comment-2
+    "Insert a Comment Header"
+  "Header Text: "
+  ";; ----------------------------------------------------------------------------
+;; " str "
+;; ----------------------------------------------------------------------------"
+  )
+
 (defun make-backup-file-name (file)
   "Create the non-numeric backup file name for FILE.
 Normally this will just be the file's name with `~' appended.
