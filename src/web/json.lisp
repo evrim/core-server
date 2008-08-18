@@ -149,19 +149,21 @@
 
 (defmethod json! ((stream core-stream) something)
   (prog1 stream
-    (etypecase something
-      (null (string! stream "null"))
-      (hash-table (json-object! stream something))
-      (list (json-array! stream something))
-      (string (json-string! stream something))
-      (number (json-number! stream something))
-      (dom-element (string! stream (js* (dom2js something))))
-      (symbol
-       (case something
-	 ((or true false) (json-boolean! stream something))           
-	 (undefined (string! stream "undefined"))
-	 (null (string! stream "null"))
-	 (t (string! stream (symbol-to-js something))))))))
+    (if (eq t something)
+	(string! stream "true")
+	(etypecase something
+	  (null (string! stream "null"))
+	  (hash-table (json-object! stream something))
+	  (list (json-array! stream something))
+	  (string (json-string! stream something))
+	  (number (json-number! stream something))
+	  (dom-element (string! stream (js* (dom2js something))))
+	  (symbol
+	   (case something
+	     ((or true false) (json-boolean! stream something))           
+	     (undefined (string! stream "undefined"))
+	     (null (string! stream "null"))
+	     (t (string! stream (symbol-to-js something)))))))))
 
 
 (defun json-serialize (object)
