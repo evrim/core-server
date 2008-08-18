@@ -53,8 +53,17 @@
 	  ,b
 	  ,c)) ,a))
 
-(defjsmacro mapcar (lambda lst)
-  `(dojo.map ,lst ,lambda))
+(defjsmacro typep (object type)
+  `(= ,(if (eq 'quote (car type))
+	   (symbol-to-js (cadr type))
+	   type)
+      (typeof ,object)))
+
+(defjsmacro nreverse (lst)
+  `(reverse ,lst))
+
+;; (defjsmacro mapobj (lambda object)
+;;   `())
 
 ;; (defjsmacro null (arg)
 ;;   `(= 'null ,arg))
