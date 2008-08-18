@@ -102,7 +102,7 @@
 (defmethod render-arguments ((self svstat))
   (list (s-v 'svstat-pathname)))
   
-(defmethod run-command ((self svstat) args)
+(defmethod run ((self svstat))
   (call-next-method)
   (svstat? (make-core-stream (command.output-stream self))))
 
@@ -177,7 +177,7 @@
 (defmethod render-arguments ((self tinydns-add-mixin))
   (list (slot-value self 'add-pathname)))
 
-(defmethod run-command ((self tinydns-add-mixin) args)
+(defmethod run ((self tinydns-add-mixin))
   (with-current-directory (slot-value self 'root)
     (call-next-method)))
 

@@ -61,7 +61,7 @@
 (defrender smtp! (message)
   (:string! message) (:char! #\Newline))
 
-(defmethod run-command ((self smtp) args)
+(defmethod run ((self smtp))
   (if (smtp.message self)
       (smtp! (smtp.stream self) (smtp.message self)))
   (or (smtp-ehlo? (smtp.stream self))
@@ -80,7 +80,7 @@
   ((username :host local :initarg :username :initform nil)
    (password :host local :initarg :password :initform nil)))
 
-(defmethod run-command ((self smtp-auth-plain) args)
+(defmethod run ((self smtp-auth-plain))
   (when (and (s-v 'username) (s-v 'password))    
     (smtp! (s-v 'stream)
 	   (with-core-stream (s "")
@@ -97,7 +97,7 @@
 (defcommand smtp-auth-login (smtp-auth-plain)
   ())
 
-(defmethod run-command ((self smtp-auth-login) args)
+(defmethod run ((self smtp-auth-login))
   (when (and (s-v 'username) (s-v 'password))
     (smtp! (s-v 'stream) "AUTH LOGIN")
     (let ((code (smtp? (s-v 'stream))))
@@ -118,7 +118,7 @@
   ((email :host local :initarg :email))
   (:default-initargs :message "MAIL FROM:"))
 
-(defmethod run-command ((self smtp-mail-from) args)
+(defmethod run ((self smtp-mail-from))
   (when (s-v 'email) 
     (smtp! (s-v 'stream) (format nil "~A<~A>" (smtp.message self) (s-v 'email)))
     (smtp? (s-v 'stream))))
@@ -127,7 +127,7 @@
   ((email :host local :initarg :email))
   (:default-initargs :message "RCPT TO:"))
 
-(defmethod run-command ((self smtp-rcpt-to) args)
+(defmethod run ((self smtp-rcpt-to))
   (when (s-v 'email) 
     (smtp! (s-v 'stream) (format nil "~A<~A>" (smtp.message self) (s-v 'email)))
     (smtp? (s-v 'stream))))
@@ -161,7 +161,7 @@
   (prog1 s
     (checkpoint-stream s)
     (when (envelope.date e)
-      (smtp! s "Date: ")
+      (string! s "Date: ")
       (http-date! s (envelope.date e))
       (char! s #\Newline))
     (smtp! s (format nil "From: ~@[~A <~]~A~@[>~]"
@@ -191,7 +191,7 @@
   ((envelope :host local :initarg :envelope))
   (:default-initargs :message "DATA"))
 
-(defmethod run-command ((self smtp-send) args)
+(defmethod run ((self smtp-send))
   (with-accessors ((from envelope.from) (to envelope.to)) (s-v 'envelope)
     (smtp-mail-from :email from :stream (s-v 'stream))
     (mapcar (lambda (rcpt)
@@ -267,7 +267,7 @@
 			   :display-name "zebedisplayname"
 			   :text "zoooo"
 			   :subject "keh keh al sana subject")))
-    (list (smtp? *s)
+    (list (smtp? s)
 	  (smtp-ehlo :stream s)
 	  (smtp-send :envelope en :stream s)
 	  (smtp-quit :stream s))))

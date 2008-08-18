@@ -40,7 +40,7 @@
 	    (t arg))))
     (mapcar #'filter-arg args)))
 
-(defclass command ()
+(defclass+ command ()
   ((input-stream :accessor command.input-stream :initarg :input-stream :initform nil)
    (output-stream :accessor command.output-stream :initarg :output-stream :initform nil)
    (verbose :accessor command.verbose :initarg :verbose :initform +verbose+)
@@ -54,7 +54,7 @@
 (defgeneric parser (command)
   (:documentation "Parse the answer and call writers."))
 
-(defgeneric run-command (command args)
+(defgeneric run (command)
   (:documentation "Run this command with given args."))
 
 (defgeneric render-arguments (shell)
@@ -69,21 +69,24 @@
   exit-code and invokes check-exit-code."))
 
 (defmacro defcommand (name supers slots &rest rest)
-  (multiple-value-bind (new-slots new-rest) (register-class name supers slots rest)
-    `(progn
-       (defclass ,name (,@supers command)
-	 ,new-slots
-	 (:default-initargs ,@(alist-to-plist (default-initargs-of-class name)))
-	 ,@(remove :default-initargs new-rest :key #'car))
-       (eval-when (:load-toplevel :compile-toplevel :execute)
-	 (register-class ',name ',supers ',slots ',rest))
-       ,(aif (cdr (assoc :ctor rest))
-	     `(defun ,name ,@it
-		(let ((obj (make-instance ',name ,@(ctor-arguments name (car it)))))
-		  (run-command obj (filter-arguments (render-arguments obj)))))
-	     `(defun ,name (&key ,@(ctor-keywords name))
-		(let ((obj (make-instance ',name ,@(ctor-arguments name))))
-		  (run-command obj (filter-arguments (render-arguments obj)))))))))
+  (let ((supers (nreverse (cons 'command (nreverse supers)))))
+    (multiple-value-bind (class+ new-slots new-rest) (class+.register (class+ name supers slots rest))
+      `(progn
+	 (eval-when (:load-toplevel)
+	   (class+.register (class+ ',name ',supers ',slots ',rest)))
+	 ,(aif (cdr (assoc :ctor rest))
+	       `(progn
+		  (defun ,name ,@it
+		    (run (make-instance ',name ,@(class+.ctor-arguments class+ (car it)))))
+		  (defun ,(intern (format nil "~AM" name) (symbol-package name)) ,@it
+		    (make-instance ',name ,@(class+.ctor-arguments class+ (car it)))))
+	       `(progn
+		  (defun ,name (&key ,@(class+.ctor-keywords class+))
+		    (run (make-instance ',name ,@(class+.ctor-arguments class+))))
+		  (defun ,(intern (format nil "~AM" name) (symbol-package name))
+		      (&key ,@(class+.ctor-keywords class+))
+		    (make-instance ',name ,@(class+.ctor-arguments class+)))))
+	 (defclass ,name (,@supers) ,new-slots ,@new-rest)))))
 
 (defcommand shell ()
   ((cmd :host local :initform nil)
@@ -107,7 +110,7 @@
 			(shell.exit-code self)) 
 	(try-again ()
 	  :report "Re-run this command."
-	  (run-command self (filter-arguments (render-arguments self)))))
+	  (run self)))
       (shell.exit-code self)))
 
 (defmethod wait-process ((self shell))
@@ -116,22 +119,27 @@
     (setf (shell.exit-code self) (sb-ext::process-exit-code (shell.process self)))
     (check-exit-code self)))
 
+(defmethod render-arguments :around ((self shell))
+  (filter-arguments (ensure-list (call-next-method))))
+
 (defmethod render-arguments ((self shell))
   (s-v 'args))
 
-(defmethod run-command ((self shell) args)
+(defmethod run ((self shell))
   (flet ((ensure-cmd (cmd)
 	   (cond
 	     ((pathnamep cmd) (namestring cmd))
 	     (t (error "Please provide cmd slot")))))
     (if (s-v 'verbose)
-	(format t "Executing command: ~A ~{~A~^ ~}~%" (s-v 'cmd) (filter-arguments (render-arguments self))))
+	(format t "Executing command: ~A ~{~A~^ ~}~%" (s-v 'cmd) (render-arguments self)))
     (setf (shell.process self)
 	  (sb-ext:run-program (ensure-cmd (shell.cmd self))
-			      args
+			      (render-arguments self)
 			      :wait nil
 			      :input (if (s-v 'verbose) t :stream)
-			      :output (if (s-v 'verbose) t :stream)
+			      :output (if (s-v 'verbose)
+					  *standard-output*
+					  :stream)
 			      :error :output))
     (if (shell.wait self)
 	(wait-process self) 
@@ -144,7 +152,7 @@
 (defmethod render-arguments ((self which))
   (list (s-v 'name)))
 
-(defmethod run-command :around ((self which) args)
+(defmethod run :around ((self which))
   (call-next-method)
   (when (zerop (shell.exit-code self))
     (let ((result (read-line (command.output-stream self))))
@@ -196,18 +204,12 @@
 			 '((group "-g") (extra-groups "-G") (home-directory "-d")
 			   (comment "-c")) :initial-value nil))))
 
-(defmethod run-command ((self useradd) args)
-  (call-next-method))
-
 (defcommand groupadd (shell)
   ((groupname :host local :initform (error "Group name must be provided.")))
   (:default-initargs :cmd +groupadd+ :errorp nil))
 
 (defmethod render-arguments ((self groupadd))
   (list (s-v 'groupname)))
-
-(defmethod run-command ((self groupadd) args)
-  (call-next-method))
 
 (defcommand find-file (shell)
   ((pattern :host local :initform (error "must specify a filename pattern.")))
@@ -216,7 +218,7 @@
 (defmethod render-arguments ((self find-file))
   (list "-name" (s-v 'pattern) "-type" "f"))
 
-(defmethod run-command ((self find-file) args)
+(defmethod run ((self find-file))
   (call-next-method)
   (loop for line = (read-line (command.output-stream self) nil nil)
      while line
@@ -229,9 +231,6 @@
 
 (defmethod render-arguments ((self ln))
   (list "-sf" (s-v 'source) (s-v 'target)))
-
-(defmethod run-command ((self ln) args)
-  (call-next-method))
 
 (defcommand chown (shell)
   ((user :host local :initform nil)
@@ -246,7 +245,7 @@
 	(list ug "-R" (s-v 'path))
 	(list ug (s-v 'path)))))
 
-(defmethod run-command ((self chown) args)
+(defmethod run ((self chown))
   (when (and (null (s-v 'user)) (null (s-v 'group)))
     (error "Username and group can't be empty at the same time."))
   (call-next-method))
@@ -262,9 +261,6 @@
       (list (s-v 'mode) "-R" (s-v 'path))
       (list (s-v 'mode) (s-v 'path))))
 
-(defmethod run-command ((self chmod) args)
-  (call-next-method))
-
 (defcommand wget (shell)
   ((source :host local :initform (error "please specify source"))
    (target :host local :initform (error "please specify target")))
@@ -272,9 +268,6 @@
 
 (defmethod render-arguments ((self wget))
   (list "--output-document" (s-v 'target) (s-v 'source)))
-
-(defmethod run-command ((self wget) args)
-  (call-next-method))
 
 (defcommand cvs (shell)
   ((op :host local :initform "co")
@@ -290,9 +283,6 @@
   (list (format nil "-d:~A:~A:~A@~A" (cvs.repo-type self) (cvs.username self)
 		(cvs.password self) (cvs.repo self))
 	(cvs.op self) "-d" (cvs.target self) (cvs.module self)))
-
-(defmethod run-command ((self cvs) args)
-  (call-next-method))
 
 (defcommand darcs (shell)
   ((op :host local :initform "get")
@@ -313,9 +303,6 @@
 	  ((equal (darcs.op self) "unpull")
 	   nil))))
 
-(defmethod run-command ((self darcs) args)
-  (call-next-method))
-
 (defcommand svn (shell)
   ((op :host local :initform "co")
    (repo :host local :initform (error "repo can't be nil"))
@@ -324,9 +311,6 @@
 
 (defmethod render-arguments ((self svn))
   (list (svn.op self) (svn.repo self) (svn.target self)))
-
-(defmethod run-command ((self svn) args)
-  (call-next-method))
 
 (defcommand tarball (shell)
   ((repo :host local :initform (error "repo can't be nil"))
@@ -340,7 +324,7 @@
     ((search ".gz" (s-v 'repo)) (list "zxvf" (s-v 'temp-fname)))
     ((search ".bz2" (s-v 'repo)) (list "jxvf" (s-v 'temp-fname)))))
 
-(defmethod run-command ((self tarball) args)
+(defmethod run ((self tarball))
   (wget :source (s-v 'repo) :target (s-v 'temp-fname))
   (let ((sandbox-path (make-pathname :directory (tmpnam nil))))
     (ensure-directories-exist sandbox-path)
@@ -348,7 +332,7 @@
     (with-current-directory sandbox-path
       (call-next-method))))
 
-(defmethod run-command :after ((self tarball) args)
+(defmethod run :after ((self tarball))
   (let ((package-directory (car (directory
 				 (make-pathname :name :wild
 						:type :wild

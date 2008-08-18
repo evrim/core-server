@@ -85,10 +85,10 @@
    (args self)
    (list (s-v 'xquery) (s-v 'uri))))
 
-(defmethod run-command ((self hxpath) args)
+(defmethod run ((self hxpath))
   (handler-bind ((error
 		  #'(lambda (condition) (declare (ignore condition))
-		      (return-from run-command nil))))
+		      (return-from run nil))))
     (call-next-method))
   (hxpath? (make-core-stream (command.output-stream self))))
 
@@ -108,7 +108,7 @@
    (args self)
    (list (s-v 'id) (s-v 'in) (s-v 'out))))
 
-(defmethod run-command ((self xmltr) args)
+(defmethod run ((self xmltr))
   (call-next-method)
   (format (command.input-stream self) "~A" (s-v 'text))
   (close (command.input-stream self))

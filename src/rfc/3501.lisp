@@ -133,7 +133,7 @@
       t
       (error "Got BAD response for ~A" self)))
 
-(defmethod run-command ((self imap) args)
+(defmethod run ((self imap))
   (render self)
   (let ((result (parser self)))
     (validate-continuation self (car result))
@@ -199,7 +199,7 @@
   ()
   (:default-initargs :message "LOGOUT" :parser #'imap-logout?))
 
-(defmethod run-command ((self imap-logout) args)
+(defmethod run ((self imap-logout))
   (prog1 (call-next-method)
     (close-stream (imap.stream self))))
 
@@ -244,7 +244,7 @@
 	     :initform (error "Please specify password")))
   (:default-initargs :message "LOGIN"))
 
-(defmethod run-command ((self imap-login) args)
+(defmethod run ((self imap-login))
   (prog1 t
     (setf (imap.message self)
 	  (format nil "~A ~A ~A" (imap.message self)
@@ -528,7 +528,7 @@
 (defrender imap-append-envelope! (envelope)
   (:string! envelope))
 
-(defmethod run-command ((self imap-append) args)
+(defmethod run ((self imap-append))
   (with-core-stream (s "")
     (envelope! s (imap.envelope s))
     (imap-append! (imap.stream self) (imap.continuation self)
