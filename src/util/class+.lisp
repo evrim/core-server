@@ -62,41 +62,61 @@
     (class+ class+)))
 
 (defgeneric class+.direct-superclasses (class+)
-  (:documentation "Returns direct super classes+ of this class+"))
+  (:documentation "Returns direct super classes+ of this class+")
+  (:method ((self t)) nil))
 
 (defgeneric class+.superclasses (class+)
-  (:documentation "Returns super classes+ of this class+"))
+  (:documentation "Returns super classes+ of this class+")
+  (:method ((self t)) nil))
 
 (defgeneric class+.direct-subclasses (class+)
-  (:documentation "Returns direct sub classes+ of this class+"))
+  (:documentation "Returns direct sub classes+ of this class+")
+  (:method ((self t)) nil))
 
 (defgeneric class+.subclasses (class+)
-  (:documentation "Returns sub classes+ of this class+"))
+  (:documentation "Returns sub classes+ of this class+")
+  (:method ((self t)) nil))
 
 (defgeneric class+.slots (class+)
-  (:documentation "Returns all slots of this class+"))
+  (:documentation "Returns all slots of this class+")
+  (:method ((self t)) nil))
 
 (defgeneric class+.slot-search (class+ match-p)
-  (:documentation "Returns all slots that satisfies match-p lambda"))
+  (:documentation "Returns all slots that satisfies match-p lambda")
+  (:method ((self t) match-p) nil))
 
 (defgeneric class+.local-slots (class+)
-  (:documentation "Returns an assoc list of local-slots with corresponding default values"))
+  (:documentation "Returns an assoc list of local-slots with corresponding default values")
+  (:method ((self t)) nil))
 
 (defgeneric class+.remote-slots (class+)
-  (:documentation "Returns an assoc list of remote-slots with corresponding default values"))
+  (:documentation "Returns an assoc list of remote-slots with corresponding default values")
+  (:method ((self t)) nil))
 
 (defgeneric class+.methods (class+)
-  (:documentation "Returns list of all method-names and associated lambda lists"))
+  (:documentation "Returns list of all method-names and associated lambda lists")
+  (:method ((self t)) nil))
 
 (defgeneric class+.local-methods (class+)
-  (:documentation "Returns list of local method-names and associated lambda lists"))
+  (:documentation "Returns list of local method-names and associated lambda lists")
+  (:method ((self t)) nil))
 
 (defgeneric class+.remote-methods (class+)
-  (:documentation "Returns list of remote method-names and associated lambda lists "))
+  (:documentation "Returns list of remote method-names and associated lambda lists ")
+  (:method ((self t)) nil))
 
 (defgeneric class+.search (class+ goal-p &optional successors combiner)
   (:documentation "Convenient search method that by default applies goal-p lambda to
 all superclasses of this class+ until goal-p returns a value other than nil"))
+
+(defgeneric class+.rest (class+)
+  (:method ((self t)) nil))
+
+(defgeneric class+.slots (class+)
+  (:method ((self t)) nil))
+
+(defgeneric class+.slot-search (class+ match-p)
+  (:method ((self t) match-p) nil))
 
 (defclass class+ ()
   ((name :accessor class+.name :initarg :name :initform (error "Please specify the name of the Class+")
@@ -105,10 +125,10 @@ all superclasses of this class+ until goal-p returns a value other than nil"))
 		 :documentation "Symbols of superclasses of this class+")
    (subclasses :accessor class+.%subclasses :initarg :subclasses :initform nil
 	       :documentation "Symbols of subclasses of this class+")
-   (slots :accessor class+.slots :initarg :slots :initform nil
+   (slots :accessor class+.%slots :initarg :slots :initform nil
 	  :documentation "Slots of this class+")
    (rest :accessor class+.rest :initarg :rest :initform nil)
-   (methods :accessor class+.methods :initform nil :initarg :methods))
+   (methods :accessor class+.%methods :initform nil :initarg :methods))
   (:documentation "Class+ is the base class of Class+ Framework. It
   provides similar functionality like mop metaclasses on the user
   land. Class+ instances can be queried using class+ protocol."))
@@ -117,12 +137,13 @@ all superclasses of this class+ until goal-p returns a value other than nil"))
   (print-unreadable-object (self stream :type t :identity t)
     (format stream "~A" (class+.name self))))
 
-(defun class+ (name supers slots rest)
-  "Convenient constructor for Class+"
-  (make-instance 'class+ :name name :superclasses supers :slots slots :rest rest))
-
 (defmethod class+.direct-superclasses ((self class+))
-  (mapcar #'find-class+ (class+.%superclasses self)))
+  (nreverse
+   (reduce0 (lambda (acc atom)
+	      (aif (find-class+ atom)
+		   (cons it acc)
+		   acc))
+	    (class+.%superclasses self))))
 
 (defmethod class+.direct-subclasses ((self class+))
   (mapcar #'find-class+ (class+.%subclasses self)))
@@ -173,7 +194,7 @@ all superclasses of this class+ until goal-p returns a value other than nil"))
 				       (setf (getf (cdr slot) :initform) (getf initargs initarg))
 				       (pushnew slot lst :key #'car))
 				     (pushnew slot lst :key #'car)))))
-			   (slot-value class+ 'slots))
+			   (class+.%slots class+))
 		     nil))
     (nreverse lst)))
 
@@ -194,25 +215,37 @@ all superclasses of this class+ until goal-p returns a value other than nil"))
 			(or (eq (getf (cdr slot) :host) 'remote)
 			    (eq (getf (cdr slot) :host) 'both)))))
 
-(defmethod class+.local-methods ((self class+))
+(defmethod class+.register-remote-method ((self class+) name args)
+  (setf (class+.%methods self)
+	(cons (cons name (cons :remote args))
+	      (remove name (class+.%methods self) :key #'car)))
+  self)
+
+(defmethod class+.register-local-method ((self class+) name args)
+  (setf (class+.%methods self)
+	(cons (cons name (cons :local args))
+	      (remove name (class+.%methods self) :key #'car)))
+  self)
+
+(defmethod class+.methods ((self class+))
   (let (lst)
     (class+.search self
 		   (lambda (class+)
 		     (mapc (lambda (method)
 			     (pushnew method lst :key #'car))
-			   (slot-value class+ 'local-methods))
+			   (class+.%methods class+))
 		     nil))
     lst))
 
+(defmethod class+.local-methods ((self class+))
+  (filter (lambda (method)
+	    (eq (cadr method) :local))
+	  (class+.methods self)))
+
 (defmethod class+.remote-methods ((self class+))
-  (let (lst)
-    (class+.search self
-		   (lambda (class+)
-		     (mapc (lambda (method)
-			     (pushnew method lst :key #'car))
-			   (slot-value class+ 'remote-methods))
-		     nil))
-    lst))
+  (filter (lambda (method)
+	    (eq (cadr method) :remote))
+	  (class+.methods self)))
 
 (defun class+.%fix-slot-definition (class-name slot-definition)
   (if (not (member :initform slot-definition))
@@ -247,14 +280,14 @@ all superclasses of this class+ until goal-p returns a value other than nil"))
 	  slots))
 
 (defparameter +class-slot-keywords+
-  '(reader writer accessor allocation initarg initform type documentation))
+  '(:reader :writer :accessor :allocation :initarg :initform :type :documentation))
 
 (defun class+.%filter-slot-definitions (slots)
   (mapcar (lambda (slot)
 	    (cons (car slot)
 		  (alist-to-plist
 		   (filter (lambda (slot)
-			     (member (car slot) +class-slot-keywords+))
+			     (member (car slot) +class-slot-keywords+ :test #'string=))
 			   (plist-to-alist (cdr slot))))))
 	  slots))
 
@@ -263,32 +296,8 @@ all superclasses of this class+ until goal-p returns a value other than nil"))
 
 (defun class+.%filter-rest (rest)
   (filter (lambda (atom)
-	    (member (car atom) +class-rest-keywords+))
+	    (member (car atom) +class-rest-keywords+ :test #'string=))
 	  rest))
-
-(defun class+.register (name supers slots rest)
-  (let ((class+ (find-class+ name))
-	(slot-defs (class+.%slot-definitions name slots (assoc :default-initargs rest))))
-    (if class+
-	(setf (slot-value class+ 'superclasses) supers
-	      (slot-value class+ 'slots) slot-defs
-	      (slot-value class+ 'rest) rest)	
-	(setf class+ (setf (gethash name +class-registry+) (class+ name supers slot-defs rest))))
-    (values class+
-	    (class+.%filter-slot-definitions slot-defs)
-	    (class+.%filter-rest rest))))
-
-(defmethod class+.register-remote-method ((self class+) name args)
-  (setf (slot-value self 'remote-methods)
-	(cons (cons name args)
-	      (remove name (slot-value self 'remote-methods) :key #'car)))
-  self)
-
-(defmethod class+.register-local-method ((self class+) name args)
-  (setf (slot-value self 'local-methods)
-	(cons (cons name args)
-	      (remove name (slot-value self 'local-methods) :key #'car)))
-  self)
 
 (defmethod class+.ctor-keywords ((self class+))
   (reduce0 (lambda (acc atom)
@@ -314,13 +323,29 @@ all superclasses of this class+ until goal-p returns a value other than nil"))
 	 `(defun ,name (&key ,@(class+.ctor-keywords self))
 	    (make-instance ',name ,@(class+.ctor-arguments self))))))
 
+(defun class+ (name supers slots rest)
+  "Convenient constructor for Class+"
+  (make-instance 'class+
+		 :name name
+		 :superclasses supers
+		 :slots (class+.%slot-definitions name slots (assoc :default-initargs rest))
+		 :rest rest))
+
+(defmethod class+.register ((self class+))  
+  (aif (find-class+ (class+.name self))
+       (setf (class+.%methods self) (class+.%methods it)))
+  (setf (gethash (class+.name self) +class-registry+) self)
+  (values self
+	  (class+.%filter-slot-definitions (class+.%slots self))
+	  (class+.%filter-rest (class+.rest self))))
+
 (defmacro defclass+ (name supers slots &rest rest)
   "Defines a class using Class+ Framework"  
-  (multiple-value-bind (class+ new-slots new-rest) (class+.register name supers slots rest)    
+  (multiple-value-bind (class+ new-slots new-rest) (class+.register (class+ name supers slots rest))    
     `(progn
        ,(class+.ctor class+)
        (eval-when (:load-toplevel)
-	 (register-class+ ',name ',supers ',slots ',rest))
+	 (class+.register (class+ ',name ',supers ',slots ',rest)))
        (defclass ,name (,@supers) ,new-slots ,@new-rest))))
 
 (deftrace class+
@@ -329,4 +354,15 @@ all superclasses of this class+ until goal-p returns a value other than nil"))
       class+.rest class+.default-initargs class+.slot-search
       class+.local-slots class+.remote-slots class+.methods
       class+.local-methods class+.remote-methods class+.search class+.ctor
-      class+.register class+.register-remote-method class+.register-local-method))
+      class+.register class+.register-remote-method class+.register-local-method
+      class+.ctor-keywords class+.ctor-arguments))
+
+;; (defclass+-slot-extension client-type (class+)
+;;   (:values '(primitive object list))
+;;   (:predicate (lambda (value)
+;; 		(member value +some-values+)))
+;;   (:default-value 'primitive))
+
+;; (defclass+-slot-extension host (class+)
+;;   (:values '(nil local remote both))
+;;   (:default-value nil))
