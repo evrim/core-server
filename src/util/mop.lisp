@@ -97,3 +97,40 @@
 	       #'(lambda (class) (class-direct-superclasses class base))
 	       #'append)
   lst)
+
+(defmethod slots-of ((object standard-object))
+  #+openmcl
+  (mapcar #'ccl:slot-definition-name
+	  (#-openmcl-native-threads ccl:class-instance-slots
+	   #+openmcl-native-threads ccl:class-slots
+	   (class-of object)))
+  #+cmu
+  (mapcar #'pcl:slot-definition-name (pcl:class-slots (class-of object)))
+  #+sbcl
+  (mapcar #'sb-pcl:slot-definition-name (sb-pcl:class-slots (class-of object)))
+  #+lispworks
+  (mapcar #'hcl:slot-definition-name (hcl:class-slots (class-of object)))
+  #+allegro
+  (mapcar #'mop:slot-definition-name (mop:class-slots (class-of object)))
+  #+sbcl
+  (mapcar #'sb-mop:slot-definition-name (sb-mop:class-slots (class-of object)))
+  #-(or openmcl cmu lispworks allegro sbcl)
+  (error "not yet implemented"))
+
+(defmethod slots-of ((object structure-object))
+  #+openmcl
+  (let* ((sd (gethash (class-name (class-of object)) ccl::%defstructs%))
+	 (slots (if sd (ccl::sd-slots sd))))
+    (mapcar #'car (if (symbolp (caar slots)) slots (cdr slots))))
+  #+cmu
+  (mapcar #'pcl:slot-definition-name (pcl:class-slots (class-of object)))
+  #+sbcl
+  (mapcar #'sb-pcl:slot-definition-name (sb-pcl:class-slots (class-of object)))
+  #+lispworks
+  (structure:structure-class-slot-names (class-of object))
+  #+allegro
+  (mapcar #'mop:slot-definition-name (mop:class-slots (class-of object)))
+  #+sbcl
+  (mapcar #'sb-mop:slot-definition-name (sb-mop:class-slots (class-of object)))
+  #-(or openmcl cmu lispworks allegro sbcl)
+  (error "not yet implemented"))
