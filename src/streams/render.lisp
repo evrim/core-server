@@ -142,6 +142,11 @@ zee\")"
 (defun symbol! (stream symbol)
   (string! stream (string-downcase (symbol-name symbol))))
 
+(defun symbol-with-package! (stream symbol)
+  (string! stream (package-name (symbol-package symbol)))
+  (string! stream "::")
+  (string! stream (symbol-name symbol)))
+
 (defun fixnum! (stream number)
   (string! stream (format nil "~D" number)))
 
