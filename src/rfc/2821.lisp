@@ -152,7 +152,7 @@
 	    :documentation "mail subject")
    (text :accessor envelope.text :initarg :text :initform ""
 	 :documentation "mail body which is a string")
-   (date :accessor envelope.date :initarg :date :initform (get-email-date-string)
+   (date :accessor envelope.date :initarg :date :initform (get-universal-time)
 	 :documentation "creation date of envelope")
    (extra-headers :accessor envelope.extra-headers :initarg :extra-headers :initform nil
 		  :documentation "extra headers for this envelope. List of string tuples.")))
@@ -160,8 +160,12 @@
 (defmethod envelope! ((s core-stream) (e envelope))
   (prog1 s
     (checkpoint-stream s)
-    (smtp! s (format nil "Date: ~A" (envelope.date e)))
-    (smtp! s (format nil "From: ~@[~A <~]~A~@[>~]" (envelope.display-name e) (envelope.from e) (envelope.display-name e)))
+    (when (envelope.date e)
+      (smtp! s "Date: ")
+      (http-date! s (envelope.date e))
+      (char! s #\Newline))
+    (smtp! s (format nil "From: ~@[~A <~]~A~@[>~]"
+		     (envelope.display-name e) (envelope.from e) (envelope.display-name e)))
     (smtp! s (format nil "To: ~{ ~a~^,~}" (ensure-list (envelope.to e))))
     (when (envelope.cc e)
       (smtp! s (format nil "Cc: ~{ ~a~^,~}" (ensure-list (envelope.cc e)))))
@@ -177,7 +181,9 @@
     (smtp! s "Content-Type: text/html; charset=UTF-8; format=flowed")
     (smtp! s "Content-Transfer-Encoding: 8bit")
     (char! s #\Newline)
-    (string! s (envelope.text e))
+    (if (typep (envelope.text e) 'dom-element)
+	(dom-element! s (envelope.text e))
+	(string! s (envelope.text e)))
     (char! s #\Newline)
     (commit-stream s)))
 
@@ -187,9 +193,9 @@
 
 (defmethod run-command ((self smtp-send) args)
   (with-accessors ((from envelope.from) (to envelope.to)) (s-v 'envelope)
-    (smtp-mail-from :email (format nil " <~A>" from) :stream (s-v 'stream))
+    (smtp-mail-from :email from :stream (s-v 'stream))
     (mapcar (lambda (rcpt)
-	      (smtp-rcpt-to :email (format nil " <~A>" rcpt) :stream (s-v 'stream)))
+	      (smtp-rcpt-to :email rcpt :stream (s-v 'stream)))
 	    (ensure-list to))
     (smtp! (s-v 'stream) "DATA")
     (envelope! (s-v 'stream) (s-v 'envelope))
@@ -254,14 +260,14 @@
 ;; 			    response, "No SP service here")
 
 (defun test-smtp ()
-  (let ((s (connect "node2.core.gen.tr" 25))
+  (let ((s (connect "localhost" 25))
 	(en (make-instance 'envelope
-			   :from "evrim@core.gen.tr"
-			   :to "aycan@core.gen.tr"
+			   :from "aycan@core.gen.tr"
+			   :to "evrim@core.gen.tr"
 			   :display-name "zebedisplayname"
 			   :text "zoooo"
 			   :subject "keh keh al sana subject")))
-    (list (smtp? s)
+    (list (smtp? *s)
 	  (smtp-ehlo :stream s)
 	  (smtp-send :envelope en :stream s)
 	  (smtp-quit :stream s))))

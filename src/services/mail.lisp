@@ -49,8 +49,7 @@
 ;; we schedule a queue processor.
 
 (defclass mail-sender (logger-server)
-  ((username :accessor mail-sender.username :initarg :mail-username
-	     :initform (error "mail-sender username must be defined.")
+  ((username :accessor mail-sender.username :initarg :mail-username :initform nil
 	     :documentation "Username for connecting to mail server")
    (password :accessor mail-sender.password :initarg :mail-password :initform nil
 	     :documentation "Password for connecting to mail server")
@@ -129,12 +128,12 @@
   (log-me msender 'smtp (format nil "~A: ~A" (unit.name msender) text)))
 
 ;; main interface to other programs
-(defmethod/unit sendmail :async-no-return ((self mail-sender) from to subject text &optional cc reply-to display-name)
+(defmethod/unit sendmail :async-no-return ((self mail-sender) from to subject text
+					   &optional cc reply-to display-name)
   (enqueue (mail-sender.queue self)
 	   (apply #'make-instance 'envelope
 		  (list :from from :to (ensure-list to) :subject subject :text text
 			:cc (ensure-list cc) :reply-to reply-to :display-name display-name))))
-
 
 ;; (defparameter *test-mails*
 ;;   (list
