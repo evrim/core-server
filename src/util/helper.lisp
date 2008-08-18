@@ -67,6 +67,17 @@ for traceing a closed system"
        (defun ,untrace-symbol (&optional (methods ,var-symbol))
 	 (mapcar (lambda (e) (eval `(untrace ,e))) methods)))))
 
+(defun prepend (&rest lists)
+  "Prepends lists to a single list"
+  (cond
+    ((eq 0 (length lists))
+     nil)
+    ((eq 1 (length lists))
+     (car lists))
+    (t
+     (let ((rev (reverse lists)))
+       (apply #'append (cons (car rev) (prepend (cdr rev))))))))
+
 (defun flatten (lst &optional (acc nil))
   "Flatten a list tree into a plain list"
   (cond
