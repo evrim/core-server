@@ -31,7 +31,7 @@
 		   (:collect c acc))
 	     (:return (octets-to-string acc :utf-8)))))
 
-(defmethod json-string! ((stream core-stream) (s string))
+(defmethod json! ((stream core-stream) (s string))
   (prog1 stream (quoted! stream s)))
 
 ;; TODO: Implement RFC to decode numbers. -evrim
@@ -61,19 +61,21 @@
 	       (:commit))
   (:return int))
 
-(defmethod json-number! ((stream core-stream) (n number))
+(defmethod json! ((stream core-stream) (n number))
   (prog1 stream (fixnum! stream n)))
 
 (defrule json-boolean? ()
   (:or (:and (:seq "true") (:return 'true))
        (:and (:seq "false") (:return 'false))))
 
-(defmethod json-boolean! ((stream core-stream) b)
-  (prog1 stream
-    (ecase b
-      (true (string! stream "true"))
-      (false (string! stream "false"))
-      (t (string! stream "true")))))
+(defmethod json! ((stream core-stream) (false (eql 'false)))
+  (string! stream "false"))
+
+(defmethod json! ((stream core-stream) (object null))
+  (string! stream "null"))
+
+(defmethod json! ((stream core-stream) (object (eql 't)))
+  (string! stream "true"))
 
 (defrule json-array? (val lst)
   (:lwsp?) #\[ (:lwsp?)
@@ -85,9 +87,8 @@
 	(:lwsp?))
   (:return (nreverse lst)))
 
-
 ;; FIXmE: This accepts list not array? -evrim.
-(defmethod json-array! ((stream core-stream) sequence)
+(defmethod json! ((stream core-stream) (sequence sequence))
   (flet ((primitive! (s p)
 	   (prog1 s
 	     (string! s " ,")
@@ -120,7 +121,7 @@
 	(:do (setf (gethash key object) value)))
   (:return object))
 
-(defmethod json-object! ((stream core-stream) hash-table)
+(defmethod json! ((stream core-stream) (hash-table hash-table))
   (prog1 stream
     (flet ((one (key value)
 	     (json-key! stream key)
@@ -136,7 +137,6 @@
 		(cdr keys) (cdr values))
 	(string! stream " }")))))
 
-
 (defrule json? (value)
   (:or (:and (:seq "undefined") (:return 'undefined))
        (:and (:seq "null") (:return 'null))
@@ -147,24 +147,14 @@
 		  (:json-string? value))
 	     (:return value))))
 
-(defmethod json! ((stream core-stream) something)
-  (prog1 stream
-    (if (eq t something)
-	(string! stream "true")
-	(etypecase something
-	  (null (string! stream "null"))
-	  (hash-table (json-object! stream something))
-	  (list (json-array! stream something))
-	  (string (json-string! stream something))
-	  (number (json-number! stream something))
-	  (dom-element (string! stream (js* (dom2js something))))
-	  (symbol
-	   (case something
-	     ((or true false) (json-boolean! stream something))           
-	     (undefined (string! stream "undefined"))
-	     (null (string! stream "null"))
-	     (t (string! stream (symbol-to-js something)))))))))
+(defmethod json! ((stream core-stream) (undefined (eql 'undefined)))
+  (string! stream "undefined"))
 
+(defmethod json! ((stream core-stream) (symbol symbol))
+  (string! stream (symbol-to-js symbol)))
+
+(defmethod json! ((stream core-stream) (element dom-element))
+  (string! (js* (dom2js element))))
 
 (defun json-serialize (object)
   (let ((s (make-core-stream "")))
@@ -175,5 +165,6 @@
   (let ((s (make-core-stream string)))
     (json? s)))
 
-(deftrace json-parsers '(json? json-array? json-key? json-object?
-    json-number? json-boolean? json-string?))
+(deftrace json-parsers
+    '(json? json-array? json-key? json-object? json-number?
+      json-boolean? json-string?))
