@@ -137,39 +137,6 @@
 (defhtml-tag a :core :i18n :event accesskey charset coords href hreflang
 	     name onblur onfocus rel rev shape tabindex target type onmouseover onmouseout)
 
-(defmethod dom-element! ((stream core-stream) (element <:a)
-			 &optional (indentation 0))
-  (prog1 stream
-    (let ((href (get-attribute element "href")))
-      (typecase href
-	(string (call-next-method))
-	(cons (let ((uri (uri? (make-core-stream (cdr href))))
-		    (context (car href)))
-		(if (and uri (slot-boundp context 'session))
-		    (call-next-method
-		     stream	     
-		     (set-attribute element "href" 
-				    (with-core-stream (s "")
-				      (uri! s (prog1 uri
-						(setf (uri.queries uri)
-						      (cons
-						       (cons
-							(symbol-to-js +session-query-name+)
-							(session.id (context.session context)))		  
-						       (uri.queries uri))
-						      (uri.paths uri)
-						      (cons
-						       (list
-							(symbol-to-js
-							 (web-application.fqdn
-							  (context.application context))))
-						       (uri.paths uri)))
-						;; (describe uri)
-						))
-				      (return-stream s)))
-		     indentation)
-		    (call-next-method stream (set-attribute element "href" (cdr href)) indentation))))))))
-
 (defhtml-tag abbr :core :event :i18n)
 (defhtml-tag acronym :core :event :i18n)
 (defhtml-tag address :core :event :i18n onmouseover onmouseout)
