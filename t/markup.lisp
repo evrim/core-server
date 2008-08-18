@@ -109,13 +109,74 @@
 ;;-----------------------------------------------------------------------------
 ;; CSS Tests
 ;;-----------------------------------------------------------------------------
-(deftest css-render-1
-    (with-core-stream (s "")
-      (css! s (css "html" :background-color "#000" :color "#FFF"))
-      (return-stream s))
-  "html {
-background-color: #000;
-color: #FFF;
-};
+;; (deftest css-render-1
+;;     (with-core-stream (s "")
+;;       (css! s (css "html" :background-color "#000" :color "#FFF"))
+;;       (return-stream s))
+;;   "html {
+;; background-color: #000;
+;; color: #FFF;
+;; };
 
-")
+;; ")
+
+;; (defmacro defcss-test (name fun string &body result)
+;;   `(deftest ,(intern (format nil "CSS-~A" name))       
+;;        (funcall (function ,(intern (symbol-name fun) :core-server))
+;; 		(make-core-stream ,string))
+;;      ,@result))
+
+;; (defcss-test value-1 css-value? "moo#gee" "moo")
+
+;; (defcss-test value-2 css-value? "-gee_" "-gee")
+
+;; (defcss-test universal-selector css-universal-selector?
+;;     "*" (core-server::universal-selector))
+
+;; (defcss-test type-selector css-type-selector? "div#moo"
+;;   (core-server::type-selector "div"))
+
+;; (defcss-test descendant-selector css-descendant-selector? "div span"
+;;   (core-server::descendant-selector (core-server::type-selector "div")
+;; 				    (core-server::type-selector "span")))
+
+;; (defcss-test child-selector css-child-selector? "div > span"
+;;   (core-server::child-selector (core-server::type-selector "div")
+;; 			       (core-server::type-selector "span")))
+
+;; (defcss-test first-child-selector css-first-child-selector? "div:first-child"
+;;   (core-server::first-child-selector (core-server::type-selector "div")))
+
+;; (defcss-test link-selector-1 css-link-selector? "a:link"
+;;   (core-server::link-selector (core-server::type-selector "a") core-server::link))
+
+;; (defcss-test link-selector-2 css-link-selector? "a:visited"
+;;   (core-server::link-selector (core-server::type-selector "a") core-server::visited))
+
+;; (defcss-test dynamic-selector css-dynamic-selector? "a:active"
+;;   (core-server::dynamic-selector (core-server::type-selector "a")))
+
+;; (defcss-test lang-selector css-lang-selector? "div:lang(turkish)"
+;;   (core-server::lang-selector (core-server::type-selector "div") "turkish"))
+
+;; (defcss-test adjacent-selector css-adjacent-selector? "div + span"
+;;   (core-server::adjacent-selector (core-server::type-selector "div")
+;; 				  (core-server::type-selector "span")))
+
+;; (defcss-test attribute-selector-1 css-attribute-selector? "div[foo]"
+;;   (core-server::attribute-selector (core-server::type-selector "div")
+;; 				   ((core-server::exists "foo" nil))))
+
+;; (defcss-test attribute-selector-2 css-attribute-selector? "div[foo|=\"oof\"][moo=\"zoo\"][poo~=\"oop\"]"
+;;   (core-server::attribute-selector (core-server::type-selector "div")
+;; 				   ((core-server::hypen-member "foo" "oof")
+;; 				    (core-server::equal "moo" "zoo")
+;; 				    (core-server::space-member "poo" "oop"))))
+
+;; (defcss-test class-selector css-class-selector? "moo.warning"
+;;   (core-server::attribute-selector (core-server::type-selector "moo")
+;; 				   ((equal "class" "warning"))))
+
+;; (defcss-test id-selector css-id-selector? "div#gee"
+;;   (core-server::id-selector (core-server::type-selector "div") "gee"))
+
