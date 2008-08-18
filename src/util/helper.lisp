@@ -120,11 +120,13 @@ for traceing a closed system"
 
 (defun drop (n lst)
   "Drop n element from the head of lst and return rest"
-  (subseq lst n))
+  (let ((l (length lst)))
+    (subseq lst (min l n))))
 
 (defun take (n lst)
   "Take n elements from the head of lst and return"
-  (subseq lst 0 n))
+  (let ((l (length lst)))
+    (subseq lst 0 (min l n))))
 
 (defmacro with-package (package &body body)
   "Executes body while setting current package to 'package'"
