@@ -24,6 +24,7 @@
 ;; This file contains transformations that makes javascript more lispy.
 ;;
 
+
 ;;-----------------------------------------------------------------------------
 ;; Javascript Functionalization
 ;;-----------------------------------------------------------------------------
@@ -47,21 +48,45 @@
     (append (ensure-list (find-form-leaf (then form)))
 	    (ensure-list (find-form-leaf (else form)))))
 
+  (defmethod find-form-leaf ((form cond-form))
+    (nreverse
+     (reduce0 (lambda (acc atom) (cons (last1 atom) acc))
+	      (conditions form))))
+  
+  (defmethod find-form-leaf ((form application-form))
+    (cond
+      ((eq 'try (operator form))
+       (describe form)
+       (arguments form)
+       nil)
+      (t
+       form)))
+
   (defun fix-javascript-returns (form)
-    "Alters form destructive and adds implicit return statements to 'form'"
+    "Alters 'form' destructively and adds implicit return statements to 'form'"
     (flet ((transform-to-implicit-return (form)
 	     (let ((new-form (walk-js-form (unwalk-form form) (parent form))))
-	       (unless (and (typep form 'application-form)
-			    (eq 'return (operator form)))
+	       (unless (or (typep form 'throw-form)
+			   (and (typep form 'application-form)
+				(eq 'return (operator form))))
 		 (change-class form 'application-form)
 		 (setf (operator form) 'return)
 		 (setf (arguments form) (list new-form)))
 	       new-form)))
       (let ((funs (ast-search-type form 'lambda-function-form)))
 	(mapcar #'transform-to-implicit-return
-		(flatten (mapcar #'find-form-leaf funs)))
-	form)))
-  
+		(flatten (mapcar #'find-form-leaf funs))))
+      ;; (let ((implicit-returns (let (lst)
+;; 				(ast-search form
+;; 					    (lambda (atom)
+;; 					      (if (and (not (typep atom 'application-form))
+;; 						       (not (typep (parent atom) 'implicit-progn-mixin)))
+;; 						  (pushnew atom lst))))
+;; 				lst)))
+;; ;;	(mapcar #'describe implicit-returns)
+;; 	)
+      form))
+
   (defun fix-javascript-methods (form self)
     (let ((applications (ast-search-type form 'application-form)))
       (mapcar (lambda (app)

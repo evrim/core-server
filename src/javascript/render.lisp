@@ -249,52 +249,18 @@
 	       (destructuring-bind ,args ,rest
 		 ,@body)))))
 
-(defjsmacro 1+ (arg)
-  `(+ ,arg 1))
-
-(defjsmacro when (a &rest b)
-  `(if ,a (progn ,@b)))
-
-(defjsmacro unless (a &rest b)
-  `(if (not ,a) (progn ,@b)))
-
-(defjsmacro make-array (&rest a)
-  `(new (*array ,@a)))
-
-(defjsmacro list (&rest arg)
-  `(new (*array ,@arg)))
-
-(defjsmacro setf (&rest rest)
-  (assert (evenp (length rest)))
-  `(progn
-     ,@(let (state)
-	    (nreverse
-	     (reduce (lambda (acc atom)
-		       (if (null state)
-			   (prog1 acc (setf state atom))
-			   (prog1 (cons `(setq ,state ,atom) acc)
-			     (setq state nil))))
-		     rest :initial-value nil)))))
-
-(defjsmacro case (object &rest cases)
-  `(switch ,object
-     ,@(mapcar (lambda (case)
-		 (append case (list 'break)))
-	       (butlast cases))
-     ,(last1 cases)))
-
-(defjsmacro with-slots (slots object &body body)
-  `(let ,(mapcar (lambda (slot)
-		   (list slot `(slot-value ,object ',slot)))
-		 slots)
-     ,@body))
-
+;;-----------------------------------------------------------------------------
+;; Javascript Macro Expander
+;;-----------------------------------------------------------------------------
 (defun macroexpand-js-1 (form &optional env)
   (declare (ignore env))
   (aif (and (listp form) (gethash (car form) *javascript-macros*))
        (values (apply it (cdr form)) t)
        (values form nil)))
 
+;;-----------------------------------------------------------------------------
+;; Javascript Form Walker
+;;-----------------------------------------------------------------------------
 (defun walk-js-form (form &optional (parent nil) (env (make-walk-env)))
   (let ((arnesi::*walker-expander* #'macroexpand-js-1))
     (walk-form form parent env)))
@@ -309,7 +275,6 @@
   "Define a javascript expander (ie. unwalker) which is fed to renderer"
   `(defmethod expand-javascript ((form ,class) (expand function))
      (declare (ignorable expand))
-;;     (format t "inside ~A~%" ',class)
      (with-slots ,slots form
        ,@body)))
 
@@ -385,10 +350,11 @@
 	   ")"))))
 
 (defjavascript-expander lambda-application-form (operator arguments)
-  `(:and ,(funcall expand operator expand) 
+  `(:and "(" ,(funcall expand operator expand) ")"
 	 "("
 	 ,(seperated-by ", " (mapcar (rcurry expand expand) arguments))
-	 ,(if (typep (parent form) 'application-form)
+	 ,(if (or (typep (parent form) 'progn-form)
+		  (typep (parent form) 'application-form))
 	      ")"
 	      ");")))
 
@@ -445,7 +411,8 @@
 
 ;;;; IF
 (defjavascript-expander if-form (consequent then else)
-  (if (typep (parent form) 'application-form)
+  (if (and (not (typep (parent form) 'implicit-progn-mixin))
+	   (not (typep (parent form) 'if-form)))
       `(:and "(" ,(funcall expand consequent expand)
 	     " ? " ,(funcall expand then expand)
 	     " : " ,(if else

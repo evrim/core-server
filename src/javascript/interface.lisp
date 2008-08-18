@@ -70,7 +70,9 @@
   (with-unique-names (stream)
     `(defun ,name (,stream ,@args)
        (with-js ,(extract-argument-names args) ,stream
-	 ,@body))))
+	 ,@body)
+       (char! ,stream #\Newline)
+       ,stream)))
 
 (defmacro defun/javascript (name params &body body)
   "Defun a function in both worlds (lisp/javascript)"
@@ -78,48 +80,3 @@
      (defrender/js ,(intern (string-upcase (format nil "~A/JS" name))) ()
        (setq ,name (lambda ,params
 		     ,@body)))))
-
-(defrender/js moo (&optional base-url (debug nil) (back 'false))
-  (list base-url debug back)
-  (lambda ()
-    (list 1 2 3)))
-
-;; (defun/javascript fun1 (a)
-;;   (let ((b (lambda (b c)
-;; 	     (list b c))))
-;;     (return (b))))
-
-;; (defmacro defun/parenscript (name params &body body)
-;;   `(prog1
-;;        (defun ,name ,params ,@body)
-;;      (defun ,(intern (string-upcase (format nil "~A!" name))) (s)
-;;        (write-stream s
-;; 		     ,(js:js* `(lambda ,params
-;; 				 ,@body))))))
-
-;; (defun/parenscript fun2 (a)
-;;   (let ((a (lambda (a b c)
-;; 	     (list a b c))))
-;;     (return a)))
-
-;; (js+ 
-;;   (+ 1 1)
-;;   (+ 2 2))
-
-;; (defun <:js (&rest body)
-;;   "Convert body to javascript and return it as a string, this is an ucw+
-;; backward compatiblity macro, and should not be used."
-;;   (with-unique-names (output)
-;;     (eval
-;;      `(let ((,output (if +context+
-;; 			 (http-response.stream (response +context+))
-;; 			 *core-output*)))
-;; 	(funcall (lambda ()
-;; 		   (block rule-block
-;; 		     ,(expand-render
-;; 		       (walk-grammar
-;; 			`(:and ,@(mapcar (rcurry #'expand-javascript #'expand-javascript)
-;; 					 (mapcar #'walk-form-no-expand body))
-;; 			       #\Newline))
-;; 		       #'expand-render output)
-;; 		     nil)))))))
