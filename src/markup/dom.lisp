@@ -185,6 +185,18 @@
   (declare (ignore indentation))
   (string! stream element))
 
+(defmethod dom-element! ((stream core-stream) (element number)
+			            &optional (indentation 0))
+  (declare (ignore indentation))
+  (fixnum! stream element)
+  stream)
+
+(defmethod dom-element! ((stream core-stream) (element pathname)
+			            &optional (indentation 0))
+  (declare (ignore indentation))
+  (string! stream (namestring element))
+  stream)
+
 (defmethod dom-element! ((stream core-stream) (element dom-element)
 			            &optional (indentation 0))
   (flet ((indent ()
@@ -210,15 +222,16 @@
 		(char! stream #\"))
 	      (dom.attributes element))      
       (char! stream #\>)
-      (cond
-	((eq 0 (length (dom.children element)))
-	 )
-	((eq 1 (length (dom.children element)))
-	 (mapcar #'child! (dom.children element)))
-	(t	 
-	 (mapcar #'child! (dom.children element))
-	 (char! stream #\Newline)
-	 (indent)))
+      (let ((length (length (dom.children element))))
+	(cond
+	  ((eq 0 length)
+	   )
+	  ((eq 1 length)
+	   (mapcar #'child! (dom.children element)))
+	  (t	 
+	   (mapcar #'child! (dom.children element))
+	   (char! stream #\Newline)
+	   (indent))))
       (string! stream "</")
       (string! stream (dom.tag element))
       (char! stream #\>))))
