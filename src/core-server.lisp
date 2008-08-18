@@ -85,17 +85,34 @@
    ;; [Stream Helpers]
    #:with-core-stream
    #:with-core-stream/cc
-   ;; [Class]
+   
+   ;; [Class+]
+   #:find-class+
+   #:class+
+   #:class+.name
+   #:class+.direct-superclasses
+   #:class+.direct-subclasses
+   #:class+.superclasses
+   #:class+.subclasses
+   #:class+.slots
+   #:class+.rest
+   #:class+.default-initargs
+   #:class+.slot-search
+   #:class+.local-slots
+   #:class+.remote-slots
+   #:class+.methods
+   #:class+.local-methods
+   #:class+.remote-methods
+   #:class+.search   
    #:defclass+
-   #:register-class
-   #:register-remote-method-for-class
-   #:register-local-method-for-class
-   #:local-slots-of-class
-   #:remote-slots-of-class
-   #:default-initargs-of-class
-   #:client-type-of-slot
-   #:local-methods-of-class
-   #:remote-methods-of-class
+   #:class+.register
+   #:class+.register-remote-method
+   #:class+.register-local-method
+   #:class+.ctor
+   #:local
+   #:remote
+   #:primitive
+   
    ;; [Sockets]
    #:resolve-hostname
    #:make-server
@@ -144,10 +161,11 @@
 
    ;; [Javascript]
    #:js
+   #:js*
+   #:with-js
+   #:defrender/js
    #:defun/javascript
    #:+indent-javascript+
-   #:js
-   #:js*
    #:defjsmacro
    #:defrender/js
    #:true
@@ -188,7 +206,7 @@
 ;;;; header symbol
    #:quoted-printable
    ;; [RFC 2046]
-;;;; classes and methods
+;;;; classes 
    #:mime
    #:top-level-media
    #:composite-level-media
@@ -451,6 +469,9 @@
    #:log-me-raw
 
    ;; [Database]
+   #:serialization-cache
+   #:serialize-xml
+   #:deserialize-xml
    ;; Classes
    #:database-server
    #:standard-model-class
@@ -613,19 +634,28 @@
    #:dispatch
    #:kontinue
    #:test-url
-   #:make-inline-image
+   
    ;; [HTTP Component Framework]
-   #:dojo
-   #:jquery
+   #:component
+   #:component.application
+   #:component.javascript-reader
+   #:component.javascript-writer
+   #:component.remote-method-proxy
+   #:component.local-method-proxy
+   #:component.remote-slots
+   #:component.local-slots
+   #:component.remote-methods
+   #:component.remote-ctor-arguments
+   #:defcomponent-ctor
    #:defcomponent
-   #:local
-   #:remote
-   #:both
    #:defmethod/local
    #:defmethod/remote
-   #:send/component
-   #:send/ctor
-   #:+component-registry+
+   #:ctor!
+
+   ;; [ Web Component Stacks ]
+   #:dojo
+   #:jquery
+   
    ;; [DOm Components]
    #:dom-element
    #:css-class
@@ -684,6 +714,7 @@
    #:command.remote-args
    #:shell
    #:whereis
+   #:thumbnail
    ;; [ Core Parser ]
    #:defrule
    #:defparser
