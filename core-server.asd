@@ -71,7 +71,8 @@
                                   :serial t
                                   :components
                                   ((:file "command")
-                                   (:file "hxpath")))
+                                   (:file "hxpath")
+				   (:file "image")))
 			 (:module :install
 				  :serial t
 				  :components
@@ -91,7 +92,9 @@
 				  ((:file "util")
 				   (:file "render")
 				   (:file "transform")
-				   (:file "interface")))
+				   (:file "interface")
+				   (:file "macro")
+				   (:file "library")))
                          (:module :rfc
                                   :serial t
                                   :components
@@ -104,7 +107,7 @@
                                    (:file "2046") ;;mime-part2
                                    (:file "2388") ;;multpart/form-data
 				   (:file "2821"))) ;;smtp
-			 (:module :markup
+                         (:module :markup
 				  :serial t
 				  :components
 				  ((:file "dom")
@@ -145,6 +148,7 @@
                                    (:file "component")
                                    (:file "mime-types")
                                    (:module :components
+					    :serial t
                                             :components
                                             ((:file "toaster")
                                              (:file "fckeditor")
@@ -165,6 +169,7 @@
                         :serial t
 			:components ((:file "packages")
                                      (:file "test-harness")
+				     (:file "class+")
                                      (:file "postfix")
                                      (:file "parser")
                                      (:file "streams")
@@ -184,7 +189,8 @@
                                      ;; (:file "apache")
                                      ;; (:file "ucw")
                                      ;; (:file "core")
-				     (:file "javascript"))))
+				     (:file "javascript")
+				     (:file "component"))))
   :depends-on (:core-server :rt))
 
 ;; (defmethod perform ((op asdf::load-op) (system (eql (find-system :core-server.test))))
