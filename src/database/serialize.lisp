@@ -176,9 +176,9 @@
 	       `(setf (gethash (parse-integer (get-attribute ,element "ID"))
 			       (serialization-cache.cache cache))
 		      ,result)))
-    (labels ((deserialize (element)
+    (labels ((deserialize (element)	       
 	       (let ((tag (dom.tag element)))
-		 (cond
+		 (cond		   
 		   ((string= "REF" tag)
 		    (gethash (parse-integer (get-attribute element "ID"))
 			     (serialization-cache.cache cache)))
@@ -244,4 +244,6 @@
 		    (if (null element)
 			(error "Bogus prevalence stream ~A" stream)
 			(error "Cant deserialize ~A" element)))))))
-      (values (deserialize (dom-element? stream)) cache))))
+      (aif (dom-element? stream)
+	   (values (deserialize it) cache)
+	   (values nil cache)))))
