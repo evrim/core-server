@@ -472,6 +472,13 @@
    #:serialization-cache
    #:serialize-xml
    #:deserialize-xml
+   #:database
+   #:with-transaction
+   #:deftransaction
+   #:execute
+   #:snapshot
+   #:database.root
+   
    ;; Classes
    #:database-server
    #:standard-model-class

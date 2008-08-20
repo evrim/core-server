@@ -23,11 +23,11 @@
   (:ctor ()))
 
 (defmacro with-cached-object ((id object stream cache) &body body)
-  `(multiple-value-bind (id foundp) (gethash ,object (serialization-cache.cache ,cache))
+  `(multiple-value-bind (,id foundp) (gethash ,object (serialization-cache.cache ,cache))
      (cond
        (foundp
 	(string! ,stream "<REF ID=\"")
-	(fixnum! ,stream id)
+	(fixnum! ,stream ,id)
 	(string! ,stream "\"/>"))
        (t
 	(setf ,id (incf (serialization-cache.counter ,cache))
@@ -133,7 +133,7 @@
 	       (serialize-xml stream k cache)
 	       (string! stream "</KEY><VALUE>")
 	       (serialize-xml stream v cache)
-	       (string! stream "</VALUE>"))
+	       (string! stream "</VALUE></ENTRY>"))
 	     object)
     (string! stream "</HASH-TABLE>")))
 
@@ -247,3 +247,5 @@
       (aif (dom-element? stream)
 	   (values (deserialize it) cache)
 	   (values nil cache)))))
+
+;; TODO: serialize hashtable rehash size -evrim.

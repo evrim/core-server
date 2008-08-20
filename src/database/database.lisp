@@ -58,27 +58,9 @@
 (defmethod database.deserialize ((self database) (stream core-stream))
   (deserialize-xml stream (database.cache self)))
 
-(defmethod database.serialize ((self database) (stream core-stream) (transaction transaction)) 
-  (serialize-xml stream transaction (database.cache self)))
-
-(defun find-free-variables (form)
-  (let (lst)
-    (mapc (lambda (vars)
-	    (pushnew (name vars) lst))
-	  (ast-search-type form 'free-variable-reference))
-    lst))
-
-(defmacro with-transaction ((server) &body body)
-  (with-unique-names (tx)
-    (let* ((form (walk-form `(progn ,@body)))
-	   (vars (filter (lambda (a)
-			   (not (eq server a)))
-			 (find-free-variables form)))
-	   (thunk (walk-form `(lambda (,server ,@vars)
-				,@body))))
-      (describe thunk)
-      `(let ((,tx (transaction ,thunk (list ,@vars))))
-	 (execute ,server ,tx)))))
+(defmethod database.serialize ((self database) (stream core-stream) object
+			       &optional cache) 
+  (serialize-xml stream object (or cache (database.cache self))))
 
 (defmethod log-transaction ((self database) (transaction transaction))
   (checkpoint-stream (database.stream self))
@@ -90,17 +72,19 @@
     (symbol
      (if (not (fboundp (transaction.code tx)))
 	 (error "Transactional function ~A is unbound." (transaction.function tx))
-	 (apply (transaction.code tx) (transaction.env tx))))
-    (lambda-function-form     
+	 (apply (transaction.code tx) self (transaction.env tx))))
+    (lambda-function-form
      (let ((fun (or (gethash (transaction.code tx) (database.closure-cache self))
 		    (setf (gethash (transaction.code tx) (database.closure-cache self))
-			  (eval (unwalk-form (transaction.code tx)))))))
-       (describe tx)
-       (describe (transaction.code tx))
+			  (handler-bind ((style-warning (lambda (c) (muffle-warning c))))
+			    (eval (unwalk-form (transaction.code tx))))))))
        (apply fun self (transaction.env tx))))))
 
 (defmethod execute ((self database) (transaction transaction))
   "Execute a transaction on a system and log it to the transaction log"
+  (unless (database.status self)
+    (error "Database should running in order to execute a transaction"))
+  
   (let ((result
 	 (handler-bind ((error #'(lambda (condition)
 				   (format *standard-output* 
@@ -127,6 +111,40 @@
 	  ((null tx) nil)
 	(execute-on self tx)))))
 
+(defun open-database-stream (pathname)
+  (make-core-stream
+   (open pathname
+	 :direction :output :if-does-not-exist :create :if-exists :append
+	 :element-type '(unsigned-byte 8))))
+
+(defmethod snapshot ((self database))
+  (unless (database.status self)
+    (error "Database should be running to get a snapshot"))
+  
+  (let ((timestamp (time->string (get-universal-time) :tag))
+	(snapshot (database.snapshot-pathname self))
+	(tx-log (database.transaction-log-pathname self)))
+
+    (close-stream (database.stream self))
+
+    (when (probe-file snapshot)
+      (cp :from snapshot :to (database.snapshot-pathname self timestamp)))
+
+    (let ((stream (make-core-stream
+		   (open snapshot :direction :output :if-does-not-exist :create :if-exists :supersede
+			 :element-type '(unsigned-byte 8)))))
+      (unwind-protect (database.serialize self stream (database.root self)
+					  (serialization-cache))
+	(close-stream stream)))
+
+    (when (probe-file tx-log)
+      (cp :from tx-log :to (database.transaction-log-pathname self timestamp))
+      (rm :path tx-log))
+    
+    (setf (database.stream self) (open-database-stream tx-log)
+	  (database.cache self) (serialization-cache))
+    (database.snapshot-pathname self timestamp)))
+
 (defmethod start ((self database))
   (when (not (equal (directory-namestring (database.directory self))
 		    (namestring (database.directory self))))
@@ -137,10 +155,7 @@
     (ensure-directories-exist (database.directory self))
     (restore self)
     (setf (database.stream self)
-	  (make-core-stream
-	   (open (database.transaction-log-pathname self)
-		 :direction :output :if-does-not-exist :create :if-exists :append
-		 :element-type '(unsigned-byte 8))))))
+	  (open-database-stream (database.transaction-log-pathname self)))))
 
 (defmethod stop ((self database))
   (when (database.status self)
@@ -156,3 +171,30 @@
 
 (defmethod status ((self database))
   (database.status self))
+
+(defun find-free-variables (form)
+  (let (lst)
+    (mapc (lambda (vars)
+	    (pushnew (name vars) lst))
+	  (ast-search-type form 'free-variable-reference))
+    lst))
+
+(defmacro with-transaction ((server) &body body)
+  (with-unique-names (tx)
+    (let* ((form (walk-form `(progn ,@body)))
+	   (vars (filter (lambda (a)
+			   (not (eq server a)))
+			 (find-free-variables form)))
+	   (thunk (walk-form `(lambda (,server ,@vars)
+				,@body))))  
+      `(let ((,tx (transaction ,thunk (list ,@vars))))
+	 (execute ,server ,tx)))))
+
+(defmacro deftransaction (name args &body body)
+  (let ((arg-names (extract-argument-names args :allow-specializers t))
+	(tx (intern (format nil "TX-~A" name))))
+    `(progn
+       (defun ,tx ,arg-names ,@body)
+       (defmethod ,name ,args
+	 (execute ,(car arg-names)
+		  (transaction ',tx (list ,@(cdr arg-names))))))))
