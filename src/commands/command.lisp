@@ -161,14 +161,31 @@
 (defun whereis (name)
   (which :name name))
 
+(defcommand cp (shell)
+  ((from :host local :initform nil)
+   (to :host local :initform nil)
+   (recursive :host local :initform nil))
+  (:default-initargs :cmd (whereis "cp")))
+
+(defmethod render-arguments ((self cp))
+  (let ((args (list (s-v 'from) (s-v 'to))))
+    (if (s-v 'recursive)
+	(cons "-r" args)
+	args)))
+
+(defcommand rm (shell)
+  ((path :host local :initform nil))
+  (:default-initargs :cmd (whereis "rm")))
+
+(defmethod render-arguments ((self rm))
+  (list (s-v 'path)))
+
 (defvar +darcs+ (whereis "darcs"))
 (defvar +wget+ (whereis "wget"))
 (defvar +tar+ (whereis "tar"))
 (defvar +mv+ (whereis "mv"))
-(defvar +rm+ (whereis "rm"))
 (defvar +ln+ (whereis "ln"))
 (defvar +find+ (whereis "find"))
-(defvar +cp+ (whereis "cp"))
 (defvar +chown+ (whereis "chown"))
 (defvar +chmod+ (whereis "chmod"))
 
