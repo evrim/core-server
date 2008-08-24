@@ -18,6 +18,10 @@
 ;;;; -*- Mode: lisp; indent-tabs-mode: nil; outline-regexp: ";;;;;*"; -*-
 (in-package :asdf)
 
+;; CFFI-Grovel is needed
+(cl:eval-when (:load-toplevel :execute)
+  (asdf:operate 'asdf:load-op 'cffi-grovel))
+
 ;; Add distribution based features
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (pushnew :core-server *features*)
@@ -60,10 +64,18 @@
                                   ((:file "sockets")
                                    (:file "threads")
 				   (:file "prevalence")))
-                         (:module :units
+			 (:module :units
                                   :serial t
                                   :components
                                   ((:file "units")))
+			 (:module :io
+				  :serial t
+				  :components
+				  ((cffi-grovel:grovel-file "grovel") 
+				   (:file "errno")
+				   (:file "bsd")
+				   (:file "interface")
+				   (:file "events")))
                          (:module :streams
                                   :serial t
                                   :components
@@ -161,7 +173,7 @@
 				   (:file "editor")
 				   (:file "dojo")
 				   (:file "jquery"))))))
-  :depends-on (:swank :bordeaux-threads :cl-prevalence :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad)
+  :depends-on (:swank :bordeaux-threads :cl-prevalence :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad :cffi)
   :serial t)
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :core-server))))

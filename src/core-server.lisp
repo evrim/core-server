@@ -28,10 +28,23 @@
 
 (in-package :cl-user)
 (defpackage :tr.gen.core.install)
+(defpackage :tr.gen.core.ffi
+  (:nicknames :core-ffi)
+  (:use :cl :cffi)
+  (:export
+   #:gethostbyname
+   #:epollin
+   #:epollout
+   #:epollerr
+   #:make-epoll-device
+   #:wait
+   #:epoll-event.events
+   #:epoll-event.fd))
+
 (defpackage :tr.gen.core.server
   (:nicknames :core-server)
   (:use :common-lisp :cl-prevalence :arnesi :cl-ppcre
-	:sb-bsd-sockets :tr.gen.core.install :bordeaux-threads)
+	:sb-bsd-sockets :tr.gen.core.install :bordeaux-threads :cffi :core-ffi)
   (:shadowing-import-from #:swank #:send #:receive #:accept-connection)
   (:shadowing-import-from #:arnesi #:name #:body #:self #:new)
   (:import-from #:cl-prevalence #:get-directory)
@@ -763,6 +776,10 @@
    #:defparser
    #:defrender
    ))
+
+(defpackage :tr.gen.core.server.io
+  (:nicknames :io)
+  (:use :cl :core-server :cffi))
 
 (defpackage :tr.gen.core.server.html
   (:nicknames :< :core-server.html)
