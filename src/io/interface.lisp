@@ -38,7 +38,11 @@
     ;; construct an addrinfo for hints
     (with-addrinfo (hints af-inet sock-stream flag-ai-passive 0)
       ;; call getaddrinfo
-      (let ((r (%getaddrinfo node service hints res)))
+      (let ((r (%getaddrinfo node (if (numberp service)
+				      (format nil"~D" service)
+				      service)
+			     hints
+			     res)))
 	(if (not (eq 0 r))
 	    (error (format nil "Error: ~A" (%gai_strerror r)))
 	    ;; otherwise we'll have addrinfos in res. let's recurse
@@ -51,16 +55,24 @@
 				 (sfd (%socket (addrinfo-ai-family obj)
 					       (addrinfo-ai-socktype obj)
 					       (addrinfo-ai-protocol obj))))
+			    (with-foreign-object (o :int)
+			      (setf (mem-ref o :int) 1)
+			      (%setsockopt sfd sol-socket so-reuseaddr o
+					   (foreign-type-size :int)))
 			    (with-slots (ai-addr ai-addrlen ai-next) obj
 			      (if (not (eq sfd -1)) 
 				  (if (eq 0 (%bind sfd ai-addr ai-addrlen))
 				      (progn
-					(%listen sfd 10))
+					(%listen sfd 10)
+					sfd)
 				      (progn
 					(format t "Bind error: ~D" (errno))
 					(%close sfd)))
 				  (bind-any ai-next))))))))
 	      (bind-any (mem-ref res :pointer))))))))
+
+(defun make-nio-server (&key (host "0.0.0.0") (port 0))
+  (bind host port))
 
 ;; EPOLLUTION
 (define-c-struct-wrapper epoll-event ())
