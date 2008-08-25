@@ -1,5 +1,7 @@
 (in-package :tr.gen.core.ffi)
 
+
+
 (defun np () (null-pointer))
 (defun bzero (s n) (%bzero s n))
 
@@ -73,6 +75,11 @@
 
 (defun make-nio-server (&key (host "0.0.0.0") (port 0))
   (bind host port))
+
+(defmethod accept (fd)
+  (with-foreign-object (peer 'sockaddr)
+    (with-foreign-object (len :int)
+      (%accept fd peer len))))
 
 ;; EPOLLUTION
 (define-c-struct-wrapper epoll-event ())

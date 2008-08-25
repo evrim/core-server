@@ -149,6 +149,6 @@
 (defmethod/unit run ((self accept-unit))
   (loop
      (mapcar #'(lambda (w)
-		 (handle-fd w (socket.accept (socket self))))
+		 (handle-fd w (accept (socket self))))
 	     (accept-unit.workers self))))
 
