@@ -60,6 +60,8 @@
 (include "sys/types.h" "sys/socket.h" "netdb.h")
 (ctype size-t "size_t")
 
+(constant (ni-numerichost "NI_NUMERICHOST"))
+(constant (ni-numericserv "NI_NUMERICSERV"))
 (constant (ni-maxhost "NI_MAXHOST"))
 (constant (ni-maxserv "NI_MAXSERV"))
 

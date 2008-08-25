@@ -52,6 +52,35 @@
 ;; | Sockets
 ;; +----------------------------------------------------------------------------
 
+;; int inet_pton(int af, const char *src, void *dst);
+(defcfun ("inet_pton" %inet-pton) retval
+  (af :int)
+  (src :string)
+  (dst :pointer))
+
+;; char *inet_ntop(int af, const void *src,char *dst, socklen_t cnt);
+(defcfun ("inet_ntop" %inet-ntop) retval
+  (af :int)
+  (sockaddr :pointer)
+  (dst :pointer)
+  (len :int))
+
+;; uint32_t htonl(uint32_t hostlong);
+(defcfun ("htonl" %htonl) :uint32
+  (hostlong :uint32))
+
+;; uint32_t ntohl(uint32_t netlong);
+(defcfun ("ntohl" %ntohl) :uint32
+  (netlong :uint32))
+
+;; uint16_t htons(uint16_t hostshort);
+(defcfun ("htons" %htons) :uint16
+  (hostshort :uint16))
+
+;; uint16_t ntohs(uint16_t netshort);
+(defcfun ("ntohs" %ntohs) :uint16
+  (netshort :uint16))
+
 ;; int socket(int domain, int type, int protocol);
 (declaim (inline %socket))
 (defcfun ("socket" %socket) retval

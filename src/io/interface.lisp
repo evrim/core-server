@@ -14,7 +14,7 @@
 ;; addrinfo helpers
 (define-c-struct-wrapper addrinfo ())
 (define-c-struct-wrapper sockaddr ())
-
+(define-c-struct-wrapper sockaddr-in ())
 ;; (defun make-addrinfo (ptr &optional (family 0) (socktype 0) (flags af-unspec)
 ;; 		      (protocol 'sock-stream) (canonname (np)) (addr (np)) (next (np)))
 ;;   (bzero ptr size-of-addrinfo)
@@ -79,11 +79,17 @@
 	      (bind-any (mem-ref res :pointer))))))))
 
 (defmethod accept (fd)
-  (with-foreign-object (peer 'sockaddr)
-    (bzero peer size-of-sockaddr)
+  (with-foreign-object (peer 'sockaddr-in)
+    (bzero peer size-of-sockaddr-in)
     (with-foreign-object (len :int)
       (setf (mem-ref len :int) size-of-sockaddr)
-      (%accept fd peer len))))
+      (let* ((newfd (%accept fd peer len))
+	     (peeraddr (with-foreign-object (port :string 5)
+			 (with-foreign-object (host :string 255) 
+			   (bzero host 255) (bzero port 5) 
+			   (%getnameinfo peer size-of-sockaddr-in host 255 port 5 (logior ni-numerichost ni-numericserv))
+			   (list (foreign-string-to-lisp host) (foreign-string-to-lisp port)))))) 
+	(values newfd peeraddr)))))
 
 ;; EPOLLUTION
 (define-c-struct-wrapper epoll-event ())
