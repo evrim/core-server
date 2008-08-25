@@ -34,11 +34,15 @@
        (setf ai-family ,family ai-flags ,flags ai-socktype ,socktype ai-protocol ,protocol)
        ,@body)))
 
-(defun bind (node service)
+(defun bind (node service
+	     &optional (protocol :tcp) (backlog 10) (reuse-address t))
   ;; ptr for results
   (with-foreign-object (res :pointer)
     ;; construct an addrinfo for hints
-    (with-addrinfo (hints af-inet sock-stream flag-ai-passive 0)
+    (with-addrinfo (hints af-inet (ecase protocol
+				    (:tcp sock-stream)
+				    (:udp sock-dgram))
+			  flag-ai-passive 0)
       ;; call getaddrinfo
       (let ((r (%getaddrinfo node (if (numberp service)
 				      (format nil"~D" service)
@@ -57,24 +61,22 @@
 				 (sfd (%socket (addrinfo-ai-family obj)
 					       (addrinfo-ai-socktype obj)
 					       (addrinfo-ai-protocol obj))))
-			    (with-foreign-object (o :int)
-			      (setf (mem-ref o :int) 1)
-			      (%setsockopt sfd sol-socket so-reuseaddr o
-					   (foreign-type-size :int)))
+			    (when reuse-address
+			      (with-foreign-object (o :int)
+				(setf (mem-ref o :int) 1)
+				(%setsockopt sfd sol-socket so-reuseaddr o
+					     (foreign-type-size :int))))
 			    (with-slots (ai-addr ai-addrlen ai-next) obj
 			      (if (not (eq sfd -1)) 
 				  (if (eq 0 (%bind sfd ai-addr ai-addrlen))
 				      (progn
-					(%listen sfd 10)
+					(%listen sfd backlog)
 					sfd)
 				      (progn
 					(format t "Bind error: ~D" (errno))
 					(%close sfd)))
 				  (bind-any ai-next))))))))
 	      (bind-any (mem-ref res :pointer))))))))
-
-(defun make-nio-server (&key (host "0.0.0.0") (port 0))
-  (bind host port))
 
 (defmethod accept (fd)
   (with-foreign-object (peer 'sockaddr)
