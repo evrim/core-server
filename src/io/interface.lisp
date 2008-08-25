@@ -82,6 +82,7 @@
   (with-foreign-object (peer 'sockaddr)
     (bzero peer size-of-sockaddr)
     (with-foreign-object (len :int)
+      (setf (mem-ref len :int) size-of-sockaddr)
       (%accept fd peer len))))
 
 ;; EPOLLUTION
