@@ -80,6 +80,7 @@
 
 (defmethod accept (fd)
   (with-foreign-object (peer 'sockaddr)
+    (bzero peer size-of-sockaddr)
     (with-foreign-object (len :int)
       (%accept fd peer len))))
 
