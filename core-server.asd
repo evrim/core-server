@@ -75,7 +75,19 @@
 				   (:file "errno")
 				   (:file "bsd")
 				   (:file "interface")
-				   (:file "events")))
+				   (:file "events")
+				   ;; (:module :libevent
+;; 					    :serial t
+;; 					    :components
+;; 					    ((:file "libevent-lib")
+;; 					     (cffi-grovel:grovel-file "grovel")
+;; 					     (:file "libevent")))
+				   (:module :libev
+					    :serial t
+					    :components
+					    ((:file "libev-lib")
+					     (cffi-grovel:grovel-file "grovel")
+					     (:file "libev")))))
                          (:module :streams
                                   :serial t
                                   :components
