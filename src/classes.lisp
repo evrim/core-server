@@ -212,19 +212,16 @@ that uses GIT (http://git.or.cz) as SCM"))
     #-debian (make-pathname :directory '(:absolute "etc" "apache2" "vhosts.d")))
    (htdocs-pathname :accessor apache-server.htdocs-pathname :initarg :htdocs-pathname
 		    :initform (make-pathname :directory '(:absolute "var" "www"))))
-  (:default-initargs :name "Apache2 Web Server Class - Mix this class
-with your server to manage Apache2 Web Server. See src/servers/apache
-for implementation"))
+  (:documentation "Apache2 Web Server Class - Mix this class with your
+server to manage Apache2 Web Server. See src/servers/apache for
+implementation")
+  (:default-initargs :name "Apache2 Web Server"))
 
 (defclass database-server (server guarded-prevalence-system)
-  ((model-class :accessor database-server.model-class :initarg :model-class
-		:initform nil :documentation "model class for initial creation")
-   (db-auto-start :accessor database-server.db-auto-start :initarg :db-auto-start
-		  :initform nil :documentation "If t, db is autostarted."))
+  ()
   (:default-initargs :file-extension "sexp"
     :serializer #'cl-prevalence::serialize-sexp
     :deserializer #'cl-prevalence::deserialize-sexp
-    :directory nil
     :name "Guarded Prevalence Database Server"))
 
 (defmethod print-object ((self database-server) stream)
