@@ -78,6 +78,7 @@
 ;;(setq (get 'defmethod/cc 'common-lisp-indent-function) 'lisp-indent-defmethod
 ;;      (get 'defmethod/unit 'common-lisp-indent-function) 'lisp-indent-defmethod)
 
+
 ;; DARCSUM
 (load-el "darcsum.el")
 
@@ -99,7 +100,8 @@
 (setf *core-server-methods* '(defmethod/cc
 			      defmethod/unit
 			      defmethod/local
-			      defmethod/remote))
+			      defmethod/remote
+			      redefmethod))
 
 (setf *core-server-functions* '(defun/cc <:div <:form <:a <:select <:css))
 
