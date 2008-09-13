@@ -149,15 +149,17 @@ when requested"
       session))))
 
 (defmethod (setf context.session) :after ((session t) (self http-context))
-  (http-response.add-cookie (context.response self)
-			    (make-cookie +session-query-name+ ""
-					 :comment "Core Server Session Cookie"
-					 :max-age 0)))
+  (prog1 session
+    (http-response.add-cookie (context.response self)
+			      (make-cookie +session-query-name+ ""
+					   :comment "Core Server Session Cookie"
+					   :max-age 0))))
 
 (defmethod (setf context.session) :after ((session http-session) (self http-context))
-  (http-response.add-cookie (context.response self)
-			    (make-cookie +session-query-name+ (session.id session)
-					 :comment "Core Server Session Cookie")))
+  (prog1 session
+    (http-response.add-cookie (context.response self)
+			      (make-cookie +session-query-name+ (session.id session)
+					   :comment "Core Server Session Cookie"))))
 
 (defmethod context.session-boundp ((self http-context))
   "Returns a boolean representing whether a session is created or not"
@@ -343,7 +345,7 @@ executing 'body'"
   "Dispatch 'request' to 'self' application with empty 'response'"
   (when (> (random 100) 40)
     (gc self))
-  
+
   (let ((session (gethash (find-session-id request) (application.sessions self))))
     (acond
      ((and session (gethash (uri.query (http-request.uri request) +continuation-query-name+)
