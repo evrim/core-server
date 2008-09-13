@@ -15,7 +15,7 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-(in-package :s-serialization)
+(in-package :cl-prevalence)
 
 ;;+----------------------------------------------------------------------------
 ;;| Cl-Prevalence Compat Functions
@@ -23,82 +23,52 @@
 ;;
 ;; This file overrides some properties of cl-prevalence database.
 
-#+sbcl
-(defmethod serialize-sexp-internal ((object pathname) stream serialization-state)
-  "Serialize a pathname structure to prevalence log file"
-  (let ((id (known-object-id serialization-state object)))
-    (if id
-	(progn
-	  (write-string "(:REF . " stream)
-	  (prin1 id stream)
-	  (write-string ")" stream))
-	(let ((serializable-slots (get-serializable-slots serialization-state object)))
-	  (setf id (set-known-object serialization-state object))
-	  (write-string "(:PATHNAME " stream)
-	  (prin1 id stream)
-	  (write-string " :DIRECTORY " stream)
-	  (serialize-sexp-internal (pathname-directory object) stream serialization-state)
-	  (write-string " :NAME " stream)
-	  (prin1 (pathname-name object) stream)
-	  (write-string " :TYPE " stream)
-	  (prin1 (pathname-type object) stream)
-	  (write-string " )" stream)))))
+(defun cl-prevalence::get-objects-slot-index-name (class &optional (slot 'id))
+  (any (lambda (class)
+	 (if (member slot (mapcar #'slot-definition-name (mopp::class-direct-slots class)))
+	     (intern (concatenate 'string (symbol-name (class-name class))
+				  "-" (symbol-name slot) "-INDEX")
+		     :keyword)))
+       (class-superclasses class 'standard-class)))
 
-(defun deserialize-sexp-internal (sexp deserialized-objects)
-  "Overrides the real function and adds de/serialization of pathname objects to
-prevalence log file."
-  (if (atom sexp) 
-      sexp
-      (ecase (first sexp)
-        (:sequence
-	 (destructuring-bind (id &key class size elements) (rest sexp)
-	   (let ((sequence (make-sequence class size)))
-	     (setf (gethash id deserialized-objects) sequence)
-	     (map-into sequence 
-		       #'(lambda (x) (deserialize-sexp-internal x deserialized-objects)) 
-		       elements))))
-        (:hash-table
-	 (destructuring-bind (id &key test size rehash-size rehash-threshold entries) (rest sexp)
-	   (let ((hash-table (make-hash-table :size size 
-					      :test test 
-					      :rehash-size rehash-size 
-					      :rehash-threshold rehash-threshold)))
-	     (setf (gethash id deserialized-objects) hash-table)
-	     (dolist (entry entries)
-	       (setf (gethash (deserialize-sexp-internal (first entry) deserialized-objects) hash-table)
-		     (deserialize-sexp-internal (rest entry) deserialized-objects)))
-	     hash-table)))
-        (:object
-	 (destructuring-bind (id &key class slots) (rest sexp)
-	   (let ((object (make-instance class)))
-	     (setf (gethash id deserialized-objects) object)
-	     (dolist (slot slots)
-	       (when (slot-exists-p object (first slot))
-		 (setf (slot-value object (first slot)) 
-		       (deserialize-sexp-internal (rest slot) deserialized-objects))))
-	     object)))
-        (:struct
-	 (destructuring-bind (id &key class slots) (rest sexp)
-	   (let ((object (funcall (intern (concatenate 'string "MAKE-" (symbol-name class)) 
-					  (symbol-package class)))))
-	     (setf (gethash id deserialized-objects) object)
-	     (dolist (slot slots)
-	       (when (slot-exists-p object (first slot))
-		 (setf (slot-value object (first slot)) 
-		       (deserialize-sexp-internal (rest slot) deserialized-objects))))
-	     object)))
-        (:cons
-	 (destructuring-bind (id cons-car cons-cdr) (rest sexp)
-	   (let ((conspair (cons nil nil)))
-	     (setf (gethash id deserialized-objects)
-		   conspair)                   
-	     (rplaca conspair (deserialize-sexp-internal cons-car deserialized-objects))
-	     (rplacd conspair (deserialize-sexp-internal cons-cdr deserialized-objects)))))
-        (:ref (gethash (rest sexp) deserialized-objects))
-	#+sbcl
-	(:pathname
-	 (destructuring-bind (id &key directory name type) (rest sexp) 
-	   (let ((pathname (make-pathname :directory (deserialize-sexp-internal directory deserialized-objects)
-					  :name (deserialize-sexp-internal name deserialized-objects)
-					  :type (deserialize-sexp-internal type deserialized-objects))))
-	     (setf (gethash id deserialized-objects) pathname)))))))
+(defun cl-prevalence::class-compile-timestamp (system class)
+  (or (get-root-object
+       system (intern (symbol-name (class+.name (find-class+ class))) :keyword))
+      0))
+
+(defsetf cl-prevalence::class-compile-timestamp (system class) (value)
+  `(setf (get-root-object
+	  ,system (intern (symbol-name (class+.name (find-class+ ,class))) :keyword))
+	 ,value))
+
+(defun cl-prevalence::class-expired (system class)
+  (let ((class+ (find-class+ class)))
+    (when class+
+      (if (> (slot-value class+ '%timestamp)
+	     (cl-prevalence::class-compile-timestamp system (class+.name class)))
+	  t))))
+
+(defun cl-prevalence::create-object-slot-indexes (system class)
+  (let ((class+ (find-class+ class)))
+    (when (and class+ (cl-prevalence::class-expired system class+))
+      (mapcar (lambda (slot)
+		(cl-prevalence::tx-create-objects-slot-index system class slot #'equalp))
+	      (mapcar #'slot-definition-name (class+.indexes class+))))
+      (setf (cl-prevalence::class-compile-timestamp system class)
+	    (slot-value class+ '%timestamp))))
+
+(defun cl-prevalence::tx-create-object (system class &optional slots-and-values)
+  "Create a new object of class in system, assigning it a unique id, optionally setting some slots and values"
+  (cl-prevalence::create-object-slot-indexes system class)
+  (let* ((id (next-id system))
+	 (object (let ((object (allocate-instance (find-class class))))
+		   (setf (slot-value object 'id) id)
+		   object))
+	 (index-name (cl-prevalence::get-objects-slot-index-name class 'id))
+	 (index (or (get-root-object system index-name)
+		    (setf (get-root-object system index-name) (make-hash-table)))))
+    (push object (get-root-object system (cl-prevalence::get-objects-root-name class)))
+    (setf (gethash id index) object)
+    (tx-change-object-slots system class id slots-and-values)
+    (initialize-instance object)
+    object))
