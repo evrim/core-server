@@ -34,6 +34,15 @@
   `(sb-thread:with-recursive-lock ((server.mutex ,@server))
      ,@body))
 
+;; +----------------------------------------------------------------------------
+;; | Auto Start Feature for Servers
+;; +----------------------------------------------------------------------------
+(defmethod shared-initialize :after ((self server) slot-name &rest initargs
+				     &key &allow-other-keys)
+  (declare (ignore initargs))
+  (when (server.auto-start self)
+    (start self)))
+
 ;;-----------------------------------------------------------------------------
 ;; Wrapper :around methods for protocol
 ;;-----------------------------------------------------------------------------
@@ -48,8 +57,8 @@
 	(restart-case
 	    (let ((swank::*sldb-quit-restart* 'give-up))
 	      (setf failed t)
-	      (call-next-method)
-	      (setf failed nil))
+	      (multiple-value-prog1 (call-next-method)
+		(setf failed nil)))
 	  (give-up ()
 	    :report "Give up starting server."
 	    (format t "Giving up.~%"))
