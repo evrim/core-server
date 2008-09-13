@@ -134,7 +134,7 @@ permissions accordingly"
 
 (defmethod status ((self apache-server))
   #+debian (> (length (cl-fad:list-directory #P"/var/run/apache2/")) 0)
-  (eq 0 (sb-impl::process-exit-code (#+pardus comar #-pardus apachectl self '("status")))))
+  #-debian (eq 0 (sb-impl::process-exit-code (#+pardus comar #-pardus apachectl self '("status")))))
 
 (defmethod register ((self apache-server) (app apache-web-application))
   (create-docroot self app)
