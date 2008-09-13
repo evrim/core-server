@@ -94,13 +94,14 @@ for traceing a closed system"
 		   acc))
 	  list :initial-value nil))
 
-(defun all (lambda list)
-  "Return t if all elements of list satisfies lambda"
-  (reduce #'(lambda (acc atom)
-	      (aif (funcall lambda atom)
-		   t
-		   (return-from all nil)))
-	  list :initial-value t))
+(defun all (lambda &rest lists)
+  "Return t if all elements of lists satisfies lambda"
+  (apply #'mapc
+	 (lambda (&rest atoms)
+	   (if (not (apply lambda atoms))
+	       (return-from all nil)))
+	 lists)
+  t)
 
 (defun plist-to-alist (plist)
   "Transforms a plist to an alist, keywords are transformed into symbols"
