@@ -45,15 +45,21 @@
                                   :components
                                   ((:file "helper")
                                    (:file "turkiye")
-				   (:file "arnesi-aux")
                                    (:file "mop")
-                                   (:file "class+")))
+                                   ;; (:file "class+")
+				   ))
+			 (:module :class+
+				  :serial t
+				  :components
+				  ((:file "protocol")
+				   (:file "class+")
+				   (:file "command")))
                          (:module :compat
                                   :serial t
                                   :components
                                   ((:file "sockets")
                                    (:file "threads")
-                                   (:file "prevalence")))
+				   (:file "prevalence")))
                          (:module :units
                                   :serial t
                                   :components
@@ -69,14 +75,16 @@
                          (:module :commands
                                   :serial t
                                   :components
-                                  ((:file "command")
+                                  ((:file "shell")
+				   (:file "admin")
+				   (:file "scm")
                                    (:file "hxpath")
 				   (:file "image")))
 			 (:module :install
 				  :serial t
 				  :components
 				  ((:file "install")))
-                         (:file "vars")
+			 (:file "vars")
                          (:file "classes")
                          (:file "protocol")
                          (:file "application")
@@ -144,19 +152,20 @@
                                   :components
                                   ((:file "macros")
                                    (:file "json")
-                                   (:file "component")
-                                   (:file "mime-types")
-                                   (:module :components
-					    :serial t
-                                            :components
-                                            ((:file "toaster")
-                                             (:file "fckeditor")
-                                             (:file "login")
-                                             (:file "feedback")
-                                             (:file "hilighter")
-                                             (:file "hedee")
-					     (:file "socialshare")
-                                             (:file "form"))))))))
+				   (:file "mime-types")
+                                   ;; (:file "component")
+;;                                    (:module :components
+;; 					    :serial t
+;;                                             :components
+;;                                             ((:file "toaster")
+;;                                              (:file "fckeditor")
+;;                                              (:file "login")
+;;                                              (:file "feedback")
+;;                                              (:file "hilighter")
+;;                                              (:file "hedee")
+;; 					     (:file "socialshare")
+;;                                              (:file "form")))
+				   )))))
   :depends-on (:swank :bordeaux-threads :cl-prevalence :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad)
   :serial t)
 
@@ -168,6 +177,7 @@
                         :serial t
 			:components ((:file "packages")
                                      (:file "test-harness")
+				     (:file "method")
 				     (:file "class+")
                                      (:file "postfix")
                                      (:file "parser")
