@@ -40,19 +40,20 @@
   (:documentation "Returns t if server is running, nil otherwise.")
   (:method-combination sysv-standard :type :status)
   (:method ((self null)) nil)
+  (:method ((self web-server)) t)
   (:method ((self server)) t))
 
 (defgeneric register (server app)
   (:documentation "Deploys an application to server. This method
   is surrounded by server.mutex")
-  (:method-combination sysv-standard :type :start)
+  (:method-combination sysv-standard :type :register)
   (:method ((self null) app) nil)
   (:method ((self web-server) app) nil))
 
 (defgeneric unregister (server app)
   (:documentation "Undeploys an application from a server. This
   method is surrounded by server.mutex")
-  (:method-combination sysv-standard :type :stop)
+  (:method-combination sysv-standard :type :unregister)
   (:method ((self null) app) nil)
   (:method ((self web-server) app) nil))
 
