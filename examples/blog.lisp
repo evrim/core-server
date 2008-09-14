@@ -1,3 +1,4 @@
+;; A persistent multi-user blog example.
 ;; http://localhost:8080/blog/index.core
 (in-package :core-server)
 
@@ -6,31 +7,58 @@
 
 (in-package :blog)
 
-(defvar *app* (make-instance 'http-application :fqdn "blog" :admin-email "evrim@core.gen.tr"))
+;; we define classes and their relations here
+(defclass+ author ()
+  ((username :initform (error "Please specify :username"))
+   (password  :initform (error "Please specify :password"))
+   (email :initform (error "Please specify :email"))
+   (creation-date :initform (get-universal-time))
+   (blogs :type blog* :relation author)
+   (comments :type comment* :relation author)))
 
-(defclass+ comment (object-with-id)
-  ((author :host local :initform (error "please specify :author"))
-   (text :host local :initform (error "please specify :text"))
-   (timestamp :initform (get-universal-time)))
+(defclass+ comment ()
+  ((author :type author :relation comments :initform (error "please specify :author"))
+   (text :initform (error "please specify :text"))
+   (timestamp :initform (get-universal-time))
+   (blog :type blog :relation comments))
   (:ctor (author text)))
 
-(defclass+ blog (object-with-id)
-  ((author :host local :initform (error "please specify :author"))
-   (title :host local :initform (error "Please specify :title"))
-   (text :host local :initform (error "please specify :text"))
+(defclass+ blog ()
+  ((author :type author :relation blogs)
+   (title :type string :initform (error "Please specify :title"))
+   (text :type string :initform (error "please specify :text"))
    (timestamp :initform (get-universal-time))
-   (comments :initform '()))
+   (comments :type comment* :relation blog))
   (:ctor (author title text)))
 
-(defparameter *blogs*
-  (list (blog "evrim@core.gen.tr" "Blog #1" "This is blog1")
-	(blog "aycan@core.gen.tr" "Blog #2" "This is blog2")))
+;; generates add, delete, update, find and list methods over these classes.
+(defcrud comment)
+(defcrud blog)
+(defcrud author)
+
+(defclass blog-app (http-application database-server)
+  ()
+  (:default-initargs
+   :fqdn "blog"
+    :admin-email "evrim@core.gen.tr"
+    :directory #P"/tmp/db-blog-app"
+    :auto-start t))
+
+(defvar *app* (make-instance 'blog-app))
+
+(defun init-blog-test-data ()
+  (with-transaction (*app*)
+    (author-add *app* :username "evrim" :password "mypass" :email "evrim@core.gen.tr")
+    (author-add *app* :username "aycan" :password "mypass" :email "aycan@core.gen.tr")))
+
+(defun userp ()
+  (query-session 'user))
 
 (defun/cc blog/short (blog &optional (len 500))
   (<:div :class "blog view"
 	 :id (format nil "blog-~A" (get-id blog))
 	 (<:div :class "title" (blog.title blog))
-	 (<:div :class "author" (blog.author blog) " - ")
+	 (<:div :class "author" (author.email (blog.author blog)) " - ")
 	 (<:div :class "timestamp" (time->string (blog.timestamp blog) :long :en))
 	 (let* ((blog-length (length (blog.text blog)))
 		(show-n (min blog-length len)))
@@ -42,7 +70,7 @@
   (<:div :class "blog view"
 	 :id (format nil "blog-~A" (get-id blog))
 	 (<:div :class "title" (blog.title blog))
-	 (<:div :class "author" (blog.author blog) " - ")
+	 (<:div :class "author" (author.email (blog.author blog)) " - ")
 	 (<:div :class "timestamp" (time->string (blog.timestamp blog) :long :en))
 	 (<:div :class "text" (blog.text blog))))
 
@@ -51,13 +79,10 @@
 	 :id (format nil "blog-~A" (get-id blog))
    (<:form :method "POST"
 	   :action (action/url ((author "author") (text "text") (title "title"))
-		     (answer (list'save author title text)))
+		     (answer (list 'save :title title :text text :author (query-session 'user))))
 	   (<:div :class "field title"
 		  (<:div :class "description" "Title:")
 		  (<:div :class "value" (<:input :type "text" :name "title" :value (blog.title blog))))
-	   (<:div :class "field author"
-		  (<:div :class "description" "Author:")
-		  (<:div :class "value" (<:input :type "text" :name "author" :value (blog.author blog))))
 	   (<:div :class "field text"
 		  (<:div :class "description" "Text:")
 		  (<:script :type "text/javascript"
@@ -75,7 +100,12 @@
   (<:div :class "menu"
 	 (<:ul
 	  (<:li (<:a :href "index.core" "Blogs"))
-	  (<:li (<:a :href (function/url () (answer 'new)) "Write")))))
+	  (<:li (<:a :href (function/url () (answer 'new)) "Write"))
+	  (<:li (if (userp)
+		    (<:a :href (action/url ()
+				 (update-session 'user nil)
+				 (answer nil))
+			 "Logout"))))))
 
 (defun/cc blog/list (blogs &optional (n 20))
   (<:div :class "list"
@@ -87,6 +117,17 @@
 		      (blog.title blog))))
 	    blogs (core-server::seq n)))))
 
+(defun/cc auth/login ()
+  (<:div :class "login"
+	 (<:form :method "POST"
+		 :action (action/url ((username "username") (password "password"))
+			   (answer (list 'auth/login :username username :password password)))
+		 (<:div (<:p "Username:")
+			(<:p (<:input :type "text" :name "username")))
+		 (<:div (<:p "Password:")
+			(<:p (<:input :type "text" :name "password")))
+		 (<:div (<:input :type "submit" :value "Gir")))))
+
 (defun/cc blog/main (&rest body)
   (<:html
    (<:head
@@ -95,12 +136,17 @@
    (<:body
     (<:div :class "container"
 	   (<:div :class "header" (<:h1 "CoreServer Blogs"))
-	   (blog/menu)
-	   (<:div :class "right" (blog/list *blogs*))
+	   (if (userp)
+	       (blog/menu))
+	   (<:div :class "right"
+		  (blog/list (blog-list *app*))
+		  (if (not (userp)) 
+		      (auth/login)))
 	   (<:div :class "left" body)
 	   (<:div :class "footer"
 		  (<:i "Blogs - 2008 &copy; Core Server"))))))
 
+;; entrypoint to our application
 (defurl *app* "index.core" ((blog "blog"))  
   (labels ((loopy (result)
 	      (loopy		     
@@ -109,12 +155,18 @@
 		     ((eq 'new result)
 		      (blog/new))
 		     ((eq 'save (car result))
-		      (push (apply #'blog (cdr result)) *blogs*)
-		      (blog/main (mapcar #'blog/short *blogs*)))
+		      (apply #'blog-add (cons *app* (cdr result)))
+		      (blog/main (mapcar #'blog/short (blog-list *app*))))
 		     ((eq 'view (car result))
-		      (blog/main (blog/view (cdr result))))		     
+		      (blog/main (blog/view (cdr result))))
+		     ((eq 'auth/login (car result))
+		      (let ((user (apply #'find-author (cons *app* (cdr result)))))
+			(when user
+			  (if (equal (author.password user) (getf (cdr result) :password))
+			      (update-session 'user user)))
+			(loopy nil)))
 		     (t
-		      (blog/main (mapcar #'blog/short *blogs*))))))))
+		      (blog/main (mapcar #'blog/short (blog-list *app*)))))))))
     (loopy nil)))
 
 (defparameter *blog-css*
