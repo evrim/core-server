@@ -1,3 +1,4 @@
+;; A persistent guestbook web application 
 ;; Just compile it with C-c C-k or load it with C-c C-l and then visit
 ;; http://localhost:8080/guestbook/guestbook
 
@@ -7,37 +8,22 @@
 (in-package :guestbook)
 
 ;; a class for messages and a constructor
-(defclass+ guest-message ()
-  ((sender :host local)
-   (subject :host local)
-   (text :host local)
-   (timestamp :host local))
-  (:ctor (sender subject text &optional (timestamp (get-universal-time)))))
+(defclass+ message ()
+  ((sender)
+   (subject)
+   (text)
+   (timestamp :initform (get-universal-time))))
+(defcrud message)
 
-;; Here we instantiate from local-unit, so that we can write methods
-;; that will be automatically synchronized
-(defclass+ guestbook (local-unit)
-  ((owner :host local)
-   (messages :host local :initform nil))
-  (:ctor (owner &optional messages)))
+(defclass guestbook-application (http-application database-server)
+  ()
+  (:default-initargs
+   :fqdn "guestbook"
+    :admin-email "john@doe.com"
+    :directory #P"/tmp/guestbook/"
+    :auto-start t))
 
-;; owner email
-(defparameter *siteowner* "aycan@core.gen.tr")
-
-;; Our guestbook instance
-(defparameter *guestbook* (guestbook *siteowner* (list (guest-message "System" "Initial message" "This is initial message"))))
-
-;; here we implement add-message method for the guestbook unit.
-(defmethod/unit add-message :sync ((self guestbook) message)
-  (push message (guestbook.messages self))
-  message)
-
-;; http://localhost:8080/guestbook/*
-(defparameter *guestbook-example*
-  (make-instance 'http-application
-		 :fqdn "guestbook"
-		 :admin-email *siteowner*))
-
+(defparameter *guestbook* (make-instance 'guestbook-application))
 (defparameter *text/css* ".message ul { list-style: none; margin:0; padding: 0 0 15px 0;}")
 
 ;; Our template function which gets body as a parameter
@@ -63,30 +49,30 @@
   (template
    (<:div :id "body"
 	  (<:a :href (function/url ()
-		       (let ((content (send/suspend (guestbook/add))))
-			 (add-message *guestbook* content)
+		       (let ((params (send/suspend (guestbook/add))))
+			 (apply #'message-add *guestbook* params)
 			 (guestbook/messages)))
 	       "Add message")
 	  (<:div :id "messages"
 		 (mapcar #'(lambda (item) (render-message item))
-			 (guestbook.messages *guestbook*))))))
+			 (message-list *guestbook*))))))
 
 ;; A form for new messages
 (defun/cc guestbook/add ()
   (template 
-   (<:form :action (action/url ((owner "owner") (subject "subject") (text "text"))
-		     (answer (guest-message owner subject text)))
+   (<:form :action (action/url ((sender "sender") (subject "subject") (text "text"))
+		     (answer (list :sender sender :subject subject :text text)))
 	   :method "POST"
 	   (<:table
 	    (<:tr (<:td "Who are you:")
-		  (<:td (<:input :size "40" :name "owner")))
+		  (<:td (<:input :size "40" :name "sender")))
 	    (<:tr (<:td "Subject:") (<:td (<:input :size "40" :name "subject")))
 	    (<:tr (<:td :valign "top" "Message: ") (<:td (<:textarea :rows "10" :cols "40" :name "text" "")))
 	    (<:tr (<:td :colspan "2"
 			(<:input :type "submit" :value "Sign Guestbook")))))))
 
 ;; http://localhost:8080/guestbook/guestbook
-(defurl *guestbook-example* "guestbook" ()
+(defurl *guestbook* "guestbook" ()
  (guestbook/messages))
 
-(register *server* *guestbook-example*)
+(register *server* *guestbook*)
