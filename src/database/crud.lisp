@@ -21,7 +21,7 @@
 ;; | CRUD Boilerplate
 ;; +----------------------------------------------------------------------------
 (defun crud.all-tx (class prefix)
-  (intern (string-upcase (format nil "~A~AS" (or prefix "") class))
+  (intern (string-upcase (format nil "~A~A-LIST" (or prefix "") class))
 	  (symbol-package class)))
 
 (defun crud.find-tx (class prefix)
