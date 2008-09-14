@@ -105,6 +105,11 @@
 (defmethod slot-definition-supplied-p ((slot class+-slot-definition))
   (intern (format nil "~A-SUPPLIED-P" (slot-definition-name slot))))
 
+(defmethod slot-definition-singular-type ((slot class+-slot-definition))
+  (with-slotdef (type) slot
+    (intern (subseq (symbol-name type) 0 (1- (length (symbol-name type))))
+	    (symbol-package type))))
+
 (defmethod slot-definition-to-plist ((slot class+-slot-definition))
   (let ((initarg (car (reverse (slot-definition-initargs slot)))))
     (list :name (slot-definition-name slot)
@@ -129,6 +134,37 @@
   `(destructuring-bind (&key ,@arglist &allow-other-keys)
        (slot-definition-to-plist ,slot)
      ,@body))
+
+;; ----------------------------------------------------------------------------
+;; Relations
+;; ----------------------------------------------------------------------------
+(defmethod class+.relations ((class class+))
+  (filter (lambda (slot)
+	    (not (null (slot-definition-relation slot))))
+	  (class+.slots class)))
+
+(defmethod class+.1-to-n-relations ((class class+))
+  (filter (lambda (slot)
+	    (with-slotdef (type) slot
+	      (and (symbolp type)
+		   (ends-with (symbol-name type) "*"))))
+	  (class+.relations class)))
+
+(defmethod class+.n-to-1-relations ((class class+))
+  (filter (lambda (slot)
+	    (with-slotdef (type) slot
+	      (and (symbolp type)
+		   (not (ends-with (symbol-name type) "*")))))
+	  (class+.relations class)))
+
+;; ----------------------------------------------------------------------------
+;; Indexes
+;; ----------------------------------------------------------------------------
+(defmethod class+.indexes ((class class+))
+  (filter (lambda (slot)
+	    (with-slotdef (index) slot
+	      index))
+	  (class+.slots class)))
 
 ;; ----------------------------------------------------------------------------
 ;; Constructor Generation Methods
