@@ -203,7 +203,7 @@
      (eval-when (:compile-toplevel :load-toplevel :execute)
        (deftype ,(intern (format nil "~A*" name)) ()
 	 '(or null cons))
-       (defclass ,name ,supers
+       (defclass ,name (,@supers object-with-id)
 	 ,(mapcar (lambda (slot) (%fix-slot-definition name slot)) slots)
 	 ,@(%filter-rest rest))       
        (fmakunbound ',name)
