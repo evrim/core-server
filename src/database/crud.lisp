@@ -51,12 +51,13 @@
 						    (list (car argument) nil (caddr argument)))
 						  lambda-list-with-initforms))
 	   (add-lambda-list (filter-id-slot lambda-list-with-initforms))
-	   (add-arguments (filter-id-slot
-			   (reduce0 (lambda (acc slot)
-				      (with-slotdef (name initarg) slot
-					(cons `(list ',name ,(intern (symbol-name initarg)))
-					      acc)))
-				    (class+.local-slots class+))))
+	   (add-arguments (reduce0 (lambda (acc slot)
+				     (with-slotdef (name initarg) slot
+				       (if (string= name 'id)
+					   acc
+					   (cons `(list ',name ,(intern (symbol-name initarg)))
+						 acc))))
+				   (class+.local-slots class+)))
 	   (update-lambda-list (filter-id-slot lambda-list-with-initforms))
 	   (update-arguments (reduce0 (lambda (acc slot)
 					(with-slotdef (name supplied-p initarg) slot
