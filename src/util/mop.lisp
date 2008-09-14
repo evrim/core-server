@@ -156,3 +156,9 @@
   (mapcar #'sb-mop:slot-definition-name (sb-mop:class-slots (class-of object)))
   #-(or openmcl cmu lispworks allegro sbcl)
   (error "not yet implemented"))
+
+(defmacro redefmethod (name args &body body)
+  "Macro that makes method unbound before defining it."
+  `(progn
+     (fmakunbound ',name)
+     (defmethod ,name ,args ,@body)))
