@@ -64,6 +64,10 @@
                                   ((:file "sockets")
                                    (:file "threads")
 				   (:file "prevalence")))
+			 (:module :database
+				  :serial t
+				  ::components
+				  ((:file "crud")))
 			 (:module :units
                                   :serial t
                                   :components
