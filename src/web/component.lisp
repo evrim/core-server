@@ -1,199 +1,209 @@
-;; Core Server: Web Application Server
-
-;; Copyright (C) 2006-2008  Metin Evrim Ulu, Aycan iRiCAN
-
-;; This program is free software: you can redistribute it and/or modify
-;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or
-;; (at your option) any later version.
-
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
-
-;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 (in-package :core-server)
+;; +----------------------------------------------------------------------------
+;; | Component Framework
+;; +----------------------------------------------------------------------------
 
-;; Component Procotol
+;; ----------------------------------------------------------------------------
+;; defmethod/local macro: Defines a local method
+;; ----------------------------------------------------------------------------
+(defmacro defmethod/local (name ((self class-name) &rest args) &body body)
+  "Defines a local method and corresponding remote (javascript) proxy named 'name!'"
+  (assert (not (null (find-class+ class-name))) nil
+	  "Class+ ~A not found while defining defmethod/local ~A." class-name name)
+  (with-unique-names (stream k)
+    (let ((proxy (intern (format nil "~A!" name))))    
+      `(progn
+	 (class+.add-method (find-class+ ',class-name) ',name 'local '((,self ,class-name) ,@args))
+	 (defmethod ,proxy ((,stream core-stream) (,self ,class-name) ,k)
+	   (with-js (,k) ,stream
+	     (lambda ,args
+	       (funcall ,k (create
+			    ,@(nreverse
+			       (reduce0 (lambda (acc arg)
+					  (cons arg (cons (make-keyword arg) acc)))
+					(extract-argument-names args :allow-specializers t))))))))
+	 (defmethod/cc ,name ((,self ,class-name) ,@args) ,@body)))))
+
+;; ----------------------------------------------------------------------------
+;; defmethod/remote macro: Defines a remote method
+;; ----------------------------------------------------------------------------
+(defmacro defmethod/remote (name ((self class-name) &rest args) &body body)
+  "Defines a remote (javascript) method and corresponding local (lisp) proxy"
+  (assert (not (null (find-class+ class-name))) nil
+	  "Class+ ~A not found while defining defmethod/remote ~A." class-name name)
+  (with-unique-names (stream hash)
+    (let ((proxy (intern (format nil "~A!" name))))
+      `(progn
+	 (class+.add-method (find-class+ ',class-name) ',name 'remote '((,self ,class-name) ,@args))
+	 (defmethod ,proxy ((,stream core-stream) (,self ,class-name))
+	   (with-js () ,stream
+	     (lambda ,args
+	       ,@body)))
+	 (defmethod/cc ,name ((,self ,class-name) ,@args)
+	   (let ((,hash (action/url ((result "result"))
+			  (answer (json-deserialize result)))))
+	     (javascript/suspend
+	      (lambda (,stream)
+		(with-js (,hash) ,stream
+		  (funcall ,hash (create :result (serialize (,name self ,@args)))))))))))))
+
+;; +----------------------------------------------------------------------------
+;; | Component Meta Protocol
+;; +----------------------------------------------------------------------------
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defclass component+ (class+)
+    ((%ctor-timestamp :initform 0))))
+
+;; +----------------------------------------------------------------------------
+;; | Component Protocol
+;; +----------------------------------------------------------------------------
 (defclass+ component ()
   ()
+  (:metaclass component+)
   (:documentation "Base component class"))
 
 (defmethod component.application ((self component))
+  "Returns application associated with this component."
   (context.application +context+))
 
-(eval-when (:execute :compile-toplevel :load-toplevel)
-  (defun component.javascript-reader (name)
-    (intern (string-upcase (format nil "get-~A" name))))
-
-  (defun component.javascript-writer (name)
-    (intern (string-upcase (format nil "set-~A" name)))))
-
-(defgeneric component.remote-method-proxy (class-name method-name)
-  (:documentation "Returns a lambda which will be transformed to remote language")
-  (:method ((class-name t) (method-name t)) nil))
-
-(defgeneric component.local-method-proxy (class-name method-name k)
-  (:documentation "Return a lambda which will be transformed to remote language")
-  (:method ((class-name t) (method-name t) k) nil))
-
-(defgeneric/cc ctor! (core-stream object)
-  (:documentation "Write constructor of an instance ('object') to 'core-stream'"))
-
-(defmethod component.remote-slots ((self class+))
-  (let (slots)
-    (values
-     (reduce0 (lambda (acc slot)
-		(cons (make-keyword (car slot))
-		      (cons `(if (= "undefined" (typeof ,(car slot)))
-				 ,(let ((bind (gensym "SLOT-")))
-				       (push (cons (getf (cdr slot) :accessor) bind) slots)
-				       bind)
-				 ,(car slot))
-			    acc)))
-	      (class+.remote-slots self))
-     slots)))
-
-(defmethod component.local-methods ((self class+))
-  (let ((methods
-	 (reduce0 (lambda (acc method)
-		    (let ((k (gensym "K-")))
-		      (cons (list
-			     (list (make-keyword (car method))
-				   (any (lambda (class)
-					  (component.local-method-proxy (class+.name class) (car method) k))
-					(class+.superclasses self)))
-			     `(,k (action/url ,(mapcar (lambda (arg) (list arg (symbol-to-js arg)))
-						       (cdr method))
-				    (let ,(mapcar (lambda (arg) `(,arg (json-deserialize ,arg)))
-						  (cdr method))
-				      (json/suspend
-				       (lambda (stream)
-					 (json! stream
-						(,(car method) self ,@(cdr method)))))))))
-			    acc)))
-		  (reverse (class+.local-methods self)))))
-    (values (reduce0 #'append (mapcar #'car methods))
-	    (mapcar #'cadr methods))))
-
-(defmethod component.remote-methods ((self class+))
-  (reduce0 (lambda (acc method)
-	     (cons (make-keyword (car method))
-		   (cons (any (lambda (class)
-				(component.remote-method-proxy (class+.name class) (car method)))
-			      (class+.superclasses self))
-			 acc)))
-	   (reverse (class+.remote-methods self))))
-
-(defmethod component.remote-ctor-arguments ((self class+))
-  (reduce0 (lambda (acc slot) (cons (car slot) acc))
-	   (class+.remote-slots self)))
-
-(defmacro defcomponent-ctor (class-name)
-  (with-unique-names (stream args)
+;; ----------------------------------------------------------------------------
+;; defcomponent-accessors Macro: Defines remote and local accessors
+;; for slots of a component
+;; ----------------------------------------------------------------------------
+(defmacro defcomponent-accessors (class-name)
+  (flet ((reader (name) (intern (format nil "GET-~A" name)))
+	 (writer (name) (intern (format nil "SET-~A" name))))
     (let ((class+ (find-class+ class-name)))
-      (multiple-value-bind (local-methods action-binds) (component.local-methods class+)
-	(multiple-value-bind (remote-slots remote-slot-binds) (component.remote-slots class+)	  
-	  `(progn
-	     (defmethod %ctor! ((,stream core-stream) (self ,(class+.name class+)) &rest ,args)
-	       (destructuring-bind ,(mapcar #'car action-binds) ,args
-		 (let ,(mapcar (lambda (slot)
-				 `(,(cdr slot) (,(car slot) self)))
-			       remote-slot-binds)
-		   (with-js (,@(mapcar #'car action-binds)
-			       ,@(mapcar #'cdr remote-slot-binds)) ,stream
-		     (setf ,(class+.name class+)
-			   (lambda ,(component.remote-ctor-arguments class+)
-			     (setf this.prototype
-				   (create ,@remote-slots
-					   ,@local-methods
-					   ,@(component.remote-methods class+)))
-			     (return this.prototype)))))))
-	     (defmethod/cc ctor! ((,stream core-stream) (self ,(class+.name class+)))
-	       (let ,action-binds
-		 (%ctor! ,stream self ,@(mapcar #'car action-binds))))))))))
-
-
-(defmacro defmethod/local (name ((self class-name) &rest args) &body body)  
-  (assert (not (null (find-class+ class-name))) nil
-	  "Class+ ~A not found while defining defmethod/local ~A." class-name name)
-  (class+.register-local-method (find-class+ class-name) name args)
-  `(progn
-     (eval-when (:compile-toplevel :load-toplevel :execute)
-       (class+.register-local-method (find-class+ ',class-name) ',name ',args))
-     (eval-when (:compile-toplevel :execute)
-       (handler-bind ((style-warning (lambda (c)
-				       (muffle-warning c))))
-	 (defmethod component.local-method-proxy ((self (eql ',class-name)) (method (eql ',name)) k)
-	   `(lambda ,',args
-	      (funcall ,k (create
-			   ,@',(nreverse
-				(reduce (lambda (acc arg)
-					  (cons arg (cons (make-keyword arg) acc)))
-					(extract-argument-names args :allow-specializers t)
-					:initial-value nil))))))))
-     (defcomponent-ctor ,class-name)
-     (defmethod/cc ,name ((,self ,class-name) ,@args) ,@body)))
-
-(defmacro defmethod/remote (name ((self class-name) &rest args) &body body)
-  (assert (not (null (find-class+ class-name))) nil
-	  "Class+ ~A not found while defining defmethod/remote ~A." class-name name)
-  (with-unique-names (hash)
-    (class+.register-remote-method (find-class+ class-name) name args)
-    `(progn
-       (eval-when (:compile-toplevel :load-toplevel :execute)
-	 (class+.register-remote-method (find-class+ ',class-name) ',name ',args))
-       (eval-when (:compile-toplevel :execute)
-	 (handler-bind ((style-warning (lambda (c) (muffle-warning c))))
-	   (defmethod component.remote-method-proxy ((class (eql ',class-name)) (method (eql ',name)))
-	     ',(cadr
-		(unwalk-form	     
-		 (fix-javascript-methods
-		  (walk-js-form
-		   `(lambda ,args
-		      ,@body))
-		  self))))))
-       (defcomponent-ctor ,class-name)
-       (defmethod/cc ,name ((,self ,class-name) ,@args)
-	 (javascript/suspend
-	  (lambda (stream)
-	    (let ((,hash (action/url ((result "result"))
-			   (answer (json-deserialize result)))))
-	      (with-js (,hash) stream
-		(funcall hash (create :result (serialize (,name self ,@args))))))))))))
-
-(defmacro defcomponent (name supers slots &rest rest)
-  (let ((symbol (intern (symbol-name name) (find-package :tr.gen.core.server.html)))
-	(supers (nreverse (cons 'component (nreverse supers)))))
-    (multiple-value-bind (class+ new-slots new-rest) (class+.register (class+ name supers slots rest))
-      ;;      (export symbol (find-package :tr.gen.core.server.html))
       `(progn
-	 (defclass ,name (,@supers) ,new-slots ,@new-rest)
-	 (eval-when (:load-toplevel)
-	   (class+.register (class+ ',name ',supers ',slots ',rest)))
-	   ;; (export ',symbol (find-package :tr.gen.core.server.html)))
-	 (defun ,symbol (&key ,@(class+.ctor-keywords class+))
-	   (make-instance ',name ,@(class+.ctor-arguments class+)))	 
 	 ,@(mapcar (lambda (slot)
-		     `(progn
-			(defmethod/local ,(component.javascript-reader (car slot)) ((self ,name))
-			  (slot-value self ',(car slot)))
-			(defmethod/local ,(component.javascript-writer (car slot)) ((self ,name) value)
-			  (setf (slot-value self ',(car slot)) value))))
+		     (with-slotdef (name) slot
+		       `(progn
+			  (defmethod/local ,(reader name) ((self ,class-name))
+			    (slot-value self ',name))
+			  (defmethod/local ,(writer name) ((self ,class-name) value)
+			    (setf (slot-value self ',name) value)))))
 		   (class+.local-slots class+))
 	 ,@(mapcar (lambda (slot)
-		     `(progn
-			(defmethod/remote ,(component.javascript-reader (car slot)) ((self ,name))
-			  (slot-value self ',(car slot)))
-			(defmethod/remote ,(component.javascript-writer (car slot)) ((self ,name) value)
-			  (setf (slot-value self ',(car slot)) value))))
-		   (class+.remote-slots class+))	 
-	 (defcomponent-ctor ,name)
-	 (find-class ',name)))))
+		     (with-slotdef (name) slot
+		       `(progn
+			  (defmethod/remote ,(reader name) ((self ,class-name))
+			    (slot-value self ',name))
+			  (defmethod/remote ,(writer name) ((self ,class-name) value)
+			    (setf (slot-value self ',name) value)))))
+		   (class+.remote-slots class+))))))
 
+;; ----------------------------------------------------------------------------
+;; defcomponent-ctor Macro: Defines remote constructor for a component
+;; ----------------------------------------------------------------------------
+(defmacro defcomponent-ctor (class-name)
+  (let* ((class+ (find-class+ class-name))
+	 (k-urls (mapcar (lambda (m) (declare (ignore m)) (gensym))
+			 (class+.local-methods class+)))
+	 (remote-slots (mapcar (lambda (slot)
+				 (with-slotdef (name reader initarg) slot
+				   (list name (intern (symbol-name (gensym)))
+					 reader (intern (symbol-name initarg)))))
+			       (class+.remote-slots class+)))
+	 (prototype `(slot-value ,class-name 'prototype)))
+    `(progn
+       ;; ----------------------------------------------------------------------------
+       ;; Component Internal Render Method 
+       ;; ----------------------------------------------------------------------------
+       (redefmethod %ctor! ((stream core-stream) (component component) ,@k-urls)
+	 (with-accessors (,@(mapcar (lambda (slot) (list (cadr slot) (caddr slot)))
+				    remote-slots)) component
+	     (with-js (,@k-urls ,@(mapcar #'cadr remote-slots)) stream
+	       ;; ----------------------------------------------------------------------------
+               ;; Constructor
+               ;; ----------------------------------------------------------------------------
+	       (defun ,class-name (,@(mapcar #'cadddr remote-slots))
+		 ,@(mapcar (lambda (slot)
+			     `(if (not (typep ,(cadddr slot) 'undefined))
+				  (setf (slot-value this ',(car slot)) ,(cadddr slot))))
+			   remote-slots)
+		 this.prototype)
+	       
+	       ;; ----------------------------------------------------------------------------
+               ;; Prototype
+               ;; ----------------------------------------------------------------------------
+	       (setf ,prototype (new (*object)))
+	       
+	       ;; ----------------------------------------------------------------------------
+               ;; Remote Slot Initial Values
+               ;; ----------------------------------------------------------------------------
+	       ,@(mapcar (lambda (slot)
+			   `(setf (slot-value ,prototype ',(car slot)) ,(cadr slot)))
+			 remote-slots)
+	       
+	       ;; ----------------------------------------------------------------------------
+               ;; Remote Methods
+               ;; ----------------------------------------------------------------------------
+	       ,@(mapcar (lambda (method)
+			   (let ((proxy (intern (format nil "~A!" (car method)) :keyword)))
+			     `(setf (slot-value ,prototype ',(car method))
+				    (stream-escape (,proxy component)))))
+			 (class+.remote-methods class+))
+	       
+	       ;; ----------------------------------------------------------------------------
+               ;; Local Methods
+               ;; ----------------------------------------------------------------------------
+	       ,@(mapcar (lambda (method k-url)
+			   (let ((proxy (intern (format nil "~A!" (car method)) :keyword)))
+			     `(setf (slot-value ,prototype ',(car method))
+				    (stream-escape (,proxy component ,k-url)))))
+			 (class+.local-methods class+) k-urls))))
+       
+       ;; ----------------------------------------------------------------------------
+       ;; Component Constructor Renderer
+       ;; ----------------------------------------------------------------------------
+       (defmethod/cc ctor! ((stream core-stream) (component component))
+	 (let ,(mapcar (lambda (method k-url)
+			 (let ((method-args (extract-argument-names (cdddr method)
+								    :allow-specializers t)))
+			   `(,k-url (action/url ,(reduce0 (lambda (acc arg)
+							    (cons (list arg (symbol-name arg))
+								  acc))
+							  method-args)				       
+				      (json/suspend
+					(lambda (stream)
+					  (json! stream
+						 (apply (function ,(car method))
+							(cons component
+							 (list ,@(mapcar (lambda (arg)
+									   `(json-deserialize ,arg))
+									 method-args)))))))))))
+		       (class+.local-methods class+) k-urls)
+	   (apply #'%ctor! (cons stream (cons component (list ,@k-urls)))))))))
+
+;; ----------------------------------------------------------------------------
+;; This around method allows us to compile constructor evertime class
+;; definition changed.
+;; ----------------------------------------------------------------------------
+(defmethod/cc ctor! :around ((stream core-stream) (component component))
+  (if (> (slot-value (class-of component) '%timestamp)
+	 (slot-value (class-of component) '%ctor-timestamp))
+      (let ((name (class-name (class-of component))))
+	(format *standard-output* "Compiling constructor for ~A.~%" name)
+	(setf (slot-value (class-of component) '%ctor-timestamp)
+	      (get-universal-time))
+	(eval `(defcomponent-ctor ,name))
+	(ctor! stream component))
+      (call-next-method stream component)))
+
+(defmethod/cc ctor! ((stream core-stream) (component component))
+  (error "This ctor! method should not be called."))
+
+;; +----------------------------------------------------------------------------
+;; | defcomponent Macro: Defines a new component
+;; +----------------------------------------------------------------------------
+(defmacro defcomponent (name supers slots &rest rest)
+  `(progn     
+     (defclass+ ,name (,@supers component)
+       ,slots
+       (:metaclass component+)
+       ,@rest)
+     (defcomponent-accessors ,name)
+     (find-class+ ',name)))
 
 ;;-----------------------------------------------------------------------------
 ;; Component Protocol
@@ -627,456 +637,19 @@
 ;;  	  (return new-value)))
 ;;       (init-core-server))))
 
-;; (defgeneric/cc send/component (component)
-;;   (:documentation "Send component to remote."))
+;; Core Server: Web Application Server
 
-;; (defgeneric html (component)
-;;   (:documentation "Returns a html dom-element representation of this component")
-;;   (:method ((self component)) nil))
+;; Copyright (C) 2006-2008  Metin Evrim Ulu, Aycan iRiCAN
 
-;; (defgeneric stylesheet (component)
-;;   (:documentation "Returns a css-element representation of this component")
-;;   (:method ((self component)) nil))
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
 
-;; (defgeneric javascript (component)
-;;   (:documentation "Returns a javascript overrides for this component")
-;;   (:method ((self component)) nil))
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
 
-;; (defmethod application ((self component))
-;;   (or (s-v 'application) (application +context+)))
-
-
-;; (defmacro defmethod/local (name ((self class-name) &rest args) &body body)
-;;   (progn
-;;     (register-local-method-for-class class-name name)
-;;     `(progn
-;;        (eval-when (:compile-toplevel :load-toplevel :execute)
-;; 	 (register-local-method-for-class ',class-name ',name))
-;;        (defgeneric/cc ,name (,class-name ,@args))
-;;        (defgeneric/cc ,(proxy-method-name name) (,class-name))
-;;        (defmethod/cc ,(proxy-method-name name) ((,self ,class-name))
-;; 	 `(lambda ,',args
-;; 	    (return
-;; 	      (funcall
-;; 	       ,(action/url ,(mapcar (lambda (arg) (list arg (symbol-to-js arg))) args)
-;; 			    (let ,(mapcar (lambda (arg) `(,arg (json-deserialize ,arg))) args)
-;; 			      (json/suspend
-;; 			       (lambda ()
-;; 				 (json! (http-response.stream (response +context+))
-;; 					(apply (symbol-function ',name) (list ,self ,@args)))))))
-;; 	       ,',(if args		    
-;; 		      (cons 'create (reduce #'append
-;; 					    (mapcar (lambda (arg)
-;; 						      `(,(make-keyword arg) ,arg))
-;; 						    args)
-;; 					    :initial-value nil)))))))
-;;        (defmethod/cc ,name ((,self ,class-name) ,@args) ,@body))))
-
-;; (defmacro defmethod/remote (name ((self class-name) &rest args) &body body)
-;;   (let ((arg-names (arnesi:extract-argument-names args :allow-specializers t)))
-;;     `(progn
-;;        (eval-when (:compile-toplevel :load-toplevel :execute)
-;; 	 (register-remote-method-for-class ',class-name ',name))
-;;        (defgeneric/cc ,name (,class-name ,@args))
-;;        (defgeneric/cc ,(proxy-method-name name) (,class-name))
-;;        (defmethod/cc ,(proxy-method-name name) ((,self ,class-name))	      
-;; 	 `(lambda ,',arg-names
-;; 	    ,',(cons 'progn body)))
-;;        (defmethod/cc ,name ((,self ,class-name) ,@args)
-;; 	 (javascript/suspend
-;; 	  (lambda ()
-;; 	    (error "fix defmethod remote")
-;; 	    ;; (<:js+
-;; ;; 	     `(funcall ,(action/url ((result "result")) (answer (json-deserialize result)))
-;; ;; 		       (create :result (serialize (,',name this ,,@args)))))
-;; 	    ))))))
-
-;; (defun serialize-to-parenscript (type object)
-;;   (ecase type
-;;     (primitive object)
-;;     (object
-;;      (etypecase object
-;;        (list
-;; 	`(create ,@(if (and (listp (car object)) (not (null (caar object))))
-;; 		       (reduce (lambda (acc atom)
-;; 				 (cons (make-keyword (car atom))
-;; 				       (cons (cdr atom) acc)))
-;; 			       object :initial-value nil)
-;; 		       object)))
-;;        (hash-table
-;; 	`(create ,@(let (acc)
-;;                      (maphash (lambda (k v) (push (list (make-keyword k) v) acc)) object)
-;; 		     (reduce #'append acc :initial-value nil))))))
-;;     (array `(array ,@object))))
-
-
-;; (defmethod class-name ((self component))
-;;   (class-name (class-of self)))
-
-;; (defmethod/cc local-slots ((self component))
-;;   (reduce (lambda (acc slot)
-;; 	    (cons (make-keyword slot) (cons 'null acc)))
-;; 	  (reverse (mapcar (compose #'car #'ensure-list)
-;; 			   (local-slots-of-class (class-name self))))
-;; 	  :initial-value nil))
-
-;; (defmethod/cc remote-slots ((self component))
-;;   (reduce (lambda (acc slot)
-;; 	    (cons (make-keyword slot)
-;; 		  (cons (serialize-to-parenscript
-;; 			 (client-type-of-slot (class-name self) slot)
-;; 			 (if (slot-boundp self slot)
-;; 			     (slot-value self slot)))
-;; 			acc)))
-;; 	  (reverse (mapcar (compose #'car  #'ensure-list)
-;; 			   (remote-slots-of-class (class-name self))))
-;; 	  :initial-value nil))
-
-;; (defmethod/cc local-methods ((self component))
-;;   (reduce (lambda (acc method)
-;; 	    (cons (make-keyword method)
-;; 		  (cons (funcall
-;; 			 (symbol-function
-;; 			  (proxy-method-name method)) self)
-;; 			acc)))
-;; 	  (local-methods-of-class (class-name self))
-;; 	  :initial-value nil))
-
-;; (defmethod/cc remote-methods ((self component))
-;;   (reduce (lambda (acc method)
-;; 	    (cons (make-keyword method)
-;; 		  (cons (funcall (symbol-function
-;; 				  (proxy-method-name method)) self) acc)))
-;; 	  (remote-methods-of-class (class-name self))
-;; 	  :initial-value nil))
-
-;; (defmethod/cc send/component ((self component))
-;;   (with-html-output (http-response.stream (response +context+))
-;;     (send/ctor self (remote-slots self) (local-methods self) (remote-methods self))))
-
-
-;; (defmethod/cc send/ctor ((self component) remote-slots local-methods remote-methods)    
-;;   (js*
-;;    `(setf ,(class-name self)
-;; 	  (lambda (,@(reduce (lambda (acc slot)
-;; 			       (if (keywordp slot)
-;; 				   (cons (intern (symbol-name slot)) acc)
-;; 				   acc))
-;; 			     remote-slots :initial-value nil))
-;; 	    (setf this.prototype (create ;; ,@(local-slots)
-;; 				  ,@remote-slots
-;; 				  ,@local-methods ,@remote-methods))
-;; 	    ,@(reduce (lambda (acc slot)
-;; 			(if (keywordp slot)
-;; 			    (cons `(cond
-;; 				     ((not (= "undefined" (typeof (get-parameter ,(symbol-to-js slot)))))
-;; 				      (setf (slot-value this.prototype ',(intern (symbol-name slot)))
-;; 					    (get-parameter ,(symbol-to-js slot))))
-;; 				     ((not (= "undefined" (typeof ,(intern (symbol-name slot)))))
-;; 				      (setf (slot-value this.prototype ',(intern (symbol-name slot)))
-;; 					    ,(intern (symbol-name slot))))) acc)
-;; 			    acc))
-;; 		      remote-slots :initial-value nil)
-;; 	    (return this.prototype)))))
-
-;; (defclass component-dom-element (dom-element)
-;;   ())
-
-;; (defmethod dom-element! ((stream core-stream) (element component-dom-element)
-;; 			 &optional (indentation 0))
-;;   (prog1 stream
-;;     (mapcar (lambda (e)
-;; 	      (dom-element! stream e indentation)
-;; 	      (char! stream #\Newline))
-;; 	    (children element))))
-
-;; (defmacro defcomponent (name supers slots &rest rest)
-;;   (multiple-value-bind (slots new-rest) (register-class name supers slots rest)
-;;     (let ((html-symbol (intern (symbol-name name) (find-package :tr.gen.core.server.html))))
-;;       `(prog1 (defclass ,name (,@supers component)
-;; 		,slots
-;; 		(:default-initargs ,@(alist-to-plist (default-initargs-of-class name)))
-;; 		,@(remove :default-initargs new-rest :key #'car))
-;; 	 (defun ,name (&key ,@(local-slots-of-class name) ,@(remote-slots-of-class name))
-;; 	   (apply #'make-instance ',name (list ,@(ctor-arguments name))))
-;; 	 (defun/cc ,html-symbol (&key ,@(local-slots-of-class name) ,@(remote-slots-of-class name))
-;; 	     (let ((component (funcall (function ,name) ,@(ctor-arguments name))))
-;; 	       (make-instance 'component-dom-element
-;; 			      :tag ,(symbol-name name)
-;; 			      :children (list (<:script :type "text/javascript"							
-;; 							(send/ctor component
-;; 								   (remote-slots component)
-;; 								   (local-methods component)
-;; 								   (remote-methods component))
-;; 							(javascript component)) 
-;; ;;					      (<:style :type "text/css" (stylesheet component))
-;; 					      (html component)))))
-;; 	 (export ',html-symbol (find-package :tr.gen.core.server.html))
-;; 	 ,@(mapcar (lambda (slot)
-;; 		     `(progn
-;; 			(defmethod/local ,(proxy-getter-name (car slot)) ((self ,name))
-;; 			  (slot-value self ',(car slot)))
-;; 			(defmethod/local ,(proxy-setter-name (car slot)) ((self ,name) value)
-;; 			  (setf (slot-value self ',(car slot)) value))))
-;; 		   (mapcar #'ensure-list (local-slots-of-class name)))
-;; 	 ,@(mapcar (lambda (slot)
-;; 		     `(progn
-;; 			(defmethod/remote ,(proxy-getter-name (car slot)) ((self ,name))
-;; 			  (return (slot-value this ',(car slot))))
-;; 			(defmethod/remote ,(proxy-setter-name (car slot)) ((self ,name) value)			
-;; 			  (setf (slot-value this ',(car slot)) value)
-;; 			  (set-parameter ,(symbol-to-js (car slot)) value)
-;; 			  (return (slot-value this ',(car slot))))))
-;; 		   (mapcar #'ensure-list (remote-slots-of-class name)))))))
-
-;; (eval-when (:execute :compile-toplevel :load-toplevel)
-;;   (defvar +component-registry+ (make-hash-table :test #'equal)))
-
-;; (defun reduce-class-tree (name type)
-;;   (let ((lst))
-;;     (mapcar (lambda (atom)
-;; 	      (pushnew atom lst
-;; 		       :key #'(lambda (a) (if (atom a) a (car a)))
-;; 		       :test #'eq))
-;; 	    (reduce #'append
-;; 		    (mapcar (lambda (atom)
-;; 			      (getf (gethash (class-name atom) +component-registry+) type))
-;; 			    (cons (find-class name) (class-superclasses (find-class name))))
-;; 		    :initial-value nil))
-;;     lst))
-
-;; (defun local-methods-of-class (name) (reduce-class-tree name :local-methods))
-
-;; (defun remote-methods-of-class (name) (reduce-class-tree name :remote-methods))
-
-;; (defun local-slots-of-class (name)
-;;   (reduce-class-tree name :local-args))
-
-;; (defun remote-slots-of-class (name)
-;;   (reduce-class-tree name :remote-args))
-
-;; (defun client-type-for-slot (name slot)
-;;   (any #'(lambda (atom)
-;; 	   (cdr (assoc slot (getf (gethash (class-name atom) +component-registry+) :client-types))))
-;;        (cons (find-class name) (class-superclasses (find-class name)))))
-
-;; (defun add-local-method-for-class (name method-name)
-;;   (setf (getf (gethash name +component-registry+) :local-methods)
-;; 	(cons method-name
-;; 	      (remove method-name
-;; 		      (getf (gethash name +component-registry+) :local-methods)))))
-
-;; (defun add-remote-method-for-class (name method-name)
-;;   (setf (getf (gethash name +component-registry+) :remote-methods)
-;; 	(cons method-name
-;; 	      (remove method-name
-;; 		      (getf (gethash name +component-registry+) :remote-methods)))))
-
-;; (defmacro defcomponent (name supers slots &rest default-initargs)
-;;   (labels ((class-default-initargs (class)
-;; 	     (getf (gethash class +component-registry+) :default-initargs))
-;; 	   (class-superclasses (class)
-;; 	     (cons class
-;; 		   (reduce #'append
-;; 			   (mapcar #'class-superclasses
-;; 				   (getf (gethash class +component-registry+) :supers)))))
-;; 	   (filter-slot (slot-def)
-;; 	     (when (or (eq 'local (getf (cdr slot-def) :host))
-;; 		       (eq 'both  (getf (cdr slot-def) :host)))
-;; 	       (unless (getf (cdr slot-def) :initarg)
-;; 		 (setf (getf (cdr slot-def) :initarg) (make-keyword (car slot-def)))))
-;; 	     (unless (getf (cdr slot-def) :accessor)
-;; 	       (setf (getf (cdr slot-def) :accessor) (car slot-def)))
-;; 	     (remf (cdr slot-def) :host)
-;; 	     (remf (cdr slot-def) :client-type)
-;; 	     slot-def)
-;; 	   (remote-slot (acc slot-def)
-;; 	     (if (or (eq 'remote (getf (cdr slot-def) :host))
-;; 		     (eq 'both   (getf (cdr slot-def) :host)))
-;; 		 (cons (list (car slot-def) (getf (cdr slot-def) :initform)) acc)
-;; 		 acc))
-;; 	   (local-slot (acc slot-def)
-;; 	     (if (or (eq 'local (getf (cdr slot-def) :host))
-;; 		     (eq 'both  (getf (cdr slot-def) :host)))
-;; 		 (cons (list (car slot-def) (getf (cdr slot-def) :initform)) acc)
-;; 		 acc))
-;; 	   (local-args (slotz)
-;; 	     (let ((args (append
-;; 			  (nreverse (reduce #'local-slot slotz :initial-value nil))
-;; 			  (reduce #'(lambda (acc super)
-;; 				      (append acc (getf (gethash super +component-registry+)
-;; 							:local-args)))
-;; 				  (reduce #'append (mapcar #'class-superclasses supers))
-;; 				  :initial-value nil)))
-;; 		   (super-args
-;; 		    (reduce #'append (mapcar #'class-default-initargs supers))))
-;; 	       (setf args		     
-;; 		     (reduce
-;; 		      #'(lambda (acc arg)
-;; 			  (let ((value ;; (cadr (assoc (car arg) super-args :test #'string=))
-;; 				 (getf super-args (make-keyword (car arg)))
-;; 				  ))
-;; 			    (if value
-;; 				(cons (list (car arg) value) acc)
-;; 				(cons arg acc))))
-;; 		      args :initial-value nil))
-;; 	       (reduce #'(lambda (acc arg)
-;; 			   (pushnew arg acc :key #'car :test #'equal)
-;; 			   acc)
-;; 		       (reduce #'(lambda (acc arg)
-;; 				   (let ((value (getf (cdar default-initargs) (make-keyword (car arg)))))
-;; 				     (if value
-;; 					 (cons (list (car arg) value) acc)
-;; 					 (cons arg acc))))
-;; 			       args :initial-value nil)
-;; 		       :initial-value nil)))
-;; 	   (remote-args (slotz)
-;; 	     (let ((args (append
-;; 			  (nreverse (reduce #'remote-slot slotz :initial-value nil))
-;; 			  (reduce #'(lambda (acc super)
-;; 				      (append acc (getf (gethash super +component-registry+)
-;; 							:remote-args)))
-;; 				  (reduce #'append (mapcar #'class-superclasses supers))
-;; 				  :initial-value nil)))
-;; 		   (super-args
-;; 		    (reduce #'append (mapcar #'class-default-initargs supers))))
-;; 	       (setf args		     
-;; 		     (reduce
-;; 		      #'(lambda (acc arg)
-;; 			  (let ((value ;; (cadr (assoc (car arg) super-args :test #'string=))
-;; 				 (getf super-args (make-keyword (car arg)))
-;; 				  ))
-;; 			    (if value
-;; 				(cons (list (car arg) value) acc)
-;; 				(cons arg acc))))
-;; 		      args :initial-value nil))
-;; 	       (reduce #'(lambda (acc arg)
-;; 			   (pushnew arg acc :key #'car :test #'eq))
-;; 		       (reduce #'(lambda (acc arg)
-;; 				   (let ((value (getf (cdar default-initargs)
-;; 						      (make-keyword (car arg)))))
-;; 				     (if value
-;; 					 (cons (list (car arg) value) acc)
-;; 					 (cons arg acc))))
-;; 			       args :initial-value nil)
-;; 		       :initial-value nil)))
-;; 	   (function-key-args (slotz)
-;; 	     (reduce #'(lambda (acc slot-def)			 
-;; 			 (cons (make-keyword (car slot-def))
-;; 			       (cons (car slot-def) acc)))
-;; 		     (append (remote-args slotz) (local-args slotz)) :initial-value nil))
-;; 	   (filter-default-initargs (lst)
-;; 	     (nreverse (reduce #'(lambda (acc item)
-;; 				   (if (or (eq item :default-initargs)
-;; 					   (eq item :local-args)
-;; 					   (eq item :remote-args))
-;; 				       acc
-;; 				       (cons item acc)))
-;; 			       lst :initial-value nil)))
-;; 	   (client-type (slot)
-;; 	     (cons (car slot) (or (getf (cdr slot) :client-type) 'primitive))))    
-;;     `(prog1
-;; 	 (eval-when (:compile-toplevel :load-toplevel :execute)
-;; 	   (export ',name (find-package ,(package-name (symbol-package name))))
-;; 	   (setf (getf (gethash ',name +component-registry+) :supers) ',supers
-;; 		 (getf (gethash ',name +component-registry+) :default-initargs) ',(cdar default-initargs)
-;; 		 (getf (gethash ',name +component-registry+) :local-args) ',(local-args slots)
-;; 		 (getf (gethash ',name +component-registry+) :remote-args) ',(remote-args slots)
-;; 		 (getf (gethash ',name +component-registry+) :client-types) ',(mapcar #'client-type slots))
-;; 	   (defclass ,name (,@supers component)
-;; 	     ,(mapcar #'filter-slot (copy-tree slots))
-;; 	     (:default-initargs ,@(filter-default-initargs (car default-initargs)))
-;; 	     ,@(cdr default-initargs)))
-;;        (defun ,(intern (string-upcase name) (symbol-package name))
-;; 	   (&key ,@(local-args slots) ,@(remote-args slots))
-;; 	 (apply #'make-instance ',name (list ,@(function-key-args slots))))
-;;        ,@(mapcar (lambda (slot)
-;; 		   `(progn
-;; 		      (defmethod/local ,(proxy-getter-name (car slot)) ((self ,name))
-;; 			(slot-value self ',(car slot)))
-;; 		      (defmethod/local ,(proxy-setter-name (car slot)) ((self ,name) value)
-;; 			(setf (slot-value self ',(car slot)) value))))
-;; 		 (local-args slots))
-;;        ,@(mapcar (lambda (slot)
-;; 		   `(progn
-;; 		      (defmethod/remote ,(proxy-getter-name (car slot)) ((self ,name))
-;; 			(return (slot-value this ',(car slot))))
-;; 		      (defmethod/remote ,(proxy-setter-name (car slot)) ((self ,name) value)			
-;; 			(setf (slot-value this ',(car slot)) value)
-;; 			(return (slot-value this ',(car slot))))))
-;; 		 (remote-args slots)))))
-
-
-;;	   (local-action-binds ()
-	     ;; (reduce (lambda (acc method)
-;; 		       (cons `(,(car method)
-;; 				(action/url ,(mapcar (lambda (arg) (list arg (symbol-to-js arg))) (cdr method))
-;; 				  (let ,(mapcar (lambda (arg) `(,arg (json-deserialize ,arg))) (cdr method))
-;; 				    (json/suspend
-;; 				     (lambda (stream)
-;; 				       (json! stream (,(car method) self ,@(cdr method))))))))
-;; 			     acc))
-;; 		     (mapcar (lambda (method)
-;; 			       (cons (method-proxy class-name (car method)) method))
-;; 			     (local-methods-of-class class-name)) :initial-value nil)
-;;	   )
-;; (defmacro defcomponent-ctor (class-name)
-;;   (with-unique-names (stream)    
-;;     (labels ((proxy (method)
-;; 	       (break
-;; 		(core-search (list (gethash class-name +class-registry+))
-;; 			     (rcurry #'method-proxy method)
-;; 			     #'class-successor
-;; 			     #'append)))
-;; 	     (remote-slots ()
-;; 	       ;; Remote Slots of this component	     
-;; 	       (reduce (lambda (acc slot)
-;; 			 (cons (make-keyword (car slot))
-;; 			       (cons `(if (= "undefined" (typeof ,(car slot)))
-;; 					  ,(cadr slot)
-;; 					  ,(car slot))
-;; 				     acc)))
-;; 		       (remote-slots-of-class class-name)
-;; 		       :initial-value nil))
-;; 	     (local-methods ()
-;; 	       (reduce (lambda (acc method)
-;; 			 (cons (make-keyword (car method))
-;; 			       (cons (proxy (car method)) acc)))
-;; 		       (local-methods-of-class class-name)
-;; 		       :initial-value nil))
-;; 	     (remote-methods ()
-;; 	       (reduce (lambda (acc method)
-;; 			 (cons (make-keyword (car method))
-;; 			       (cons (proxy (car method)) acc)))
-;; 		       (nreverse (remote-methods-of-class class-name))
-;; 		       :initial-value nil))
-;; 	     (local-action-binds ()
-;; 	       (mapcar (lambda (method)
-;; 			 (cadr (multiple-value-list (proxy (car method)))))
-;; 		       (local-methods-of-class class-name)))
-;; 	     (local-actions ()
-;; 	       (mapcar (lambda (method)
-;; 			 (let ((bind (cadr (multiple-value-list (proxy (car method))))))
-;; 			   (list bind `(action/url ,(mapcar (lambda (arg)
-;; 							      (list arg (symbol-to-js arg)))
-;; 							    (cdr method))
-;; 					 (let ,(mapcar (lambda (arg) `(,arg (json-deserialize ,arg)))
-;; 						       (cdr method))
-;; 					   (json/suspend
-;; 					    (lambda (stream)
-;; 					      (json! stream
-;; 						     (,(car method) self ,@(cdr method))))))))))
-;; 		       (local-methods-of-class class-name))))
-;;       `(defmethod/cc ctor! ((,stream core-stream) (self ,class-name))
-;; 	 (let ,(local-actions)
-;; 	   (with-js ,(local-action-binds) ,stream
-;; 	     (setf ,class-name
-;; 		   (lambda (,@(reduce (lambda (acc slot)
-;; 					(if (keywordp slot)
-;; 					    (cons (intern (symbol-name slot)) acc)
-;; 					    acc))
-;; 				      (mapcar #'cdr (remote-initargs-of-class class-name))
-;; 				      :initial-value nil))
-;; 		     (setf this.prototype
-;; 			   (create ,@(remote-slots) ,@(local-methods) ,@(remote-methods)))
-;; 		     (return this.prototype)))))))))
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
