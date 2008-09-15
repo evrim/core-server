@@ -72,6 +72,9 @@
 	     (destructuring-bind ,args arguments
 	       ,@body))))
 
+(defjssyntax stream-escape (&rest args)
+  `(:and ,@(unwalk-forms args)))
+
 (defjssyntax array (&rest a)
   `(:and "[ " ,(s-b ", " (mapcar (rcurry expander expander) a))
 	 " ]"))
