@@ -153,19 +153,18 @@
                                   ((:file "macros")
                                    (:file "json")
 				   (:file "mime-types")
-                                   ;; (:file "component")
-;;                                    (:module :components
-;; 					    :serial t
-;;                                             :components
-;;                                             ((:file "toaster")
-;;                                              (:file "fckeditor")
-;;                                              (:file "login")
-;;                                              (:file "feedback")
-;;                                              (:file "hilighter")
-;;                                              (:file "hedee")
-;; 					     (:file "socialshare")
-;;                                              (:file "form")))
-				   )))))
+				   (:file "component")
+                                   (:module :components
+					    :serial t
+                                            :components
+                                            ((:file "toaster")
+                                             (:file "fckeditor")
+                                             (:file "login")
+                                             (:file "feedback")
+                                             (:file "hilighter")
+                                             (:file "hedee")
+					     (:file "socialshare")
+                                             (:file "form"))))))))
   :depends-on (:swank :bordeaux-threads :cl-prevalence :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad)
   :serial t)
 
