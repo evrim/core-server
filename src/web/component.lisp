@@ -48,23 +48,19 @@
 		  (funcall ,hash (create :result (serialize (,name self ,@args)))))))))))))
 
 ;; +----------------------------------------------------------------------------
-;; | Component Meta Protocol
+;; | Component Metaclass
 ;; +----------------------------------------------------------------------------
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defclass component+ (class+)
     ((%ctor-timestamp :initform 0))))
 
 ;; +----------------------------------------------------------------------------
-;; | Component Protocol
+;; | Component Class
 ;; +----------------------------------------------------------------------------
 (defclass+ component ()
   ()
   (:metaclass component+)
   (:documentation "Base component class"))
-
-(defmethod component.application ((self component))
-  "Returns application associated with this component."
-  (context.application +context+))
 
 ;; ----------------------------------------------------------------------------
 ;; defcomponent-accessors Macro: Defines remote and local accessors
@@ -82,7 +78,8 @@
 			    (slot-value self ',name))
 			  (defmethod/local ,(writer name) ((self ,class-name) value)
 			    (setf (slot-value self ',name) value)))))
-		   (class+.local-slots class+))
+		   (filter (lambda (slot) (not (string= (slot-definition-name slot) 'id)))
+			   (class+.local-slots class+)))
 	 ,@(mapcar (lambda (slot)
 		     (with-slotdef (name) slot
 		       `(progn
@@ -109,13 +106,14 @@
        ;; ----------------------------------------------------------------------------
        ;; Component Internal Render Method 
        ;; ----------------------------------------------------------------------------
-       (redefmethod %ctor! ((stream core-stream) (component component) ,@k-urls)
-	 (with-accessors (,@(mapcar (lambda (slot) (list (cadr slot) (caddr slot)))
-				    remote-slots)) component
+       (defmethod %ctor! ((stream core-stream) (component ,class-name) &rest k-urls)
+	 (destructuring-bind (,@k-urls) k-urls
+	   (with-accessors (,@(mapcar (lambda (slot) (list (cadr slot) (caddr slot)))
+				      remote-slots)) component
 	     (with-js (,@k-urls ,@(mapcar #'cadr remote-slots)) stream
 	       ;; ----------------------------------------------------------------------------
-               ;; Constructor
-               ;; ----------------------------------------------------------------------------
+	       ;; Constructor
+	       ;; ----------------------------------------------------------------------------
 	       (defun ,class-name (,@(mapcar #'cadddr remote-slots))
 		 ,@(mapcar (lambda (slot)
 			     `(if (not (typep ,(cadddr slot) 'undefined))
@@ -124,20 +122,20 @@
 		 this.prototype)
 	       
 	       ;; ----------------------------------------------------------------------------
-               ;; Prototype
-               ;; ----------------------------------------------------------------------------
+	       ;; Prototype
+	       ;; ----------------------------------------------------------------------------
 	       (setf ,prototype (new (*object)))
 	       
 	       ;; ----------------------------------------------------------------------------
-               ;; Remote Slot Initial Values
-               ;; ----------------------------------------------------------------------------
+	       ;; Remote Slot Initial Values
+	       ;; ----------------------------------------------------------------------------
 	       ,@(mapcar (lambda (slot)
 			   `(setf (slot-value ,prototype ',(car slot)) ,(cadr slot)))
 			 remote-slots)
 	       
 	       ;; ----------------------------------------------------------------------------
-               ;; Remote Methods
-               ;; ----------------------------------------------------------------------------
+	       ;; Remote Methods
+	       ;; ----------------------------------------------------------------------------
 	       ,@(mapcar (lambda (method)
 			   (let ((proxy (intern (format nil "~A!" (car method)) :keyword)))
 			     `(setf (slot-value ,prototype ',(car method))
@@ -145,18 +143,18 @@
 			 (class+.remote-methods class+))
 	       
 	       ;; ----------------------------------------------------------------------------
-               ;; Local Methods
-               ;; ----------------------------------------------------------------------------
+	       ;; Local Methods
+	       ;; ----------------------------------------------------------------------------
 	       ,@(mapcar (lambda (method k-url)
 			   (let ((proxy (intern (format nil "~A!" (car method)) :keyword)))
 			     `(setf (slot-value ,prototype ',(car method))
 				    (stream-escape (,proxy component ,k-url)))))
-			 (class+.local-methods class+) k-urls))))
+			 (class+.local-methods class+) k-urls)))))
        
        ;; ----------------------------------------------------------------------------
        ;; Component Constructor Renderer
        ;; ----------------------------------------------------------------------------
-       (defmethod/cc ctor! ((stream core-stream) (component component))
+       (defmethod/cc ctor! ((stream core-stream) (component ,class-name))
 	 (let ,(mapcar (lambda (method k-url)
 			 (let ((method-args (extract-argument-names (cdddr method)
 								    :allow-specializers t)))
@@ -180,15 +178,15 @@
 ;; definition changed.
 ;; ----------------------------------------------------------------------------
 (defmethod/cc ctor! :around ((stream core-stream) (component component))
-  (if (> (slot-value (class-of component) '%timestamp)
-	 (slot-value (class-of component) '%ctor-timestamp))
-      (let ((name (class-name (class-of component))))
-	(format *standard-output* "Compiling constructor for ~A.~%" name)
-	(setf (slot-value (class-of component) '%ctor-timestamp)
-	      (get-universal-time))
-	(eval `(defcomponent-ctor ,name))
-	(ctor! stream component))
-      (call-next-method stream component)))
+  (if  (> (slot-value (class-of component) '%timestamp)
+	  (slot-value (class-of component) '%ctor-timestamp))      
+       (let ((name (class-name (class-of component))))
+	 (format *standard-output* "Compiling constructor for ~A.~%" name)
+	 (setf (slot-value (class-of component) '%ctor-timestamp)
+	       (get-universal-time))
+	 (eval `(defcomponent-ctor ,name))
+	 (ctor! stream component))
+       (call-next-method stream component)))
 
 (defmethod/cc ctor! ((stream core-stream) (component component))
   (error "This ctor! method should not be called."))
@@ -208,35 +206,39 @@
 ;;-----------------------------------------------------------------------------
 ;; Component Protocol
 ;;-----------------------------------------------------------------------------
-;; (defmethod/remote to-json ((self component) object)
-;;   (labels ((serialize (object)
-;; 	     (cond
-;; 	       ((typep object 'number)
-;; 		(+ "\"" object "\""))
-;; 	       ((typep object 'string)
-;; 		(+ "\"" (encode-u-r-i-component object) "\""))
-;; 	       ((typep object 'array)
-;; 		(+ "["		   
-;; 		   (.join (mapcar (lambda (item) (serialize item))
-;; 				  array)
-;; 			  ",")
-;; 		   "]"))
-;; 	       ((type object 'object)
-;; 		(doeach (i object)
-;; 		  ()))
-;; 	       (t
-;; 		(throw (new (*error (+ "Could not serialize " object))))))))
-;;     (serialize object)))
+(defmethod component.application ((self component))
+  "Returns application associated with this component."
+  (context.application +context+))
 
-;; (defmethod/remote funkall ((self component) action arguments)
-;;   (let ((xhr (or (and window.*active-x-object
-;; 		      (new (*active-x-object "Microsoft.XMLHTTP")))
-;; 		 (new (*x-m-l-http-request)))))
-;;     (xhr.open "POST" action false)
-;;     (xhr.send (to-json self arguments))
-;;     (if (= 200 xhr.status)
-;; 	(eval (+"{" xhr.response-text "}"))
-;; 	(throw (new (*error xhr.status))))))
+(defmethod/remote to-json ((self component) object)
+  (labels ((serialize (object)
+	     (cond
+	       ((typep object 'number)
+		(+ "\"" object "\""))
+	       ((typep object 'string)
+		(+ "\"" (encode-u-r-i-component object) "\""))
+	       ((typep object 'array)
+		(+ "["		   
+		   (.join (mapcar (lambda (item) (serialize item))
+				  array)
+			  ",")
+		   "]"))
+	       ((type object 'object)
+		(doeach (i object)
+			()))
+	       (t
+		(throw (new (*error (+ "Could not serialize " object))))))))
+    (serialize object)))
+
+(defmethod/remote funkall ((self component) action arguments)
+  (let ((xhr (or (and window.*active-x-object
+		      (new (*active-x-object "Microsoft.XMLHTTP")))
+		 (new (*x-m-l-http-request)))))
+    (xhr.open "POST" action false)
+    (xhr.send (to-json self arguments))
+    (if (= 200 xhr.status)
+	(eval (+"{" xhr.response-text "}"))
+	(throw (new (*error xhr.status))))))
 
 (defrender/js dojo (&optional
 		    base-url (debug nil) (prevent-back-button 'false)
