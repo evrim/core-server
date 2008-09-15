@@ -8,8 +8,9 @@
 (in-package :addressbook)
 
 (defclass+ person ()
-  ((fullname :initform nil :index t)
-   (fields :initform nil)))
+  ((fullname :index t)
+   (fields)
+   (ctime :initform (get-universal-time))))
 
 (defcrud person)
 
