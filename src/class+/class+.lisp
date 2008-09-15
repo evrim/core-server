@@ -40,8 +40,19 @@
 
   (filter (lambda (s) (typep s 'class+-slot-definition)) (class-slots class)))
 
+(defmethod class+.add-method ((class class+) name type args)
+  (setf (class+.%methods class)
+	(cons (cons name (cons type args))
+	      (filter (lambda (a) (not (eq (car a) name)))
+		      (class+.%methods class)))))
+
+(defmethod class+.remove-method ((class class+) name)
+  (setf (class+.%methods class)
+	(filter (lambda (a) (not (eq (car a) name)))
+		(class+.%methods class))))
+
 (defmethod class+.methods ((class class+))
-  (error "Not implemented yet."))
+  (class+.%methods class))
 
 ;; ----------------------------------------------------------------------------
 ;; Extra Definitions
@@ -56,10 +67,12 @@
   (class+.slot-search self (lambda (s) (eq 'remote (slot-value s 'host)))))
 
 (defmethod class+.local-methods ((class class+))
-  (error "Not implemented yet."))
+  (filter (lambda (m) (eq 'local (cadr m)))
+	  (class+.methods class)))
 
 (defmethod class+.remote-methods ((class class+))
-  (error "Not implemented yet."))
+  (filter (lambda (m) (eq 'remote (cadr m)))
+	  (class+.methods class)))
 
 ;; -----------------------------------------------------------------------------
 ;; MOP Implementation
@@ -121,8 +134,8 @@
 	  :client-type (slot-definition-client-type slot)
 	  :type (sb-pcl::slot-definition-type slot)
 	  :relation (slot-definition-relation slot)
-	  :writer (slot-definition-writer-function slot)
-	  :reader (slot-definition-reader-function slot)
+	  :writer (car (reverse (sb-pcl::slot-definition-writers slot)))
+	  :reader (car (reverse (sb-pcl::slot-definition-readers slot)))
 	  :index (slot-definition-index slot))))
 
 (defmacro with-slotdef (arglist slot &body body)
