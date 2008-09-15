@@ -41,18 +41,23 @@
   (filter (lambda (s) (typep s 'class+-slot-definition)) (class-slots class)))
 
 (defmethod class+.add-method ((class class+) name type args)
-  (setf (class+.%methods class)
-	(cons (cons name (cons type args))
-	      (filter (lambda (a) (not (eq (car a) name)))
-		      (class+.%methods class)))))
+  (setf (slot-value class '%timestamp) (get-universal-time)
+	(class+.%methods class) (cons (cons name (cons type args))
+				      (filter (lambda (a) (not (eq (car a) name)))
+					      (class+.%methods class)))))
 
 (defmethod class+.remove-method ((class class+) name)
-  (setf (class+.%methods class)
-	(filter (lambda (a) (not (eq (car a) name)))
-		(class+.%methods class))))
+  (setf (slot-value class '%timestamp) (get-universal-time)
+	(class+.%methods class) (filter (lambda (a) (not (eq (car a) name)))
+					(class+.%methods class))))
 
 (defmethod class+.methods ((class class+))
-  (class+.%methods class))
+  (let ((methods))
+    (mapcar (lambda (m) (pushnew m methods :key #'car))
+	    (reduce0 #'append
+		     (mapcar #'class+.%methods
+			     (cons class (class+.superclasses class)))))
+    methods))
 
 ;; ----------------------------------------------------------------------------
 ;; Extra Definitions
