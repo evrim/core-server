@@ -154,17 +154,13 @@
                                    (:file "json")
 				   (:file "mime-types")
 				   (:file "component")
-                                   (:module :components
-					    :serial t
-                                            :components
-                                            ((:file "toaster")
-                                             (:file "fckeditor")
-                                             (:file "login")
-                                             (:file "feedback")
-                                             (:file "hilighter")
-                                             (:file "hedee")
-					     (:file "socialshare")
-                                             (:file "form"))))))))
+				   (:file "extra")
+				   (:file "auth")
+				   (:file "image")
+				   (:file "video")
+				   (:file "editor")
+				   (:file "dojo")
+				   (:file "jquery"))))))
   :depends-on (:swank :bordeaux-threads :cl-prevalence :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad)
   :serial t)
 
