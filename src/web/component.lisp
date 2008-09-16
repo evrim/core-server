@@ -1,7 +1,7 @@
-(in-package :core-server)
 ;; +----------------------------------------------------------------------------
 ;; | Component Framework
 ;; +----------------------------------------------------------------------------
+(in-package :core-server)
 
 ;; ----------------------------------------------------------------------------
 ;; defmethod/local macro: Defines a local method
@@ -17,11 +17,12 @@
 	 (defmethod ,proxy ((,stream core-stream) (,self ,class-name) ,k)
 	   (with-js (,k) ,stream
 	     (lambda ,args
-	       (funcall ,k (create
-			    ,@(nreverse
-			       (reduce0 (lambda (acc arg)
-					  (cons arg (cons (make-keyword arg) acc)))
-					(extract-argument-names args :allow-specializers t))))))))
+	       (this.funkall ,k
+		(create
+		 ,@(nreverse
+		    (reduce0 (lambda (acc arg)
+			       (cons arg (cons (make-keyword arg) acc)))
+			     (extract-argument-names args :allow-specializers t))))))))
 	 (defmethod/cc ,name ((,self ,class-name) ,@args) ,@body)))))
 
 ;; ----------------------------------------------------------------------------
@@ -45,7 +46,8 @@
 	     (javascript/suspend
 	      (lambda (,stream)
 		(with-js (,hash) ,stream
-		  (funcall ,hash (create :result (serialize (,name self ,@args)))))))))))))
+		  (this.funkall ,hash
+		   (create :result (serialize (,name self ,@args)))))))))))))
 
 ;; +----------------------------------------------------------------------------
 ;; | Component Metaclass
@@ -240,404 +242,74 @@
 	(eval (+"{" xhr.response-text "}"))
 	(throw (new (*error xhr.status))))))
 
-(defrender/js dojo (&optional
-		    base-url (debug nil) (prevent-back-button 'false)
-		    (css (reduce (lambda (acc a)
-				   (cons (concatenate
-					  'string +dojo-path+ ".." a)
-					 acc))
-				 (reverse
-				  '("/dijit/themes/dijit.css"
-				    "/dijit/themes/tundra/tundra.css"
-				    "/dojox/widget/Toaster/Toaster.css"))
-				 :initial-value '("http://node1.core.gen.tr/coretal/style/coretal.css")))
-		    &aux (base-url (if (and +context+ base-url)
-				       (format nil "/~A/~A"
-					       (web-application.fqdn (context.application +context+))
-					       base-url)
-				       base-url)))
-  (defun load-javascript (url)
-    (let ((request nil)
-	  (base-url base-url))
-      (cond
-	(window.*x-m-l-http-request ;; Gecko
-	 (setf request (new (*x-m-l-http-request))))
-	(window.*active-x-object ;; Internettin Explorer
-	 (setf request (new (*active-x-object "Microsoft.XMLHTTP")))))
-      (if (= null request)
-	  (throw (new (*error "Cannot Load Javascript, -core-server 1.0"))))
-      (setf req request)
-      (request.open "GET" url false)
-      (request.send null)
-      (if (= 200 request.status)
-	  (return (eval (+ "{" request.response-text "}"))))
-      (throw (new (*error (+ "Cannot load javascript:" url " -core-server 1.0"))))))
-  
-  (defun load-css (url)
-    (let ((link (document.create-element "link")))
-      (setf link.href url
-	    link.rel "stylesheet"
-	    link.type "text/css")
-      (.append-child (aref (document.get-elements-by-tag-name "head") 0) link)
-      (return link)))
-  
-  (defun init-core-server ()
-    (when (= "undefined" (typeof dojo))
-      (setf dj-config (create :base-url +dojo-path+
-			      :is-debug debug
-			      :prevent-back-button-fix prevent-back-button
-			      ;;				  :dojo-iframe-history-url "./resources/iframe_history.html"
-			      ))      
-      (dolist (src (array "bootstrap.js" "loader.js" "hostenv_browser.js" "loader_xd.js"))	
-	(load-javascript (+ +dojo-path+ "_base/_loader/" src)))
-      (load-javascript (+ +dojo-path+ "_base.js")))
-    (setf base-url base-url)
-    (dojo.require "dojo.back")
-    (dojo.back.init)
-    (mapcar (lambda (c) (load-css c)) css)
-    (dojo.add-on-load
-     (lambda ()
-       (setf document.body.class-name (+ document.body.class-name " tundra")))))
-  (defun serialize (value) (return (dojo.to-json value)))
-  (defun funcall (url parameters retry-count)
-    (let (result)
-      (debug "server.funcall " url)
-      (when (dojo.is-object parameters)
-	(doeach (param parameters)
-		(setf (slot-value parameters param)
-		      (serialize (slot-value parameters param)))))
-      (dojo.xhr-post
-       (create :url (+ base-url url)
-	       :handle-as "text"
-	       :sync t
-	       :timeout 10
-	       :content parameters
-	       :load (lambda (json args)
-		       ;;			   (debug json)
-		       (setf result (eval (+ "{" json "}"))))
-	       :error (lambda (err args)
-			(if (= err.status 500)				
-			    (if (= "undefined" (typeof retry-count))
-				(return (funcall url parameters 5))
-				(if (> retry-count 0)
-				    (return (funcall url parameters (- retry-count 1)))))
-			    (throw (new (*error (+ "Funcall error: " url ", " err))))))))
-      (return result)))
-  (defun get-parameter (name)
-    (debug "get-param:" name)
-    (let ((params (+ (.substr window.location.hash 1) "&" (.substr window.location.search 1)))
-	  (arr (params.split "&")))
-      (dolist (a arr)
-	(let ((key (aref (a.split "=") 0))
-	      (value (aref (a.split "=") 1)))
-	  (debug (+ "key:" key " val:" value))
-	  (if (= (key.to-lower-case) (name.to-lower-case))
-	      (return value))))))
-  (defun set-parameter (name new-value)
-    (let ((params (.substr window.location.hash 1))
-	  (arr (params.split "&"))
-	  (hash "")
-	  (found nil))
-      (dolist (a arr)
-	(let ((key (aref (a.split "=") 0))
-	      (value (aref (a.split "=") 1)))
-	  (debug key value)
-	  (if (not (= "undefined" (typeof key)))		  
-	      (if (= (key.to-lower-case) (name.to-lower-case))
-		  (setf hash (+ hash (+ key "=" new-value "&"))
-			found t)
-		  (setf hash (+ hash (+ key "=" (if (= "undefined" (typeof value))
-						    "" value) "&")))))))
-      (if (not found) (setf hash (+ hash (+ name "=" new-value))))
-      (setf window.location.hash hash)
-      (return new-value)))
-  (init-core-server))
+;; +----------------------------------------------------------------------------
+;; | Basic Components
+;; +----------------------------------------------------------------------------
 
-;; ;;;;
-;; ;;;; Interface for remote services
-;; ;;;;
-;; (defcomponent ajax-mixin ()
+;; ----------------------------------------------------------------------------
+;; Debug Component
+;; ----------------------------------------------------------------------------
+;; FIXME: Fix debug component
+(defcomponent debug-component ()
+  ())
+
+(defmethod/local get-source-code ((self debug-component) function)
+  (funcall (function (intern o)))) => "function () { return 1; }" ;
+
+(defmethod/local set-result ((self debug-component) function parameters result)
+  (setf (gethash function +function-table+) (list (cons funciton parameters) result)))
+
+(defmethod/remote run-test ((self debug-component) function)
+  (let ((fun (this.get-source-code(function))))
+    (if fun
+	(this.set-result function nil (funcall fun)))))
+
+(defun/javascript denemeA (str num) ("aycan" 1) ()
+  (denemeB str (incf num)))
+
+(defun/javascript denemeB (str num)
+  (list str num))
+
+;; record tanimla
+;; record query, update
+;; IPC
+
+;; ----------------------------------------------------------------------------
+;; HTML Component
+;; ----------------------------------------------------------------------------
+;; (defcomponent html-element (dom-element)
 ;;   ())
 
-;; ;; TODO: first create activexobject, catch exception then create xmlhttprequest.
-;; (defmethod/remote make-request ((self ajax-mixin))
-;;   ;; (cond
-;;   ;;       (window.*x-m-l-http-request ;; Gecko
-;;   ;;        (setf request (new (*x-m-l-http-request))))
-;;   ;;       (window.*active-x-object ;; Internettin Explorer
-;;   ;;        (setf request (new (*active-x-object "Microsoft.XMLHTTP")))))
-;;   ;;     (if (= null request)
-;;   ;; 	(throw (new (*error "Exception: Cannot find usable XmlHttpRequest method, -core-server 1.0")))
-;;   ;; 	(return request))
-;;   (let ((req null))
-;;     (try (setf req (new (*active-x-object "Msxml2.XMLHTTP")))
-;; 	 (:catch (e1)
-;; 	   (try (setf req (new (*active-x-object "Microsoft.XMLHTTP")))
-;; 		(:catch (e2)
-;; 		  (setf req null)))))
-;;     (if (and (not req) (not (= (typeof *x-m-l-http-request) "undefined")))
-;; 	(setf req (new (*x-m-l-http-request))))
-;;     (return req)))
+;; (defmethod/local render ((self html-element))
+;;   nil)
 
-;; ;; return response directly, don't eval (text? xml?).
-;; (defmethod/remote send-request ((self ajax-mixin) request url)
-;;   (request.open "GET" url false)
-;;   (request.send null)
-;;   (if (= 200 request.status)
-;;       (return request)
-;;       (throw (new (*error (+ "Exception: Cannot send XmlHttpRequest: " url " -core-server 1.0"))))))
+;; ;;; (with-yaclml-output-to-string
+;; ;;;     (<:div :id "56" :style "background-color:#FFF; color:#000"
+;; ;;; 	   (<:p "This is render of html-element")
+;; ;;; 	   (<:p "Aytek maraba!")))
 
-;; (defcomponent jqueryapi (ajax-mixin)
-;;   ((script-location :host remote
-;; 		    :initform "jquery-latest.min.js"
-;; 		    :initarg :script-location
-;; 		    :documentation "jQuery script location as url")))
-
-;; (defmethod/remote init ((self jqueryapi))
-;;   (when (= "undefined" (typeof j-query))
-;;     (let ((req (this.make-request))
-;; 	  (resp (this.send-request req this.script-location)))
-;;       (return (eval (+ "{" resp.response-text "}"))))))
-
-;; ;; TODO: implement retrycount, possibly using $.ajax.
-;; (defmethod/remote jqueryfuncall ((self jqueryapi) url parameters retry-count)
-;;   (let (result)
-;;     (debug "server.funcall " url)
-;;     ($.post url
-;; 	    parameters
-;; 	    (lambda (data textstatus)
-;; 	      (setf result (eval (+ "{" data "}"))))
-;; 	    "json")
-;;     (return result)))
-
-;; (defun/cc jquery (&optional scriptlocation)  
-;;   (send/component (make-instance 'jqueryapi :script-location scriptlocation))
+;; (defmethod/cc send/ctor ((self html-element) remote-slots local-methods remote-methods)
 ;;   ;; (<:js
-;; ;;     `(progn
-;; ;;        (setf jqueryapi (new (jqueryapi)))
-;; ;;        (defun funcall (url parameters retry-count)
-;; ;; 	 (return (jqueryapi.jqueryfuncall url parameters retry-count)))
-;; ;;        (jqueryapi.init)))
-;;   (error "fix jquery")
-;;   )
+;; ;;    `(defun ,(class-name (class-of self)) ()
+;; ;; 	(let ((o (create ,@remote-slots ,@local-methods ,@remote-methods))
+;; ;; 	      (p (document.create-element o.tag)))
+;; ;; 	  (doeach (property o)
+;; ;; 	    (setf (slot-value p property) (slot-value o property)))
+	  
+;; ;; 	  (if (= "function" (typeof o.render))		
+;; ;; 	      (setf p.inner-h-t-m-l (o.render)))
 
-;; (defun dojo2 (&optional base-url (debug nil) (prevent-back-button 'false)
-;; 	      (css (reduce (lambda (acc a)
-;; 			     (cons (concatenate
-;; 				    'string +dojo-path+ ".." a)
-;; 				   acc))
-;; 			   (reverse
-;; 			    '("/dijit/themes/dijit.css"
-;; 			      "/dijit/themes/tundra/tundra.css"
-;; 			      "/dojox/widget/Toaster/Toaster.css"))
-;; 			   :initial-value '("http://node1.core.gen.tr/coretal/style/coretal.css"))))
-;;   (js*
-;;    `(progn
-;;       (defun load-javascript (url)
-;; 	(let ((request nil))
-;; 	  (cond
-;; 	    (window.*x-m-l-http-request ;; Gecko
-;; 	     (setf request (new (*x-m-l-http-request))))
-;; 	    (window.*active-x-object ;; Internettin Explorer
-;; 	     (setf request (new (*active-x-object "Microsoft.XMLHTTP")))))
-;; 	  (if (= null request)
-;; 	      (throw (new (*error "Cannot Load Javascript, -core-server 1.0"))))
-;; 	  (setf req request)
-;; 	  (request.open "GET" url false)
-;; 	  (request.send null)
-;; 	  (if (= 200 request.status)
-;; 	      (return (eval (+ "{" request.response-text "}"))))
-;; 	  (throw (new (*error (+ "Cannot load javascript:" url " -core-server 1.0"))))))
-;;       (defun load-css (url)
-;; 	(let ((link (document.create-element "link")))
-;; 	  (setf link.href url
-;; 		link.rel "stylesheet"
-;; 		link.type "text/css")
-;; 	  (.append-child (aref (document.get-elements-by-tag-name "head") 0)
-;; 			 link)
-;; 	  (return link)))
-;;       (defun init-core-server ()
-;; 	(when (= "undefined" (typeof dojo))
-;; 	  (setf dj-config (create :base-url ,+dojo-path+ :is-debug ,debug
-;; 				  :prevent-back-button-fix ,prevent-back-button
-;; 				  ;;				  :dojo-iframe-history-url "./resources/iframe_history.html"
-;; 				  ))      
-;; 	  (dolist (src (array "bootstrap.js" "loader.js" "hostenv_browser.js" "loader_xd.js"))	
-;; 	    (load-javascript (+ ,+dojo-path+ "_base/_loader/" src)))
-;; 	  (load-javascript (+ ,+dojo-path+ "_base.js")))
-;; 	(setf base-url ,(if (and +context+ base-url)
-;; 			    (format nil "/~A/~A"
-;; 				    (web-application.fqdn (application +context+))
-;; 				    base-url)))
-;; 	(dojo.require "dojo.back")
-;; 	(dojo.back.init)
-;; 	,@(mapcar (lambda (c) `(load-css ,c)) css)
-;; 	(dojo.add-on-load
-;; 	 (lambda ()
-;; 	   (setf document.body.class-name (+ document.body.class-name " tundra")))))
-;;       (defun serialize (value) (return (dojo.to-json value)))
-;;       (defun funcall (url parameters retry-count)
-;; 	(let (result)
-;; 	  (debug "server.funcall " url)
-;; 	  (when (dojo.is-object parameters)
-;; 	    (doeach (param parameters)
-;; 		    (setf (slot-value parameters param)
-;; 			  (serialize (slot-value parameters param)))))
-;; 	  (dojo.xhr-post
-;; 	   (create :url (+ base-url url)
-;; 		   :handle-as "text"
-;; 		   :sync t
-;; 		   :timeout 10
-;; 		   :content parameters
-;; 		   :load (lambda (json args)
-;; 			   ;;			   (debug json)
-;; 			   (setf result (eval (+ "{" json "}"))))
-;; 		   :error (lambda (err args)
-;; 			    (if (= err.status 500)				
-;; 				(if (= "undefined" (typeof retry-count))
-;; 				    (return (funcall url parameters 5))
-;; 				    (if (> retry-count 0)
-;; 					(return (funcall url parameters (- retry-count 1)))))
-;; 				(throw (new (*error (+ "Funcall error: " url ", " err))))))))
-;; 	  (return result)))
-;;       (defun get-parameter (name)
-;; 	(debug "get-param:" name)
-;; 	(let ((params (+ (.substr window.location.hash 1) "&" (.substr window.location.search 1)))
-;; 	      (arr (params.split "&")))
-;; 	  (dolist (a arr)
-;; 	    (let ((key (aref (a.split "=") 0))
-;; 		  (value (aref (a.split "=") 1)))
-;; 	      (debug (+ "key:" key " val:" value))
-;; 	      (if (= (key.to-lower-case) (name.to-lower-case))
-;; 		  (return value))))))
-;;       (defun set-parameter (name new-value)
-;; 	(let ((params (.substr window.location.hash 1))
-;; 	      (arr (params.split "&"))
-;; 	      (hash "")
-;; 	      (found nil))
-;; 	  (dolist (a arr)
-;; 	    (let ((key (aref (a.split "=") 0))
-;; 		  (value (aref (a.split "=") 1)))
-;; 	      (debug key value)
-;; 	      (if (not (= "undefined" (typeof key)))		  
-;; 		  (if (= (key.to-lower-case) (name.to-lower-case))
-;; 		      (setf hash (+ hash (+ key "=" new-value "&"))
-;; 			    found t)
-;; 		      (setf hash (+ hash (+ key "=" (if (= "undefined" (typeof value))
-;; 							"" value) "&")))))))
-;; 	  (if (not found) (setf hash (+ hash (+ name "=" new-value))))
-;;  	  (setf window.location.hash hash)
-;;  	  (return new-value)))
-;;       (init-core-server))))
+;; ;; 	  (setf this.prototype p)
+;; ;; 	  (return p))))
+;;   (error "fixme"))
 
-;; (defun dojo-old (&optional base-url (debug nil) (prevent-back-button 'false)
-;; 		 (css (reduce (lambda (acc a)
-;; 				(cons (concatenate
-;; 				       'string +dojo-path+ ".." a)
-;; 				      acc))
-;; 			      (reverse
-;; 			       '("/dijit/themes/dijit.css"
-;; 				 "/dijit/themes/tundra/tundra.css"
-;; 				 "/dojox/widget/Toaster/Toaster.css"))
-;; 			      :initial-value '("http://node1.core.gen.tr/coretal/style/coretal.css"))))
-;;   (js:js*
-;;    `(progn
-;;       (defun load-javascript (url)
-;; 	(let ((request nil))
-;; 	  (cond
-;; 	    (window.*x-m-l-http-request ;; Gecko
-;; 	     (setf request (new (*x-m-l-http-request))))
-;; 	    (window.*active-x-object ;; Internettin Explorer
-;; 	     (setf request (new (*active-x-object "Microsoft.XMLHTTP")))))
-;; 	  (if (= null request)
-;; 	      (throw (new (*error "Cannot Load Javascript, -core-server 1.0"))))
-;; 	  (setf req request)
-;; 	  (request.open "GET" url false)
-;; 	  (request.send null)
-;; 	  (if (= 200 request.status)
-;; 	      (return (eval (+ "{" request.response-text "}"))))
-;; 	  (throw (new (*error (+ "Cannot load javascript:" url " -core-server 1.0"))))))
-;;       (defun load-css (url)
-;; 	(let ((link (document.create-element "link")))
-;; 	  (setf link.href url
-;; 		link.rel "stylesheet"
-;; 		link.type "text/css")
-;; 	  (.append-child (aref (document.get-elements-by-tag-name "head") 0)
-;; 			 link)
-;; 	  (return link)))
-;;       (defun init-core-server ()
-;; 	(when (= "undefined" (typeof dojo))
-;; 	  (setf dj-config (create :base-url ,+dojo-path+ :is-debug ,debug
-;; 				  :prevent-back-button-fix ,prevent-back-button
-;; 				  ;;				  :dojo-iframe-history-url "./resources/iframe_history.html"
-;; 				  ))      
-;; 	  (dolist (src (array "bootstrap.js" "loader.js" "hostenv_browser.js" "loader_xd.js"))	
-;; 	    (load-javascript (+ ,+dojo-path+ "_base/_loader/" src)))
-;; 	  (load-javascript (+ ,+dojo-path+ "_base.js")))
-;; 	(setf base-url ,(if (and +context+ base-url)
-;; 			    (format nil "/~A/~A"
-;; 				    (web-application.fqdn (application +context+))
-;; 				    base-url)))
-;; 	(dojo.require "dojo.back")
-;; 	(dojo.back.init)
-;; 	,@(mapcar (lambda (c) `(load-css ,c)) css)
-;; 	(dojo.add-on-load
-;; 	 (lambda ()
-;; 	   (setf document.body.class-name (+ document.body.class-name " tundra")))))
-;;       (defun serialize (value) (return (dojo.to-json value)))
-;;       (defun funcall (url parameters retry-count)
-;; 	(let (result)
-;; 	  (debug "server.funcall " url)
-;; 	  (when (dojo.is-object parameters)
-;; 	    (doeach (param parameters)
-;; 		    (setf (slot-value parameters param)
-;; 			  (serialize (slot-value parameters param)))))
-;; 	  (dojo.xhr-post
-;; 	   (create :url (+ base-url url)
-;; 		   :handle-as "text"
-;; 		   :sync t
-;; 		   :timeout 10
-;; 		   :content parameters
-;; 		   :load (lambda (json args)
-;; 			   ;;			   (debug json)
-;; 			   (setf result (eval (+ "{" json "}"))))
-;; 		   :error (lambda (err args)
-;; 			    (if (= err.status 500)				
-;; 				(if (= "undefined" (typeof retry-count))
-;; 				    (return (funcall url parameters 5))
-;; 				    (if (> retry-count 0)
-;; 					(return (funcall url parameters (- retry-count 1)))))
-;; 				(throw (new (*error (+ "Funcall error: " url ", " err))))))))
-;; 	  (return result)))
-;;       (defun get-parameter (name)
-;; 	(debug "get-param:" name)
-;; 	(let ((params (+ (.substr window.location.hash 1) "&" (.substr window.location.search 1)))
-;; 	      (arr (params.split "&")))
-;; 	  (dolist (a arr)
-;; 	    (let ((key (aref (a.split "=") 0))
-;; 		  (value (aref (a.split "=") 1)))
-;; 	      (debug (+ "key:" key " val:" value))
-;; 	      (if (= (key.to-lower-case) (name.to-lower-case))
-;; 		  (return value))))))
-;;       (defun set-parameter (name new-value)
-;; 	(let ((params (.substr window.location.hash 1))
-;; 	      (arr (params.split "&"))
-;; 	      (hash "")
-;; 	      (found nil))
-;; 	  (dolist (a arr)
-;; 	    (let ((key (aref (a.split "=") 0))
-;; 		  (value (aref (a.split "=") 1)))
-;; 	      (debug key value)
-;; 	      (if (not (= "undefined" (typeof key)))		  
-;; 		  (if (= (key.to-lower-case) (name.to-lower-case))
-;; 		      (setf hash (+ hash (+ key "=" new-value "&"))
-;; 			    found t)
-;; 		      (setf hash (+ hash (+ key "=" (if (= "undefined" (typeof value))
-;; 							"" value) "&")))))))
-;; 	  (if (not found) (setf hash (+ hash (+ name "=" new-value))))
-;;  	  (setf window.location.hash hash)
-;;  	  (return new-value)))
-;;       (init-core-server))))
+;; (defcomponent div-element (html-element)
+;;   ()
+;;   (:default-initargs :tag "div"))
+
+;; (defmethod/local render ((self div-element))
+;;   (with-html-output (http-response.stream (response +context+))
+;;     (<:div "hobaaa")))
 
 ;; Core Server: Web Application Server
 
