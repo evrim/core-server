@@ -250,25 +250,25 @@
 ;; Debug Component
 ;; ----------------------------------------------------------------------------
 ;; FIXME: Fix debug component
-(defcomponent debug-component ()
-  ())
+;; (defcomponent debug-component ()
+;;   ())
 
-(defmethod/local get-source-code ((self debug-component) function)
-  (funcall (function (intern o)))) => "function () { return 1; }" ;
+;; (defmethod/local get-source-code ((self debug-component) function)
+;;   (funcall (function (intern o)))) => "function () { return 1; }" ;
 
-(defmethod/local set-result ((self debug-component) function parameters result)
-  (setf (gethash function +function-table+) (list (cons funciton parameters) result)))
+;; (defmethod/local set-result ((self debug-component) function parameters result)
+;;   (setf (gethash function +function-table+) (list (cons funciton parameters) result)))
 
-(defmethod/remote run-test ((self debug-component) function)
-  (let ((fun (this.get-source-code(function))))
-    (if fun
-	(this.set-result function nil (funcall fun)))))
+;; (defmethod/remote run-test ((self debug-component) function)
+;;   (let ((fun (this.get-source-code(function))))
+;;     (if fun
+;; 	(this.set-result function nil (funcall fun)))))
 
-(defun/javascript denemeA (str num) ("aycan" 1) ()
-  (denemeB str (incf num)))
+;; (defun/javascript denemeA (str num) ("aycan" 1) ()
+;;   (denemeB str (incf num)))
 
-(defun/javascript denemeB (str num)
-  (list str num))
+;; (defun/javascript denemeB (str num)
+;;   (list str num))
 
 ;; record tanimla
 ;; record query, update
