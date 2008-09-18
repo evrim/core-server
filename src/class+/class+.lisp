@@ -65,6 +65,9 @@
 (defmethod class+.slot-search ((class class+) match-p)
   (filter match-p (class+.slots class)))
 
+(defmethod class+.find-slot ((class class+) slot-name)
+  (find slot-name (class+.slots class) :key #'slot-definition-name :test #'string=))
+
 (defmethod class+.local-slots ((class class+))
   (class+.slot-search class (lambda (s) (eq 'local (slot-value s 'host)))))
 
