@@ -157,6 +157,27 @@
     (intern (subseq (symbol-name type) 0 (1- (length (symbol-name type))))
 	    (symbol-package type))))
 
+(defmethod slot-definition-singular-typep ((slot class+-slot-definition))
+  (let ((type (sb-pcl::slot-definition-type slot)))
+    (and (symbolp type)
+	 (not (null (slot-definition-relation slot)))
+	 (not (ends-with (symbol-name type) "*"))
+	 (not (null (find-class+ type))))))
+
+(defmethod slot-definition-plural-typep ((slot class+-slot-definition))
+  (let* ((type (sb-pcl::slot-definition-type slot))
+	 (name (symbol-name type)))
+    (and (symbolp type)
+	 (not (null (slot-definition-relation slot)))
+	 (ends-with name "*")
+	 (not (null (find-class+ (intern (subseq name 0 (1- (length name))))))))))
+
+(defmethod slot-definition-relational-slot ((slot class+-slot-definition))
+  (let* ((type (if (slot-definition-singular-typep slot)
+		   (sb-pcl::slot-definition-type slot)
+		   (slot-definition-singular-type slot))))
+    (class+.find-slot (find-class+ type) (slot-definition-relation slot))))
+
 ;; ----------------------------------------------------------------------------
 ;; Relations
 ;; ----------------------------------------------------------------------------
@@ -165,18 +186,22 @@
 	    (not (null (slot-definition-relation slot))))
 	  (class+.slots class)))
 
-(defmethod class+.1-to-n-relations ((class class+))
+(defmethod class+.1-to-n-relations ((class class+))  
   (filter (lambda (slot)
-	    (with-slotdef (type) slot
-	      (and (symbolp type)
-		   (ends-with (symbol-name type) "*"))))
+	    (and (slot-definition-plural-typep slot)
+		 (slot-definition-singular-typep (slot-definition-relational-slot slot))))
 	  (class+.relations class)))
 
 (defmethod class+.n-to-1-relations ((class class+))
   (filter (lambda (slot)
-	    (with-slotdef (type) slot
-	      (and (symbolp type)
-		   (not (ends-with (symbol-name type) "*")))))
+	    (and (slot-definition-singular-typep slot)
+		 (slot-definition-plural-typep (slot-definition-relational-slot slot))))
+	  (class+.relations class)))
+
+(defmethod class+.n-to-n-relations ((class class+))
+  (filter (lambda (slot)
+	    (and (slot-definition-plural-typep slot)
+		 (slot-definition-plural-typep (slot-definition-relational-slot slot))))
 	  (class+.relations class)))
 
 ;; ----------------------------------------------------------------------------
