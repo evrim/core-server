@@ -92,7 +92,8 @@
   ((host :initarg :host :initform 'local :accessor slot-definition-host)
    (client-type :initarg :client-type :initform 'primitive :accessor slot-definition-client-type)
    (relation :initarg :relation :initform nil :accessor slot-definition-relation)
-   (index :initarg :index :initform nil :accessor slot-definition-index)))
+   (index :initarg :index :initform nil :accessor slot-definition-index)
+   (print :initarg :print :initform nil :accessor slot-definition-print)))
 
 (defclass class+-direct-slot-definition (class+-slot-definition standard-direct-slot-definition)
   ())
@@ -109,7 +110,7 @@
   (find-class 'class+-effective-slot-definition))
 
 (defmethod %class+-inherited-slots ((class class+))
-  '(host client-type sb-pcl::readers sb-pcl::writers relation index))
+  '(host client-type sb-pcl::readers sb-pcl::writers relation index print))
 
 (defmethod compute-effective-slot-definition ((class class+) slot-name slot-defs)
   (flet ((copy-slots (slots source target)
@@ -226,6 +227,17 @@
 (defmacro defclass+-ctor (name)
   (class+.ctor (find-class+ name)))
 
+(defmacro defclass+-print-object (name)
+  (let* ((class+ (find-class+ name))
+	 (slots (filter #'slot-definition-print (class+.slots class+))))
+    `(defprint-object (self ,name)
+       (format t "~{~A~^ ~}" (list ,@(nreverse
+				      (reduce0 (lambda (acc slot)
+						 (cons `(list ',(slot-definition-name slot)
+							      (slot-value self ',(slot-definition-name slot)))
+						       acc))
+					       slots)))))))
+
 ;; ----------------------------------------------------------------------------
 ;; defclass+ Macro
 ;; ----------------------------------------------------------------------------
@@ -265,6 +277,7 @@
 	 ,@(%filter-rest rest))       
        (fmakunbound ',name)
        (defclass+-ctor ,name))
+     (defclass+-print-object ,name)
      (find-class ',name)))
 
 ;; (defclass+ user1 ()
