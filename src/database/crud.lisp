@@ -74,7 +74,8 @@
 ;; 					    acc)))
 ;; 				  (class+.local-slots class+)))
 	   (n-to-1 (class+.n-to-1-relations class+))
-	   (1-to-n (class+.1-to-n-relations class+)))    
+	   (1-to-n (class+.1-to-n-relations class+))
+	   (n-to-n (class+.n-to-n-relations class+)))    
       `(progn
 	 ;; ----------------------------------------------------------------------------
 	 ;; All Instances Method (r/o)
@@ -127,6 +128,22 @@
 					     (list (list ',relation object))))
 					  ,name)))))
 			 1-to-n)
+
+	       ;; Handle n-to-n relations
+	       ,@(mapcar (lambda (slot)
+			   (with-slotdef (name relation) slot
+			     (destructuring-bind (name initform supplied-p) (assoc name lambda-list-with-initforms)
+			       (declare (ignore initform))
+			       `(when ,supplied-p
+				  (mapcar (lambda (target)
+					    (tx-change-object-slots
+					     server ',(slot-definition-singular-type slot) (get-id target)
+					     (list (list ',relation
+							 (cons object
+							       (slot-value target ',relation))))))
+					  ,name)))))
+			 n-to-n)
+
 	       object)))
 
 	 ;; ----------------------------------------------------------------------------
@@ -154,6 +171,16 @@
 				      (,(crud.delete-tx (slot-definition-singular-type slot) prefix) server target))
 				    (slot-value ,class ',name))))
 		       1-to-n)
+	     ;; Handle n-to-n relations: Remove itself from relational list
+	     ,@(mapcar (lambda (slot)
+			 (with-slotdef (name relation) slot
+			   `(mapcar (lambda (target)
+				      (tx-change-object-slots
+				       server ',(slot-definition-singular-type slot) (get-id target)
+				       (list (list ',relation
+						   (remove ,class (slot-value target ',relation))))))
+				    (slot-value ,class ',name))))
+		       n-to-n)
 	     (tx-delete-object server ',class (get-id ,class))))
 
 	 ;; ----------------------------------------------------------------------------
@@ -188,7 +215,41 @@
 					   (list (list ',relation ,class))))
 					,name)))))
 		       1-to-n)
-	   
+
+	     ;; Handle n-to-n Relations:
+	     ,@(mapcar (lambda (slot)
+			 (with-slotdef (name relation) slot
+			   (destructuring-bind (name initform supplied-p) (assoc name lambda-list-with-initforms)
+			     (declare (ignore initform))
+			     `(when ,supplied-p
+				(let ((del-list (set-difference (ensure-list (slot-value ,class ',name))
+								(ensure-list ,name)))
+				      (add-list (set-difference (ensure-list ,name)
+								(ensure-list (intersection (slot-value ,class ',name)
+											   ,name)))))
+				  (describe del-list)
+				  (describe add-list)
+				  (mapc (lambda (target)
+					  (tx-change-object-slots
+					   server ',(slot-definition-singular-type slot) (get-id target)
+					   (list (list ',relation (remove ,class (slot-value target ',name))))))
+					del-list)
+				  (mapc (lambda (target)
+					  (tx-change-object-slots
+					   server ',(slot-definition-singular-type slot) (get-id target)
+					   (list (list ',relation (cons ,class (slot-value target ',name))))))
+					add-list)
+				  ;; (mapcar (lambda (target)
+;; 					    (tx-change-object-slots
+;; 					     server ',(slot-definition-singular-type slot) (get-id target)
+;; 					     (list (list ',relation
+;; 							 (append ,name
+;; 								 (set-difference (slot-value ,class ',relation)
+;; 										 (slot-value ,class ',name)))))))
+;; 					  ,name)
+				  )))))
+		       n-to-n)
+	     
 	     (tx-change-object-slots server ',class (get-id ,class)
 				     (remove-if #'null (list ,@update-arguments)))))))))
 
