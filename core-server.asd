@@ -66,7 +66,7 @@
 				   (:file "prevalence")))
 			 (:module :database
 				  :serial t
-				  ::components
+				  :components
 				  ((:file "crud")))
 			 (:module :units
                                   :serial t
