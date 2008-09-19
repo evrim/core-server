@@ -72,26 +72,33 @@
                                   :serial t
                                   :components
                                   ((:file "units")))
-			 (:module :io
-				  :serial t
-				  :components
-				  ((cffi-grovel:grovel-file "grovel") 
-				   (:file "errno")
-				   (:file "bsd")
-				   (:file "interface")
-				   (:file "events")
-				   ;; (:module :libevent
+;;; 			 (:module :gss
+;;; 				  :serial t
+;;; 				  :components
+;;; 				  ((cffi-grovel:grovel-file "grovel")
+;;; 				   (:file "gss")
+;;; 				   (:file "interface")))
+			 ;; (:module :io
+;; 				  :serial t
+;; 				  :components
+;; 				  ((cffi-grovel:grovel-file "grovel") 
+;; 				   (:file "errno")
+;; 				   (:file "bsd")
+;; 				   (:file "interface")
+;; 				   (:file "events")
+;; 				   ;; (:module :libevent
+;; ;; 					    :serial t
+;; ;; 					    :components
+;; ;; 					    ((:file "libevent-lib")
+;; ;; 					     (cffi-grovel:grovel-file "grovel")
+;; ;; 					     (:file "libevent")))
+;; 				   (:module :libev
 ;; 					    :serial t
 ;; 					    :components
-;; 					    ((:file "libevent-lib")
+;; 					    ((:file "libev-lib")
 ;; 					     (cffi-grovel:grovel-file "grovel")
-;; 					     (:file "libevent")))
-				   (:module :libev
-					    :serial t
-					    :components
-					    ((:file "libev-lib")
-					     (cffi-grovel:grovel-file "grovel")
-					     (:file "libev")))))
+;; 					     (:file "libev") 
+;; 					     (:file "interface")))))
                          (:module :streams
                                   :serial t
                                   :components
