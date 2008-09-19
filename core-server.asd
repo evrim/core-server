@@ -18,9 +18,9 @@
 ;;;; -*- Mode: lisp; indent-tabs-mode: nil; outline-regexp: ";;;;;*"; -*-
 (in-package :asdf)
 
-;; CFFI-Grovel is needed
-(cl:eval-when (:load-toplevel :execute)
-  (asdf:operate 'asdf:load-op 'cffi-grovel))
+;; ;; CFFI-Grovel is needed
+;; (cl:eval-when (:load-toplevel :execute)
+;;   (asdf:operate 'asdf:load-op 'cffi-grovel))
 
 ;; Add distribution based features
 (eval-when (:compile-toplevel :load-toplevel :execute)
