@@ -59,6 +59,10 @@
 ;; GETNAMEINFO, GETADDRINFO
 (include "sys/types.h" "sys/socket.h" "netdb.h")
 (ctype size-t "size_t")
+(ctype ssize-t "ssize_t")
+
+(include "sys/sendfile.h")
+(ctype off-t "off_t")
 
 (constant (ni-numerichost "NI_NUMERICHOST"))
 (constant (ni-numericserv "NI_NUMERICSERV"))
@@ -85,6 +89,10 @@
   (ai-canonname "ai_canonname" :type :pointer)
   (ai-next "ai_next" :type :pointer))
 
+(cstruct linger "struct linger"
+  (l-onoff "l_onoff" :type :int)
+  (l-linger "l_linger" :type :int))
+
 ;; +----------------------------------------------------------------------------
 ;; |SOCKET ADDRESS
 ;; +----------------------------------------------------------------------------
@@ -101,6 +109,9 @@
 (cstruct in-addr-struct "struct in_addr"
   (addr "s_addr" :type :uint32))
 
+(include "netinet/tcp.h")
+(progn
+  (constant (tcp-nodelay "TCP_NODELAY")))
 
 ;; +----------------------------------------------------------------------------
 ;; |SET/GETSOCKOPT
@@ -113,7 +124,8 @@
   (constant (so-error "SO_ERROR"))
   (constant (so-keepalive "SO_KEEPALIVE"))
   (constant (so-rcvtimeo "SO_RCVTIMEO"))
-  (constant (so-sndtimeo "SO_SNDTIMEO")))
+  (constant (so-sndtimeo "SO_SNDTIMEO"))
+  (constant (so-linger "SO_LINGER")))
 
 ;; +----------------------------------------------------------------------------
 ;; |SEND/RECV FLAGS
@@ -157,6 +169,7 @@
 ;;; EPOLL TYPE DEFINITIONS
 ;;;-----------------------------------------------------------------------------
 (include "sys/epoll.h" "sys/ioctl.h")
+(ctype uint32-t "uint32_t")
 (progn
   ;;  (ctype sigset-t "sigset_t") ;; broken
   (cunion epoll-data "epoll_data_t"
@@ -166,7 +179,7 @@
 	  (u64 "u64" :type :uint64))
 
   (cstruct epoll-event "struct epoll_event"
-	   (events "events" :type :uint32)
+	   (events "events" :type uint32-t)
 	   (data   "data"   :type epoll-data))
 
 
@@ -182,9 +195,7 @@
   (constant (epollwrband "EPOLLWRBAND"))
   (constant (epollerr "EPOLLERR"))
   (constant (epollhup "EPOLLHUP"))
-  (constant (epollmsg "EPOLLMSG"))
-  (constant (epolloneshot "EPOLLONESHOT"))
-  (constant (epollet "EPOLLET"))
+  (constant (epollmsg "EPOLLMSG")) 
   
   ;;--------------------------------------------------------------------------
   ;; EPOLL OPERATIONS FOR EPOLL_CTL()

@@ -18,9 +18,9 @@
 ;;;; -*- Mode: lisp; indent-tabs-mode: nil; outline-regexp: ";;;;;*"; -*-
 (in-package :asdf)
 
-;; ;; CFFI-Grovel is needed
-;; (cl:eval-when (:load-toplevel :execute)
-;;   (asdf:operate 'asdf:load-op 'cffi-grovel))
+;; CFFI-Grovel is needed
+(cl:eval-when (:load-toplevel :execute)
+  (asdf:operate 'asdf:load-op 'cffi-grovel))
 
 ;; Add distribution based features
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -78,27 +78,27 @@
 ;;; 				  ((cffi-grovel:grovel-file "grovel")
 ;;; 				   (:file "gss")
 ;;; 				   (:file "interface")))
-			 ;; (:module :io
-;; 				  :serial t
-;; 				  :components
-;; 				  ((cffi-grovel:grovel-file "grovel") 
-;; 				   (:file "errno")
-;; 				   (:file "bsd")
-;; 				   (:file "interface")
-;; 				   (:file "events")
-;; 				   ;; (:module :libevent
-;; ;; 					    :serial t
-;; ;; 					    :components
-;; ;; 					    ((:file "libevent-lib")
-;; ;; 					     (cffi-grovel:grovel-file "grovel")
-;; ;; 					     (:file "libevent")))
-;; 				   (:module :libev
+                         (:module :io
+				  :serial t
+				  :components
+				  ((cffi-grovel:grovel-file "grovel") 
+				   (:file "errno")
+				   (:file "bsd")
+				   (:file "interface")
+				   (:file "events")
+				   ;; (:module :libevent
 ;; 					    :serial t
 ;; 					    :components
-;; 					    ((:file "libev-lib")
+;; 					    ((:file "libevent-lib")
 ;; 					     (cffi-grovel:grovel-file "grovel")
-;; 					     (:file "libev") 
-;; 					     (:file "interface")))))
+;; 					     (:file "libevent")))
+				   (:module :libev
+					    :serial t
+					    :components
+					    ((:file "libev-lib")
+					     (cffi-grovel:grovel-file "grovel")
+					     (:file "libev") 
+					     (:file "interface")))))
                          (:module :streams
                                   :serial t
                                   :components

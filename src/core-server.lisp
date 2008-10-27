@@ -28,36 +28,36 @@
 
 (in-package :cl-user)
 (defpackage :tr.gen.core.install)
-;; (defpackage :tr.gen.core.ffi
-;;   (:nicknames :core-ffi)
-;;   (:use :cl :cffi)
-;;   (:export
-;;    #:gethostbyname
-;; ;;;    #:epollin
-;; ;;;    #:epollout
-;; ;;;    #:epollerr
-;; ;;;    #:make-epoll-device
-;; ;;;    #:wait
-;; ;;;    #:epoll-event.events
-;; ;;;    #:epoll-event.fd
-;;    ;; socket
-;;    #:%recv
-;;    #:%send
-;;    #:%close
-;;    ;; libev
-;;    #:ev-loop
-;;    #:ev-unloop
-;;    #:ev-default-loop
-;;    #:bzero
-;;    #:set-nonblock
-;;    #:ev-watcher
-;;    #:ev-io
-;;    #:size-of-ev-io
-;;    #:ev-io-init
-;;    #:ev-io-start
-;;    #:ev-io-stop
-;;    #:ev-read
-;;    #:evunloop-all))
+(defpackage :tr.gen.core.ffi
+  (:nicknames :core-ffi)
+  (:use :cl :cffi)
+  (:export
+   #:gethostbyname
+;;;    #:epollin
+;;;    #:epollout
+;;;    #:epollerr
+;;;    #:make-epoll-device
+;;;    #:wait
+;;;    #:epoll-event.events
+;;;    #:epoll-event.fd
+   ;; socket
+   #:%recv
+   #:%send
+   #:%close
+   ;; libev
+   #:ev-loop
+   #:ev-unloop
+   #:ev-default-loop
+   #:bzero
+   #:set-nonblock
+   #:ev-watcher
+   #:ev-io
+   #:size-of-ev-io
+   #:ev-io-init
+   #:ev-io-start
+   #:ev-io-stop
+   #:ev-read
+   #:evunloop-all))
 
 (defpackage :tr.gen.core.server
   (:nicknames :core-server)

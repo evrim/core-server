@@ -108,10 +108,43 @@
   (addr :pointer)
   (addrlen :pointer))
 
+;; ssize_t recv(int socket, void *buffer, size_t length, int flags); 
+(defcfun ("recv" %recv) retval
+  (fd fd)
+  (buffer :pointer)
+  (len :int)
+  (flags :int))
+
+;; ssize_t send(int s, const void *buf, size_t len, int flags); 
+(defcfun ("send" %send) retval
+  (fd :int)
+  (buffer :pointer)
+  (len :int)
+  (flags :int))
+
+;; ssize_t read(int fd, void *buf, size_t count);
+(defcfun ("read" %read) ssize-t
+  (fd :int)
+  (buf :pointer)
+  (count size-t))
+
+;; ssize_t write(int fd, const void *buf, size_t count);
+(defcfun ("write" %write) ssize-t
+  (fd :int)
+  (buf :pointer)
+  (count size-t))
+
 ;; int close(int fd);
 (declaim (inline %close))
 (defcfun ("close" %close) retval
   (fd :int))
+
+;; ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count);
+(defcfun ("sendfile" %sendfile) retval
+  (out-fd :int)
+  (in-fd :int)
+  (offset off-t)
+  (count size-t))
 
 ;; int setsockopt(int s,int level,int optname,void *optval,socklen_t optlen);
 (defcfun ("setsockopt" %setsockopt) retval
