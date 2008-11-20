@@ -138,7 +138,6 @@
      (defpackage ,(package-keyword self t)
        (:nicknames ,(package-keyword self))
        (:use ,@(serializable-web-application.use self))
-       (:shadowing-import-from #:cl-prevalence #:name)
        (:shadowing-import-from #:arnesi #:new))))
 
 (defmethod src/model ((self serializable-web-application))  
@@ -165,16 +164,15 @@
      (defvar *db-location* (merge-pathnames
 			    (make-pathname :directory '(:relative "var" ,(web-application.fqdn self) "db"))
 			    (bootstrap:home)))
-     (defclass ,(application-class self) (http-application
-					  apache-web-application
-					  database-server
-					  logger-server
-					  serializable-web-application)
+     (defapplication ,(application-class self) (http-application
+						apache-web-application
+						database-server
+						logger-server
+						serializable-web-application)
        ()
        (:default-initargs
-	 :directory *db-location*
+	 :database-directory *db-location*
 	 :db-auto-start t
-	 :model-class ',(model-class self)
 	 :fqdn ,(web-application.fqdn self)
 	 :admin-email ,(web-application.admin-email self)
 	 :project-name ,(web-application.project-name self)
@@ -184,8 +182,7 @@
 	 :sources ',(serializable-web-application.sources self)
 	 :directories ',(serializable-web-application.directories self)
 	 :use ',(serializable-web-application.use self)
-	 :depends-on ',(serializable-web-application.depends-on self)
-	 :urls nil))
+	 :depends-on ',(serializable-web-application.depends-on self)))
      (defvar *app* (make-instance ',(application-class self)))
      (defun register-me (&optional (server *server*))
        (core-server::register server *app*))
