@@ -26,17 +26,36 @@
 
 (defrender/js core-library! ()
   (defun reduce (fun lst initial-value)
+    (if (null lst)
+	(return nil))
+    
     (let ((result (or (and (not (typep initial-value 'undefined)) initial-value) nil)))
-      (dolist (item lst)
-	(setf result (fun result item)))
+      (if (instanceof lst '*array)
+	  (dolist (item lst)
+	    (setf result (fun result item)))
+	  (doeach (item lst)
+	    (setf result (fun result (aref lst item)))))
       result))
 
   (defun reduce0 (fun lst)
     (reduce fun lst nil))
 
   (defun reverse (lst)
-    (.reverse lst))
-  
+    (if (null lst)
+	nil
+	(.reverse lst)))
+
+  (defun flatten (lst acc)
+    (if (typep acc 'undefined)
+	(setf acc (list)))
+    
+    (cond
+      ((null lst) nil)
+      ((not (instanceof lst *array)) (cons lst acc))
+      ((not lst.length) acc)
+      (t
+       (flatten (car lst) (flatten (cdr lst) acc)))))
+
   (defun filter (fun lst)
     (reverse
      (reduce0 (lambda (acc atom)
@@ -64,4 +83,153 @@
     (reverse
      (reduce (lambda (acc atom)
 	       (cons (fun atom) acc))
-	     lst))))
+	     lst)))
+  
+  (defun mapobject (fun obj)
+    (let ((result (new (*object))))
+      (doeach (i obj)
+	(setf (slot-value result i)
+	      (fun i (slot-value obj i))))
+      result))
+
+  (defun member (obj lst)
+    (reduce (lambda (acc atom)
+	      (or acc (equal atom obj)))
+	    lst))
+
+  (defun remove-class (node class-name)    
+    (let ((classes (node.class-name.split " ")))
+      (when (and classes classes.length)
+	(let ((classes (filter (lambda (a)
+				 (not (equal class-name a)))
+			       classes)))
+	  (if (and classes classes.length)
+	      (setf node.class-name (.join classes " "))
+	      (setf node.class-name "")))))
+    node)
+
+  (defun add-class (node class-name)
+    (remove-class node class-name)
+    (setf node.class-name (+ class-name " " node.class-name))
+    node)
+
+  (defun replace-node (old-node new-node)
+    (old-node.parent-node.insert-before old-node new-node)
+    (old-node.parent-node.remove-child old-node)
+    new-node)
+
+  (defun show (node)
+    (when (instanceof node *h-t-m-l-element)
+      (setf node.style.display "block"))
+    node)
+
+  (defun hide (node)
+    (when (instanceof node *h-t-m-l-element)
+      (setf node.style.display "none"))
+    node)
+
+  (defun inline (node)
+    (when (instanceof node *h-t-m-l-element)
+      (setf node.style.display "inline"))
+    node)
+  
+  (defun add-on-load (fun)
+    (if (typep window.onload 'function)
+	(let ((current window.onload))
+	  (setf window.onload
+		(lambda ()
+		  (current)
+		  (fun))))
+	(setf window.onload fun)))
+
+  (defun connect (target event lambda)
+    (if (typep target 'string)
+	(setf (slot-value ($ target) event) lambda)
+	(setf (slot-value target event) lambda)))
+  
+  (defun serialize (object)
+    (labels ((serialize (object)
+	     (cond
+	       ((null object)
+		"null")
+	       ((typep object 'undefined)
+		"undefined")
+	       ((typep object 'number)
+		object)
+	       ((typep object 'string)
+		(+ "\"" (encode-u-r-i-component object) "\""))
+	       ((instanceof object '*array)
+		(if (> (slot-value object 'length) 0)
+		    (+ "["		   
+		       (.join (mapcar (lambda (item)
+					(return (serialize item)))
+				      object)
+			      ",")
+		       "]")
+		    "[]"))
+	       ((typep object 'object)
+		(let ((result "{")
+		      (keys))
+		  (labels ((one (key value)
+			     (setf result (+ result (serialize key) ":"
+					     (serialize value)))))
+		    (doeach (i object) (setf keys (cons i keys)))
+		    (when (car keys)
+		      (one (car keys) (slot-value object (car keys))))
+		    (mapcar (lambda (key)
+			      (setf result (+ result ","))
+			      (one key (slot-value object key))) 
+			    (cdr keys))
+		    (return (+ result "}")))))
+	       (t
+		(throw (new (*error (+ "Could not serialize " object))))
+		nil))))
+    (serialize object)))
+
+  (defun funcall (action arguments)
+    (console.debug (+ "funcalling :" action " with args:" arguments))
+    (if window.*active-x-object
+	(setf xhr (new (*active-x-object "Microsoft.XMLHTTP")))
+	(setf xhr (new (*x-m-l-http-request))))
+    (xhr.open "POST" action false)
+;;     (xhr.set-request-header "Content-Type" "application/x-www-form-urlencoded")
+    (xhr.set-request-header "Content-Type" "text/json")
+    (xhr.send (serialize arguments))
+
+    (if (not (= 200 xhr.status))
+	(throw (new (*error (+ "Server error occured: " xhr.status)))))
+            
+    (let ((content-type (xhr.get-response-header "Content-Type")))
+      (if (null content-type)
+	  (throw (new (*error "Content-Type of the response is not defined"))))
+
+      (setf content-type (aref (content-type.split ";") 0))
+      
+      (cond
+	((or (eq content-type "text/json") (eq content-type "text/javascript"))
+	 (eval (+ "("  xhr.response-text ")")))
+	((eq content-type "text/html")
+	 (let ((div (document.create-element "div")))
+	   (setf div.inner-h-t-m-l xhr.response-text)
+	   (console.debug div)
+	   (cond
+	     ((eq 0 div.child-nodes.length)
+	      nil)
+	     ((eq 1 div.child-nodes.length)
+	      (aref div.child-nodes 0))
+	     (t
+	      div)))))))
+
+  (defun make-dom-element (tag properties children)
+    (let ((element (document.create-element tag)))
+      (doeach (i properties)
+	(setf (aref element i) (aref properties i)))
+      (let ((children (flatten children)))
+	(mapcar (lambda (i)
+		  (cond
+		    ((instanceof i *h-t-m-l-element)
+		     (element.append-child i))
+		    (t
+		     (element.append-child (document.create-text-node i)))))
+		children))
+      element)))

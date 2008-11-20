@@ -48,6 +48,8 @@
 (defjsinfix equal "===")
 (defjsinfix or "||")
 (defjsinfix and "&&")
+(defjsinfix instanceof "instanceof")
+(defjsinfix mod "%")
 
 (defun seperated-by (seperator args)  
   `(:and
@@ -102,7 +104,11 @@
       `(:and "!" ,(funcall expander arg expander))))
 
 (defjssyntax typeof (arg)
-  `(:and "typeof " ,(funcall expander arg expander)))
+  `(:and "(typeof " ,(funcall expander arg expander) ")"))
+
+(defjssyntax instanceof (arg1 arg2)
+  `(:and ,(funcall expander arg1 expander) " instanceof "
+	 ,(funcall expander arg2 expander)))
 
 (defjssyntax return (arg)
   `(:and "return " ,(funcall expander arg expander)))
@@ -131,7 +137,7 @@
 (defjssyntax new (expression)
   `(:and "new " ,(funcall expander expression expander)))
 
-(defjssyntax create (&rest arguments)
+(defjssyntax jobject (&rest arguments)
   (if arguments
       `(:and "{" (:indent) #\Newline
 	     ,(seperated-by (format nil ",~%")
@@ -167,7 +173,7 @@
   `(:and "for (var " ,(symbol-to-js (operator iterator))
 	 " in " ,(funcall expander (car (arguments iterator)) expander)
 	 ") {" (:indent) #\Newline
-	 ,(funcall expander (make-instance 'progn-form :body body) expander)
+ 	 ,(funcall expander (make-instance 'progn-form :body body) expander)
 	 (:deindent) #\Newline "}"))
 
 (defjssyntax slot-value (object slot)
@@ -564,9 +570,10 @@
 ;;;; TODO: FIX setq walker to walk var (easy)
 ;;;; TODO: FIX call/cc to unwalk var before going in. -evrim.
 (defjavascript-expander setq-form (var value)
-  `(:and ,(let ((+js-free-variables+ nil))
-	    (funcall expand var expand))
-	 " = " ,(funcall expand value expand)))
+  `(:and ;; ,(let ((+js-free-variables+ nil))
+;; 	       (funcall expand var expand))
+    ,(funcall expand var expand)
+    " = " ,(funcall expand value expand)))
 
 ;;;; SYMBOL-MACROLET
 ;; We ignore the binds, because the expansion has already taken

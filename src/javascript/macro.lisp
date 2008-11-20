@@ -30,6 +30,9 @@
 (defjsmacro make-array (&rest args)
   `(list ,@args))
 
+(defjsmacro create (&rest args)
+  `(jobject ,@args))
+
 (defjsmacro 1+ (arg)
   `(+ ,arg 1))
 
@@ -88,6 +91,9 @@
 (defjsmacro null (atom)
   `(or (typep ,atom 'undefined)
        (eq 'null ,atom)))
+
+(defjsmacro defined (atom)
+  `(not (typep ,atom 'undefined)))
 
 (defjsmacro $ (id)
   `(document.get-element-by-id ,id))

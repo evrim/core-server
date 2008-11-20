@@ -50,8 +50,11 @@
 
   (defmethod find-form-leaf ((form cond-form))
     (nreverse
-     (reduce0 (lambda (acc atom) (cons (last1 atom) acc))
+     (reduce0 (lambda (acc atom) (cons (find-form-leaf (last1 atom)) acc))
 	      (conditions form))))
+
+  (defmethod find-form-leaf ((form let-form))
+    (find-form-leaf (last1 (body form))))
   
   (defmethod find-form-leaf ((form application-form))
     (cond

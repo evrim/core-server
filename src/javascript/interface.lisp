@@ -64,6 +64,7 @@
 	       (walk-js-form `(progn ,@body)))
 	      #'expand-javascript)))
 	   #'expander stream)
+	 (char! ,stream #\Newline)
 	 ,stream))))
 
 (defmacro defrender/js (name args &body body)
@@ -80,3 +81,11 @@
      (defrender/js ,(intern (string-upcase (format nil "~A/JS" name))) ()
        (setq ,name (lambda ,params
 		     ,@body)))))
+
+(defmacro jambda (arguments &body body)
+  (with-unique-names (stream)
+    (let ((stream (intern (symbol-name stream))))
+      `(with-core-stream/cc (,stream "")
+	 (with-js ,arguments ,stream
+	   ,@body)
+	 (return-stream ,stream)))))
