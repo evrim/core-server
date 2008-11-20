@@ -78,6 +78,9 @@
 ;;(setq (get 'defmethod/cc 'common-lisp-indent-function) 'lisp-indent-defmethod
 ;;      (get 'defmethod/unit 'common-lisp-indent-function) 'lisp-indent-defmethod)
 
+(font-lock-add-keywords 'slime-mode '(("\\(defun\\/cc" . font-lock-keyword-face)))
+(font-lock-add-keywords 'slime-mode '(("\\(defmethod\\/local" . font-lock-keyword-face)))
+(font-lock-add-keywords 'slime-mode '(("\\(defhtml\-tag" . font-lock-keyword-face)))
 
 ;; DARCSUM
 (load-el "darcsum.el")
