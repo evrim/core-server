@@ -23,6 +23,10 @@
   (if (or (not (slot-boundp self 'id)) (null (slot-value self 'id)))
       (setf (slot-value self 'id) (random-string 5))))
 
+(defmethod component.application ((self component))
+  "Returns application associated with this component."
+  (context.application +context+))
+
 ;; +----------------------------------------------------------------------------
 ;; | defcomponent Macro: Defines a new component
 ;; +----------------------------------------------------------------------------
