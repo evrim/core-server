@@ -65,7 +65,7 @@
 	    (nconc (mailbox.queue mbox) (list message)))
       (condition-notify (mailbox.waitqueue mbox)))))
 
-(defun thread-receive (&optional (thread (current-thread)))
+(defun thread-receive (&optional (thread (current-thread)) (non-block nil))
   "Waits until a message pops from the thread queue"
   (let* ((mbox (thread-mailbox thread))
 	 (lock (mailbox.lock mbox)))
@@ -73,6 +73,7 @@
       (loop
 	 (let ((q (mailbox.queue mbox)))
 	   (cond (q (return (pop (mailbox.queue mbox))))
+		 (non-block (return nil))
 		 (t (condition-wait (mailbox.waitqueue mbox)
 				    lock))))))))
 

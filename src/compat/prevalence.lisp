@@ -22,14 +22,13 @@
 ;;+----------------------------------------------------------------------------
 ;;
 ;; This file overrides some properties of cl-prevalence database.
-
 (defun cl-prevalence::get-objects-slot-index-name (class &optional (slot 'id))
   (core-server::any (lambda (class)
 	 (if (member slot (mapcar #'core-server::slot-definition-name (mopp::class-direct-slots class)))
 	     (intern (concatenate 'string (symbol-name (class-name class))
 				  "-" (symbol-name slot) "-INDEX")
 		     :keyword)))
-       (core-server::class-superclasses class 'standard-class)))
+       (core-server::class-superclasses class)))
 
 (defun cl-prevalence::class-compile-timestamp (system class)
   (or (get-root-object

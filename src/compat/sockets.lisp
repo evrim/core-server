@@ -47,10 +47,13 @@
 (defun accept (socket &key (element-type '(unsigned-byte 8)))
   "Returns a new client core-stream that is just connected to 'socket'"
   (multiple-value-bind (s peer) (socket-accept socket)
-    (values (make-core-stream (socket-make-stream s
-						  :input t :output t
-						  :element-type element-type
-						  :buffering :full))
+    (values (make-instance 'core-fd-io-stream-v2
+			   :stream (socket-make-stream s
+						       :input t :output t
+						       ;; :element-type ;; element-type
+;; 						       'character
+						       :element-type element-type
+						       :buffering :full))
             peer)))
 
 (defun connect (server-host server-port
@@ -62,3 +65,14 @@ core-stream"
     (make-core-stream (socket-make-stream socket :input t :output t
 					  :element-type element-type						 
 					  :buffering :full))))
+
+
+(defun nio-make-server (&key (host "0.0.0.0") (port 0) (reuse-address t)
+			(backlog 10) (protocol :tcp))
+  (core-ffi::bind host port protocol backlog reuse-address))
+
+(defun nio-close-server (server)
+  (core-ffi::%close server))
+
+(defun nio-accept (socket &key (element-type '(unsigned-byte 8)))
+  (core-ffi::accept socket))
