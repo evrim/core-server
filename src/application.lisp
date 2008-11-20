@@ -20,10 +20,6 @@
 ;;+----------------------------------------------------------------------------
 ;;| Default Application Implementation
 ;;+----------------------------------------------------------------------------
-;;
-;; This file contains methods that every application would need.
-;;
-
 (defmethod sieve-initargs ((self application) initargs)
   "Remove unserializable initargs from 'initargs'"
   (let (current-keyword)
