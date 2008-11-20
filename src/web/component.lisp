@@ -33,7 +33,7 @@
        (eval-when (:load-toplevel :execute :compile-toplevel)
 	 (defclass ,metaclass ,metasupers
 	   ()))
-       (defclass+ ,name (component ,@supers)
+       (defclass+ ,name (,@supers component)
 	 ,slots
 	 ,@rest
 	 (:metaclass ,metaclass)))))
@@ -120,7 +120,7 @@
 					 reader (intern (symbol-name initarg)))))
 			       (class+.remote-slots class+)))
 	 (dom-class (any (lambda (class) (if (typep class 'xml+) class))
-			 (class+.superclasses class+))))
+			 (cdr (class+.superclasses class+)))))
     `(progn
        ;; ----------------------------------------------------------------------------
        ;; Component Internal Render Method 
@@ -229,18 +229,16 @@
 (defmethod write-stream ((stream html-stream) (object component))
   (if (typep object 'xml) (call-next-method))
   (write-stream stream
-    (<:script
-     :type "text/javascript"
-     :src (with-call/cc
-	    (action/url ()
-	      (javascript/suspend
-	       (lambda (stream)
-		 (component! stream object)
-		 (when (typep object 'xml)
-		   (write-stream stream
-		    (js* `(,(symbol-to-js (class-name (class-of object)))
-			    (create)
-			    (document.get-element-by-id ,(slot-value object 'id)))))))))))))
+    (<:script :type "text/javascript"
+	      (with-call/cc		
+		(lambda (stream)
+		  (let ((stream (make-indented-stream stream)))
+		    (component! stream object)
+		    (when (typep object 'xml)
+		      (write-stream stream
+				    (js* `(,(symbol-to-js (class-name (class-of object)))
+					    (create)
+					    (document.get-element-by-id ,(slot-value object 'id))))))))))))
 
 
 ;; (defcomponent abc ()
