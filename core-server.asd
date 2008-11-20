@@ -171,8 +171,7 @@
                                    (:file "dns")))
                          (:module :servers
                                   :components
-                                  ((:file "database")
-                                   (:file "tinydns")
+                                  ((:file "tinydns")
                                    (:file "apache")
                                    (:file "postfix")
                                    (:file "logger")
