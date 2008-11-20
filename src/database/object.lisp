@@ -54,7 +54,9 @@
   (class-index server class))
 
 (defmethod find-object-with-slot ((server database) (class standard-class) (slot symbol) value)
-  (find value (find-all-objects server class) :key (lambda (object) (slot-value object slot))))
+  (find value (find-all-objects server class)
+        :key (lambda (object) (slot-value object slot))
+        :test #'equal))
 
 (deftransaction update-object ((server database) (object standard-object) &rest slots-and-values)
   (reduce (lambda (object slot-val)	    
@@ -115,7 +117,7 @@
 
 (defmethod slot-index ((server database) object slot)
   (or (gethash (slot-index-name server object slot) (database.root server))
-      (setf (slot-index server object slot) (make-hash-table))))
+      (setf (slot-index server object slot) (make-hash-table :test #'equal))))
 
 (defmethod add-to-slot-index ((server database) object slot)
   (when (slot-boundp object slot)

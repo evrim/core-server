@@ -37,7 +37,7 @@
        (redefmethod ,all ((server database)) (find-all-objects server ',class))
        (redefmethod ,find ((server database) &key ,@(class+.ctor-lambda-list class+ t))
 	 (flet ((find-object (slot value)
-		  (find-object-with-slot server ',class slot value)))
+		  (ensure-list (find-object-with-slot server ',class slot value))))
 	   (let ((set (append
 		       ,@(mapcar (lambda (slot)
 				   `(if ,(caddr slot)
