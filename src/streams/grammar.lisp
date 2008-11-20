@@ -164,7 +164,7 @@
   (consequent then &optional else))
 
 (defoperator cond ()
-  (conditions))
+  (&rest conditions))
 
 (defoperator do ()
   (&rest children))
@@ -324,7 +324,13 @@
 ;; Control Operator Compilers
 ;;-----------------------------------------------------------------------------
 (defgrammar-expander and (form expander stream continue checkpoint)
-  `(and ,@(mapcar (rcurry expander expander stream t checkpoint) (args form))))
+  (cond
+    ((= 0 (length (args form)))
+     nil)
+    ((= 1 (length (args form)))
+     (funcall expander (car (args form)) expander stream continue checkpoint))
+    (t
+     `(and ,@(mapcar (rcurry expander expander stream t checkpoint) (args form))))))
 
 (defgrammar-expander or (form expander stream continue checkpoint)
   `(or ,@(mapcar (rcurry expander expander stream nil checkpoint) (args form))))
@@ -332,18 +338,17 @@
 (defgrammar-expander not (form expander stream continue checkpoint)
   `(not ,@(mapcar (rcurry expander expander stream continue checkpoint) (args form))))
 
-(defgrammar-expander return (form expander stream continue checkpoint)
-  (with-unique-names (retval)
-    `(let ((,retval (multiple-value-list ,(value form))))
-       (cond
-	 ((= (the fixnum (current-checkpoint ,stream)) (the fixnum cp)) nil)
-	 ((< (the fixnum (current-checkpoint ,stream)) (the fixnum cp))
-	  (error "This parser rule is not functional!"))
-	 (t (do ((i (current-checkpoint ,stream)
-		    (current-checkpoint ,stream)))
-		((= (the fixnum i) (the fixnum cp)) nil)
-	      (commit-stream ,stream))))
-       (return-from rule-block (apply #'values ,retval)))))
+(defgrammar-expander return (form expander stream continue checkpoint)  
+  `(progn
+     (if (< (current-checkpoint ,stream) cp)
+	 (error "This parser rule is not functional"))
+
+     (do ((i (current-checkpoint ,stream)
+	     (current-checkpoint ,stream)))
+	 ((= (the fixnum i) (the fixnum cp)) nil)
+       (commit-stream ,stream))
+     
+     (return-from rule-block ,(value form))))
 
 (defgrammar-expander zero-or-more (form expander stream continue checkpoint)
   `(not (do ()
@@ -368,7 +373,8 @@
      (cond
        ,@(mapcar #'(lambda (atom)
 		     (list (car atom)
-			   (funcall expander (apply (operator-ctor 'and) (children form))
+			   (funcall expander (apply (operator-ctor 'and)
+						    (mapcar #'walk-grammar (cdr atom)))
 				    expander stream continue checkpoint)))
 		 (conditions form)))))
 
@@ -414,58 +420,40 @@
 	    `(read-stream ,stream))))
 
 (defgrammar-expander sequence-case-sensitive (form expander stream continue checkpoint)
-  (if (stringp (value form))
-      (funcall expander
-	       (walk-grammar `(:checkpoint
-			       ,@(nreverse
-				  (reduce (lambda (acc atom) (cons atom acc))
-					  (value form) :initial-value nil))
-			       (:commit)))
-	       expander stream nil checkpoint)
-      (funcall expander
-	       (walk-grammar
-		`(:checkpoint
-		  (:do
-		   (reduce #'(lambda (stream atom)
-			       (when (not (eq (peek-stream stream) (char-code atom)))
-				 (rewind-stream stream)
-				 (return-from ,checkpoint ,(not continue)))
-			       (read-stream stream)
-			       stream)
-			   ,(value form) :initial-value ,stream))
-		  (:commit)))
-	       expander stream nil checkpoint)))
+  (with-unique-names (str len count match element)
+    `(let* ((,str ,(if (stringp (value form))
+		       (string-to-octets (value form) :utf-8)
+		       `(string-to-octets ,(value form) :utf-8)))
+	    (,len (length ,str)))
+       (checkpoint-stream ,stream)
+       (do ((,element (peek-stream ,stream) (peek-stream ,stream))
+	    (,count 0 (+ ,count 1))
+	    (,match t (eq ,element (aref ,str ,count))))
+	   ((or (null ,match) (>= ,count ,len))
+	    (if ,match
+		(prog1 t (commit-stream ,stream))
+		(prog1 nil (rewind-stream ,stream))))
+	 (read-stream ,stream)))))
 
 (defgrammar-expander sequence-case-insensitive (form expander stream continue checkpoint)
-  (if (stringp (value form))
-      (funcall expander
-	       (walk-grammar
-		`(:checkpoint
-		  ,@(nreverse
-		     (reduce #'(lambda (acc atom)
-				 (let ((upcase (char-upcase atom))
-				       (downcase (char-downcase atom)))
-				   (if (eq upcase downcase)
-				       (cons atom acc)
-				       (cons (list ':or upcase downcase)
-					     acc))))
-			     (value form) :initial-value nil))
-		  (:commit)))
-	       expander stream nil checkpoint)
-      (funcall expander
-	       (walk-grammar
-		`(:checkpoint
-		  (:do
-		   (reduce #'(lambda (stream atom)
-			       (when (not (or (eq (peek-stream stream) (char-code (char-upcase atom)))
-					      (eq (peek-stream stream) (char-code (char-downcase atom)))))
-				 (rewind-stream ,stream)
-				 (return-from ,checkpoint ,(not continue)))
-			       (read-stream stream)
-			       stream)
-			   ,(value form) :initial-value ,stream))
-		  (:commit)))
-	       expander stream nil checkpoint)))
+  (with-unique-names (str-upcase str-downcase len count match element)
+    `(let* ((,str-upcase ,(if (stringp (value form))
+			      (string-to-octets (string-upcase (value form)) :utf-8)
+			      `(string-to-octets (string-upcase ,(value form)) :utf-8)))
+	    (,str-downcase ,(if (stringp (value form))
+				(string-to-octets (string-downcase (value form)) :utf-8)
+				`(string-to-octets (string-downcase ,(value form)) :utf-8)))
+	    (,len (length ,str-upcase)))
+       (checkpoint-stream ,stream)
+       (do ((,element (peek-stream ,stream) (peek-stream ,stream))
+	    (,count 0 (+ ,count 1))
+	    (,match t (or (eq ,element (aref ,str-upcase ,count))
+			  (eq ,element (aref ,str-downcase ,count)))))
+	   ((or (null ,match) (>= ,count ,len))
+	    (if ,match
+		(prog1 t (commit-stream ,stream))
+		(prog1 nil (rewind-stream ,stream))))
+	 (read-stream ,stream)))))
 
 (defgrammar-expander collect (form expander stream continue checkpoint)
   `(or (push-atom ,(source form) ,(target form)) t))
@@ -517,6 +505,25 @@
 	      ,@(children form)
 	      (:commit)))
 	   expander stream continue checkpoint))
+
+(defoperator type2 ()
+  (type-name &optional target))
+
+(defgrammar-expander type2 (form expander stream continue checkpoint)
+  (if (target form)
+      `(setq ,(target form) (read-stream2 ,stream ',(type-name form)))
+      `(read-stream2 ,stream ',(type-name form))))
+
+(defoperator type3 ()
+  (type-name &optional target))
+
+(defgrammar-expander type3 (form expander stream continue checkpoint)
+  (if (target form)
+      `(if (,(type-name form) (peek-stream ,stream))
+	   (setq ,(target form) (read-stream ,stream)))
+      `(if (,(type-name form) (peek-stream ,stream))
+	   (read-stream ,stream))))
+
 
 ;;-----------------------------------------------------------------------------
 ;; Object Stream Operator Compilers

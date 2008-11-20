@@ -325,6 +325,9 @@
   ;;  (incf (s-v '%read-index)) ;; paradoxal
   )
 
+(defmethod write-stream ((self core-fd-io-stream) (atom character))
+  (write-stream self (char-code atom)))
+
 (defmethod checkpoint-stream ((self core-fd-io-stream))
   (if (transactionalp self)
       (push (list (s-v '%current) (s-v '%write-buffer))
@@ -407,7 +410,6 @@
 
 (defun make-core-file-output-stream (pathname)
   (make-instance 'core-file-output-stream :file pathname))
-
 ;;;-----------------------------------------------------------------------------
 ;;; List Stream
 ;;;-----------------------------------------------------------------------------
@@ -539,6 +541,7 @@
     (pathname (make-instance 'core-file-input-stream :file target))
     (array (make-instance 'core-vector-io-stream :octets target))
     (sb-sys::fd-stream (make-instance 'core-fd-io-stream :stream target))
+;;    (cl+ssl::ssl-stream (make-instance 'core-fd-io-stream :stream target))    
     (list (make-instance 'core-list-io-stream :list target))
     (standard-object (make-instance 'core-object-io-stream :object target))))
 
@@ -551,6 +554,38 @@
      (unwind-protect
 	  (progn ,@body)
        (close-stream ,var))))
+
+(defmacro with-core-stream/cc ((var val) &body body)
+  `(let ((,var (make-core-stream ,val)))
+     (prog1 (progn ,@body)
+       (close-stream ,var))))
+
+;; +----------------------------------------------------------------------------
+;; | Semi Stream
+;; +----------------------------------------------------------------------------
+(defclass wrapping-stream (core-stream)
+  ((%stream :initform (error "Please specify unlerying :stream") :initarg :stream)))
+
+(defmethod close-stream ((stream wrapping-stream))
+  (close-stream (slot-value stream '%stream)))
+
+(defmethod checkpoint-stream ((stream wrapping-stream))
+  (checkpoint-stream (slot-value stream '%stream)))
+
+(defmethod rewind-stream ((stream wrapping-stream))
+  (rewind-stream (slot-value stream '%stream)))
+
+(defmethod read-stream ((stream wrapping-stream))
+  (error "Could not read from ~A" stream))
+
+(defmethod write-stream ((stream wrapping-stream) object)
+  (error "Could not write to ~A" stream))
+
+(defmethod write-stream ((stream wrapping-stream) (object null))
+  stream)
+
+(defmethod return-stream ((stream wrapping-stream))
+  (return-stream (slot-value stream '%stream)))
 
 ;;;-----------------------------------------------------------------------------
 ;;; Core Pipe Stream
@@ -739,6 +774,292 @@
 				  stream
 				  (write-stream stream atom)))))
 
+;;;-----------------------------------------------------------------------------
+;;; Core CPS Stream
+;;;-----------------------------------------------------------------------------
+(defclass core-cps-stream (core-stream)
+  ((%stack :initarg :stack :initform (error "Stack should not be nil"))))
+
+(defmethod read-stream ((self core-cps-stream))
+  (pop (s-v '%stack)))
+
+(defmethod write-stream ((self core-cps-stream) value)
+  (push value (s-v '%stack)))
+
+(defmethod checkpoint-stream2 ((self core-cps-stream) name)
+  (push (cons name (s-v '%stack)) (s-v '%checkpoints))
+  (setf (s-v '%stack) nil)
+  name)
+
+(defmethod rewind-stream2 ((self core-cps-stream) name)
+  (do ((checkpoint (pop (s-v '%checkpoints)) (pop (s-v '%checkpoints))))
+      ((null checkpoint) name)
+    (setf (s-v '%stack) (cdr checkpoint))
+    (cond
+      ((null (symbol-package name))
+       (if (string= name (car checkpoint))
+	   (return-from rewind-stream2 name)))
+      (t
+       (if (equal name (car checkpoint))
+	   (return-from rewind-stream2 name))))) 
+  name)
+
+(defmethod commit-stream2 ((self core-cps-stream) name)
+  (rewind-stream2 self name))
+
+(defmethod run ((self core-cps-stream))
+  (let ((count 1000000))
+    (catch 'done
+      ;; (let ((values '(nil))
+;; 	    (+stream+ self))
+;; 	(declare (special +stream+))
+;; 	(do ((k (read-stream self) (read-stream self)))
+;; 	    ((null k) (apply #'values values))
+;; 	  (setq values (multiple-value-list (apply k (or values (list nil)))))
+;; ;;	  (describe values)
+;; 	  (decf count)
+;; 	  (if (zerop count)
+;; 	      (progn
+;; 		(warn "Executing limit exceeded.")
+;; 		(throw 'done (apply #'values values))))))
+      (let ((value nil)
+	    (+stream+ self))
+	(declare (special +stream+))
+	(do ((k (read-stream self) (read-stream self)))
+	    ((null k) value)
+	  (setq value (funcall k value))))
+      )))
+
+(defclass core-dummy-cps-stream (core-stream)
+  ())
+
+(defmethod read-stream ((self core-dummy-cps-stream))
+  (error "Please call inside with-call/cc2"))
+
+(defmethod write-stream ((self core-dummy-cps-stream) value)
+  (error "Please call inside with-call/cc2"))
+
+(defmethod checkpoint-stream2 ((self core-dummy-cps-stream) name)
+  (error "Please call inside with-call/cc2"))
+
+(defmethod commit-stream2 ((self core-dummy-cps-stream) name)
+  (error "Please call-inside with-call/cc2"))
+
+(defvar +stream+ (make-instance 'core-dummy-cps-stream)
+  "Dummy CPS Stream")
+
+
+;;;-----------------------------------------------------------------------------
+;;; Core FD NIO Stream
+;;;-----------------------------------------------------------------------------
+(defclass core-fd-nio-stream (core-fd-io-stream)
+  ((unit :initarg :unit :initform nil :accessor unit)
+   (%buffer-size :initarg :buffer-size :initform 4096)
+   (%read-buffer :initform #())))
+
+;; (defclass core-fd-io-stream (%core-fd-stream)
+;;   ((%peek :initform -1 :type fixnum)
+;;    (%read-buffer :initform (make-accumulator :byte) :type (vector (unsigned-byte 8)))
+;;    (%read-index :initform 0 :type fixnum)
+;;    (%write-buffer :initform (make-accumulator :byte) :type (vector (unsigned-byte 8)))))
+
+(defun zoo ()
+  (let ((s (core-ffi::connect "localhost" 7000)))
+    (make-instance 'core-fd-nio-stream :stream s)))
+
+;; burda connect sbclninkini kullanio ondan scio herhalde
+
+(defmethod shared-initialize :after ((self core-fd-nio-stream) slots &key &allow-other-keys)
+  (core-ffi::set-nonblock (s-v '%stream))
+  self)
+
+(defmethod/cc1 fill-read-buffer ((self core-fd-nio-stream))      
+  (let/cc1 k
+    (let ((kont (lambda (&rest values)
+		  (declare (ignore values))
+		  (funcall k (fill-read-buffer self)))))
+      (with-foreign-object (buffer :uint8 (s-v '%buffer-size))
+	(core-ffi::bzero buffer (s-v '%buffer-size))
+	(let* ((ret (core-ffi::%read (s-v '%stream) buffer (s-v '%buffer-size)))
+	       (errno (core-ffi::errno)))
+	  (cond
+	    ((and (s-v 'unit) (eq -1 ret) (eq 11 errno))
+	     (format *standard-output* "Got failed to read: EAGAIN")
+	     ;; save k
+	     (add-fd (s-v 'unit) (s-v '%stream) (list core-ffi::epollin #.(ash 1 31))
+		     kont)
+	     ;; escape
+	     (funcall +k+ nil))
+	    ((and (eq -1 ret) (not (eq 11 errno)))
+	     (warn "Read returned err:~D, fd: ~D" errno (s-v '%stream))
+	     (core-ffi::%close (s-v '%stream)))
+	    ((not (transactionalp self))
+	     (setf (s-v '%read-buffer) (cffi::foreign-array-to-lisp buffer (list :array :uint8 ret))
+		   (s-v '%read-index) 0))
+	    (t
+	     (let ((current-length (length (s-v '%read-buffer))))
+	       (let ((array (cffi::foreign-array-to-lisp buffer (list :array :uint8 ret)))
+		     (new-array (adjust-array (s-v '%read-buffer) (+ ret current-length))))
+		 (reduce (lambda (len atom)
+			   (setf (aref new-array len) atom)
+			   (1+ len))
+			 array :initial-value current-length)
+		 (setf (s-v '%read-buffer) new-array)))))))))
+  self)
+
+(defmethod/cc1 peek-stream ((self core-fd-nio-stream))
+  (if (stream-using-cache? self)
+      (if (or (null (s-v '%max-read)) (> (s-v '%max-read) 0))
+	  (aref (s-v '%read-buffer) (s-v '%read-index))
+	  nil)
+      (progn
+	(fill-read-buffer self)
+	(peek-stream self))))
+
+(defmethod/cc1 read-stream ((self core-fd-nio-stream))
+  (let ((peek (peek-stream self)))
+    (when peek
+      (when (s-v '%max-read) (decf (s-v '%max-read)))
+      (incf (s-v '%read-index)))
+    peek))
+
+(defmethod/cc1 write-stream :around ((stream core-fd-nio-stream) (atom null))
+  stream)
+
+(defmethod/cc1 write-stream ((stream core-fd-nio-stream) (atom (eql 'nil)))
+  stream)
+
+(defmethod/cc1 write-stream :around ((stream core-fd-nio-stream) (list list))
+  (cond
+    ((transactionalp stream)
+     (setf (slot-value stream '%write-buffer)
+	   (append list (slot-value stream '%write-buffer)))
+     stream)
+    (t	       
+     (write-stream stream (car list))
+     (if (cdr list)
+	 (write-stream stream (cdr list))
+	 stream))))
+
+(defmethod/cc1 write-stream :around ((stream core-fd-nio-stream) atom)
+  (if (transactionalp stream)
+      (prog1 stream
+	(setf (slot-value stream '%write-buffer)
+	      (cons atom (slot-value stream '%write-buffer))))
+      (call-next-method)))
+
+(defmethod/cc1 write-stream ((self core-fd-nio-stream) (atom character))
+  (write-stream self (char-code atom)))
+
+(defmethod/cc1 write-stream ((self core-fd-nio-stream) (string string))
+  (write-stream self (string-to-octets string :utf-8)))
+
+(defmethod/cc1 write-stream ((self core-fd-nio-stream) atom)
+  (prog1 self
+    (let/cc1 k
+      (let ((kont (lambda (&rest values)
+		    (declare (ignore values))
+		    (funcall k (write-stream self atom)))))
+	(unwind-protect
+	     (cffi::with-foreign-array (buffer (make-array 1 :initial-element atom) (list :array :uint8 1))	
+	       (let* ((ret (core-ffi::%write (s-v '%stream) buffer 1))
+		      (errno (core-ffi::errno)))
+		 (cond
+		   ((and (eq ret -1) (eq 11 errno))
+		    (funcall +k+ kont))
+		   ((eq ret -1)
+		    (warn "%write failed with errcode:~A, fd:~D, atom:~A" errno (s-v '%stream) atom)
+		    (core-ffi::%close (s-v '%stream)))
+		   (t
+		    self)))))))))
+
+(defparameter *static-5k* (foreign-alloc :string :count  5192))
+;; (lisp-string-to-foreign *5k* *static-5k* 5192)
+
+(defmethod/cc1 write-content ((self core-fd-nio-stream))
+  (prog1 self
+    (let/cc1 k
+      (let ((kont (lambda (&rest values)
+		    (declare (ignore values))
+		    (funcall k (write-content self)))))
+	(unwind-protect	     
+	     (let* ((ret (core-ffi::%write (s-v '%stream) *static-5k* 5192))
+		    (errno (core-ffi::errno)))
+	       (cond
+		 ((and (s-v 'unit) (eq ret -1) (eq 11 errno))
+		  ;; save kont	       
+		  (add-fd (s-v 'unit) (s-v '%stream) (list core-ffi::epollout #.(ash 1 31))
+			  kont)
+		  ;; escape
+		  (funcall +k+ nil))
+		 ((eq ret -1)
+		  (warn "%write failed with errcode:~A, fd:~D, in write-content" errno (s-v '%stream))
+		  (core-ffi::%close (s-v '%stream)))
+		 (t
+		  self))))))))
+
+(defmethod/cc1 write-stream ((self core-fd-nio-stream) (vector vector))
+  (prog1 self
+    (let/cc1 k
+      (let ((kont (lambda (&rest values)
+		    (declare (ignore values))
+		    (funcall k (write-stream self vector)))))
+	(unwind-protect
+	     (cffi::with-foreign-array (buffer vector (list :array :uint8 (length vector)))
+	       (let* ((ret (core-ffi::%write (s-v '%stream) buffer (length vector)))
+		      (errno (core-ffi::errno)))
+		 (cond
+		   ((and (s-v 'unit) (eq ret -1) (eq 11 errno))
+		    ;; save kont	       
+		    (add-fd (s-v 'unit) (s-v '%stream) (list core-ffi::epollout #.(ash 1 31))
+			    kont)
+		    ;; escape
+		    (funcall +k+ nil))
+		   ((eq ret -1)
+		    (warn "%write failed with errcode:~A, fd:~D, length vector:~D" errno (s-v '%stream) (length vector))
+		    (core-ffi::%close (s-v '%stream)))
+		   (t
+		    self)))))))))
+
+(defmethod/cc1 checkpoint-stream ((self core-fd-nio-stream))
+  (if (transactionalp self)
+      (push (list (s-v '%current) (s-v '%write-buffer))
+	    (s-v '%checkpoints)))
+
+  (setf (s-v '%current) (s-v '%read-index)
+	(s-v '%write-buffer) nil)
+  (length (s-v '%checkpoints)))
+
+(defmethod/cc1 %rewind-stream ((self core-fd-nio-stream))
+  (prog1 (length (s-v '%checkpoints))
+    (let ((previous-checkpoint (pop (s-v '%checkpoints))))
+      (if previous-checkpoint
+	  (setf (s-v '%current) (car previous-checkpoint)
+		(s-v '%write-buffer) (cadr previous-checkpoint))	  
+	  (setf (s-v '%current) -1
+		(s-v '%write-buffer) nil)))))
+
+(defmethod/cc1 rewind-stream ((self core-fd-nio-stream))
+  (setf (s-v '%read-index) (s-v '%current))
+  (%rewind-stream self))
+
+(defmethod/cc1 commit-stream ((self core-fd-nio-stream))  
+  (let ((buffer (s-v '%write-buffer)))
+    (prog1 (%rewind-stream self)
+      (write-stream self (nreverse buffer)))))
+
+(defmethod/cc1 close-stream ((self core-fd-nio-stream))
+  (when (transactionalp self)
+    (do ((i (current-checkpoint self) (current-checkpoint self)))
+	((< i 0) nil)
+      (commit-stream self)))
+
+  (when (s-v 'unit)
+    (del-fd (s-v 'unit) (s-v '%stream)))
+  
+  (core-ffi::%close (s-v '%stream))
+  self)
+
 (deftrace streams
     '(read-stream write-stream close-stream)) ;;current-checkpoint
 
@@ -746,9 +1067,61 @@
     '(peek-stream checkpoint-stream rewind-stream commit-stream close-stream
       current-checkpoint))
 
-;;;-----------------------------------------------------------------------------
-;;; Core CPS Stream
-;;;-----------------------------------------------------------------------------
+
+;;string, null, symbol
+
+;; (defmethod write-stream ((self core-fd-nio-stream) (c (eql nil)))
+;;   self)
+
+;; (defmethod write-stream ((self core-fd-io-stream) (vector vector))
+;;   (prog1 self
+;;     (if (transactionalp self)
+;; 	(reduce #'write-stream vector :initial-value self)		
+;; 	(write-sequence vector (s-v '%stream)))))
+
+
+;; (defmethod checkpoint-stream ((self core-fd-io-stream))
+;;   (if (transactionalp self)
+;;       (push (list (s-v '%current) (s-v '%write-buffer))
+;; 	    (s-v '%checkpoints)))
+
+;;   (setf (s-v '%current) (s-v '%read-index)
+;; 	(s-v '%write-buffer) (make-accumulator :byte))
+;;   (length (s-v '%checkpoints)))
+
+;; (defmethod %rewind-checkpoint ((self core-fd-io-stream))
+;;   (prog1 (length (s-v '%checkpoints))
+;;     (let ((previous-checkpoint (pop (s-v '%checkpoints))))
+;;       (if previous-checkpoint
+;; 	  (setf (s-v '%current) (car previous-checkpoint)
+;; 		(s-v '%write-buffer) (cadr previous-checkpoint))	  
+;; 	  (setf (s-v '%current) -1
+;; 		(s-v '%write-buffer) (make-accumulator :byte))))))
+
+;; (defmethod rewind-stream ((self core-fd-io-stream))
+;;   (setf (s-v '%read-index) (s-v '%current))
+;;   (%rewind-checkpoint self))
+
+;; (defmethod commit-stream ((self core-fd-io-stream))
+;;   (let ((buffer (s-v '%write-buffer)))
+;;     (prog1 (%rewind-checkpoint self)
+;;       (write-stream self buffer)
+;;       (if (not (transactionalp self))
+;; 	  (finish-output (s-v '%stream))))))
+
+;; (defmethod/cc read-stream ((self core-fd-nio-stream))  
+;;   ;; (let/cc k
+;; ;;     (handler-bind ((kernel-error (lambda (c)
+;; ;; 				   (if (eagain? c)
+;; ;; 				       (queue-stream (worker self) 'read-only)))))
+;; ;;       (call-next-method)))
+;;   3
+;;   )
+
+;; (defclass core-cps-stream (core-stream)
+;;   ((%k :initform nil)))
+
+
 ;;; This is used to compressed outputs like javascript render.
 ;;;
 ;; (defclass core-cps0-stream (core-stream)
@@ -800,7 +1173,7 @@
 ;; ;; 	  (format t "K is :~A" (s-v '%k))
 ;; ;; 	  (apply #'kall it values))
 ;; ;; 	 (t
-;; ;; 	  (break "y00"))
+; ;; 	  (break "y00"))
 ;; ;; 	 ))
 ;; ;;       ))
 
@@ -869,9 +1242,3 @@
 ;;     (sb-sys::fd-stream (make-instance 'core-cps-fd-io-stream :stream target))
 ;;     (list (make-instance 'core-cps-list-io-stream :list target))
 ;;     (standard-object (make-instance 'core-cps-object-io-stream :object target))))
-
-
-;; (defmacro with-core-stream/cc ((var val) &body body)
-;;   `(let ((,var (make-core-stream ,val)))
-;;      (prog1 (progn ,@body)
-;;        (close-stream ,var))))

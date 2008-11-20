@@ -155,7 +155,7 @@
   (:zom (:type (or space? tab? carriage-return? linefeed?)))
   (:return t))
 
-(defparser hex-value? (a b)  
+(defparser hex-value? (a b)
   (:or (:and (:type digit? a)
 	     (:do (setq a (- (the (unsigned-byte 8) a) 48))))
        (:and (:type hex-upchar? a)

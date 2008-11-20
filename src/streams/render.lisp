@@ -108,10 +108,12 @@ zee\")"
 	       #'expand-render stream)
 	     ,stream))))))
 
-(defun byte! (stream byte)
-  (write-stream stream byte))
+(defun/cc2 byte! (stream byte)
+;;   (error "cant writ ebyte")
+  (write-stream stream byte)
+  )
 
-(defun char! (stream char)
+(defun/cc2 char! (stream char)
   (let ((code (char-code char)))
     (if (> code 127) 
 	(reduce #'(lambda (acc atom)
@@ -121,8 +123,9 @@ zee\")"
 		(string-to-octets (string char) :utf-8) :initial-value nil)
 	(byte! stream code))))
 
-(defun string! (stream string)
+(defun/cc2 string! (stream string)
   (write-stream stream (string-to-octets string :utf-8)))
+
 
 ;; (defun version! (stream version)
 ;;   (fixnum! stream (car version))
@@ -139,42 +142,41 @@ zee\")"
 	(:char! #\.)
 	(:fixnum! it)))
 
-(defun symbol! (stream symbol)
+(defun/cc2 symbol! (stream symbol)
   (string! stream (string-downcase (symbol-name symbol))))
 
-(defun symbol-with-package! (stream symbol)
+(defun/cc2 symbol-with-package! (stream symbol)
   (let ((package (symbol-package symbol)))
     (when package	
       (string! stream (package-name package))
       (string! stream "::"))
     (string! stream (symbol-name symbol))))
 
-(defun fixnum! (stream number)
+(defun/cc2 fixnum! (stream number)
   (string! stream (format nil "~D" number)))
 
-(defun quoted! (stream string)
-  (char! stream #\")
-  (reduce #'(lambda (acc atom)
-	      (declare (ignore acc))
-	      (cond
-		((or (char= #\" atom) (char= #\\ atom))
-		 (char! stream #\\) (char! stream atom))
-		((or (char= #\Newline atom) (char= #\Linefeed atom))
-		 )
-		(t (char! stream atom)))
-	      nil)
+(defun/cc2 quoted! (stream string &optional (quote #\"))
+  (char! stream quote)
+  (reduce #'(lambda (stream atom)
+	      (prog1 stream
+		(cond
+		  ((or (char= quote atom) (char= #\\ atom))
+		   (char! stream #\\) (char! stream atom))
+		  ((or (char= #\Newline atom) (char= #\Linefeed atom))
+		   )
+		  (t (char! stream atom)))))
 	  string
-	  :initial-value nil)
-  (char! stream #\"))
+	  :initial-value stream)
+  (char! stream quote))
 
-(defun quoted-fixnum! (stream number)
+(defun/cc2 quoted-fixnum! (stream number)
   (quoted! stream (format nil "~D" number)))
 
 (defvar +hex-alphabet+
   #.(reduce #'(lambda (acc atom) (push-atom (char-code atom) acc) acc)
 	    "0123456789ABCDEF" :initial-value (make-accumulator :byte)))
 
-(defun hex-value! (stream hex)
+(defun/cc2 hex-value! (stream hex)
   (byte! stream (aref +hex-alphabet+ (floor (/ hex 16))))
   (byte! stream (aref +hex-alphabet+ (rem hex 16))))
 
