@@ -17,6 +17,15 @@
 
 (in-package :core-server)
 
+(defmacro with-field (label input)
+  "Syntactic sugar to handle form label and values"
+  `(<:div :class "field"
+	  (<:div :class "label" ,label)
+	  (<:div :class "value" ,input)))
+
+(defjsmacro with-field (label input)
+  (macroexpand-1 `(with-field ,label ,input)))
+
 ;; JS Macros
 (defjsmacro $ (id)
   `(document.get-element-by-id ,id))

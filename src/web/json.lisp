@@ -1,20 +1,3 @@
-;; Core Server: Web Application Server
-
-;; Copyright (C) 2006-2008  Metin Evrim Ulu, Aycan iRiCAN
-
-;; This program is free software: you can redistribute it and/or modify
-;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or
-;; (at your option) any later version.
-
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
-
-;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 (in-package :core-server)
 
 ;; The application/json dia Type for JavaScript Object Notation (JSON)
@@ -23,16 +6,18 @@
 ;; JSon Protocol Data Types
 (defrule json-string? (q c acc)
   (:or (:and (:seq "\"\"") (:return 'null)) ;; -hek.
-       (:and (:quoted? q) (:return q))
+       (:and (:quoted? q) (:return (if (> (length q) 0) q nil)))
        (:and (:do (setq acc (make-accumulator :byte)))
 	     (:type (or visible-char? space?) c)
 	     (:collect c acc)
 	     (:zom (:type (or visible-char? space?) c)
-		   (:collect c acc))
-	     (:return (octets-to-string acc :utf-8)))))
+		   (:collect c acc))	     
+	     (:return (if (> (length acc) 0)
+			  (octets-to-string acc :utf-8)
+			  nil)))))
 
 (defmethod json! ((stream core-stream) (s string))
-  (prog1 stream (quoted! stream s)))
+  (prog1 stream (quoted! stream s #\')))
 
 ;; TODO: Implement RFC to decode numbers. -evrim
 ;;
@@ -108,10 +93,10 @@
   (:return acc))
 
 (defmethod json-key! ((stream core-stream) (key string))
-  (prog1 stream (json-string! stream key)))
+  (prog1 stream (quoted! stream key)))
 
 (defmethod json-key! ((stream core-stream) (key symbol))
-  (prog1 stream (symbol! stream key)))
+  (json-key! stream (symbol-to-js key)))
 
 (defrule json-object? (key value (object (make-hash-table)))
   (:lwsp?) #\{ (:lwsp?)
@@ -124,9 +109,10 @@
 (defmethod json! ((stream core-stream) (hash-table hash-table))
   (prog1 stream
     (flet ((one (key value)
-	     (json-key! stream key)
-	     (string! stream ": ")
-	     (json! stream value)))
+	     (when key
+	       (json-key! stream key)
+	       (string! stream ": ")
+	       (json! stream value))))
       (let ((keys (hash-table-keys hash-table))
 	    (values (hash-table-values hash-table)))
 	(string! stream "{ ")
@@ -137,9 +123,74 @@
 		(cdr keys) (cdr values))
 	(string! stream " }")))))
 
+(defclass jobject ()
+  ((attributes :initarg :attributes :initform nil)))
+
+(defun jobject (&rest attributes)
+  (make-instance 'jobject :attributes attributes))
+
+(defun convert-label-to-javascript (label)
+  (let ((pos 1)
+	(label (string-downcase label)))
+    (do ((pos (search "-" label :start2 pos) (search "-" label :start2 pos)))
+	((null pos) (string-capitalize label))
+      (setf (aref label pos) #\Space))))
+
+(defun slot->jobject (object slot)
+  (with-slotdef (name client-type label) slot
+    (cond 
+      ((string= 'password client-type)
+       (jobject :name (symbol-to-js name)
+		:value ""
+		:type "password"
+		:label (or label (convert-label-to-javascript name))))
+      ((string= 'string client-type)
+       (jobject :name (symbol-to-js name)
+		:value (let ((value (slot-value object name)))
+			 (typecase value
+			   (symbol (symbol-to-js value))
+			   (t value)))
+		:type "string"
+		:label (or label (convert-label-to-javascript name))))
+      (t
+       (jobject :name (symbol-to-js name)
+		:value (slot-value object name)
+		:type (typecase (slot-value object name)
+			(string "string")
+			(boolean "boolean")
+			(t (symbol-to-js client-type)))		
+		:label (or label (convert-label-to-javascript name)))))))
+
+(defun object->jobject (object &optional (template-class nil))
+  (apply #'jobject	 
+	 (reduce0 (lambda (acc slot)
+		    (with-slotdef (name) slot
+		      (cons (make-keyword name)
+			    (cons (slot->jobject object slot)
+				  acc))))
+		  (class+.remote-slots (or template-class (class-of object))))))
+
+(defmethod json! ((stream core-stream) (jobject jobject))
+  (prog1 stream
+    (let ((attributes (slot-value jobject 'attributes)))
+      (flet ((one (key value)
+	       (when key
+		 (json-key! stream key)
+		 (string! stream ": ")
+		 (json! stream value))))
+	(let ((keys (filter #'keywordp attributes))
+	      (values (filter (compose #'not #'keywordp) attributes)))
+	  (string! stream "{ ")
+	  (one (car keys) (car values))
+	  (mapcar (lambda (k v)
+		    (string! stream ", ")
+		    (one k v))
+		  (cdr keys) (cdr values))
+	  (string! stream " }"))))))
+
 (defrule json? (value)
   (:or (:and (:seq "undefined") (:return 'undefined))
-       (:and (:seq "null") (:return 'null))
+       (:and (:seq "null") (:return nil))
        (:and (:or (:json-boolean? value)
 		  (:json-number? value)
 		  (:json-array? value)
@@ -154,17 +205,38 @@
   (string! stream (symbol-to-js symbol)))
 
 (defmethod json! ((stream core-stream) (element dom-element))
-  (string! (js* (dom2js element))))
+  (string! stream (js* (dom2js element))))
 
 (defun json-serialize (object)
   (let ((s (make-core-stream "")))
-    (json! object)
+    (json! s object)
     (return-stream s)))
 
 (defun json-deserialize (string)
-  (let ((s (make-core-stream string)))
-    (json? s)))
+  (typecase string
+    (string
+     (let ((s (make-core-stream string)))
+       (json? s)))
+    (t
+     string)))
 
 (deftrace json-parsers
     '(json? json-array? json-key? json-object? json-number?
       json-boolean? json-string?))
+
+;; Core Server: Web Application Server
+
+;; Copyright (C) 2006-2008  Metin Evrim Ulu, Aycan iRiCAN
+
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.

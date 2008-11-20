@@ -62,34 +62,34 @@
           (nthcdr offset (filtered-list-directory self))
           (seq length)))
 
-(defmethod/local template ((self hedee-component) offset length)
-  (flet ((image-src (path)
-	   (let ((absolute-path (merge-pathnames
-				 (make-pathname
-				  :directory (cons :absolute
-						   (cdr
-						    (pathname-directory
-						     (pathname (hedee.root self))))))
-				 path)))
-	     (namestring (make-pathname :directory (cons :relative (nreverse (cons "thumbs" (nreverse (cdr (pathname-directory absolute-path))))))
-					:name (pathname-name absolute-path)
-					:type (pathname-type absolute-path))))))
-    (apply (curry #'<:div :class "hedee-images")         	 
-	   (reduce (lambda (acc atom)
-		     (let ((seq (car atom))
-			   (path (cdr atom)))
-		       (cons (<:div :id (format nil "hedee-div-~D" (+ offset seq))
-				    :class "hedee-div"
-				    (<:a :id (format nil "hedee-a-~D" (+ offset seq))
-					 :class "hedee-a"					 
-					 (<:img :id (format nil "~A/~A.~A" (hedee.root self)
-							    (pathname-name (cdr atom))
-							    (pathname-type (cdr atom))) ;;(format nil "hedee-img-~D" (+ offset seq))			
-						:src (image-src (cdr atom))
-						:class "hedee-img")))
-			     acc)))
-		   (list-directory self offset length)
-		   :initial-value nil))))
+;; (defmethod/local template ((self hedee-component) offset length)
+;;   (flet ((image-src (path)
+;; 	   (let ((absolute-path (merge-pathnames
+;; 				 (make-pathname
+;; 				  :directory (cons :absolute
+;; 						   (cdr
+;; 						    (pathname-directory
+;; 						     (pathname (hedee.root self))))))
+;; 				 path)))
+;; 	     (namestring (make-pathname :directory (cons :relative (nreverse (cons "thumbs" (nreverse (cdr (pathname-directory absolute-path))))))
+;; 					:name (pathname-name absolute-path)
+;; 					:type (pathname-type absolute-path))))))
+;;     (apply (curry #'<:div :class "hedee-images")         	 
+;; 	   (reduce (lambda (acc atom)
+;; 		     (let ((seq (car atom))
+;; 			   (path (cdr atom)))
+;; 		       (cons (<:div :id (format nil "hedee-div-~D" (+ offset seq))
+;; 				    :class "hedee-div"
+;; 				    (<:a :id (format nil "hedee-a-~D" (+ offset seq))
+;; 					 :class "hedee-a"					 
+;; 					 (<:img :id (format nil "~A/~A.~A" (hedee.root self)
+;; 							    (pathname-name (cdr atom))
+;; 							    (pathname-type (cdr atom))) ;;(format nil "hedee-img-~D" (+ offset seq))			
+;; 						:src (image-src (cdr atom))
+;; 						:class "hedee-img")))
+;; 			     acc)))
+;; 		   (list-directory self offset length)
+;; 		   :initial-value nil))))
 
 (defmethod/remote hide-image ((self hedee-component))
   (let ((d (dijit.by-id "hedee-dialog")))
