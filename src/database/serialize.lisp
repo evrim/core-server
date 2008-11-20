@@ -1,3 +1,303 @@
+;; ----------------------------------------------------------------------------
+;; Prevalence Isomorphism
+;; ----------------------------------------------------------------------------
+(in-package :core-server)
+
+(defun symbol->string (symbol)
+  (let* ((package (symbol-package symbol)))
+    (if package
+	(format nil "~A::~A" (package-name package) (symbol-name symbol))
+	(symbol-name symbol))))
+
+;; ----------------------------------------------------------------------------
+;; Serialization Codomain Package
+;; ----------------------------------------------------------------------------
+(defpackage :tr.gen.core.tags.db
+  (:nicknames :<db)
+  (:export #:null #:true #:symbol #:character #:integer #:string
+	   #:ratio #:complex #:float #:vector #:cons #:hash-table
+	   #:hash-table-entry #:hash-table-key #:hash-table-value
+	   #:slot #:struct #:class #:instance #:ref #:object-with-id
+	   #:ref #:transaction))
+
+;; ----------------------------------------------------------------------------
+;; Lisp->XML
+;; ----------------------------------------------------------------------------
+(defmethod xml-serialize ((object t) &optional (k #'xml-serialize))
+  (declare (ignore k))
+  (error "Cannot serialize ~A" object))
+
+;; ----------------------------------------------------------------------------
+;; XML->Lisp
+;; ----------------------------------------------------------------------------
+(defmethod xml-deserialize ((xml t) &optional (k #'xml-deserialize))
+  (declare (ignore k))
+  (error "Cannot deserialize ~A" xml))
+
+(defxml <db:object-with-id id)
+
+;; ----------------------------------------------------------------------------
+;; Null
+;; ----------------------------------------------------------------------------
+(defxml <db:null)
+
+(defmethod xml-deserialize ((xml <db:null) &optional (k #'xml-deserialize))
+  (declare (ignore k))
+  nil)
+
+(defmethod xml-serialize ((object null) &optional (k #'xml-serialize))
+  (declare (ignore k))
+  (<db:null))
+
+;; ----------------------------------------------------------------------------
+;; True
+;; ----------------------------------------------------------------------------
+(defxml <db:true)
+
+(defmethod xml-deserialize ((xml <db:true) &optional (k #'xml-deserialize))
+  (declare (ignore k))
+  t)
+
+(defmethod xml-serialize ((object (eql 't)) &optional (k #'xml-serialize))
+  (declare (ignore k))
+  (<db:true))
+
+;; ----------------------------------------------------------------------------
+;; Symbol
+;; ----------------------------------------------------------------------------
+(defxml <db:symbol)
+
+(defmethod xml-deserialize ((xml <db:symbol) &optional (k #'xml-deserialize))
+  (declare (ignore k))
+  (read-from-string (car (slot-value xml 'children))))
+
+(defmethod xml-serialize ((object symbol) &optional (k #'xml-serialize))
+  (declare (ignore k))
+  (<db:symbol (symbol->string object)))
+
+;; ----------------------------------------------------------------------------
+;; Character
+;; ----------------------------------------------------------------------------
+(defxml <db:character)
+
+(defmethod xml-deserialize ((xml <db:character) &optional (k #'xml-deserialize))
+  (declare (ignore k))
+  (aref (read-from-string (car (slot-value xml 'children))) 0))
+
+(defmethod xml-serialize ((object character) &optional (k #'xml-serialize))
+  (declare (ignore k))
+  (<db:character (format nil "\"~C\"" object)))
+
+;; ----------------------------------------------------------------------------
+;; Integer
+;; ----------------------------------------------------------------------------
+(defxml <db:integer)
+
+(defmethod xml-deserialize ((xml <db:integer) &optional (k #'xml-deserialize))
+  (declare (ignore k))
+  (read-from-string (car (slot-value xml 'children))))
+
+(defmethod xml-serialize ((object integer) &optional (k #'xml-serialize))
+  (declare (ignore k))
+  (<db:integer (format nil "~D" object)))
+
+;; ----------------------------------------------------------------------------
+;; Ratio
+;; ----------------------------------------------------------------------------
+(defxml <db:ratio)
+
+(defmethod xml-deserialize ((xml <db:ratio) &optional (k #'xml-deserialize))
+  (declare (ignore k))
+  (read-from-string (car (slot-value xml 'children))))
+
+(defmethod xml-serialize ((object ratio) &optional (k #'xml-serialize))
+  (declare (ignore k))
+  (<db:ratio (format nil "~A" object)))
+
+;; ----------------------------------------------------------------------------
+;; Complex
+;; ----------------------------------------------------------------------------
+(defxml <db:complex)
+
+(defmethod xml-deserialize ((xml <db:complex) &optional (k #'xml-deserialize))
+  (declare (ignore k))
+  (read-from-string (car (slot-value xml 'children))))
+
+(defmethod xml-serialize ((object complex) &optional (k #'xml-serialize))
+  (declare (ignore k))
+  (<db:complex (format nil "~A" object)))
+
+;; ----------------------------------------------------------------------------
+;; Float
+;; ----------------------------------------------------------------------------
+(defxml <db:float)
+
+(defmethod xml-deserialize ((xml <db:float) &optional (k #'xml-deserialize))
+  (declare (ignore k))
+  (read-from-string (car (slot-value xml 'children))))
+
+(defmethod xml-serialize ((object float) &optional (k #'xml-serialize))
+  (declare (ignore k))
+  (<db:float (format nil "~A" object)))
+
+;; ----------------------------------------------------------------------------
+;; String
+;; ----------------------------------------------------------------------------
+(defxml <db:string)
+
+(defmethod xml-deserialize ((xml <db:string) &optional (k #'xml-deserialize))
+  (declare (ignore k))
+  (read-from-string (car (slot-value xml 'children))))
+
+(defmethod xml-serialize ((object string) &optional (k #'xml-serialize))
+  (declare (ignore k))
+  (<db:string (format nil "~S" object)))
+
+;; ----------------------------------------------------------------------------
+;; Vector
+;; ----------------------------------------------------------------------------
+(defxml <db:vector length id)
+
+(defmethod xml-deserialize ((xml <db:vector) &optional (k #'xml-deserialize))
+  (declare (ignore k))
+  (with-slots (length) xml
+    (let ((object (read-from-string (car (slot-value xml 'children)))))
+      (assert (= length (length object)))
+      object)))
+
+(defmethod xml-serialize ((object vector) &optional (k #'xml-serialize))
+  (declare (ignore k))
+  (<db:vector :length (length object)
+	      (format nil "~A" object)))
+
+;; ----------------------------------------------------------------------------
+;; Cons
+;; ----------------------------------------------------------------------------
+(defxml <db:cons consp length id)
+
+(defmethod xml-deserialize ((xml <db:cons) &optional (k #'xml-deserialize))
+  (with-slots (consp length) xml
+    (let ((object (apply (if consp #'cons #'list)
+			 (mapcar (rcurry k k) (slot-value xml 'children)))))
+      (if (null consp) (assert (= (parse-integer length) (length object))))
+      object)))
+
+(defmethod xml-serialize ((object list) &optional (k #'xml-serialize))
+  (if (atom (cdr object))
+      (<db:cons :consp t
+		(funcall k (car object) k)
+		(funcall k (cdr object) k))
+      (<db:cons :length (length object)
+		(mapcar (rcurry k k) object))))
+
+;; ----------------------------------------------------------------------------
+;; Hash Table
+;; ----------------------------------------------------------------------------
+(defxml <db:hash-table-key)
+(defmethod xml-deserialize ((xml <db:hash-table-key) &optional (k #'xml-deserialize))
+  (funcall k (car (slot-value xml 'children)) k))
+
+(defxml <db:hash-table-value)
+(defmethod xml-deserialize ((xml <db:hash-table-value) &optional (k #'xml-deserialize))
+  (funcall k (car (slot-value xml 'children)) k))
+
+(defxml <db:hash-table-entry)
+(defmethod xml-deserialize ((xml <db:hash-table-entry) &optional (k #'xml-deserialize))
+  (with-slots (children) xml
+    (values (funcall k (car children) k) (funcall k (cadr children) k))))
+
+(defxml <db:hash-table test size id)
+(defmethod xml-deserialize ((xml <db:hash-table) &optional (k #'xml-deserialize))
+  (with-slots (test size) xml
+    (let ((table (make-hash-table :test (read-from-string test))))
+      (reduce (lambda (table entry)
+		(multiple-value-bind (key value) (funcall k entry k)
+		  (setf (gethash key table) value)
+		  table))
+	      (slot-value xml 'children)
+	      :initial-value table))))
+
+(defmethod xml-serialize ((object hash-table) &optional (k #'xml-serialize))
+  (<db:hash-table :test (symbol->string (hash-table-test object))
+		  :size (hash-table-size object)
+		  (let ((result))
+		    (maphash (lambda (key value)
+			       (push (<db:hash-table-entry
+				      (<db:hash-table-key (funcall k key k))
+				      (<db:hash-table-value (funcall k value k)))
+				     result))
+			     object)
+		    (nreverse result))))
+
+;; ----------------------------------------------------------------------------
+;; Object/Structure Slot
+;; ----------------------------------------------------------------------------
+(defxml <db:slot name)
+(defmethod xml-deserialize ((xml <db:slot) &optional (k #'xml-deserialize))
+  (values
+   (read-from-string (slot-value xml 'name))
+   (funcall k (car (slot-value xml 'children)) k)))
+
+;; ----------------------------------------------------------------------------
+;; Structure Object
+;; ----------------------------------------------------------------------------
+(defxml <db:struct class id)
+(defmethod xml-deserialize ((xml <db:struct) &optional (k #'xml-deserialize))
+  (with-slots (class) xml
+    (let* ((class (read-from-string class)))
+      (reduce (lambda (object slot)
+		(multiple-value-bind (name value) (funcall k slot k)
+		  (setf (slot-value object name) value)
+		  object))
+	      (slot-value xml 'children)
+	      :initial-value (funcall (intern (format nil "MAKE-~A" (symbol-name class))
+					      (symbol-package class)))))))
+
+(defmethod xml-serialize ((object structure-object) &optional (k #'xml-serialize))
+  (<db:struct :class (symbol->string (class-name (class-of object)))
+	      (mapcar (lambda (slot)
+			(<db:slot :name (symbol->string slot)
+				  (funcall k (slot-value object slot) k)))
+		      (slots-of object))))
+
+;; ----------------------------------------------------------------------------
+;; Class
+;; ----------------------------------------------------------------------------
+(defxml <db:class id)
+
+(defmethod xml-deserialize ((xml <db:class) &optional (k #'xml-deserialize))
+  (declare (ignore k))
+  (find-class (read-from-string (car (slot-value xml 'children)))))
+
+(defmethod xml-serialize ((object standard-class) &optional (k #'xml-serialize))
+  (declare (ignore k))
+  (<db:class (symbol->string (class-name object))))
+
+;; ----------------------------------------------------------------------------
+;; Standard Object
+;; ----------------------------------------------------------------------------
+(defxml <db:instance id class)
+
+(defmethod xml-deserialize ((xml <db:instance) &optional (k #'xml-deserialize))
+  (with-slots (class children) xml
+    (let ((instance (allocate-instance (find-class (read-from-string class)))))
+      (initialize-instance
+       (reduce (lambda (instance slot)
+		 (multiple-value-bind (name value) (funcall k slot k)
+		   (setf (slot-value instance name) value)
+		   instance))
+	       children :initial-value instance)))))
+
+(defmethod xml-serialize ((object standard-object) &optional (k #'xml-serialize))
+  (<db:instance :class (symbol->string (class-name (class-of object)))
+		(mapcar (lambda (slot)
+			  (<db:slot :name (symbol->string slot)
+				    (funcall k (slot-value object slot) k)))
+			(slots-of object))))
+
+
+;; TODO: serialize hashtable rehash size -evrim.
+
 ;; Core Server: Web Application Server
 
 ;; Copyright (C) 2006-2008  Metin Evrim Ulu, Aycan iRiCAN
@@ -15,237 +315,3 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-(in-package :core-server)
-
-(defclass+ serialization-cache ()
-  ((counter :initform 0)
-   (cache :initform (make-hash-table)))
-  (:ctor ()))
-
-(defmacro with-cached-object ((id object stream cache) &body body)
-  `(multiple-value-bind (,id foundp) (gethash ,object (serialization-cache.cache ,cache))
-     (cond
-       (foundp
-	(string! ,stream "<REF ID=\"")
-	(fixnum! ,stream ,id)
-	(string! ,stream "\"/>"))
-       (t
-	(setf ,id (incf (serialization-cache.counter ,cache))
-	      (gethash ,object (serialization-cache.cache ,cache)) ,id)
-	,@body))))
-
-(defmethod serialize-xml ((stream core-stream) (object t) (cache serialization-cache))
-  (declare (ignore stream cache))
-  (error "Cant serialize ~A" object))
-
-(defmethod serialize-xml ((stream core-stream) (object null) (cache serialization-cache))
-  (declare (ignore cache))
-  (string! stream "<NULL/>"))
-
-(defmethod serialize-xml ((stream core-stream) (object (eql 't)) (cache serialization-cache))
-  (declare (ignore cache))
-  (string! stream "<TRUE/>"))
-
-(defmethod serialize-xml ((stream core-stream) (object symbol) (cache serialization-cache))
-  (declare (ignore cache))
-  (string! stream "<SYMBOL>")
-  (symbol-with-package! stream object)
-  (string! stream "</SYMBOL>"))
-
-(defmethod serialize-xml ((stream core-stream) (object character) (cache serialization-cache))
-  (declare (ignore cache))
-  (string! stream "<CHARACTER>")
-  (char! stream object)
-  (string! stream "</CHARACTER>"))
-
-(defmethod serialize-xml ((stream core-stream) (object integer) (cache serialization-cache))
-  (declare (ignore cache))
-  (string! stream "<INT>")
-  (fixnum! stream object)
-  (string! stream "</INT>"))
-
-(defmethod serialize-xml ((stream core-stream) (object ratio) (cache serialization-cache))
-  (declare (ignore cache))
-  (string! stream "<RATIO>")
-  (string! stream (format nil "~A" object))
-  (string! stream "</RATIO>"))
-
-(defmethod serialize-xml ((stream core-stream) (object complex) (cache serialization-cache))
-  (declare (ignore cache))
-  (string! stream "<COMPLEX>")
-  (string! stream (format nil "~A" object))
-  (string! stream "</COMPLEX>"))
-
-(defmethod serialize-xml ((stream core-stream) (object float) (cache serialization-cache))
-  (declare (ignore cache))
-  (string! stream "<FLOAT>")
-  (string! stream (format nil "~A" object))
-  (string! stream "</FLOAT>"))
-
-(defmethod serialize-xml ((stream core-stream) (object string) (cache serialization-cache))
-  (with-cached-object (id object stream cache)
-    (string! stream "<STRING ID=\"")
-    (fixnum! stream id)
-    (string! stream "\">")
-    (quoted! stream object)
-    (string! stream "</STRING>")))
-
-(defmethod serialize-xml ((stream core-stream) (object vector) (cache serialization-cache))
-  (with-cached-object (id object stream cache)
-    (string! stream "<VECTOR ID=\"")
-    (fixnum! stream id)
-    (string! stream "\" SIZE=\"")
-    (fixnum! stream (length object))
-    (string! stream "\">")
-    (reduce (rcurry #'serialize-xml cache) object :initial-value stream)
-    (string! stream "</VECTOR>")))
-
-(defmethod serialize-xml ((stream core-stream) (object list) (cache serialization-cache))
-  (with-cached-object (id object stream cache)
-    (if (atom (cdr object))
-	(progn
-	  (string! stream "<CONS ID=\"")
-	  (fixnum! stream id)
-	  (string! stream "\">")
-	  (serialize-xml stream (car object) cache)
-	  (serialize-xml stream (cdr object) cache)
-	  (string! stream "</CONS>"))
-	(progn
-	  (string! stream "<LIST ID=\"")
-	  (fixnum! stream id)
-	  (string! stream "\" SIZE=\"")
-	  (fixnum! stream (length object))
-	  (string! stream "\">")
-	  (reduce (rcurry #'serialize-xml cache) object :initial-value stream)
-	  (string! stream "</LIST>")))))
-
-(defmethod serialize-xml ((stream core-stream) (object hash-table) (cache serialization-cache))
-  (with-cached-object (id object stream cache)
-    (string! stream "<HASH-TABLE ID=\"")
-    (fixnum! stream id)
-    (string! stream "\" TEST=\"")
-    (symbol-with-package! stream (hash-table-test object))
-    (string! stream "\" SIZE=\"")
-    (fixnum! stream (hash-table-size object))
-    (string! stream "\">")
-    (maphash (lambda (k v)
-	       (string! stream "<ENTRY><KEY>")
-	       (serialize-xml stream k cache)
-	       (string! stream "</KEY><VALUE>")
-	       (serialize-xml stream v cache)
-	       (string! stream "</VALUE></ENTRY>"))
-	     object)
-    (string! stream "</HASH-TABLE>")))
-
-(defmethod serialize-xml ((stream core-stream) (object structure-object)
-			  (cache serialization-cache))
-  (with-cached-object (id object stream cache)
-      (string! stream "<STRUCT ID=\"")
-      (fixnum! stream id)
-      (string! stream "\" CLASS=\"")
-    (symbol-with-package! stream (class-name (class-of object)))
-    (string! stream "\">")
-    (mapc (lambda (slot)
-	    (string! stream "<SLOT NAME=\"")
-	    (symbol-with-package! stream slot)
-	    (string! stream "\">")
-	    (serialize-xml stream (slot-value object slot) cache)
-	    (string! stream "</SLOT>"))
-	  (slots-of object))
-    (string! stream "</STRUCT>")))
-
-(defmethod serialize-xml ((stream core-stream) (object standard-object)
-			  (cache serialization-cache))
-  (with-cached-object (id object stream cache)
-    (string! stream "<OBJECT ID=\"")
-    (fixnum! stream id)
-    (string! stream "\" CLASS=\"")
-    (symbol-with-package! stream (class-name (class-of object)))
-    (string! stream "\">")
-    (mapc (lambda (slot)
-	    (string! stream "<SLOT NAME=\"")
-	    (symbol-with-package! stream slot)
-	    (string! stream "\">")
-	    (serialize-xml stream (slot-value object slot) cache)
-	    (string! stream "</SLOT>"))
-	  (slots-of object))
-    (string! stream "</OBJECT>")))
-
-(defmethod deserialize-xml ((stream core-stream) (cache serialization-cache))
-  (macrolet ((with-cached-object ((element) result)
-	       `(setf (gethash (parse-integer (get-attribute ,element "ID"))
-			       (serialization-cache.cache cache))
-		      ,result)))
-    (labels ((deserialize (element)	       
-	       (let ((tag (dom.tag element)))
-		 (cond		   
-		   ((string= "REF" tag)
-		    (gethash (parse-integer (get-attribute element "ID"))
-			     (serialization-cache.cache cache)))
-		   ((string= "NULL" tag)
-		    nil)
-		   ((string= "TRUE" tag)
-		    t)
-		   ((string= "CHARACTER" tag)
-		    (aref (car (dom.children element)) 0))
-		   ((or (string= "SYMBOL" tag)
-			(string= "INT" tag)
-			(string= "RATIO" tag)
-			(string= "COMPLEX" tag)
-			(string= "FLOAT" tag))
-		    (read-from-string (car (dom.children element))))
-		   ((string= "STRING" tag)
-		    (with-cached-object (element)		      
-		      (quoted? (make-core-stream (car (dom.children element))))))
-		   ((string= "VECTOR" tag)
-		    (map-into nil #'deserialize (dom.children element)))
-		   ((string= "CONS" tag)
-		    (with-cached-object (element)
-		      (cons (deserialize (car (dom.children element)))
-			    (deserialize (cadr (dom.children element))))))
-		   ((string= "LIST" tag)
-		    (with-cached-object (element)		      
-		      (mapcar #'deserialize (dom.children element))))
-		   ((string= "HASH-TABLE" tag)
-		    (with-cached-object (element)
-		      (let* ((test (read-from-string (get-attribute element "TEST")))
-			     (table (make-hash-table :test test)))
-			(mapc (lambda (entry)
-				(setf (gethash (deserialize
-						(car (dom.children (car (dom.children entry)))))
-					       table)
-				      (deserialize (car (dom.children (cadr (dom.children entry)))))))
-			      (dom.children element))
-			table)))
-		   ((string= "STRUCT" tag)
-		    (with-cached-object (element)
-		      (let* ((class (read-from-string (get-attribute element "CLASS")))
-			     (object (funcall (intern (format nil "MAKE-~A" (symbol-name class))
-						      (symbol-package class)))))
-			(mapc (lambda (slot)
-				(let ((slot-name (read-from-string (get-attribute slot "NAME"))))
-				  (when (slot-exists-p object slot-name)
-				    (setf (slot-value object slot-name)
-					  (deserialize (car (dom.children slot)))))))
-			      (dom.children element))
-			object)))
-		   ((string= "OBJECT" tag)
-		    (with-cached-object (element)
-		      (let* ((class (read-from-string (get-attribute element "CLASS")))
-			     (object (make-instance class)))
-			(mapc (lambda (slot)
-				(let ((slot-name (read-from-string (get-attribute slot "NAME"))))
-				  (when (slot-exists-p object slot-name)
-				    (setf (slot-value object slot-name)
-					  (deserialize (car (dom.children slot)))))))
-			      (dom.children element))
-			object)))
-		   (t
-		    (if (null element)
-			(error "Bogus prevalence stream ~A" stream)
-			(error "Cant deserialize ~A" element)))))))
-      (aif (dom-element? stream)
-	   (values (deserialize it) cache)
-	   (values nil cache)))))
-
-;; TODO: serialize hashtable rehash size -evrim.
