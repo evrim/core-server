@@ -313,7 +313,7 @@
 ;;       absoluteURI   = scheme ":" ( hier_part | opaque_part )
 (defrule absolute-uri? (scheme path query authority fragment)
   (:scheme? scheme)
-  #\:  
+  #\:
   (:or (:and (:hier_part? path query authority fragment)
 	     (:return (values scheme authority path query fragment)))
        (:and (:opaque_part? path)
@@ -380,43 +380,44 @@
 (defmethod uri! ((stream core-stream) (uri string))
   (string! stream uri))
 
-(defmethod uri! ((stream core-stream) (uri uri))  
-  (with-slots (scheme username password server port paths queries fragments) uri
-    (when (and scheme server)
-      (string! stream scheme)
-      (string! stream "://")
-      (when username
-	(string! stream username)
-	(when password
+(defmethod uri! ((stream core-stream) (uri uri))
+  (prog1 stream
+    (with-slots (scheme username password server port paths queries fragments) uri
+      (when (and scheme server)
+	(string! stream scheme)
+	(string! stream "://")
+	(when username
+	  (string! stream username)
+	  (when password
+	    (char! stream #\:)
+	    (string! stream password))
+	  (char! stream #\@))
+	(string! stream server)
+	(when port
 	  (char! stream #\:)
-	  (string! stream password))
-	(char! stream #\@))
-      (string! stream server)
-      (when port
-	(char! stream #\:)
-	(fixnum! stream port)))
-    (mapc #'(lambda (path)
-	      (char! stream +uri-path-seperator+)
-	      (string! stream (car path))
-	      (mapc #'(lambda (path)
-			(char! stream +uri-segment-seperator+)
-			(string! stream path))
-		    (cdr path)))
-	  paths)
-    (when (car queries)
-      (char! stream #\?)
-      (query! stream (car queries))
-      (mapc #'(lambda (query)
-		(char! stream +uri-query-seperator+)
-		(query! stream query))
-	    (cdr queries)))
-    (when (car fragments)
-      (char! stream #\#)
-      (query! stream (car fragments))
-      (mapcar #'(lambda (fragment)
+	  (fixnum! stream port)))
+      (mapc #'(lambda (path)
+		(char! stream +uri-path-seperator+)
+		(string! stream (car path))
+		(mapc #'(lambda (path)
+			  (char! stream +uri-segment-seperator+)
+			  (string! stream path))
+		      (cdr path)))
+	    paths)
+      (when (car queries)
+	(char! stream #\?)
+	(query! stream (car queries))
+	(mapc #'(lambda (query)
 		  (char! stream +uri-query-seperator+)
-		  (query! stream fragment))
-	      (cdr fragments)))))
+		  (query! stream query))
+	      (cdr queries)))
+      (when (car fragments)
+	(char! stream #\#)
+	(query! stream (car fragments))
+	(mapcar #'(lambda (fragment)
+		    (char! stream +uri-query-seperator+)
+		    (query! stream fragment))
+		(cdr fragments))))))
 
 (defparameter +uri-parsers+
   '(query-key? query-value? query? uric? fragment? scheme-specials? scheme?

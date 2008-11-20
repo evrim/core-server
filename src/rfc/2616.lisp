@@ -1,27 +1,10 @@
-;; Core Server: Web Application Server
-
-;; Copyright (C) 2006-2008  Metin Evrim Ulu, Aycan iRiCAN
-
-;; This program is free software: you can redistribute it and/or modify
-;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or
-;; (at your option) any later version.
-
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
-
-;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-(in-package :tr.gen.core.server)
 ;;;-----------------------------------------------------------------------------
 ;;; RFC 2616 - Hypertext Transfer Protocol -- HTTP/1.1
 ;;;-----------------------------------------------------------------------------
+(in-package :tr.gen.core.server)
 
 ;;;-----------------------------------------------------------------------------
-;;; HTTP mETHOD/PROTOCOL
+;;; HTTP METHOD/PROTOCOL
 ;;;-----------------------------------------------------------------------------
 (defrule http-protocol? (version)
   (:seq "HTTP/") (:version? version)
@@ -36,8 +19,8 @@
   (:return (car (member (string-upcase val) +http-request-methods+
 			:test #'string=))))
 
-(defun http-method! (stream method)
-  (symbol! stream method))
+(defrender http-method! (method)
+  (:symbol! method))
 
 ;;;-----------------------------------------------------------------------------
 ;;; HTTP HEADER TYPES
@@ -80,11 +63,8 @@
 	     (:quoted? val)))
   (:return (cons attr val)))
 
-(defun header-parameter! (stream hp)
-  (char! stream #\;)
-  (string! stream (car hp))
-  (char! stream #\=)
-  (quoted! stream (cdr hp)))
+(defrender header-parameter! (hp)
+  #\; (car hp) #\= (:quoted! (cdr hp)))
 
 ;; 3.8 product tokens
 ;; product         = token [ "/" product-version]
@@ -152,6 +132,20 @@
   '(public private no-cache no-store no-transform must-revalidate
     proxy-revalidate max-age s-maxage))
 
+(defrender %http-cache-control! (cache-control-cons)   
+  (:cond
+    ((atom cache-control-cons)
+     cache-control-cons)
+    ((typep (cdr cache-control-cons) 'fixnum)
+     (car cache-control-cons) #\= (cdr cache-control-cons))
+    ((typep (cdr cache-control-cons) 'cons)
+     (car cache-control-cons) #\, (cadr cache-control-cons) #\=
+     (cddr cache-control-cons))
+    ((typep (cdr cache-control-cons) 'string)
+     (car cache-control-cons) #\= (:quoted! (cdr cache-control-cons)))
+    (t
+     (:do (error "Invalid Cache-Control declaration.")))))
+
 (defun http-cache-control! (stream cache-controls)
   (let ((cache-controls (ensure-list cache-controls)))
     (flet ((cache-control! (cache-control-cons)
@@ -190,7 +184,7 @@
 	(:do (push c tokens)))
   (:return tokens))
 
-(defun http-connection! (stream connection)
+(defun/cc2 http-connection! (stream connection)
   (typecase connection
     (symbol (symbol! stream connection))
     (string (string! stream connection))))
@@ -283,7 +277,7 @@
   (:return timestamp))
 
 ;;Sun, 06 Nov 1994 08:49:37 GmT
-(defun http-date! (stream timestamp)
+(defun/cc2 http-date! (stream timestamp)
   (multiple-value-bind (second minute hour day month year day-of-week)
       (decode-universal-time timestamp 0)
     (string! stream
@@ -1059,7 +1053,7 @@
 (defrule http-content-length? (num)
   (:fixnum? num) (:return num))
 
-(defun http-content-length! (stream length)
+(defun/cc2 http-content-length! (stream length)
   (fixnum! stream length))
 
 ;; 14.14 Content-Location
@@ -1110,7 +1104,7 @@
 ;; http-content-type! :: (string string . string)
 ;; ex: '("text" "html" ("charset" . "UTF-8") ...)
 ;; or: '("text" "javascript" ("charset" "UTF-8") ..)
-(defun http-content-type! (stream typesubtype-charset-cons)
+(defun/cc2 http-content-type! (stream typesubtype-charset-cons)
   (string! stream (car typesubtype-charset-cons))
   (char! stream #\/)
   (string! stream (cadr typesubtype-charset-cons))
@@ -1231,6 +1225,7 @@
    (uri :accessor http-request.uri :initarg :uri)
    (headers :accessor http-request.headers :initform '())
    (entity-headers :accessor http-request.entity-headers :initform '())
+   (peer-type :accessor http-request.peer-type :initform 'http)
    (stream :accessor http-request.stream :initform nil :initarg :stream)))
 
 (defmethod http-request.header ((request http-request) key)
@@ -1297,7 +1292,7 @@
 	     (:and (:http-entity-header? header) (:do (push header eh)))	     
 	     (:and (:mod-lisp-header? header) (:do (push header mlh)))
 	     (:and (:http-unknown-header? header) (:do (push header uh))))
-	(:crlf?)
+	(:optional (:crlf?))
 	(:checkpoint
 	  (:seq "end")
 	  (:return (values  (cadr (assoc 'method mlh))	      ;;method
@@ -1319,8 +1314,9 @@
        (:and (:mod-lisp-request-headers? method uri version gh rh eh uh mlh)
 	     (:return (values 'mod-lisp method uri version gh (append rh mlh) eh uh)))))
 
-(defrule x-www-form-urlencoded? (query)
-  (:query? query) (:return query))
+(defrule x-www-form-urlencoded? (query)  
+  (:query? query)
+  (:return query))
 
 
 (deftrace http-headers
@@ -1344,6 +1340,8 @@
    (status-code :accessor http-response.status-code :initform (make-status-code 200))
    (entity-headers :accessor http-response.entity-headers :initform '()
 		   :initarg :entity-headers)
+   (peer-type :accessor http-response.peer-type :initform 'http
+	      :initarg :peer-type)
    (stream :accessor http-response.stream :initform nil :initarg :stream)))
 
 (defmethod http-response.add-entity-header ((self http-response) key val)
@@ -1371,19 +1369,18 @@
 
 (defmacro defhttp-header-render (name format header-list) 
   (let ((hname (gensym)))
-    `(defun ,name (stream hdr)
-       (funcall (let ((,hname (car hdr)))
-		  (cond
-		    ,@(mapcar #'(lambda (h)
-				  `((eql ,hname ',h)
-				    (progn
-				      (string! stream (symbol-name ',h))
-				      (char! stream #\:)
-				      (char! stream #\ ) 
-				      (function ,(intern (format nil format h))))))
-			      (eval header-list))
-		    (t (error (format nil "Unknown header name: ~A" (car hdr))))))
-		stream (cdr hdr))
+    `(defun/cc2 ,name (stream hdr)
+       (let ((,hname (car hdr)))
+	 (cond
+	   ,@(mapcar #'(lambda (h)
+			 `((eql ,hname ',h)
+			   (progn
+			     (string! stream (symbol-name ',h))
+			     (char! stream #\:)
+			     (char! stream #\ ) 
+			     (,(intern (format nil format h)) stream (cdr hdr)))))
+		     (eval header-list))
+	   (t (error (format nil "Unknown header name: ~A" (car hdr)))))) 
        (char! stream #\Newline))))
 
 (defhttp-header-render http-general-header! "HTTP-~A!" +http-general-headers+)
@@ -1461,7 +1458,7 @@
 	(assoc num *status-codes*))))
 
 ;; status-code! :: stream -> [Int] -> (Int, String)
-(defun status-code! (stream version status-code)
+(defun/cc2 status-code! (stream version status-code)
   (string! stream  "HTTP/")
   (version! stream version)
   (char! stream #\ )
@@ -1470,7 +1467,7 @@
   (string! stream (cdr status-code))
   (char! stream #\Newline))
 
-(defun http-response-headers! (stream response)
+(defun/cc2 http-response-headers! (stream response)
   ;; Status-Line
   (status-code! stream
 		(http-message.version response)
@@ -1531,3 +1528,19 @@
 ;; ;;;-----------------------------------------------------------------------------
 ;; (defclass mod-lisp-response (http-response)
 ;;   ())
+;; Core Server: Web Application Server
+
+;; Copyright (C) 2006-2008  Metin Evrim Ulu, Aycan iRiCAN
+
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
