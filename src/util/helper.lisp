@@ -67,6 +67,13 @@ for traceing a closed system"
        (defun ,untrace-symbol (&optional (methods ,var-symbol))
 	 (mapcar (lambda (e) (eval `(untrace ,e))) methods)))))
 
+(defun uniq (lst &key (test #'eq) (key #'identity))  
+  (nreverse
+   (reduce0 (lambda (acc atom)
+	      (pushnew atom acc :key key :test test)
+	      acc)
+	    lst)))
+
 (defun prepend (&rest lists)
   "Prepends lists to a single list"
   (cond
@@ -85,6 +92,9 @@ for traceing a closed system"
     ((atom lst) (cons lst acc))
     ((listp lst)
      (flatten (car lst) (flatten (cdr lst) acc)))))
+
+(defun flatten1 (lst)
+  (reduce0 #'append lst))
 
 (defun any (lambda list)
   "Returns any non-null result when lambda is applied to the any element of list"
@@ -261,6 +271,9 @@ iv) t      - 06/06/2008 17:30"
       (decode-universal-time (get-universal-time))
     (declare (ignore second minute hour day-of-week dst-p))
     (+ seconds (encode-universal-time 0 0 0 day month year tz))))
+
+(defun concat (&rest args)
+  (reduce0 (curry #'concatenate 'string) args))
 
 (defun string-replace-all (old new big)
   "Replace all occurences of OLD string with NEW string in BIG string."
