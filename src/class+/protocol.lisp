@@ -6,7 +6,7 @@
 (defun find-class+ (class+)
   "Returns the instance of class+ associated with the symbol named 'class+'."
   (etypecase class+
-    (symbol (find-class class+))
+    (symbol (find-class class+ nil))
     (class+ class+)))
 
 (defgeneric class+.name (class+)
