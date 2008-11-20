@@ -6,29 +6,10 @@
 ;;   (add-worker accepter 4)
 ;;   (start accepter))
 
-(defclass core-socket-stream (core-fd-io-stream)
-  ((socket :accessor socket)))
-
-(defmethod stream.fd ((self core-socket-stream))
-  (swank-backend::socket-fd (socket self)))
-
-(defmethod %peek-stream ((self core-socket-stream))
-  (socket.recv (socket self) '() 1))
-
-(defmethod read-stream ((self core-socket-stream))
-  )
-
-(defmethod write-stream ((self core-socket-stream) octet)
-  (socket.send (socket self) #(octet)))
-
-(defmethod close-stream ((self core-socket-stream))
-  (socket.close (socket self)))
-
-
 ;;;
 ;;; non-blocking io stream
 ;;;
-(defclass nio-socket-stream (core-socket-stream)
+(defclass nio-socket-stream (core-fd-io-stream)
   ((worker-unit :accessor nio-socket-stream.worker-unit)))
 
 (defmethod stream.worker ((self nio-socket-stream))
@@ -83,24 +64,24 @@
   ((epoll-device :accessor event-dispatcher.epoll-device
 		:initarg :epoll-device
 		:initform (make-epoll-device))
-   (rfds :accessor event-dispatcher.rfds :initarg :rfds)
-   (wfds :accessor event-dispatcher.wfds :initarg :wfds)
-   (efds :accessor event-dispatcher.efds :initarg :efds)))
+   (rfds :accessor event-dispatcher.rfds :initarg :rfds :initform (make-hash-table))
+   (wfds :accessor event-dispatcher.wfds :initarg :wfds :initform (make-hash-table))
+   (efds :accessor event-dispatcher.efds :initarg :efds :initform (make-hash-table))))
 
 (defmethod event-queue ((self event-dispatcher))
   (event-dispatcher.epoll-device self))
 
 (defmethod recipient? ((self event-dispatcher) event)
-  (or (apply #'gethash (epoll-event.fd event)
+  (or (apply #'gethash (epoll-event-data event)
 	     (cond 
-	       ((eq epollin (logand epollin (epoll-event.events event)))
+	       ((eq epollin (logand epollin (epoll-event-events event)))
 		(event-dispatcher.rfds self))
-	       ((eq epollout (logand epollout (epoll-event.events event)))
+	       ((eq epollout (logand epollout (epoll-event-events event)))
 		(event-dispatcher.wfds self))
-	       ((eq epollerr (logand epollerr (epoll-event.events event)))
+	       ((eq epollerr (logand epollerr (epoll-event-events event)))
 		(event-dispatcher.efds self))))
       #'(lambda ()
-	  (format t "missed event on fd: ~D" (epoll-event.fd event)))))
+	  (format t "missed event on fd: ~D" (epoll-event-data event)))))
 
 (defmethod/unit run ((self event-dispatcher))
   (loop (mapcar #'(lambda (ev)
@@ -110,18 +91,16 @@
 ;;;
 ;;; Worker Unit (worker for each new client)
 ;;;
-(defclass worker-unit (unit)
-  ((accept-unit :accessor worker-unit.accept-unit :initarg :accept-unit)
-   (event-dispatcher :accessor worker-unit.event-dispatcher :initarg :event-dispatcher)))
+(defclass nio-worker-unit (unit)
+  ((accept-unit :accessor nio-worker-unit.accept-unit :initarg :accept-unit)
+   (event-dispatcher :accessor nio-worker-unit.event-dispatcher :initarg :event-dispatcher)))
 
-(defmethod event-dispatcher ((self worker-unit))
-  (worker-unit.event-dispatcher self))
+(defmethod event-dispatcher ((self nio-worker-unit))
+  (nio-worker-unit.event-dispatcher self))
 
-(defmethod/unit handle-fd ((self worker-unit) socket)
+(defmethod/cc handle-fd ((self nio-worker-unit) socket)
   ;; create nio-socket for each client.
-  (let ((s (make-instance 'nio-socket-stream
-			  :worker-unit self
-			  :socket socket)))
+  (let ((s (make-instance 'nio-socket-stream :worker-unit self :socket socket)))
     ;; request response cycle here...
     (print-response (eval-request (read-request s)))))
 

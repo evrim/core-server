@@ -108,6 +108,13 @@
   (addr :pointer)
   (addrlen :pointer))
 
+;; int connect(int sockfd, const struct sockaddr *serv_addr, socklen_t addrlen);
+(declaim (inline %connect))
+(defcfun ("connect" %connect) retval
+  (sockfd :int)
+  (addr :pointer)
+  (addrlen socklen))
+
 ;; ssize_t recv(int socket, void *buffer, size_t length, int flags); 
 (defcfun ("recv" %recv) retval
   (fd fd)

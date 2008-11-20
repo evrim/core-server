@@ -37,6 +37,39 @@
        (setf ai-family ,family ai-flags ,flags ai-socktype ,socktype ai-protocol ,protocol)
        ,@body)))
 
+(defun connect (node service &optional (protocol :tcp))
+  (with-foreign-object (res :pointer)
+    ;; construct an addrinfo for hints
+    (with-addrinfo (hints af-inet (ecase protocol
+				    (:tcp sock-stream)
+				    (:udp sock-dgram))
+			  flag-ai-passive 0)
+      ;; call getaddrinfo
+      (let ((r (%getaddrinfo node (if (numberp service)
+				      (format nil"~D" service)
+				      service)
+			     hints
+			     res)))
+	(if (not (eq 0 r))
+	    (error (format nil "getaddrinfo: ~A" (%gai_strerror r)))
+	    ;; otherwise we'll have addrinfos in res. let's recurse
+	    ;; over them to bind any
+	    (labels ((bind-any (ptr)
+		       (cond
+			 ((null-pointer-p ptr) nil)
+			 (t
+			  (let* ((obj (make-instance 'addrinfo :pointer (mem-ref ptr 'addrinfo)))
+				 (sfd (%socket (addrinfo-ai-family obj)
+					       (addrinfo-ai-socktype obj)
+					       (addrinfo-ai-protocol obj)))) 
+			    (with-slots (ai-addr ai-addrlen ai-next) obj
+			      (if (not (eq sfd -1))
+				  (arnesi::aif (eq 0 (%connect sfd ai-addr ai-addrlen))
+					       sfd
+					       arnesi::it) 
+				  (bind-any ai-next))))))))
+	      (bind-any (mem-ref res :pointer))))))))
+
 (defun bind (node service
 	     &optional (protocol :tcp) (backlog 10) (reuse-address t))
   ;; ptr for results
@@ -101,7 +134,7 @@
 	(values newfd peeraddr)))))
 
 (defun set-nonblock (fd)
-  (%fcntl fd setfd (logior nonblock (%fcntl fd getfd 0))))
+  (%fcntl fd setfl (logior nonblock (%fcntl fd getfl 0))))
 
 ;; EPOLLUTION
 (define-c-struct-wrapper epoll-event ())

@@ -147,6 +147,8 @@
 (progn
   (constant (getfd "F_GETFD"))
   (constant (setfd "F_SETFD"))
+  (constant (getfl "F_GETFL"))
+  (constant (setfl "F_SETFL"))
   (constant (setown "F_SETOWN"))
   (constant (getown "F_GETOWN"))
   (constant (setsig "F_SETSIG"))
