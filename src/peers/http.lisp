@@ -88,7 +88,9 @@ nil if stream data is invalid"
 	       ;; set max-read to content-length for termination	       
 	       (setf (slot-value stream '%max-read) (1- content-length)
 		     (uri.queries uri) (append (uri.queries uri)
-					       (x-www-form-urlencoded? stream))))))
+					       (aif (json? stream)
+						    (hash-to-alist it)
+						    (x-www-form-urlencoded? stream)))))))
 	  (setf (http-message.general-headers request) general-headers
 		(http-message.unknown-headers request) unknown-headers
 		(http-request.headers request) request-headers
@@ -194,6 +196,17 @@ nil if stream data is invalid"
     '(handle-stream render-error render-response eval-request parse-request
       render-headers make-response render-http-headers render-mod-lisp-headers))
 
+
+(defclass nio-http-peer-mixin (unit)
+  ((continuations :initform (make-hash-table) :accessor continuations))
+  (:default-initargs :name "NIO Http Peer Handling Unit"))
+
+(defmethod queue-stream ((self nio-http-peer-mixin) stream k)
+  (setf (gethash stream (continuations self))
+	k))
+
+(defmethod/unit handle-stream :dispatch ((self nio-http-peer-mixin) stream address)
+  (call-next-method (make-instance 'core-fd-nio-stream :stream stream :worker self) address))
 
 ;; FIXmE: what to do with below?
 
