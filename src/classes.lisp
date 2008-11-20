@@ -33,7 +33,9 @@
   ((server :accessor application.server :initform nil
 	   :documentation "On which server this application is running, setf'ed after (register)")
    (initargs :accessor application.initargs :initarg :initargs :initform nil
-	     :documentation "Init-args when this instance is created."))
+	     :documentation "Init-args when this instance is created.")
+   (debug :accessor application.debug :initarg :debug :initform t
+	  :documentation "Debugging flag for this application"))
   (:documentation "Base Application Class"))
 
 (defclass web-application (application)
@@ -53,36 +55,6 @@
 		    :documentation "Htdocs pathname of the project,
 		    used for serving static files"))
   (:documentation "Base Web Application Class"))
-
-(defclass http-application (web-application)
-  ((urls :accessor application.urls :initarg :urls :initform '()
-	 :documentation "A list that contains URLs that this application handles")
-   (sessions :accessor application.sessions :initform (make-hash-table :test #'equal)
-	     :documentation "A hash-table that holds sessions")
-   (debug :accessor application.debug :initform t
-	  :documentation "Debugging flag for this application"))
-  (:documentation "HTTP Application Class"))
-
-(defmethod print-object ((self http-application) stream)
-  (print-unreadable-object (self stream :type t :identity t)
-    (if (typep self 'server)
-	(format stream "FQDN:\"~A\" is ~A running" (web-application.fqdn self)
-		(if (status self) "" "*not*"))
-	(format stream "FQDN:\"~A\"" (web-application.fqdn self)))))
-
-(defclass http-session ()
-  ((id :reader session.id :initform (random-string 8))
-   (continuations :reader session.continuations :initform (make-hash-table :test #'equal)) 
-   (timestamp :accessor session.timestamp :initform (get-universal-time))
-   (data :accessor session.data :initform (make-hash-table :test #'equal))))
-
-(defclass http-context ();;    (core-cps-stream)
-  ((request :accessor context.request :initarg :request :initform nil)
-   (response :accessor context.response :initarg :response :initform nil)
-   (session :accessor context.session :initarg :session :initform nil)
-   (application :accessor context.application :initarg :application :initform nil)
-   (continuation :accessor context.continuation :initform nil)
-   (returns :accessor context.returns :initform nil)))
 
 (defclass apache-web-application (web-application)
   ((vhost-template-pathname
@@ -122,7 +94,7 @@ for implementation."))
 				(make-pathname :directory '(:relative "templates"))
 				(make-pathname :directory '(:relative "db"))))
    (use :accessor serializable-web-application.use :initarg :use
-	:initform (list :common-lisp :core-server :cl-prevalence :arnesi))
+	:initform (list :common-lisp :core-server :arnesi))
    (depends-on :accessor serializable-web-application.depends-on :initarg :depends-on
 	       :initform (list :arnesi :core-server)))
   (:documentation "Base class for template application - This class is
@@ -169,7 +141,7 @@ that uses GIT (http://git.or.cz) as SCM"))
 		  :documentation "TCP reuse address option")
    (backlog :initarg :backlog :initform 1
 	    :documentation "TCP backlog option")
-   (peers-max :initarg :peers-max :initform 6
+   (peers-max :initarg :peers-max :initform 4
 	      :documentation "Number of peers that this server manages")
    (element-type :initarg :element-type :initform '(unsigned-byte 8)
 		 :documentation "Data type for socket stream")
@@ -186,12 +158,16 @@ that uses GIT (http://git.or.cz) as SCM"))
   ()
   (:documentation "Web Server Base Class"))
 
-(defclass custom-http-peer (http-peer)
-  ())
-
 (defclass http-server (web-server socket-server logger-server)
   ((applications :accessor server.applications :initform '()))
-  (:default-initargs :port 3001 :peer-class '(custom-http-peer)))
+  (:default-initargs :port 3001 :peer-class '(http-unit)))
+
+(defclass nio-custom-http-peer (nio-http-peer-mixin custom-http-peer)
+  ())
+
+(defclass nio-http-server (web-server nio-socket-server logger-server)
+  ()
+  (:default-initargs :peer-class '(nio-custom-http-peer)))
 
 (defclass apache-server (web-server)
   ((apachectl-pathname
@@ -216,23 +192,6 @@ that uses GIT (http://git.or.cz) as SCM"))
 server to manage Apache2 Web Server. See src/servers/apache for
 implementation")
   (:default-initargs :name "Apache2 Web Server"))
-
-(defclass database-server (server guarded-prevalence-system)
-  ()
-  (:default-initargs :file-extension "sexp"
-    :serializer #'cl-prevalence::serialize-sexp
-    :deserializer #'cl-prevalence::deserialize-sexp
-    :name "Guarded Prevalence Database Server"))
-
-(defmethod print-object ((self database-server) stream)
-  (print-unreadable-object (self stream :type t :identity t)
-    (format stream "Prevalence Database is~A running on: \"~A\"."
-	    (if (status self) "" " *not*") (get-directory self))))
-
-(defclass standard-model-class ()
-  ((creation-date :accessor standard-model-class.creation-date
-		  :initarg :creation-date :initform nil))
-  (:documentation "A base class for database model"))
 
 (defclass tinydns-server (server)
   ((svc-pathname :accessor tinydns-server.svc-pathname
@@ -308,3 +267,22 @@ temporary or permanent access to a resource"))
 			   (create-unique-hash oldhashlist))
 	     :documentation "Customizable hash function for ticket.hash"))
   (:default-initargs :name "Ticket Server"))
+
+
+;; (defclass database-server (server guarded-prevalence-system)
+;;   ()
+;;   (:default-initargs :file-extension "sexp"
+;;     :serializer #'cl-prevalence::serialize-sexp
+;;     :deserializer #'cl-prevalence::deserialize-sexp
+;;     :name "Guarded Prevalence Database Server"))
+
+;; (defmethod print-object ((self database-server) stream)
+;;   (print-unreadable-object (self stream :type t :identity t)
+;;     (format stream "Prevalence Database is~A running on: \"~A\"."
+;; 	    (if (status self) "" " *not*") (get-directory self))))
+
+;; (defclass standard-model-class ()
+;;   ((creation-date :accessor standard-model-class.creation-date
+;; 		  :initarg :creation-date :initform nil))
+;;   (:documentation "A base class for database model"))
+
