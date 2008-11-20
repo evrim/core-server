@@ -75,7 +75,7 @@
 (defmacro defhtml (name supers &rest attributes)  
   `(progn
      (defclass+ ,name (,@supers xml)
-       (,@(mapcar (lambda (attr) (list attr :print t)) attributes))
+       (,@(mapcar (lambda (attr) (list attr :print t)) (remove 'id attributes)))
        (:metaclass html+)
        (:tag ,(string-downcase (symbol-name name)))
        (:namespace nil)
@@ -86,16 +86,15 @@
 ;;+----------------------------------------------------------------------------
 ;;| HTML Class
 ;;+----------------------------------------------------------------------------
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defclass html-element (dom-element)
-    ()
-    (:documentation "HTML Element Class (ie html)")
-    (:metaclass dom-element+))
+(defclass+ html-element (dom-element)
+  ((id :host both))
+  (:documentation "HTML Element Class (ie html)")
+  (:metaclass dom-element+))
 
-  (defclass empty-html-element (html-element)
-    ()
-    (:documentation "Empty HTML Element Class (ie img)")
-    (:metaclass dom-element+)))
+(defclass+ empty-html-element (html-element)
+  ()
+  (:documentation "Empty HTML Element Class (ie img)")
+  (:metaclass dom-element+))
 
 (defmacro defhtml-tag (name &rest attributes)
   `(defhtml ,name (html-element) ,@(make-html-attributes attributes)))

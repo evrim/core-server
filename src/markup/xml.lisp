@@ -57,13 +57,22 @@
   ((children :initform nil :initarg :children :accessor xml.children)))
 
 (defmethod xml.tag ((xml xml))
-  (xml+.tag (class-of xml)))
-
-(defmethod xml.namespace ((xml xml))
-  (xml+.namespace (class-of xml)))
+  (xml+.tag
+   (or (any (lambda (a) (and (typep a 'xml+) a)) 
+	    (cdr (class-superclasses (class-of xml))))
+       (class-of xml))))
 
 (defmethod xml.attributes ((xml xml))
-  (xml+.attributes (class-of xml)))
+  (xml+.attributes
+   (or (any (lambda (a) (and (typep a 'xml+) a))
+	    (cdr (class-superclasses (class-of xml))))
+       (class-of xml))))
+
+(defmethod xml.namespace ((xml xml))
+  (xml+.namespace
+   (or (any (lambda (a) (and (typep a 'xml+) a))
+	    (cdr (class-superclasses (class-of xml))))
+       (class-of xml))))
 
 (defmethod xml.attribute ((xml xml) attribute)
   (slot-value xml attribute))

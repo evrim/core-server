@@ -204,7 +204,7 @@
 (defmethod json! ((stream core-stream) (symbol symbol))
   (string! stream (symbol-to-js symbol)))
 
-(defmethod json! ((stream core-stream) (element dom-element))
+(defmethod json! ((stream core-stream) (element xml))
   (string! stream (js* (dom2js element))))
 
 (defun json-serialize (object)

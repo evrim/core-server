@@ -14,11 +14,14 @@
 ;; | Component Class
 ;; +----------------------------------------------------------------------------
 (defclass+ component ()
-  ((id :host both :initform (random-string 5))
-   (url :host remote)
+  ((url :host remote)
    (service-name :host remote :initarg :service-name :initform nil))
   (:metaclass component+)
   (:documentation "Base component class"))
+
+(defmethod shared-initialize :after ((self component) slots &key &allow-other-keys)
+  (if (or (not (slot-boundp self 'id)) (null (slot-value self 'id)))
+      (setf (slot-value self 'id) (random-string 5))))
 
 ;; +----------------------------------------------------------------------------
 ;; | defcomponent Macro: Defines a new component
@@ -103,9 +106,9 @@
 	  (slot-value (class-of component) '%ctor-timestamp))      
        (let ((name (class-name (class-of component))))
 	 (format *standard-output* "Compiling constructor for ~A.~%" name)
+	 (eval (component+.ctor (class-of component)))
 	 (setf (slot-value (class-of component) '%ctor-timestamp)
 	       (get-universal-time))
-	 (eval (component+.ctor (class-of component)))
 	 (component! stream component))
        (call-next-method stream component)))
 
@@ -153,32 +156,32 @@
 			 ;; Remote Methods
 			 ;; ----------------------------------------------------------------------------
 			 ,@(reduce0 (lambda (acc method)
-				      (let ((proxy (intern (format nil "~A!" (car method)) :core-server)))
+				      (let ((proxy (intern (format nil "~A!" (car method)))))
 					(cons (make-keyword (car method))
 					      (cons (funcall proxy class+ nil) acc ))))
-				   (class+.remote-methods class+))
+				    (class+.remote-methods class+))
 			 
 			 ;; ----------------------------------------------------------------------------
 			 ;; Local Methods
 			 ;; ----------------------------------------------------------------------------
 			 ,@(reduce0 (lambda (acc method)
 				      (destructuring-bind (method . k-url) method
-					(let ((proxy (intern (format nil "~A!" (car method)) :core-server)))
+					(let ((proxy (intern (format nil "~A!" (car method)))))
 					  (cons (make-keyword (car method))
 						(cons (funcall proxy class+ k-url) acc )))))
 				    (mapcar #'cons (class+.local-methods class+) k-urls)))))
 		   
 		   (doeach (i prototype)
-		     (setf (slot-value to-extend i) (slot-value this i)))
-
+		     (setf (slot-value to-extend i) (slot-value prototype i))))
+		 
 		   (when (not (null properties))
 		     (doeach (i properties)
-			     (setf (slot-value to-extend i) (slot-value properties i))))
-
+		       (setf (slot-value to-extend i) (slot-value properties i))))
+		 
 		   (when (typep to-extend.init 'function)
 		     (to-extend.init))
 
-		   to-extend))))))
+		   to-extend)))))
        
        ;; ----------------------------------------------------------------------------
        ;; Component Constructor Renderer
@@ -208,24 +211,6 @@
 (defmethod/remote funkall ((self component) action arguments)
   (funcall (+ (slot-value self 'url) action) arguments))
 
-;; ----------------------------------------------------------------------------
-;; XML Protocol Implementation for Components
-;; ----------------------------------------------------------------------------
-(defmethod xml.tag ((component component))
-  (xml+.tag
-   (any (lambda (a) (and (typep a 'xml+) a)) 
-	(cdr (class-superclasses (class-of component))))))
-
-(defmethod xml.attributes ((component component))
-  (xml+.attributes
-   (any (lambda (a) (and (typep a 'xml+) a))
-	(cdr (class-superclasses (class-of component))))))
-
-(defmethod xml.namespace ((component component))
-  (xml+.namespace
-   (any (lambda (a) (and (typep a 'xml+) a))
-	(cdr (class-superclasses (class-of component))))))
-
 (defmethod write-stream ((stream html-stream) (object component))
   (if (typep object 'xml) (call-next-method))
   (write-stream stream
@@ -236,9 +221,11 @@
 		    (component! stream object)
 		    (when (typep object 'xml)
 		      (write-stream stream
-				    (js* `(,(symbol-to-js (class-name (class-of object)))
-					    (create)
-					    (document.get-element-by-id ,(slot-value object 'id))))))))))))
+			(js*
+			  `(progn
+			     (,(symbol-to-js (class-name (class-of object)))
+			       (create)
+			       (document.get-element-by-id ,(slot-value object 'id)))))))))))))
 
 
 ;; (defcomponent abc ()

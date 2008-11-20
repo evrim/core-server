@@ -581,6 +581,9 @@
 (defmethod write-stream ((stream wrapping-stream) object)
   (error "Could not write to ~A" stream))
 
+(defmethod write-stream ((stream wrapping-stream) (object function))
+  (prog1 stream (funcall object (slot-value stream '%stream))))
+
 (defmethod write-stream ((stream wrapping-stream) (object null))
   stream)
 

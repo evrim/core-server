@@ -347,13 +347,17 @@
   ()
   (:metaclass class+))
 
+(defclass object-with-id ()
+  ((id :host both :index t :reader get-id :initform -1 :initarg :id :print t))
+  (:metaclass class+))
+
 (defmacro defclass+ (name supers slots &rest rest)
   `(progn
      (eval-when (:compile-toplevel :load-toplevel :execute)
        (deftype ,(intern (format nil "~A*" name)) ()
 	 '(or null cons))
-       (defclass ,name (,@supers class+-object;; object-with-id
-				 )
+       (defclass ,name (,@(remove 'class+-object (remove 'object-with-id supers))
+			  object-with-id class+-object)
 	 ,(mapcar (lambda (slot) (%fix-slot-definition name slot)) slots)
 	 ,@(%filter-rest rest))       
        (fmakunbound ',name)

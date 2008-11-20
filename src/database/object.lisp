@@ -75,9 +75,11 @@
 ;; +----------------------------------------------------------------------------
 ;; | Extended Object Database (class+, slot indexes, relations)
 ;; +----------------------------------------------------------------------------
-(defclass object-with-id ()
-  ((id :host both :index t :reader get-id :initform -1 :initarg :id :print t))
-  (:metaclass class+))
+
+;; Object with id is defined in src/class+/class+.lisp
+;; (defclass object-with-id ()
+;;   ((id :host both :index t :reader get-id :initform -1 :initarg :id :print t))
+;;   (:metaclass class+))
 
 (defmethod database.serialize ((self abstract-database) (object object-with-id)
 			       &optional (k (curry #'database.serialize self)))
