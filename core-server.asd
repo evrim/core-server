@@ -49,9 +49,7 @@
                                   :components
                                   ((:file "helper")
                                    (:file "turkiye")
-                                   (:file "mop")
-                                   ;; (:file "class+")
-				   ))
+                                   (:file "mop")))
 			 (:module :class+
 				  :serial t
 				  :components
@@ -63,11 +61,8 @@
                                   :components
                                   ((:file "sockets")
                                    (:file "threads")
-				   (:file "prevalence")))
-			 (:module :database
-				  :serial t
-				  :components
-				  ((:file "crud")))
+				   ;; (:file "prevalence")
+				   ))
 			 (:module :units
                                   :serial t
                                   :components
@@ -99,21 +94,27 @@
 					     (cffi-grovel:grovel-file "grovel")
 					     (:file "libev") 
 					     (:file "interface")))))
+			 (:module :lisp
+				  :serial t
+				  :components
+				  ((:file "successors")
+				   (:file "cps")))
                          (:module :streams
                                   :serial t
                                   :components
                                   ((:file "streams")
+				   (:file "faster")
                                    (:file "grammar")
 				   (:file "util")
                                    (:file "parser")
-                                   (:file "render")))
+                                   (:file "render")))			 
                          (:module :commands
                                   :serial t
                                   :components
                                   ((:file "shell")
 				   (:file "admin")
 				   (:file "scm")
-                                   (:file "hxpath")
+                                   ;; (:file "hxpath")
 				   (:file "image")))
 			 (:module :install
 				  :serial t
@@ -124,10 +125,7 @@
                          (:file "protocol")
                          (:file "application")
                          (:file "server")
-			 (:module :lisp
-				  :serial t
-				  :components
-				  ((:file "successors")))
+			 (:file "peer")
 			 (:module :javascript
 				  :serial t
 				  :components
@@ -149,13 +147,21 @@
                                    (:file "2046") ;;mime-part2
                                    (:file "2388") ;;multpart/form-data
 				   (:file "2821"))) ;;smtp
-                         (:module :markup
+			 (:module :markup
 				  :serial t
 				  :components
-				  ((:file "dom")
+				  ((:file "xml")
+				   (:file "dom")
 				   (:file "html")
 				   (:file "css")
 				   (:file "rss")))
+			 (:module :database
+				  :serial t
+				  :components
+				  ((:file "serialize")
+				   (:file "database")
+				   (:file "object")
+				   (:file "crud")))
                          (:module :applications
                                   :components
                                   ((:file "serializable-application")
@@ -163,10 +169,6 @@
                                    (:file "git")
                                    (:file "http")
                                    (:file "dns")))
-                         (:module :peers
-                                  :components
-                                  ((:file "peer")
-                                   (:file "http")))
                          (:module :servers
                                   :components
                                   ((:file "database")
@@ -188,15 +190,21 @@
                                   ((:file "macros")
                                    (:file "json")
 				   (:file "mime-types")
+				   (:file "tags")
 				   (:file "component")
+				   (:file "form")
 				   (:file "extra")
 				   (:file "auth")
+				   (:file "table")
+				   (:file "crud")
+				   (:file "tab")
 				   (:file "image")
 				   (:file "video")
 				   (:file "editor")
 				   (:file "dojo")
 				   (:file "jquery"))))))
-  :depends-on (:swank :bordeaux-threads :cl-prevalence :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad :cffi)
+  :depends-on (:swank :bordeaux-threads ;; :cl-prevalence
+		      :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad :cffi)
   :serial t)
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :core-server))))
@@ -223,6 +231,9 @@
                                                            (:file "2388")
 							   (:file "2616"))
                                               :serial t)
+				     (:module :database
+					      :components ((:file "serialization")
+							   (:file "database")))
                                      ;; (:file "database")
                                      ;; (:file "dns")
                                      ;; (:file "apache")
