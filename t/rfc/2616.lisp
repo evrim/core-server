@@ -473,13 +473,13 @@ CONTENT-TYPE: text/html;charset=UTF-8
    ("email" . "kazim@patates.com")
    ("Sent" . "sent")))
 
-(defvar *http-request*
+(defparameter *http-request*
   "POST /ee.gee HTTP/1.0
 Host: localhost:3010
-Accept: text/html, text/plain, application/vnd.sun.xml.writer, application/vnd.sun.xml.writer.global, application/vnd.stardivision.writer, application/vnd.stardivision.writer-global, application/x-starwriter, application/vnd.sun.xml.writer.template
-Accept: application/msword, application/vnd.sun.xml.calc, application/vnd.stardivision.calc, application/x-starcalc, application/vnd.sun.xml.calc.template, application/excel, application/msexcel, application/vnd.ms-excel, application/x-msexcel
-Accept: application/vnd.sun.xml.impress, application/vnd.stardivision.impress, application/vnd.stardivision.impress-packed, application/x-starimpress, application/vnd.sun.xml.impress.template, application/powerpoint, application/mspowerpoint
-Accept: application/vnd.ms-powerpoint, application/x-mspowerpoint, application/vnd.sun.xml.draw, application/vnd.stardivision.draw, application/x-stardraw, application/vnd.sun.xml.draw.template, application/vnd.sun.xml.math
+Accept: text/html, text/plain, application/vnd.sun.xml.writer, application/vnd.sun.xml.writer.global, application/vnd.stardivision.writer
+Accept: application/msword, application/vnd.sun.xml.calc, application/vnd.stardivision.calc, application/x-starcalc
+Accept: application/vnd.sun.xml.impress, application/vnd.stardivision.impress, application/vnd.stardivision.impress-packed
+Accept: application/vnd.ms-powerpoint, application/x-mspowerpoint, application/vnd.sun.xml.draw, application/vnd.stardivision.draw
 Accept: application/vnd.stardivision.math, application/x-starmath, text/sgml, */*;q=0.01
 Accept-Encoding: gzip, compress
 Accept-Language: en
