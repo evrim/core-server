@@ -7,9 +7,9 @@
    (make-pathname :directory '(:relative "var" "localhost" "db"))
    (tr.gen.core.server.bootstrap:home)))
 
-(defclass manager-application (http-application database-server logger-server serializable-web-application)
+(defapplication manager-application (http-application database-server logger-server serializable-web-application)
   ()
-  (:default-initargs :directory *db-location*
+  (:default-initargs :database-directory *db-location*
     :db-auto-start t
     :model-class 'manager-model
     :fqdn "localhost"

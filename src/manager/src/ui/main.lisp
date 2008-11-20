@@ -58,5 +58,5 @@
      (<:div :class "sysinfo"
        (box "System Information" (<:p (format nil "Hostname: ~A" (hostname))))))))
 
-(defurl *app* "manager" ()
+(defhandler "manager" ((self manager-application))
   (main))
