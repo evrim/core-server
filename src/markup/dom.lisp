@@ -25,14 +25,29 @@
 ;; object model of W3C (ie html, xml, rss, rdf)
 ;;
 
+;; ----------------------------------------------------------------------------
+;; DOM Elements Metaclass
+;; ----------------------------------------------------------------------------
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defclass dom-element+ (class+)
+    ((attributes :initarg :attributes))))
+
+(defmethod dom-element+.attributes ((dom-element+ dom-element+))
+  (if (null (car (slot-value dom-element+ 'attributes)))
+      nil
+      (slot-value dom-element+ 'attributes)))
+
+
 ;;-----------------------------------------------------------------------------
 ;; Generic Document Object Model Element
 ;;-----------------------------------------------------------------------------
 (defclass dom-element ()
-  ((tag :accessor dom.tag :initarg :tag :initform nil)
-   (namespace :accessor dom.namespace :initarg :namespace :initform nil)
-   (attributes :accessor dom.attributes :initarg :attributes :initform nil)
-   (children :accessor dom.children :initarg :children :initform nil))
+  ((tag :accessor dom.tag :initarg :tag :initform nil :host none)
+   (namespace :accessor dom.namespace :initarg :namespace :initform nil :host none)
+   (attributes :accessor dom.attributes :initarg :attributes :initform nil :host none)
+   (children :accessor dom.children :initarg :children :initform nil :host none))
+  (:metaclass dom-element+)
+  (:attributes nil)
   (:documentation "DOM Element"))
 
 (defmethod print-object ((self dom-element) stream)
@@ -60,7 +75,10 @@
 
 (defmethod set-attribute ((element dom-element) name value)
   (prog1 element
-    (setf (cdr (assoc name (dom.attributes element) :test #'string=)) value)))
+    (if (assoc name (dom.attributes element))
+	(setf (cdr (assoc name (dom.attributes element) :test #'string=)) value)
+	(setf (dom.attributes element)
+	      (cons (cons name value) (dom.attributes element))))))
 
 ;;-----------------------------------------------------------------------------
 ;; DOM Parser
@@ -77,7 +95,7 @@
 	      (:and #\- (:do (setq c #\-))))
 	 (:collect c attribute)))
   (:return (if namespace
-	       (format nil "~A:~A" namespace attribute)
+	       (values attribute namespace);;  (format nil "~A:~A" namespace attribute)
 	       attribute)))
 
 (defrule dom-attribute-value? (c (val (make-accumulator)))
@@ -101,9 +119,9 @@
   (:dom-attribute-value? value)
   (:return (cons name value)))
 
-(defrule dom-tag-name? (name)
-  (:dom-attribute-name? name)
-  (:return name))
+(defrule dom-tag-name? (tag namespace)
+  (:dom-attribute-name? tag namespace)
+  (:return (values tag namespace)))
 
 (defrule dom-lwsp? (c)
   (:oom (:or (:and (:type (or space? tab?)))
@@ -215,10 +233,10 @@
       (string! stream (dom.tag element))
       (mapcar (lambda (attr)
 		(char! stream #\Space)
-		(string! stream (car attr))
+		(dom-element! stream (car attr))
 		(char! stream #\=)
 		(char! stream #\")
-		(string! stream (cdr attr))
+		(dom-element! stream (cdr attr))
 		(char! stream #\"))
 	      (dom.attributes element))      
       (char! stream #\>)
@@ -230,11 +248,16 @@
 	   (mapcar #'child! (dom.children element)))
 	  (t	 
 	   (mapcar #'child! (dom.children element))
-	   (char! stream #\Newline)
-	   (indent))))
+	   (char! stream #\Newline))))
+      (indent)
       (string! stream "</")
       (string! stream (dom.tag element))
       (char! stream #\>))))
+
+(defmethod dom-element! ((stream core-stream) (function function)
+			 &optional (indentation 0))
+  (declare (ignore indentation))
+  (prog1 stream (funcall function stream)))
 
 (defun dom2string (element)
   "Returns rendered string representation of 'element'"

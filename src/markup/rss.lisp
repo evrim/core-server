@@ -26,7 +26,8 @@
 ;;
 (defclass rss-element (dom-element)
   ()
-  (:documentation "RSS Base Class"))
+  (:documentation "RSS Base Class")
+  (:metaclass dom-element+))
 
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defmacro defrss-tag (name &rest attributes)
@@ -35,7 +36,8 @@
 	  (symbol (intern (symbol-name name) :tr.gen.core.server.rss)))
       (export symbol (find-package :tr.gen.core.server.rss))
       `(prog1 (defclass ,symbol (rss-element)
-		())
+		()
+		(:metaclass dom-element+))
 	 (defun ,symbol (&rest args)
 	   (multiple-value-bind (attributes children) (tag-attributes args)
 	     (destructuring-bind (&key ,@attributes) attributes
