@@ -28,6 +28,7 @@
 
 (in-package :cl-user)
 (defpackage :tr.gen.core.install)
+
 (defpackage :tr.gen.core.ffi
   (:nicknames :core-ffi)
   (:use :cl :cffi)
@@ -61,11 +62,12 @@
 
 (defpackage :tr.gen.core.server
   (:nicknames :core-server)
-  (:use :common-lisp :cl-prevalence :arnesi :cl-ppcre
+  (:use :common-lisp ;; :cl-prevalence
+	:arnesi :cl-ppcre
 	:sb-bsd-sockets :tr.gen.core.install :bordeaux-threads :cffi)
   (:shadowing-import-from #:swank #:send #:receive #:accept-connection)
   (:shadowing-import-from #:arnesi #:name #:body #:self #:new)
-  (:import-from #:cl-prevalence #:get-directory)
+;;   (:import-from #:cl-prevalence #:get-directory)
   (:import-from #:arnesi #:fdefinition/cc)
   (:import-from #:sb-ext #:make-timer #:schedule-timer #:unschedule-timer #:timer)
   (:import-from :sb-mop 
@@ -175,6 +177,7 @@
    #:class+.register-local-method
    #:class+.ctor
    #:local
+   #:both
    #:remote
    #:primitive
    
@@ -191,12 +194,29 @@
    #:me-p
    #:defmethod/unit
    #:run
+
+   ;; [XML Markup]
+   #:xml
+   #:xml+
+   #:xml.tag
+   #:xml.attribute
+   #:xml.attributes
+   #:xml.children
+   #:xml.equal
+   #:generic-xml
+
+   ;; [XML Stream]
+   #:make-xml-stream
+   #:xml-stream
+   
    ;; [Dom Markup]
    #:dom-element
    #:dom.tag
    #:dom.namespace
    #:dom.attributes
    #:dom.children
+   #:set-attribute
+   #:get-attribute
    #:make-dom-element
    #:dom-successor
    #:dom-element!
@@ -228,6 +248,7 @@
    #:js
    #:js*
    #:with-js
+   #:jambda
    #:defrender/js
    #:defun/javascript
    #:+indent-javascript+
@@ -245,6 +266,9 @@
    #:try
    #:default
    #:typeof
+   #:new
+   #:instanceof
+   #:with-field
    
    ;; [RFC 2109]
    #:cookie
@@ -489,8 +513,9 @@
    #:web-application
    #:server
    #:web-server
-  
    ;; Accessors
+   #:application.server
+   #:application.debug
    #:server.name
    #:server.mutex
    #:web-application.fqdn
@@ -534,18 +559,35 @@
    #:log-me-raw
 
    ;; [Database]
-   #:serialization-cache
-   #:serialize-xml
-   #:deserialize-xml
+   ;; Classes
+   #:database-server
    #:database
+
+   ;; Interface
+   #:serialization-cache
+   #:xml-serialize
+   #:xml-deserialize
+   #:transaction
    #:with-transaction
    #:deftransaction
    #:execute
    #:snapshot
    #:database.root
+   #:database.get
+   #:database.serialize
+   #:database.deserialize
+   #:log-transaction
    
-   ;; Classes
-   #:database-server
+   ;; Object Database
+   #:object-with-id
+   #:find-all-objects
+   #:find-object-with-slot
+   #:find-object-with-id
+   #:update-object
+   #:add-object
+   #:delete-object
+   #:next-id
+   
    #:standard-model-class
    ;; Accessors
    #:database-server.model-class
@@ -620,6 +662,10 @@
    ;; API
    #:whois
    ;; Helpers
+   #:reduce0
+   #:filter
+   #:uniq
+   #:prepend
    #:make-keyword
    #:with-current-directory
    #:make-project-path
@@ -630,6 +676,7 @@
    #:take
    #:drop
    #:flatten
+   #:flatten1
    
    ;; [Serializable Application]
    #:serializable-web-application
@@ -660,55 +707,73 @@
    #:server.applications
    
    ;; [HTTP Application & Web Framework]
-   #:http-application
-   #:find-session
-   #:query-session
-   #:update-session
-   #:find-continuation
-   #:with-context ;; helper for defurl
-   #:with-query	  ;; helper macro
-   #:defurl
-   #:register-url
-   #:unregister-url
-   #:make-dispatcher
-   #:find-url
+
+   ;; Constants
+   #:+continuation-query-name+
+   #:+session-query-name+
+   #:+context+
+
+   ;; Session
    #:http-session
-   #:session
    #:session.id
-   #:session.timestamp
    #:session.continuations
+   #:session.timestamp
    #:session.data
    #:make-new-session
+   #:find-session-id
+   #:find-continuation
+   #:update-session
+   #:query-session
+
+   ;; Context
    #:http-context
    #:context.request
    #:context.response
    #:context.session
-   #:context.session-boundp
    #:context.application
-   #:context.continuation
-   #:context.returns
-   #:+context+
-   #:+html-output+
-   #:make-new-context
-   #:copy-context
-   #:request
-   #:response
+
+   ;; Metaclass
+   #:http-application+
+   #:http-application+.handlers
+   #:add-handler
+   #:remove-handler
+   
+   ;; Class
+   #:http-application
+   #:http-application.sessions
+   #:defapplication
+   #:find-session
+   #:render-404
+   #:render-file
+   #:dispatch
+
+   ;; Macros
+   #:with-query
+   #:with-context
+   #:defhandler
+   #:defurl
+
+   ;; CPS Style Web Framework
    #:send/suspend
    #:send/forward
    #:send/finish
+   #:action/hash
+   #:function/hash
+   #:action/url
+   #:function/url
+   #:answer
+   #:answer/dispatch
+   #:answer/url
    #:javascript/suspend
    #:json/suspend
    #:xml/suspend
    #:css/suspend
-   #:function/hash
-   #:action/hash
-   #:function/url
-   #:action/url
-   #:answer
-   #:dispatch
+
+   ;; Test Utilties
+   #:with-test-context
    #:kontinue
    #:test-url
-   
+      
    ;; [HTTP Component Framework]
    #:component
    #:component.application
@@ -724,11 +789,32 @@
    #:defcomponent
    #:defmethod/local
    #:defmethod/remote
-   #:ctor!
+   #:component!
+   #:funkall
+   #:funkall!
+   #:to-json
+   #:to-json!   
+   #:html-component
+   #:defhtml-component
+   #:defcomponent-accessors
+   #:mtor!
+   #:deftable
+   #:defwebcrud
 
    ;; [ Web Component Stacks ]
    #:dojo
    #:jquery
+
+   ;; [ Json ]
+   #:json!
+   #:json?
+   #:json-serialize
+   #:json-deserialize
+   #:jobject
+   #:object->jobject
+
+   ;; [ Tags ]
+   #:input
    
    ;; [DOm Components]
    #:dom-element
@@ -802,11 +888,28 @@
 (defpackage :tr.gen.core.server.html
   (:nicknames :< :core-server.html)
   (:use :core-server)
-  (:export))
+  (:export #:a #:abbr #:acronym #:address #:area #:b #:base #:bdo #:big
+	   #:blockquote #:body #:br #:button #:caption #:cite #:code #:col
+	   #:colgroup #:dd #:del #:dfn #:div #:dl #:dt #:em #:fieldset #:form
+	   #:frame #:frameset #:h1 #:h2 #:h3 #:h4 #:h5 #:h6 #:head #:hr #:html
+	   #:i #:iframe #:img #:input #:ins #:kbd #:label #:legend #:li #:link
+	   #:map #:meta #:noframes #:noscript #:object #:ol #:optgroup #:option
+	   #:p #:param #:pre #:q #:samp #:script #:select #:small #:span #:strong
+	   #:style #:sub #:sup #:table #:tbody #:td #:textarea #:tfoot #:th #:thead
+	   #:title #:tr #:tt #:ul #:var #:embed #:foo #:bar))
 
 (defpackage :tr.gen.core.server.rss
   (:nicknames :<rss :core-server.rss)
   (:use :core-server))
+
+(defpackage :tr.gen.core.server.tags
+  (:nicknames :<core)
+  (:use :cl)
+  (:export #:input #:redirect #:table
+	   #:validating-input #:default-value-input
+	   #:domain-input #:email-input #:password-input
+	   #:username-input #:tab #:crud
+	   #:auth #:core))
 
 ;; (defpackage :tr.gen.core.server.html.dojo
 ;;   (:nicknames :<dojo :core-server.html.dojo)
