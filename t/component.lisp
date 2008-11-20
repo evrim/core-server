@@ -6,99 +6,99 @@
       (ctor! s (make-instance class)))
     (return-stream s)))
 
-(defcomponent componentA ()
-  ())
+;; (defcomponent componentA ()
+;;   ())
 
-(deftest component0 (not (null (find-class+ 'componentA)))
-  t)
+;; (deftest component0 (not (null (find-class+ 'componentA)))
+;;   t)
 
-(deftest component1 (mapcar #'class+.name (class+.superclasses (find-class+ 'componentA)))
-  (component componentA))
+;; (deftest component1 (mapcar #'class+.name (class+.superclasses (find-class+ 'componentA)))
+;;   (component componentA))
 
-(deftest component2 (test-component-ctor 'componentA)
-  "componenta = function () {
-  this.prototype = {};
-  return this.prototype;
-};")
+;; (deftest component2 (test-component-ctor 'componentA)
+;;   "componenta = function () {
+;;   this.prototype = {};
+;;   return this.prototype;
+;; };")
 
-(defcomponent componentB (componentA)
-  ((slotA)
-   (slotB :host remote :initform (list 1 2 3))))
+;; (defcomponent componentB (componentA)
+;;   ((slotA)
+;;    (slotB :host remote :initform (list 1 2 3))))
 
-(deftest component3 (test-component-ctor 'componentB)
-  "componentb = function (slotb) {
-  this.prototype = {
-    slotb: ('undefined' == typeof slotb ? [ 1 , 2 , 3 ] : slotb),
-    getSlotb: function () {
-      return this.slotb;
-    },
-    setSlotb: function (value) {
-      return this.slotb = value;
-    }
-  };
-  return this.prototype;
-};")
+;; (deftest component3 (test-component-ctor 'componentB)
+;;   "componentb = function (slotb) {
+;;   this.prototype = {
+;;     slotb: ('undefined' == typeof slotb ? [ 1 , 2 , 3 ] : slotb),
+;;     getSlotb: function () {
+;;       return this.slotb;
+;;     },
+;;     setSlotb: function (value) {
+;;       return this.slotb = value;
+;;     }
+;;   };
+;;   return this.prototype;
+;; };")
 
-(defcomponent componentC (componentB)
-  ((slotC :host local :initform 1)))
+;; (defcomponent componentC (componentB)
+;;   ((slotC :host local :initform 1)))
 
-(deftest component4 (test-component-ctor 'componentC)
-  "componentc = function (slotb) {
-  this.prototype = {
-    slotb: ('undefined' == typeof slotb ? null : slotb),
-    getSlotc: function () {
-      return funcall(\"?s:invalid-session-id$k:invalid-function-hash\", {});
-    },
-    setSlotc: function (value) {
-      return funcall(\"?s:invalid-session-id$k:invalid-function-hash\", {
-        value: value
-      });
-    },
-    getSlotb: function () {
-      return this.slotb;
-    },
-    setSlotb: function (value) {
-      return this.slotb = value;
-    }
-  };
-  return this.prototype;
-};")
+;; (deftest component4 (test-component-ctor 'componentC)
+;;   "componentc = function (slotb) {
+;;   this.prototype = {
+;;     slotb: ('undefined' == typeof slotb ? null : slotb),
+;;     getSlotc: function () {
+;;       return funcall(\"?s:invalid-session-id$k:invalid-function-hash\", {});
+;;     },
+;;     setSlotc: function (value) {
+;;       return funcall(\"?s:invalid-session-id$k:invalid-function-hash\", {
+;;         value: value
+;;       });
+;;     },
+;;     getSlotb: function () {
+;;       return this.slotb;
+;;     },
+;;     setSlotb: function (value) {
+;;       return this.slotb = value;
+;;     }
+;;   };
+;;   return this.prototype;
+;; };")
 
-(defcomponent componentD ()
-  ())
+;; (defcomponent componentD ()
+;;   ())
 
-(defmethod/remote componentD.remote-method ((self componentD) a b c)
-  (list a b c))
+;; (defmethod/remote componentD.remote-method ((self componentD) a b c)
+;;   (list a b c))
 
-(deftest component5 (test-component-ctor 'componentD)
-"componentd = function () {
-  this.prototype = {
-    componentd.remoteMethod: function (a, b, c) {
-      return new Array(a, b, c);
-    }
-  };
-  return this.prototype;
-};")
+;; (deftest component5 (test-component-ctor 'componentD)
+;; "componentd = function () {
+;;   this.prototype = {
+;;     componentd.remoteMethod: function (a, b, c) {
+;;       return new Array(a, b, c);
+;;     }
+;;   };
+;;   return this.prototype;
+;; };")
 
-(defcomponent componentE ()
-  ())
+;; (defcomponent componentE ()
+;;   ())
 
-(defmethod/local componentE.local-method ((self componentE) a b c)
-  (list a b c))
+;; (defmethod/local componentE.local-method ((self componentE) a b c)
+;;   (list a b c))
 
-(deftest component6 (test-component-ctor 'componentE)
-"componente = function () {
-  this.prototype = {
-    componente.localMethod: function (a, b, c) {
-      return funcall(\"?s:invalid-session-id$k:invalid-function-hash\", {
-        a: a,
-        b: b,
-        c: c
-      });
-    }
-  };
-  return this.prototype;
-};")
+;; (deftest component6 (test-component-ctor 'componentE)
+;; "componente = function () {
+;;   this.prototype = {
+;;     componente.localMethod: function (a, b, c) {
+;;       return funcall(\"?s:invalid-session-id$k:invalid-function-hash\", {
+;;         a: a,
+;;         b: b,
+;;         c: c
+;;       });
+;;     }
+;;   };
+;;   return this.prototype;
+;; };")
 
 ;; (eval-always
 ;;   (defclass test-application (http-application)
