@@ -253,6 +253,8 @@
    #:defun/javascript
    #:+indent-javascript+
    #:defjsmacro
+   #:defmacro/js
+   #:defsetf/js
    #:defrender/js
    #:true
    #:false

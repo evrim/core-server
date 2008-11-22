@@ -24,6 +24,7 @@
 ;; Hash tables that hold macros, infix and syntax operators
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defvar *javascript-macros* (make-hash-table))
+  (defvar *javascript-setf-macros* (make-hash-table))
   (defvar *javascript-infix* (make-hash-table))
   (defvar *javascript-syntax* (make-hash-table)))
 
@@ -250,10 +251,22 @@
 ;;-----------------------------------------------------------------------------
 ;; Javascript macros
 ;;-----------------------------------------------------------------------------
-(defmacro defjsmacro (name args &body body)
+(defmacro defmacro/js (name args &body body)
   "Define a 'Javascript macro' operator"
   (with-unique-names (rest)
     `(setf (gethash ',name *javascript-macros*)
+	   #'(lambda (&rest ,rest)
+	       (destructuring-bind ,args ,rest
+		 ,@body)))))
+
+(defmacalias defmacro/js defjsmacro)
+
+;; ----------------------------------------------------------------------------
+;; Javascript Setf Macros
+;; ----------------------------------------------------------------------------
+(defmacro defsetf/js (name args &body body)
+  (with-unique-names (rest)
+    `(setf (gethash ',name *javascript-setf-macros*)
 	   #'(lambda (&rest ,rest)
 	       (destructuring-bind ,args ,rest
 		 ,@body)))))
@@ -263,9 +276,16 @@
 ;;-----------------------------------------------------------------------------
 (defun macroexpand-js-1 (form &optional env)
   (declare (ignore env))
-  (aif (and (listp form) (gethash (car form) *javascript-macros*))
-       (values (apply it (cdr form)) t)
-       (values form nil)))
+  (acond   
+   ((and (listp form) (gethash (car form) *javascript-macros*))
+    (values (apply it (cdr form)) t))
+   ((and (listp form) (or (eq (car form) 'setf)
+			  (eq (car form) 'setq))
+	 (listp (cadr form))
+	 (gethash (caadr form) *javascript-setf-macros*))
+    (values (apply it (cons (last1 form) (cdadr form))) t))
+   (t
+    (values form nil))))
 
 ;;-----------------------------------------------------------------------------
 ;; Javascript Form Walker
