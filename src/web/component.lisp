@@ -28,29 +28,11 @@
   (context.application +context+))
 
 ;; +----------------------------------------------------------------------------
-;; | defcomponent Macro: Defines a new component
-;; +----------------------------------------------------------------------------
-(defmacro defcomponent (name supers slots &rest rest)
-  (let ((metaclass (intern (format nil "~A+" name)))
-	(metasupers (uniq
-		     (append
-		      (mapcar (compose #'class-name #'class-of #'find-class) supers)
-		      (list 'component+)))))
-    `(progn
-       (eval-when (:load-toplevel :execute :compile-toplevel)
-	 (defclass ,metaclass ,metasupers
-	   ()))
-       (defclass+ ,name (,@supers component)
-	 ,slots
-	 ,@rest
-	 (:metaclass ,metaclass)))))
-
-;; +----------------------------------------------------------------------------
 ;; | defmethod/local macro: Defines a local method
 ;; +----------------------------------------------------------------------------
 (defmacro defmethod/local (name ((self class-name) &rest args) &body body)
   (let ((metaclass (class-name (class-of (find-class class-name))))
-	(proxy (intern (format nil "~A!" name)))
+	(proxy (intern (format nil "~A/JS" name)))
 	(js-method-name (intern (format nil ".~A" name))))
     `(progn
        (class+.add-method (find-class+ ',class-name) ',name 'local '((,self ,class-name) ,@args))
@@ -71,7 +53,7 @@
 ;; +----------------------------------------------------------------------------
 (defmacro defmethod/remote (name ((self class-name) &rest args) &body body)
   (let ((metaclass (class-name (class-of (find-class class-name))))
-	(proxy (intern (format nil "~A!" name)))
+	(proxy (intern (format nil "~A/JS" name)))
 	(js-method-name (intern (format nil ".~A" name)))
 	(call-next-method-p (any (lambda (application-form)
 				   (eq 'call-next-method (operator application-form)))
@@ -97,6 +79,56 @@
 	    (lambda (stream)
 	      (with-js (hash) stream
 		(this.funkall hash (create :result (serialize (,name self ,@args))))))))))))
+
+;; ----------------------------------------------------------------------------
+;; defcomponent-accessors Macro: Defines remote and local accessors
+;; for slots of a component
+;; ----------------------------------------------------------------------------
+(defmacro defcomponent-accessors (class-name slots)
+  (flet ((reader (name) (intern (format nil "GET-~A" name) (symbol-package name)))
+	 (writer (name) (intern (format nil "SET-~A" name) (symbol-package name))))    
+    `(progn
+       ,@(reduce0 (lambda (acc slot)
+		    (flet ((method-type (host)
+			     (ecase host
+			       (local 'defmethod/local)
+			       ((or both remote) 'defmethod/remote))))
+		      (let ((name (car slot))
+			    (host (cdr slot)))			
+			(append acc
+			 `((,(method-type host) ,(reader name) ((self ,class-name))
+			     (slot-value self ',name))
+			   (,(method-type host) ,(writer name) ((self ,class-name) value)
+			     (setf (slot-value self ',name) value))
+			   (defmacro/js ,name (self)
+			     `(,',(reader name) ,self))
+			   (defsetf/js ,name (value self)
+			     `(,',(writer name) ,self ,value)))))))
+		  slots))))
+
+;; +----------------------------------------------------------------------------
+;; | defcomponent Macro: Defines a new component
+;; +----------------------------------------------------------------------------
+(defmacro defcomponent (name supers slots &rest rest)
+  (let ((metaclass (intern (format nil "~A+" name)))
+	(metasupers (uniq
+		     (append
+		      (mapcar (compose #'class-name #'class-of #'find-class) supers)
+		      (list 'component+)))))
+    `(progn
+       (eval-when (:load-toplevel :execute :compile-toplevel)
+	 (defclass ,metaclass ,metasupers
+	   ()))
+       (defclass+ ,name (,@supers component)
+	 ,slots
+	 ,@rest
+	 (:metaclass ,metaclass))
+       (defcomponent-accessors ,name ,(mapcar (lambda (slot)
+						(cons (car slot)
+						      (or (getf (cdr slot) :host)
+							  'local)))
+					      slots))
+       (find-class+ ',name))))
 
 ;; ----------------------------------------------------------------------------
 ;; This around method allows us to compile constructor evertime class
@@ -160,7 +192,7 @@
 			 ;; Remote Methods
 			 ;; ----------------------------------------------------------------------------
 			 ,@(reduce0 (lambda (acc method)
-				      (let ((proxy (intern (format nil "~A!" (car method)))))
+				      (let ((proxy (intern (format nil "~A/JS" (car method)))))
 					(cons (make-keyword (car method))
 					      (cons (funcall proxy class+ nil) acc ))))
 				    (class+.remote-methods class+))
@@ -170,7 +202,7 @@
 			 ;; ----------------------------------------------------------------------------
 			 ,@(reduce0 (lambda (acc method)
 				      (destructuring-bind (method . k-url) method
-					(let ((proxy (intern (format nil "~A!" (car method)))))
+					(let ((proxy (intern (format nil "~A/JS" (car method)))))
 					  (cons (make-keyword (car method))
 						(cons (funcall proxy class+ k-url) acc )))))
 				    (mapcar #'cons (class+.local-methods class+) k-urls)))))
