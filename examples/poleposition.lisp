@@ -15,8 +15,8 @@
 (defcrud pilot)
 
 (defparameter *db*
-  (make-instance 'database-directory
-		 :directory #P"/tmp/poleposition/"
+  (make-instance 'database-server
+		 :database-directory #P"/tmp/poleposition/"
 		 :auto-start t))
 
 ;;;; Executing body in one transaction
