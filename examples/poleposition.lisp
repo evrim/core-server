@@ -2,7 +2,7 @@
 ;; database
 
 (defpackage :poleposition
-  (:use :cl :core-server :arnesi :cl-prevalence))
+  (:use :cl :core-server :arnesi))
 
 (in-package :poleposition)
 
@@ -15,7 +15,7 @@
 (defcrud pilot)
 
 (defparameter *db*
-  (make-instance 'database-server
+  (make-instance 'database-directory
 		 :directory #P"/tmp/poleposition/"
 		 :auto-start t))
 
