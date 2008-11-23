@@ -6,7 +6,7 @@
 
 (in-package :poleposition)
 
-(defclass+ pilot ()
+(defclass+ pilot (object-with-id)
   ((name)
    (firstname)
    (points :index t)
@@ -32,7 +32,7 @@
      do (find-pilot *db* :points i)))
 
 (defun pp-delete (count)
-  (let ((sid (get-id (find-pilot *db* :points 1))))
+  (let ((sid (core-server::get-id (find-pilot *db* :points 1))))
    (with-transaction (*db*)
      (loop
 	for i from sid to count
