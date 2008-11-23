@@ -36,7 +36,7 @@
    (with-transaction (*db*)
      (loop
 	for i from sid to count
-	do (cl-prevalence:tx-delete-object *db* 'pilot i)))))
+	do (pilot-delete *db* i)))))
 
 (defun test ()
   (totally-destroy *db*)
