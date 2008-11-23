@@ -39,7 +39,6 @@
 	do (pilot-delete *db* i)))))
 
 (defun test ()
-  (totally-destroy *db*)
   (start *db*)
   (format t "* Creating 30000 objects~%")
   (time (pp-write 30000))
