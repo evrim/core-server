@@ -10,11 +10,14 @@
 ;; Switch to new namespace
 (in-package :hello)
 
+(defapplication hello-app (http-application)
+  ()
+  (:default-initargs :fqdn "localhost"
+    :admin-email "aycan@core.gen.tr"))
+
 ;; Create application object
 (defparameter *hello*
-  (make-instance 'http-application
-		 :fqdn "localhost"
-		 :admin-email "aycan@core.gen.tr"))
+  (make-instance 'hello-app))
 
 ;; Our page is a function which gets body as a parameter
 (defun/cc page (body)
@@ -23,7 +26,7 @@
     body)))
 
 ;; Create a handler
-(defurl *hello* "hello" ()
+(defhandler "hello" ((self hello-app))
   (page
    (<:p "Hello, World!")))
 
