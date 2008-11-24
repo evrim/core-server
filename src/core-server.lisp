@@ -793,9 +793,9 @@
    #:defmethod/remote
    #:component!
    #:funkall
-   #:funkall!
+   #:funkall/js
    #:to-json
-   #:to-json!   
+   #:to-json/js 
    #:html-component
    #:defhtml-component
    #:defcomponent-accessors
@@ -817,6 +817,15 @@
 
    ;; [ Tags ]
    #:input
+
+   ;; [[validating input]]
+   #:get-default-value/js
+   #:set-default-value/js
+   #:adjust-default-value/js
+   #:onfocus/js
+   #:onblur/js
+
+   #:init/js
    
    ;; [DOm Components]
    #:dom-element
