@@ -253,7 +253,14 @@ Content-Type: text/html;charset=UTF-8
     dev))
 
 ;; (defun uuid-generate ()
-;;   (with-foreign-objects ((uu :uuid-t) (out :char 36))
-;;     (%uuid-generate (mem-ref uu :pointer))
-;;     (%uuid-unparse (mem-ref uu :pointer) out)
+;;   (with-foreign-objects ((uu :uchar 16) (out :char 36))
+;;     (%uuid-generate uu)
+;;     (%uuid-unparse uu out)
 ;;     out))
+
+(defun uuid-generate ()
+  (with-foreign-object (s :uchar 16)
+    (with-foreign-pointer-as-string (o 37)
+      (%uuid-generate s)
+      (%uuid-unparse s o)
+      o)))

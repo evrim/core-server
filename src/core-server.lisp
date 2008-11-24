@@ -58,7 +58,8 @@
    #:ev-io-start
    #:ev-io-stop
    #:ev-read
-   #:evunloop-all))
+   #:evunloop-all
+   #:uuid-generate))
 
 (defpackage :tr.gen.core.server
   (:nicknames :core-server)

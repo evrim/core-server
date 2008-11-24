@@ -206,5 +206,5 @@
   (constant (epoll-ctl-del "EPOLL_CTL_DEL"))
   (constant (epoll-ctl-mod "EPOLL_CTL_MOD")))
 
-;; (include "uuid/uuid.h")
-;; (ctype uuid-t "uuid_t")
+;;(include "uuid/uuid.h")
+;;(ctype uuid-t "uuid_t")
