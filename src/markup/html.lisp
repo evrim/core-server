@@ -239,7 +239,11 @@
 		    (write-stream %stream (slot-value element attr))
 		    (char! %stream #\"))))
 	      (xml.attributes element))
-      (string! %stream ">"))))
+      (string! %stream ">")
+      (reduce #'write-stream
+	      (filter (lambda (a) (and (typep a '<:script) a))
+		      (slot-value element 'children))
+	      :initial-value stream))))
 
 ;;-----------------------------------------------------------------------------
 ;; HTML 4 Extra Tags a.k.a. Bonuses
