@@ -124,8 +124,15 @@ zee\")"
 	(byte! stream code))))
 
 (defun/cc2 string! (stream string)
-  (write-stream stream (string-to-octets string :utf-8)))
+  (if (null string)
+      stream
+      (write-stream stream (string-to-octets string :utf-8))))
 
+;; (defmethod string! ((stream wrapping-stream) (string null))
+;;   stream)
+
+;; (defmethod string! ((stream wrapping-stream) (string string))
+;;   (write-stream stream (string-to-octets string :utf-8)))
 
 ;; (defun version! (stream version)
 ;;   (fixnum! stream (car version))
