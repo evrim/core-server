@@ -175,14 +175,14 @@
 (progn
   ;;  (ctype sigset-t "sigset_t") ;; broken
   (cunion epoll-data "epoll_data_t"
-	  (ptr "ptr" :type :pointer)
-	  (fd  "fd"  :type :int)
-	  (u32 "u32" :type :uint32)
-	  (u64 "u64" :type :uint64))
+          (ptr "ptr" :type :pointer)
+          (fd  "fd"  :type :int)
+          (u32 "u32" :type :uint32)
+          (u64 "u64" :type :uint64))
 
   (cstruct epoll-event "struct epoll_event"
-	   (events "events" :type uint32-t)
-	   (data   "data"   :type epoll-data))
+           (events "events" :type uint32-t)
+           (data   "data"   :type epoll-data))
 
 
   ;;---------------------------------------------------------------------------
@@ -197,8 +197,8 @@
   (constant (epollwrband "EPOLLWRBAND"))
   (constant (epollerr "EPOLLERR"))
   (constant (epollhup "EPOLLHUP"))
-  (constant (epollmsg "EPOLLMSG")) 
-  
+  (constant (epollmsg "EPOLLMSG"))
+
   ;;--------------------------------------------------------------------------
   ;; EPOLL OPERATIONS FOR EPOLL_CTL()
   ;;--------------------------------------------------------------------------
@@ -206,3 +206,5 @@
   (constant (epoll-ctl-del "EPOLL_CTL_DEL"))
   (constant (epoll-ctl-mod "EPOLL_CTL_MOD")))
 
+;; (include "uuid/uuid.h")
+;; (ctype uuid-t "uuid_t")

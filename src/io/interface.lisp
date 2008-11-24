@@ -251,3 +251,9 @@ Content-Type: text/html;charset=UTF-8
          (dev (make-epoll-device listen #'handler-callback)))
     (core-server::start dev)
     dev))
+
+;; (defun uuid-generate ()
+;;   (with-foreign-objects ((uu :uuid-t) (out :char 36))
+;;     (%uuid-generate (mem-ref uu :pointer))
+;;     (%uuid-unparse (mem-ref uu :pointer) out)
+;;     out))

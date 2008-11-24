@@ -79,6 +79,7 @@
 				  ((cffi-grovel:grovel-file "grovel") 
 				   (:file "errno")
 				   (:file "bsd")
+                                   ;; (:file "uuid")
 				   (:file "interface")
 				   (:file "events")
 				   ;; (:module :libevent
