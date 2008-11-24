@@ -114,10 +114,9 @@
     node)
 
   (defun replace-node (old-node new-node)
-    (old-node.parent-node.insert-before old-node new-node)
-    (old-node.parent-node.remove-child old-node)
+    (old-node.parent-node.replace-child new-node old-node)
     new-node)
-
+  
   (defun show (node)
     (when (instanceof node *h-t-m-l-element)
       (setf node.style.display "block"))
@@ -187,7 +186,7 @@
     (serialize object)))
 
   (defun funcall (action arguments)
-    (console.debug (+ "funcalling :" action " with args:" arguments))
+;;     (console.debug (+ "funcalling :" action " with args:" arguments))
     (if window.*active-x-object
 	(setf xhr (new (*active-x-object "Microsoft.XMLHTTP")))
 	(setf xhr (new (*x-m-l-http-request))))
@@ -211,7 +210,7 @@
 	((eq content-type "text/html")
 	 (let ((div (document.create-element "div")))
 	   (setf div.inner-h-t-m-l xhr.response-text)
-	   (console.debug div)
+	   ;; (console.debug div)
 	   (cond
 	     ((eq 0 div.child-nodes.length)
 	      nil)
@@ -227,7 +226,7 @@
       (let ((children (flatten children)))
 	(mapcar (lambda (i)
 		  (cond
-		    ((instanceof i *h-t-m-l-element)
+		    ((not (null (slot-value i 'tag-name)))
 		     (element.append-child i))
 		    (t
 		     (element.append-child (document.create-text-node i)))))
