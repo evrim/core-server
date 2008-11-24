@@ -189,7 +189,7 @@
 	  (string! stream " }"))))))
 
 (defmethod json! ((stream core-stream) (object object-with-id))
-  (object->jobject object))
+  (json! stream (object->jobject object)))
 
 (defrule json? (value)
   (:or (:and (:seq "undefined") (:return 'undefined))
@@ -208,7 +208,12 @@
   (string! stream (symbol-to-js symbol)))
 
 (defmethod json! ((stream core-stream) (element xml))
-  (string! stream (js* (dom2js element))))
+  (typecase element
+    (component
+     (with-call/cc (component! (make-indented-stream stream)
+			       element)))
+    (t
+     (string! stream (js* (dom2js element))))))
 
 (defun json-serialize (object)
   (let ((s (make-core-stream "")))
