@@ -50,8 +50,8 @@
 ;; +----------------------------------------------------------------------------
 (defmacro defmethod/local (name ((self class-name) &rest args) &body body)
   (let ((metaclass (class-name (class-of (find-class class-name))))
-	(proxy (intern (format nil "~A/JS" name)))
-	(js-method-name (intern (format nil ".~A" name))))
+	(proxy (intern (format nil "~A/JS" name) (symbol-package name)))
+	(js-method-name (intern (format nil ".~A" name) (symbol-package :name))))
     `(progn
        (class+.add-method (find-class+ ',class-name) ',name 'local '((,self ,class-name) ,@args))
        (eval-when (:load-toplevel :compile-toplevel :execute)
@@ -71,8 +71,8 @@
 ;; +----------------------------------------------------------------------------
 (defmacro defmethod/remote (name ((self class-name) &rest args) &body body)
   (let ((metaclass (class-name (class-of (find-class class-name))))
-	(proxy (intern (format nil "~A/JS" name)))
-	(js-method-name (intern (format nil ".~A" name)))
+	(proxy (intern (format nil "~A/JS" name) (symbol-package name)))
+	(js-method-name (intern (format nil ".~A" name) (symbol-package name)))
 	(call-next-method-p (any (lambda (application-form)
 				   (eq 'call-next-method (operator application-form)))
 				 (ast-search-type (walk-form `(lambda () ,@body))
@@ -123,7 +123,11 @@
 			     `(,',(reader name) ,self))
 			   (defsetf/js ,name (value self)
 			     `(,',(writer name) ,self ,value)))))))
-		  slots))))
+		  (filter (lambda (slot)
+			    (or (eq (cdr slot) 'remote)
+				(eq (cdr slot) 'both)
+				(eq (cdr slot) 'none)))
+			  slots)))))
 
 ;; +----------------------------------------------------------------------------
 ;; | defcomponent Macro: Defines a new component
@@ -224,7 +228,8 @@
 			 ;; Remote Methods
 			 ;; ----------------------------------------------------------------------------
 			 ,@(reduce0 (lambda (acc method)
-				      (let ((proxy (intern (format nil "~A/JS" (car method)))))
+				      (let ((proxy (intern (format nil "~A/JS" (car method))
+							   (symbol-package (car method)))))
 					(cons (make-keyword (car method))
 					      (cons (funcall proxy class+ nil) acc ))))
 				    (class+.remote-methods class+))
@@ -234,7 +239,8 @@
 			 ;; ----------------------------------------------------------------------------
 			 ,@(reduce0 (lambda (acc method)
 				      (destructuring-bind (method . k-url) method
-					(let ((proxy (intern (format nil "~A/JS" (car method)))))
+					(let ((proxy (intern (format nil "~A/JS" (car method))
+							     (symbol-package (car method)))))
 					  (cons (make-keyword (car method))
 						(cons (funcall proxy class+ k-url) acc )))))
 				    (mapcar #'cons (class+.local-methods class+) k-urls)))))
