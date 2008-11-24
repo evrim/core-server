@@ -61,7 +61,7 @@
 	    (walk-grammar
 	     (expand-javascript
 	      (fix-javascript-returns
-	       (walk-js-form `(progn ,@body)))
+	       (walk-js-form (if (= 1 (length body)) (car body) `(progn ,@body))))
 	      #'expand-javascript)))
 	   #'expander stream)
 	 (char! ,stream #\Newline)
