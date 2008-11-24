@@ -21,7 +21,25 @@
 
 (defmethod shared-initialize :after ((self component) slots &key &allow-other-keys)
   (if (or (not (slot-boundp self 'id)) (null (slot-value self 'id)))
-      (setf (slot-value self 'id) (random-string 5))))
+      (setf (slot-value self 'id) (random-string 5)))
+  (if (typep self 'xml)
+      (setf (xml.children self)
+	    (cons 
+	     (<:script :type "text/javascript"
+		       (with-call/cc		
+			 (lambda (stream)
+			   (let ((stream (make-indented-stream stream)))
+			     (component! stream self)
+			     (when (typep self 'xml)
+			       (write-stream stream
+					     (js*
+					       `(progn
+						  (new
+						   (,(class-name (class-of self))
+						     (create)
+						     (document.get-element-by-id ,(slot-value self 'id))))))))))))
+	     (xml.children self))))
+  self)
 
 (defmethod component.application ((self component))
   "Returns application associated with this component."
@@ -71,7 +89,8 @@
 		    (flet ((call-next-method () ,@(cddr (call-next-method))))
 		      ,@',body)))
 	      ``(lambda ,',args
-		  ,@',body)))
+		  (let ((,',self this))
+		    ,@',body))))
        (defmethod/cc ,name ((,self ,class-name) ,@args)
 	 (let ((hash (action/url ((result "result"))
 		       (answer (json-deserialize result)))))
@@ -110,15 +129,27 @@
 ;; | defcomponent Macro: Defines a new component
 ;; +----------------------------------------------------------------------------
 (defmacro defcomponent (name supers slots &rest rest)
-  (let ((metaclass (intern (format nil "~A+" name)))
-	(metasupers (uniq
-		     (append
-		      (mapcar (compose #'class-name #'class-of #'find-class) supers)
-		      (list 'component+)))))
+  (let* ((metaclass (intern (format nil "~A+" name)))
+	 (metasupers (uniq
+		      (append
+		       (mapcar (compose #'class-name #'class-of #'find-class) supers)
+		       (list 'component+))))
+	 (dom-classes (filter (lambda (a) (typep a 'xml+))
+				   (mapcar #'find-class supers)))
+	 (tag (any (lambda (a) (if (not (null a)) a))
+		   (mapcar #'xml+.tag dom-classes)))
+	 (namespace (any (lambda (a) (if (not (null a)) a))
+			 (mapcar #'xml+.namespace dom-classes)))
+	 (attributes (any (lambda (a) (if (not (null a)) a))
+			  (mapcar #'xml+.attributes dom-classes))))
     `(progn
        (eval-when (:load-toplevel :execute :compile-toplevel)
 	 (defclass ,metaclass ,metasupers
-	   ()))
+	   ()
+	   (:default-initargs
+	    :tag (list ,tag)
+	     :namespace (list ,namespace)
+	     :attributes (list ',attributes))))
        (defclass+ ,name (,@supers component)
 	 ,slots
 	 ,@rest
@@ -175,7 +206,8 @@
 	       (defun ,class-name (properties to-extend)
 		 (if (null to-extend)
 		     (setf to-extend ,(if dom-class
-					  `(document.create-element ,(symbol-to-js (class-name dom-class)))
+					  `(document.create-element ,(symbol-to-js (or (xml+.tag dom-class)
+										       (class-name dom-class))))
 					  `(new (*object)))))
 
 		 (let ((prototype
@@ -223,6 +255,13 @@
        ;; Component Constructor Renderer
        ;; ----------------------------------------------------------------------------
        (defmethod/cc component! ((stream core-stream) (component ,class-name))
+	 (if (and +context+ (context.request +context+))
+	     (setf (slot-value component 'url)
+		   (format nil "/~A/~A"
+			   (web-application.fqdn (context.application +context+))
+			   (apply #'concatenate 'string (flatten (uri.paths (http-request.uri (context.request +context+))))))))
+	 
+	 
 	 (let ,(mapcar (lambda (method k-url)
 			 (let ((method-args (extract-argument-names (cdddr method)
 								    :allow-specializers t)))
@@ -247,21 +286,24 @@
 (defmethod/remote funkall ((self component) action arguments)
   (funcall (+ (slot-value self 'url) action) arguments))
 
-(defmethod write-stream ((stream html-stream) (object component))
-  (if (typep object 'xml) (call-next-method))
-  (write-stream stream
-    (<:script :type "text/javascript"
-	      (with-call/cc		
-		(lambda (stream)
-		  (let ((stream (make-indented-stream stream)))
-		    (component! stream object)
-		    (when (typep object 'xml)
-		      (write-stream stream
-			(js*
-			  `(progn
-			     (,(symbol-to-js (class-name (class-of object)))
-			       (create)
-			       (document.get-element-by-id ,(slot-value object 'id)))))))))))))
+(defmethod write-stream :after ((stream html-stream) (object component))
+;;   (if (typep object 'xml) (call-next-method))
+;; ;;   (break stream)
+;;   (write-stream stream
+;; 		(<:script :type "text/javascript"
+;; 	      (with-call/cc		
+;; 		(lambda (stream)
+;; 		  (let ((stream (make-indented-stream stream)))
+;; 		    (component! stream object)
+;; 		    (when (typep object 'xml)
+;; 		      (write-stream stream
+;; 			(js*
+;; 			  `(progn
+;; 			     (new
+;; 			      (,(class-name (class-of object))
+;; 				(create)
+;; 				(document.get-element-by-id ,(slot-value object 'id)))))))))))))
+  )
 
 
 ;; (defcomponent abc ()
