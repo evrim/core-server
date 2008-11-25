@@ -111,19 +111,31 @@
   (defclass http-application+ (standard-class)
     ((handlers :initarg :handlers :accessor http-application+.handlers
 	       :initform nil
-	       :documentation "A list that contains URLs that this application handles"))))
+	       :documentation "A list that contains URLs that this application handles")
+     (scanner-cache :initform (make-hash-table)))))
 
 (defmethod validate-superclass ((class http-application+) (super standard-class)) t)
 (defmethod validate-superclass ((class standard-class) (super http-application+)) nil)
 
+(defmethod http-application+.handlers ((self http-application+))
+  (let ((cache (slot-value self 'scanner-cache)))
+    (mapcar (lambda (handler)
+              (aif (gethash (car handler) cache)
+                   (cons (car handler) it)
+                   (cons (car handler)
+                         (setf (gethash (car handler) cache)
+                               (cl-ppcre:create-scanner (cdr handler))))))
+            (slot-value self 'handlers))))
+
 (defmethod add-handler ((application+ http-application+) method-name url)
   (setf (http-application+.handlers application+)
-	(cons (cons method-name (cl-ppcre:create-scanner url))
+	(cons (cons method-name url)
 	      (remove-handler application+ method-name))))
 
 (defmethod remove-handler ((application+ http-application+) method-name)
-  (setf (http-application+.handlers application+)
-	(remove method-name (http-application+.handlers application+) :key #'car)))
+  (prog1 (setf (http-application+.handlers application+)
+               (remove method-name (http-application+.handlers application+) :key #'car))
+    (remhash method-name (slot-value application+ 'scanner-cache))))
 
 ;;+----------------------------------------------------------------------------
 ;;| HTTP Application
@@ -132,7 +144,8 @@
   ((sessions :accessor http-application.sessions :initform (make-hash-table :test #'equal)
 	     :documentation "A hash-table that holds sessions"))
   (:default-initargs :directory nil)
-  (:documentation "HTTP Application Class"))
+  (:documentation "HTTP Application Class")
+  (:metaclass http-application+))
 
 (defmethod print-object ((self http-application) stream)
   (print-unreadable-object (self stream :type t :identity t)
@@ -145,10 +158,16 @@
 ;; defapplication Macro: Just adds http-application+ metaclass
 ;; ----------------------------------------------------------------------------
 (defmacro defapplication (name supers slots &rest rest)
-  `(defclass ,name ,supers
-     ,slots
-     ,@rest
-     (:metaclass http-application+)))
+  (let ((dispatchers (reduce #'append
+                             (mapcar (rcurry #'slot-value 'handlers)
+                                     (filter (lambda (a) (if (typep a 'http-application+)
+                                                             a))
+                                             (mapcar #'find-class supers))))))
+    `(defclass ,name ,supers
+       ,slots
+       ,@rest
+       (:metaclass http-application+)
+       (:handlers ,@dispatchers))))
 
 ;; +----------------------------------------------------------------------------
 ;; | HTTP Application Interface
@@ -487,6 +506,11 @@ provide query parameters inside URL as key=value"
   (dispatch application
 	    (make-instance 'http-request :uri (uri? (make-core-stream url)))
 	    (make-response *core-output*)))
+
+(defhandler "library.core" ((self http-application))
+  (javascript/suspend
+   (lambda (s)
+     (core-server::core-library! s))))
 
 ;; (defapplication test1 (http-application)
 ;;   ()

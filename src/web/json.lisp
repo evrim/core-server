@@ -189,7 +189,7 @@
 	  (string! stream " }"))))))
 
 (defmethod json! ((stream core-stream) (object object-with-id))
-  (object->jobject object))
+  (json! stream (object->jobject object)))
 
 (defrule json? (value)
   (:or (:and (:seq "undefined") (:return 'undefined))
