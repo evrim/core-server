@@ -134,6 +134,7 @@
 				   (:file "render")
 				   (:file "transform")
 				   (:file "interface")
+				   (:file "cps")
 				   (:file "macro")
 				   (:file "library")))
                          (:module :rfc
