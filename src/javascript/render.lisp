@@ -385,7 +385,7 @@
 	 ,(if (or (typep (parent form) 'progn-form)
 		  (typep (parent form) 'application-form))
 	      ")"
-	      ");")))
+	      ")"))) ;; sonda ";" vardi kaldirdim dom2js yuzunden
 
 (defjavascript-expander lambda-function-form (arguments body declares)
   `(:and "function (" 
@@ -749,7 +749,7 @@
 		  ((and (eq 'setf (operator app))
 			(typep (car (arguments app)) 'application-form)
 			(member (operator (car (arguments app))) accessors))
-		   (describe app)
+;; 		   (describe app)
 		   (setf (operator app) (intern (format nil "~A~A" set-prefix (operator (car (arguments app)))))
 			 (arguments app) (cons (car (arguments (car (arguments app))))
 					       (cdr (arguments app)))))

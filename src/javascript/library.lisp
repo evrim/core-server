@@ -70,9 +70,15 @@
 	(.concat (array atom) lst)))
 
   (defun car (lst)
-    (if (null lst)
-	nil
-	(aref lst 0)))
+    (cond
+      ((null lst) nil)
+      ((instanceof lst *array) (aref lst 0))
+      ((typep lst 'object)
+       (let ((result))
+	 (doeach (i lst)
+	   (setf result (aref lst i)))
+	 result))
+      (t nil)))
 
   (defun cdr (lst)
     (if (null lst)
@@ -219,10 +225,32 @@
 	     (t
 	      div)))))))
 
+  (defun serialize-to-uri (arguments)
+    (let ((result ""))	  
+      (mapobject (lambda (k v)
+		   (console.debug (+ k v))
+		   (setf result
+			 (+ result k "="
+			    (encode-u-r-i-component (serialize v))
+			    "&")))
+	      arguments)
+      result))
+  
+  (defun/cc funcall-cc (action arguments)
+    (let/cc k
+      (let ((hash (+ "__result" (.get-time (new (*date))))))
+	(let ((script (<:script :src (+ action "&" (serialize-to-uri arguments) "__hash=" hash))))
+	  (setf (slot-value script 'onload)
+		(event ()					      
+		  (document.body.remove-child script)
+		  (k (slot-value window hash))))
+	  (document.body.append-child script)
+	  (suspend)))))
+
   (defun make-dom-element (tag properties children)
     (let ((element (document.create-element tag)))
       (doeach (i properties)
-	(setf (aref element i) (aref properties i)))
+	      (setf (aref element i) (aref properties i)))
       (let ((children (flatten children)))
 	(mapcar (lambda (i)
 		  (cond
@@ -232,7 +260,7 @@
 		     (element.append-child (document.create-text-node i)))))
 		children))
       element))
-
+  
   (defun get-parameter (name)
 ;;     (debug "get-param:" name)
     (let ((params (+ (.substr window.location.hash 1) "&" (.substr window.location.search 1)))
@@ -261,4 +289,43 @@
 						    "" value) "&")))))))
       (if (not found) (setf hash (+ hash (+ name "=" new-value))))
       (setf window.location.hash hash)
-      (return new-value))))
+      (return new-value)))
+
+;; +----------------------------------------------------------------------------
+;; | Identity Continuation
+;; +----------------------------------------------------------------------------
+  (defun k (value)
+    value)
+
+;; +----------------------------------------------------------------------------
+;; | 'new' Operator replacement for Continuations
+;; +----------------------------------------------------------------------------
+  (defun make-instance (k ctor arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8)
+    (if (> arguments.length 9)
+	(throw (new (*error (+ "Cannot makeInstance, too many arguments:"
+			       arguments.length ", ctor:" ctor))))
+	(cond
+	  ((not (typep arg8 'undefined))
+	   (k (new (ctor arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8))))
+	  ((not (typep arg7 'undefined))
+	   (k (new (ctor arg1 arg2 arg3 arg4 arg5 arg6 arg7))))
+	  ((not (typep arg6 'undefined))
+	   (k (new (ctor arg1 arg2 arg3 arg4 arg5 arg6))))
+	  ((not (typep arg5 'undefined))
+	   (k (new (ctor arg1 arg2 arg3 arg4 arg5))))
+	  ((not (typep arg4 'undefined))
+	   (k (new (ctor arg1 arg2 arg3 arg4))))
+	  ((not (typep arg3 'undefined))
+	   (k (new (ctor arg1 arg2 arg3))))
+	  ((not (typep arg2 'undefined))
+	   (k (new (ctor arg1 arg2))))
+	  ((not (typep arg1 'undefined))
+	   (k (new (ctor arg1))))
+	  (t
+	   (k (new (ctor)))))))
+
+  (defun extend (source target)
+    (mapobject (lambda (k v)
+		 (setf (slot-value target k) v))
+	       source)
+    target))

@@ -59,7 +59,7 @@
   (defmethod find-form-leaf ((form application-form))
     (cond
       ((eq 'try (operator form))
-       (describe form)
+;;        (describe form)
        (arguments form)
        nil)
       (t
