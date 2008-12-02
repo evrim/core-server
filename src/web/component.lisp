@@ -55,15 +55,17 @@
     `(progn
        (class+.add-method (find-class+ ',class-name) ',name 'local '((,self ,class-name) ,@args))
        (eval-when (:load-toplevel :compile-toplevel :execute)
+	 (setf (gethash ',name +javascript-cps-functions+) t
+	       (gethash ',js-method-name +javascript-cps-functions+) t)
 	 (defjsmacro ,name (&rest args) `(,',js-method-name ,@args)))
        (defmethod ,proxy ((self ,metaclass) k)
-	 `(lambda ,',args
-	    (this.funkall ,k
-	     (create
-	      ,@',(nreverse
-		   (reduce0 (lambda (acc arg)
-			      (cons arg (cons (make-keyword arg) acc)))
-			    (extract-argument-names args :allow-specializers t)))))))
+	 `(method ,',args	    
+	    (funkall self ,k
+		     (create
+		      ,@',(nreverse
+			   (reduce0 (lambda (acc arg)
+				      (cons arg (cons (make-keyword arg) acc)))
+				    (extract-argument-names args :allow-specializers t)))))))
        (defmethod/cc ,name ((,self ,class-name) ,@args) ,@body))))
 
 ;; +----------------------------------------------------------------------------
@@ -80,16 +82,18 @@
     `(progn
        (class+.add-method (find-class+ ',class-name) ',name 'remote '((,self ,class-name) ,@args))
        (eval-when (:load-toplevel :compile-toplevel :execute)
+	 (setf (gethash ',name +javascript-cps-functions+) t
+	       (gethash ',js-method-name +javascript-cps-functions+) t)
 	 (defjsmacro ,name (&rest args) `(,',js-method-name ,@args)))
        (defmethod ,proxy ((self ,metaclass) k)
 	 (declare (ignore k))
 	 ,(if call-next-method-p
-	      ``(lambda ,',args
-		  (let ((,',self (or ,',self this)))
+	      ``(method ,',args
+		  (let ((,',self self))
 		    (flet ((call-next-method () ,@(cddr (call-next-method))))
 		      ,@',body)))
-	      ``(lambda ,',args
-		  (let ((,',self this))
+	      ``(method ,',args
+		  (let ((,',self self))
 		    ,@',body))))
        (defmethod/cc ,name ((,self ,class-name) ,@args)
 	 (let ((hash (action/url ((result "result"))
@@ -207,13 +211,12 @@
 	       ;; ----------------------------------------------------------------------------
 	       ;; Constructor
 	       ;; ----------------------------------------------------------------------------
-	       (defun ,class-name (properties to-extend)
+	       (defun/cc ,class-name (properties to-extend)
 		 (if (null to-extend)
 		     (setf to-extend ,(if dom-class
 					  `(document.create-element ,(symbol-to-js (or (xml+.tag dom-class)
 										       (class-name dom-class))))
 					  `(new (*object)))))
-
 		 (let ((prototype
 			(create
 			 ;; ----------------------------------------------------------------------------
@@ -244,18 +247,16 @@
 					  (cons (make-keyword (car method))
 						(cons (funcall proxy class+ k-url) acc )))))
 				    (mapcar #'cons (class+.local-methods class+) k-urls)))))
-		   
-		   (doeach (i prototype)
-		     (setf (slot-value to-extend i) (slot-value prototype i))))
-		 
-		   (when (not (null properties))
-		     (doeach (i properties)
-		       (setf (slot-value to-extend i) (slot-value properties i))))
-		 
-		   (when (typep to-extend.init 'function)
-		     (to-extend.init))
 
-		   to-extend)))))
+		   (extend prototype to-extend))
+
+		 (when (typep properties 'object)
+		   (extend properties to-extend))
+
+		 (when (typep to-extend.init 'function)
+		   (init to-extend))
+		 
+		 to-extend)))))
        
        ;; ----------------------------------------------------------------------------
        ;; Component Constructor Renderer
@@ -271,18 +272,26 @@
 	 (let ,(mapcar (lambda (method k-url)
 			 (let ((method-args (extract-argument-names (cdddr method)
 								    :allow-specializers t)))
-			   `(,k-url (action/url ,(reduce0
-						  (lambda (acc arg)
-						    (cons (list arg (symbol-to-js (symbol-name arg)))
-							  acc))
-						  method-args)
-				      (json/suspend
-					(lambda (stream)
-					  (json! stream
-						 (,(car method) component
-						   ,@(mapcar (lambda (arg)
-							       `(json-deserialize ,arg))
-							     method-args)))))))))
+			   `(,k-url (action/url (,@(reduce0
+						    (lambda (acc arg)
+						      (cons (list arg (symbol-to-js (symbol-name arg)))
+							    acc))
+						    method-args)
+						  (hash "__hash"))
+				      (if hash 
+					  (json/suspend
+					    (lambda (stream)
+					      (write-stream stream (format nil "~A=" hash))
+					      (json! stream (,(car method) component
+							      ,@(mapcar (lambda (arg)
+									  `(json-deserialize ,arg))
+									method-args)))))
+					  (json/suspend
+					    (lambda (stream)
+					      (json! stream (,(car method) component
+							      ,@(mapcar (lambda (arg)
+									  `(json-deserialize ,arg))
+									method-args))))))))))
 		       (class+.local-methods class+) k-urls)
 	   (%component! stream component ,@k-urls))))))
 
@@ -290,7 +299,7 @@
 ;; Default Funkall Method for Components
 ;; ----------------------------------------------------------------------------
 (defmethod/remote funkall ((self component) action arguments)
-  (funcall (+ (slot-value self 'url) action) arguments))
+  (funcall-cc (+ (slot-value self 'url) action) arguments))
 
 (defmethod write-stream ((stream html-stream) (object component))
   (call-next-method)
