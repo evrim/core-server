@@ -136,6 +136,8 @@
 (defmethod log-transaction ((self abstract-database) (transaction transaction))
   ;; (checkpoint-stream (database.stream self))
   (write-stream (database.stream self) (database.serialize self transaction))
+  (sb-impl::flush-output-buffer (slot-value (slot-value (database.stream self) '%stream)
+					    '%stream))
   ;; (commit-stream (database.stream self))
   )
 
