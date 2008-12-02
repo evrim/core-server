@@ -178,7 +178,7 @@
 (defhtml-tag <:pre :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:q :core :event :i18n cite)
 (defhtml-tag <:samp :core :event :i18n onmouseover onmouseout)
-(defhtml-tag <:script type charset defer src title language)
+(defhtml-tag <:script onload onreadystate type charset defer src title language)
 (defhtml-tag <:select :core :event :i18n disabled multiple name accesskey
 	     onblur onfocus onchange size tabindex onmouseover onmouseout)
 (defhtml-tag <:small :core :event :i18n onmouseover onmouseout)
