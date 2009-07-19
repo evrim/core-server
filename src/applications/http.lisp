@@ -114,43 +114,44 @@
 	       :documentation "A list that contains URLs that this application handles")
      (scanner-cache :initform (make-hash-table)))))
 
-(defmethod validate-superclass ((class http-application+) (super standard-class)) t)
-(defmethod validate-superclass ((class standard-class) (super http-application+)) nil)
+  (defmethod validate-superclass ((class http-application+) (super standard-class)) t)
+  (defmethod validate-superclass ((class standard-class) (super http-application+)) nil)
 
-(defmethod http-application+.handlers ((self http-application+))
-  (let ((cache (slot-value self 'scanner-cache)))
-    (mapcar (lambda (handler)
-              (aif (gethash (car handler) cache)
-                   (cons (car handler) it)
-                   (cons (car handler)
-                         (setf (gethash (car handler) cache)
-                               (cl-ppcre:create-scanner (cdr handler))))))
-	    (uniq (nreverse
-		   (reduce #'append
-			   (mapcar (rcurry #'slot-value 'handlers)
-				   (filter (lambda (a) (if (typep a 'http-application+) a))
-					   (class-superclasses self)))))
-		  :key #'car))))
+  (defmethod http-application+.handlers ((self http-application+))
+    (let ((cache (slot-value self 'scanner-cache)))
+      (mapcar (lambda (handler)
+		(aif (gethash (car handler) cache)
+		     (cons (car handler) it)
+		     (cons (car handler)
+			   (setf (gethash (car handler) cache)
+				 (cl-ppcre:create-scanner (cdr handler))))))
+	      (uniq (nreverse
+		     (reduce #'append
+			     (mapcar (rcurry #'slot-value 'handlers)
+				     (filter (lambda (a) (if (typep a 'http-application+) a))
+					     (class-superclasses self)))))
+		    :key #'car))))
 
-(defmethod add-handler ((application+ http-application+) method-name url)
-  (setf (http-application+.handlers application+)
-	(cons (cons method-name url)
-	      (remove-handler application+ method-name))))
+  (defmethod add-handler ((application+ http-application+) method-name url)
+    (setf (http-application+.handlers application+)
+	  (cons (cons method-name url)
+		(remove-handler application+ method-name))))
 
-(defmethod remove-handler ((application+ http-application+) method-name)
-  (prog1 (setf (http-application+.handlers application+)
-               (remove method-name (http-application+.handlers application+) :key #'car))
-    (remhash method-name (slot-value application+ 'scanner-cache))))
+  (defmethod remove-handler ((application+ http-application+) method-name)
+    (prog1 (setf (http-application+.handlers application+)
+		 (remove method-name (http-application+.handlers application+) :key #'car))
+      (remhash method-name (slot-value application+ 'scanner-cache)))))
 
 ;;+----------------------------------------------------------------------------
 ;;| HTTP Application
 ;;+----------------------------------------------------------------------------
-(defclass http-application (web-application)
-  ((sessions :accessor http-application.sessions :initform (make-hash-table :test #'equal)
-	     :documentation "A hash-table that holds sessions"))
-  (:default-initargs :directory nil)
-  (:documentation "HTTP Application Class")
-  (:metaclass http-application+))
+(eval-when (:load-toplevel :execute :compile-toplevel)
+  (defclass http-application (web-application)
+    ((sessions :accessor http-application.sessions :initform (make-hash-table :test #'equal)
+	       :documentation "A hash-table that holds sessions"))
+    (:default-initargs :directory nil)
+    (:documentation "HTTP Application Class")
+    (:metaclass http-application+)))
 
 (defmethod print-object ((self http-application) stream)
   (print-unreadable-object (self stream :type t :identity t)
@@ -309,7 +310,8 @@
     (assert (stringp url))
     (with-unique-names (context)
       `(progn
-	 (add-handler (find-class ',application-class) ',handler-symbol ,url)
+	 (eval-when (:compile-toplevel :execute :load-toplevel)
+	   (add-handler (find-class ',application-class) ',handler-symbol ,url))
 	 (redefmethod ,handler-symbol ((,application ,application-class) (,context http-context))
 	   (prog1 (with-context ,context
 		    (with-html-output (http-response.stream (context.response ,context))

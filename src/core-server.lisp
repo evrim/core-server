@@ -804,6 +804,8 @@
    #:html-component
    #:defhtml-component
    #:defcomponent-accessors
+   #:component.*
+   #:service.*
    #:mtor!
    #:deftable
    #:defwebcrud

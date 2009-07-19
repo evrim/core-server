@@ -245,9 +245,6 @@
 		      (slot-value element 'children))
 	      :initial-value stream))))
 
-(defmethod write-stream ((stream html-stream) element)
-  (write-stream (slot-value stream '%stream) element))
-
 ;;-----------------------------------------------------------------------------
 ;; HTML 4 Extra Tags a.k.a. Bonuses
 ;;-----------------------------------------------------------------------------
