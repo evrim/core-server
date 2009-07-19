@@ -339,15 +339,14 @@
        (string! stream "var ")
        (string! stream (json-deserialize hash))
        (string! stream " = "))
-
-     (let ((component (find-class (intern (string-upcase (json-deserialize component))) nil)))
-       (cond
-	 ((and (typep (json-deserialize component) 'string) component)	
-	  (component! stream (make-instance component)))
-	 (t
-	  (with-js () stream
-	    (lambda ()
-	      (throw (new (*error "No Components Found - Core Server [http://labs.core.gen.tr]")))))))))))
+     (cond
+       ((and (typep component 'string))
+	(let ((component (find-class (intern (string-upcase (json-deserialize component))) nil)))
+	  (component! stream (make-instance component))))
+       (t
+	(with-js () stream
+	  (lambda ()
+	    (throw (new (*error "No Components Found - Core Server [http://labs.core.gen.tr]"))))))))))
 
 (defhandler "service.*" ((application http-application) (component "service")
 			 (hash "__hash"))

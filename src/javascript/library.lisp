@@ -242,7 +242,7 @@
 	(let ((script (<:script :src (+ action (serialize-to-uri args)))))
 	  (setf (slot-value script 'onload)
 		(event ()					      
-		  (document.body.remove-child script)
+;;		       (document.body.remove-child script)
 		  (current-continuation (slot-value window hash))))
 	  (document.body.append-child script)
 	  (suspend)))))
