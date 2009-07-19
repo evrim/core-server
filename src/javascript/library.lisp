@@ -30,7 +30,7 @@
 	(return nil))
     
     (let ((result (or (and (not (typep initial-value 'undefined)) initial-value) nil)))
-      (if (instanceof lst '*array)
+      (if (not (null lst.length))
 	  (dolist (item lst)
 	    (setf result (fun result item)))
 	  (doeach (item lst)
@@ -43,7 +43,7 @@
   (defun reverse (lst)
     (if (null lst)
 	nil
-	(.reverse lst)))
+	(reduce0 (lambda (acc a) (cons a acc)) lst)))
 
   (defun flatten (lst acc)
     (if (typep acc 'undefined)
@@ -81,9 +81,11 @@
       (t nil)))
 
   (defun cdr (lst)
-    (if (null lst)
-	nil
-	(.slice lst 1)))
+    (cond
+      ((null lst) nil)      
+      ((or (typep lst '*array)
+	   (typep lst 'object)) (.slice lst 1))
+      (t (list lst))))
   
   (defun mapcar (fun lst)
     (reverse
@@ -155,10 +157,10 @@
   (defun serialize (object)
     (labels ((serialize (object)
 	     (cond
+	       ((typep object 'undefined)
+		"{}")
 	       ((null object)
 		"null")
-	       ((typep object 'undefined)
-		"undefined")
 	       ((typep object 'number)
 		object)
 	       ((typep object 'string)
@@ -192,7 +194,6 @@
     (serialize object)))
 
   (defun funcall (action arguments)
-;;     (console.debug (+ "funcalling :" action " with args:" arguments))
     (if window.*active-x-object
 	(setf xhr (new (*active-x-object "Microsoft.XMLHTTP")))
 	(setf xhr (new (*x-m-l-http-request))))
@@ -216,7 +217,6 @@
 	((eq content-type "text/html")
 	 (let ((div (document.create-element "div")))
 	   (setf div.inner-h-t-m-l xhr.response-text)
-	   ;; (console.debug div)
 	   (cond
 	     ((eq 0 div.child-nodes.length)
 	      nil)
@@ -225,25 +225,25 @@
 	     (t
 	      div)))))))
 
-  (defun serialize-to-uri (arguments)
+  (defun serialize-to-uri (arg)
     (let ((result ""))	  
       (mapobject (lambda (k v)
-		   (console.debug (+ k v))
 		   (setf result
 			 (+ result k "="
 			    (encode-u-r-i-component (serialize v))
 			    "&")))
-	      arguments)
+		 arg)
       result))
   
-  (defun/cc funcall-cc (action arguments)
-    (let/cc k
+  (defun/cc funcall-cc (action args)    
+    (let/cc current-continuation
       (let ((hash (+ "__result" (.get-time (new (*date))))))
-	(let ((script (<:script :src (+ action "&" (serialize-to-uri arguments) "__hash=" hash))))
+	(setf (slot-value args "__hash") hash)
+	(let ((script (<:script :src (+ action (serialize-to-uri args)))))
 	  (setf (slot-value script 'onload)
 		(event ()					      
 		  (document.body.remove-child script)
-		  (k (slot-value window hash))))
+		  (current-continuation (slot-value window hash))))
 	  (document.body.append-child script)
 	  (suspend)))))
 
@@ -328,4 +328,24 @@
     (mapobject (lambda (k v)
 		 (setf (slot-value target k) v))
 	       source)
-    target))
+    target)  
+
+  (defvar *registry* (create))
+  
+  (defun/cc make-service (name properties)    
+    (let ((service (slot-value *registry* name)))
+      (if (not (null service))
+	  service
+	  (let ((ctor (funcall-cc "service.core?" (create :service name))))
+	    (let ((instance (new (ctor properties))))
+	      (setf (slot-value *registry* name) instance)
+	      instance)))))
+  
+  (defun/cc make-component (name properties)
+    (let ((component (slot-value *registry* name)))
+      (if (not (null component))
+	  (new (component properties))
+	  (progn
+	    (setf (slot-value *registry* name)
+		  (funcall-cc "component.core?" (create :component name)))
+	    (make-component name))))))

@@ -37,7 +37,8 @@
 (defcps-expander/js lambda-function-form (arguments declares body)
   (with-unique-names (k1)
     `(,k (lambda (,@(unwalk-lambda-list arguments) ,k1)
-	   ,(call-next-method form expand k1 env)))))
+	   (let ((,k1 (or ,k1 'window.k)))
+	     ,(call-next-method form expand k1 env))))))
 
 (defcps-expander/js implicit-progn-mixin (body)
   (case (length body)
@@ -60,9 +61,14 @@
 		       (make-instance 'implicit-progn-mixin
 				      :body (cdr arguments))
 		       expand k-arg env))))    
-    (new               
+    (new
      (let ((ctor (car arguments)))
-       `(make-instance ,k ,(operator ctor) ,@(unwalk-forms (arguments ctor)))))
+       `(make-instance ,k  ,(operator ctor) ,@(unwalk-forms (arguments ctor)))
+       ;; (funcall expand
+       ;; 		(walk-js-form
+       ;; 		 )
+       ;; 		expand k env)
+       ))
     (method
      (with-unique-names (k1)
        `(,k (lambda (,@(slot-value (car arguments) 'source) ,k1)

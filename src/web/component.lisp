@@ -211,52 +211,53 @@
 	       ;; ----------------------------------------------------------------------------
 	       ;; Constructor
 	       ;; ----------------------------------------------------------------------------
-	       (defun/cc ,class-name (properties to-extend)
-		 (if (null to-extend)
-		     (setf to-extend ,(if dom-class
-					  `(document.create-element ,(symbol-to-js (or (xml+.tag dom-class)
-										       (class-name dom-class))))
-					  `(new (*object)))))
-		 (let ((prototype
-			(create
-			 ;; ----------------------------------------------------------------------------
-			 ;; Remote Slot Initial Values
-			 ;; ----------------------------------------------------------------------------
-			 ,@(reduce0 (lambda (acc slot)
-				      (cons (make-keyword (car slot))
-					    (cons (cadr slot) acc)))
-				    remote-slots)
+	       (with-call/cc
+		 (lambda (properties to-extend)
+		   (if (null to-extend)
+		       (setf to-extend ,(if dom-class
+					    `(document.create-element ,(symbol-to-js (or (xml+.tag dom-class)
+											 (class-name dom-class))))
+					    `(new (*object)))))
+		   (let ((prototype
+			  (create
+			   ;; ----------------------------------------------------------------------------
+			   ;; Remote Slot Initial Values
+			   ;; ----------------------------------------------------------------------------
+			   ,@(reduce0 (lambda (acc slot)
+					(cons (make-keyword (car slot))
+					      (cons (cadr slot) acc)))
+				      remote-slots)
 	       
-			 ;; ----------------------------------------------------------------------------
-			 ;; Remote Methods
-			 ;; ----------------------------------------------------------------------------
-			 ,@(reduce0 (lambda (acc method)
-				      (let ((proxy (intern (format nil "~A/JS" (car method))
-							   (symbol-package (car method)))))
-					(cons (make-keyword (car method))
-					      (cons (funcall proxy class+ nil) acc ))))
-				    (class+.remote-methods class+))
-			 
-			 ;; ----------------------------------------------------------------------------
-			 ;; Local Methods
-			 ;; ----------------------------------------------------------------------------
-			 ,@(reduce0 (lambda (acc method)
-				      (destructuring-bind (method . k-url) method
+			   ;; ----------------------------------------------------------------------------
+			   ;; Remote Methods
+			   ;; ----------------------------------------------------------------------------
+			   ,@(reduce0 (lambda (acc method)
 					(let ((proxy (intern (format nil "~A/JS" (car method))
 							     (symbol-package (car method)))))
 					  (cons (make-keyword (car method))
-						(cons (funcall proxy class+ k-url) acc )))))
-				    (mapcar #'cons (class+.local-methods class+) k-urls)))))
+						(cons (funcall proxy class+ nil) acc ))))
+				      (class+.remote-methods class+))
+			 
+			   ;; ----------------------------------------------------------------------------
+			   ;; Local Methods
+			   ;; ----------------------------------------------------------------------------
+			   ,@(reduce0 (lambda (acc method)
+					(destructuring-bind (method . k-url) method
+					  (let ((proxy (intern (format nil "~A/JS" (car method))
+							       (symbol-package (car method)))))
+					    (cons (make-keyword (car method))
+						  (cons (funcall proxy class+ k-url) acc )))))
+				      (mapcar #'cons (class+.local-methods class+) k-urls)))))
 
-		   (extend prototype to-extend))
+		     (extend prototype to-extend))
 
-		 (when (typep properties 'object)
-		   (extend properties to-extend))
+		   (when (typep properties 'object)
+		     (extend properties to-extend))
 
-		 (when (typep to-extend.init 'function)
-		   (init to-extend))
+		   (when (typep to-extend.init 'function)
+		     (init to-extend))
 		 
-		 to-extend)))))
+		   to-extend))))))
        
        ;; ----------------------------------------------------------------------------
        ;; Component Constructor Renderer
@@ -274,35 +275,37 @@
 								    :allow-specializers t)))
 			   `(,k-url (action/url (,@(reduce0
 						    (lambda (acc arg)
-						      (cons (list arg (symbol-to-js (symbol-name arg)))
+						      (cons (list arg (symbol-to-js arg))
 							    acc))
 						    method-args)
 						  (hash "__hash"))
-				      (if hash 
-					  (json/suspend
-					    (lambda (stream)
-					      (write-stream stream (format nil "~A=" hash))
-					      (json! stream (,(car method) component
-							      ,@(mapcar (lambda (arg)
-									  `(json-deserialize ,arg))
-									method-args)))))
-					  (json/suspend
-					    (lambda (stream)
-					      (json! stream (,(car method) component
-							      ,@(mapcar (lambda (arg)
-									  `(json-deserialize ,arg))
-									method-args))))))))))
+				      (let ((stream (http-response.stream (context.response +context+)))
+					    (json-deserialize hash)
+					    (result (,(car method) component
+						      ,@(mapcar (lambda (arg)
+								  `(json-deserialize ,arg))
+								method-args))))
+					(when (and (stringp hash) (> (length hash) 0))
+					  (string! stream "var ")
+					  (string! stream (json-deserialize hash))
+					  (string! stream " = "))
+					(json! stream result) 
+					nil)))))
 		       (class+.local-methods class+) k-urls)
 	   (%component! stream component ,@k-urls))))))
 
 ;; ----------------------------------------------------------------------------
 ;; Default Funkall Method for Components
 ;; ----------------------------------------------------------------------------
-(defmethod/remote funkall ((self component) action arguments)
-  (funcall-cc (+ (slot-value self 'url) action) arguments))
+(defmethod/remote funkall ((self component) action args)
+  (funcall-cc (+ (slot-value self 'url) action "$") args))
 
 (defmethod write-stream ((stream html-stream) (object component))
-  (call-next-method)
+  ;; (prog1 stream
+  ;;   (component! (make-indented-stream stream) object)
+
+  ;;   )
+    (call-next-method)
   ;; (if (typep object 'xml) (call-next-method))
 ;;   (write-stream stream
 ;; 		(<:script :type "text/javascript"
@@ -322,4 +325,47 @@
 
 (defmethod write-stream ((stream core-stream) (object component))
   (prog1 stream
-    (component! stream object)))
+    (with-call/cc
+      (component! stream object))))
+
+;; +----------------------------------------------------------------------------
+;; | Component & Service Dispatchers
+;; +----------------------------------------------------------------------------
+(defhandler "component.*" ((application http-application) (component "component")
+			   (hash "__hash"))
+  (javascript/suspend
+   (lambda (stream)
+     (when (and (stringp hash) (> (length hash) 0))
+       (string! stream "var ")
+       (string! stream (json-deserialize hash))
+       (string! stream " = "))
+
+     (let ((component (find-class (intern (string-upcase (json-deserialize component))) nil)))
+       (cond
+	 ((and (typep (json-deserialize component) 'string) component)	
+	  (component! stream (make-instance component)))
+	 (t
+	  (with-js () stream
+	    (lambda ()
+	      (throw (new (*error "No Components Found - Core Server [http://labs.core.gen.tr]")))))))))))
+
+(defhandler "service.*" ((application http-application) (component "service")
+			 (hash "__hash"))
+  (javascript/suspend
+   (lambda (stream)
+     (when (and (stringp hash) (> (length hash) 0))
+       (string! stream "var ")
+       (string! stream (json-deserialize hash))
+       (string! stream " = "))
+     (cond
+       ((and (typep (json-deserialize component) 'string)
+	     (find-class (intern (string-upcase (json-deserialize component))) nil))
+	(let ((component (intern (string-upcase (json-deserialize component)))))
+	  (component! stream
+		      (aif (query-session component)
+			   it
+			   (update-session component (make-instance component))))))
+       (t
+	(with-js () stream
+	  (lambda ()
+	    (throw (new (*error "No Services Found - Core Server [http://labs.core.gen.tr]"))))))))))

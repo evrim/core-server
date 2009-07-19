@@ -272,6 +272,8 @@
    #:new
    #:instanceof
    #:with-field
+   #:make-component
+   #:make-service   
    
    ;; [RFC 2109]
    #:cookie
@@ -755,6 +757,7 @@
    #:with-query
    #:with-context
    #:defhandler
+   #:defhandler/js
    #:defurl
 
    ;; CPS Style Web Framework

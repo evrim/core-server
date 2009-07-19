@@ -129,6 +129,12 @@
   (defclass core-standard-output (core-stream)
     ())
 
+  (defmethod rewind-stream ((self core-standard-output))
+    nil)
+
+  (defmethod checkpoint-stream ((self core-standard-output))
+    nil)
+
   (defmethod write-stream ((self core-standard-output) (vector vector))
     (reduce #'write-stream vector :initial-value self))
   

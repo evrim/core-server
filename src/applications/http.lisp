@@ -125,7 +125,12 @@
                    (cons (car handler)
                          (setf (gethash (car handler) cache)
                                (cl-ppcre:create-scanner (cdr handler))))))
-            (slot-value self 'handlers))))
+	    (uniq (nreverse
+		   (reduce #'append
+			   (mapcar (rcurry #'slot-value 'handlers)
+				   (filter (lambda (a) (if (typep a 'http-application+) a))
+					   (class-superclasses self)))))
+		  :key #'car))))
 
 (defmethod add-handler ((application+ http-application+) method-name url)
   (setf (http-application+.handlers application+)
@@ -167,7 +172,8 @@
        ,slots
        ,@rest
        (:metaclass http-application+)
-       (:handlers ,@dispatchers))))
+       ;; (:handlers ,@dispatchers)
+       )))
 
 ;; +----------------------------------------------------------------------------
 ;; | HTTP Application Interface
@@ -311,6 +317,17 @@
 			,@body)))
 	     (setf (context.request ,context) nil
 		   (context.response ,context) nil)))))))
+
+(defmacro defhandler/js (url ((application application-class) &rest queries) &body body)
+  `(defhandler ,url ((,application ,application-class) ,@queries)
+     (javascript/suspend
+      (lambda (stream)
+	(let ,(mapcar (lambda (a)
+			`(,a (json-deserialize ,a)))
+		      (mapcar #'car queries))
+	  (with-js ,(mapcar #'car queries) stream
+	    ,@body)
+	  nil)))))
 
 (defmacro defurl (application regexp-url queries &body body)
   "Backward compat macro"
