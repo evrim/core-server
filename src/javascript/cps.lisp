@@ -106,7 +106,7 @@
 		     ((gethash operator +javascript-cps-functions+)
 		      `(,operator ,@(mapcar #'cdr arguments) ,k))
 		     (t
-		      (describe operator)
+;;		      (describe operator)
 		      `(,k (,operator ,@(mapcar #'cdr arguments)))))))))))
 
 (defcps-expander/js let-form (binds body)

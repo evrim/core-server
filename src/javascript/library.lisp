@@ -229,9 +229,9 @@
     (let ((result ""))	  
       (mapobject (lambda (k v)
 		   (setf result
-			 (+ result k "="
+			 (+ result k ":"
 			    (encode-u-r-i-component (serialize v))
-			    "&")))
+			    "$")))
 		 arg)
       result))
   

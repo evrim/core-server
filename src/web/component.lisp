@@ -100,7 +100,7 @@
 		       (answer (json-deserialize result)))))
 	   (javascript/suspend
 	    (lambda (stream)
-	      (with-js (hash) stream
+	      (with-js (hash ,@args) stream
 		(this.funkall hash (create :result (serialize (,name self ,@args))))))))))))
 
 ;; ----------------------------------------------------------------------------
@@ -300,28 +300,8 @@
 (defmethod/remote funkall ((self component) action args)
   (funcall-cc (+ (slot-value self 'url) action "$") args))
 
-(defmethod write-stream ((stream html-stream) (object component))
-  ;; (prog1 stream
-  ;;   (component! (make-indented-stream stream) object)
-
-  ;;   )
-    (call-next-method)
-  ;; (if (typep object 'xml) (call-next-method))
-;;   (write-stream stream
-;; 		(<:script :type "text/javascript"
-;;                           (with-call/cc		
-;;                             (lambda (stream)
-;;                               (let ((stream (make-indented-stream stream)))
-;;                                 (component! stream object)
-;;                                 (when (typep object 'xml)
-;;                                   (write-stream stream
-;;                                                 (js*
-;;                                                   `(progn
-;;                                                      (new
-;;                                                       (,(class-name (class-of object))
-;;                                                         (create)
-;;                                                         (document.get-element-by-id ,(slot-value object 'id)))))))))))))
-  )
+(defmethod/remote upgrade ((self component) new-version)
+  (new (new-version (create) self)))
 
 (defmethod write-stream ((stream core-stream) (object component))
   (prog1 stream
@@ -329,7 +309,7 @@
       (component! stream object))))
 
 ;; +----------------------------------------------------------------------------
-;; | Component & Service Dispatchers
+;; | Component Dispatcher
 ;; +----------------------------------------------------------------------------
 (defhandler "component.*" ((application http-application) (component "component")
 			   (hash "__hash"))
@@ -348,6 +328,9 @@
 	  (lambda ()
 	    (throw (new (*error "No Components Found - Core Server [http://labs.core.gen.tr]"))))))))))
 
+;; +----------------------------------------------------------------------------
+;; | Service Dispatcher
+;; +----------------------------------------------------------------------------
 (defhandler "service.*" ((application http-application) (component "service")
 			 (hash "__hash"))
   (javascript/suspend
@@ -368,3 +351,24 @@
 	(with-js () stream
 	  (lambda ()
 	    (throw (new (*error "No Services Found - Core Server [http://labs.core.gen.tr]"))))))))))
+
+
+
+;; (defmethod write-stream ((stream html-stream) (object component))
+;;     (call-next-method)
+;;   ;; (if (typep object 'xml) (call-next-method))
+;; ;;   (write-stream stream
+;; ;; 		(<:script :type "text/javascript"
+;; ;;                           (with-call/cc		
+;; ;;                             (lambda (stream)
+;; ;;                               (let ((stream (make-indented-stream stream)))
+;; ;;                                 (component! stream object)
+;; ;;                                 (when (typep object 'xml)
+;; ;;                                   (write-stream stream
+;; ;;                                                 (js*
+;; ;;                                                   `(progn
+;; ;;                                                      (new
+;; ;;                                                       (,(class-name (class-of object))
+;; ;;                                                         (create)
+;; ;;                                                         (document.get-element-by-id ,(slot-value object 'id)))))))))))))
+;;   )
