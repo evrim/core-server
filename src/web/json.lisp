@@ -7,14 +7,15 @@
 (defrule json-string? (q c acc)
   (:or (:and (:seq "\"\"") (:return 'null)) ;; -hek.
        (:and (:quoted? q) (:return (if (> (length q) 0) q nil)))
-       (:and (:do (setq acc (make-accumulator :byte)))
-	     (:type (or visible-char? space?) c)
-	     (:collect c acc)
-	     (:zom (:type (or visible-char? space?) c)
-		   (:collect c acc))	     
-	     (:return (if (> (length acc) 0)
-			  (octets-to-string acc :utf-8)
-			  nil)))))
+       (:or (:and (:escaped-string? acc) (:return acc))
+	    (:and (:do (setq acc (make-accumulator :byte)))
+		  (:type (or visible-char? space?) c)
+		  (:collect c acc)
+		  (:zom (:type (or visible-char? space?) c)
+			(:collect c acc))
+		  (:return (if (> (length acc) 0)
+			       (octets-to-string acc :utf-8)
+			       nil))))))
 
 (defmethod json! ((stream core-stream) (s string))
   (prog1 stream (quoted! stream s #\')))
@@ -214,6 +215,23 @@
 			       element)))
     (t
      (string! stream (js* (dom2js element))))))
+
+(defmethod json! ((stream core-stream) (closure arnesi::closure/cc))
+  (string! stream (js* `((lambda ,(mapcar (lambda (arg)
+					    (case (car arg)
+					      (:let (cadr arg))
+					      (t (prog1 nil
+						   (warn "Fixme: serialize closure to json: ~A" arg)))))
+					  (slot-value closure 'arnesi::env))
+			   (return
+			     ,(unwalk-form (slot-value closure 'arnesi::code))))
+			 ,@(mapcar (lambda (arg)
+				     (case (car arg)
+				       (:let (cddr arg))
+				       (t (prog1 nil
+					    (warn "Fixme: serialize closure to json: ~A" arg)))))
+				   (ast-search-type (slot-value closure 'arnesi::env)
+						    'variable-reference))))))
 
 (defun json-serialize (object)
   (let ((s (make-core-stream "")))

@@ -96,12 +96,24 @@
 		  (let ((,',self self))
 		    ,@',body))))
        (defmethod/cc ,name ((,self ,class-name) ,@args)
-	 (let ((hash (action/url ((result "result"))
-		       (answer (json-deserialize result)))))
-	   (javascript/suspend
-	    (lambda (stream)
-	      (with-js (hash ,@args) stream
-		(this.funkall hash (create :result (serialize (,name self ,@args))))))))))))
+	 (with-query ((hash "__hash")) (context.request +context+)
+	   (let ((hash (json-deserialize (if (listp hash) (car hash) hash))))
+	     (javascript/suspend
+	      (lambda (stream)
+		(let ((result (action/url ((result "result"))
+				(answer (json-deserialize result)))))		  
+		  (aif (and hash (intern (string-upcase hash)))
+		       (with-js (result it ,@args) stream
+			 (setf it
+			       (with-call/cc
+				 (lambda (self)
+				   (funkall self result
+					    (create :result (serialize (,name self ,@args))))))))
+		       (with-js (result ,@args) stream
+			 (with-call/cc
+			   (lambda (self)
+			     (funkall self result
+				      (create :result (serialize (,name self ,@args)))))))))))))))))
 
 ;; ----------------------------------------------------------------------------
 ;; defcomponent-accessors Macro: Defines remote and local accessors
@@ -277,28 +289,36 @@
 						    (lambda (acc arg)
 						      (cons (list arg (symbol-to-js arg))
 							    acc))
-						    method-args)
-						  (hash "__hash"))
-				      (let ((stream (http-response.stream (context.response +context+)))
-					    (json-deserialize hash)
-					    (result (,(car method) component
+						    method-args))
+				      (let ((result (,(car method) component
 						      ,@(mapcar (lambda (arg)
 								  `(json-deserialize ,arg))
 								method-args))))
-					(when (and (stringp hash) (> (length hash) 0))
-					  (string! stream "var ")
-					  (string! stream (json-deserialize hash))
-					  (string! stream " = "))
-					(json! stream result) 
-					nil)))))
+					(with-query ((hash "__hash")) (context.request +context+)
+					  (let ((stream (http-response.stream (context.response +context+)))
+						(hash (json-deserialize (if (listp hash) (car hash) hash))))
+					    (javascript/suspend
+					     (lambda (stream)
+					       (aif (and hash (intern (string-upcase hash)))
+						    (with-js (result it) stream
+						      (setf it (with-call/cc (lambda (self) result))))
+						    (with-js (result) stream
+						      (with-call/cc
+							(lambda (self) result))))))
+					    nil)))))))
 		       (class+.local-methods class+) k-urls)
 	   (%component! stream component ,@k-urls))))))
 
 ;; ----------------------------------------------------------------------------
 ;; Default Funkall Method for Components
 ;; ----------------------------------------------------------------------------
+(defun/cc retval (a) a)
 (defmethod/remote funkall ((self component) action args)
-  (funcall-cc (+ (slot-value self 'url) action "$") args))
+  (let ((retval (funcall-cc (+ (slot-value self 'url) action "$") args)))
+    (let/cc k
+      (if (typep retval 'function)
+	  (retval self)
+	  retval))))
 
 (defmethod/remote upgrade ((self component) new-version)
   (new (new-version (create) self)))
@@ -307,6 +327,12 @@
   (prog1 stream
     (with-call/cc
       (component! stream object))))
+
+(defun find-component (name)
+  (find (string-upcase name)
+	(class-subclasses (find-class 'component))
+	:test #'string=
+	:key #'class-name))
 
 ;; +----------------------------------------------------------------------------
 ;; | Component Dispatcher
@@ -319,14 +345,13 @@
        (string! stream "var ")
        (string! stream (json-deserialize hash))
        (string! stream " = "))
-     (cond
-       ((and (typep component 'string))
-	(let ((component (find-class (intern (string-upcase (json-deserialize component))) nil)))
-	  (component! stream (make-instance component))))
-       (t
-	(with-js () stream
-	  (lambda ()
-	    (throw (new (*error "No Components Found - Core Server [http://labs.core.gen.tr]"))))))))))
+     (acond
+      ((and (typep component 'string) (find-component (json-deserialize component)))
+       (component! stream (make-instance it)))
+      (t
+       (with-js () stream
+	 (lambda ()
+	   (throw (new (*error "No Components Found - Core Server [http://labs.core.gen.tr]"))))))))))
 
 ;; +----------------------------------------------------------------------------
 ;; | Service Dispatcher
@@ -339,14 +364,12 @@
        (string! stream "var ")
        (string! stream (json-deserialize hash))
        (string! stream " = "))
-     (cond
-       ((and (typep (json-deserialize component) 'string)
-	     (find-class (intern (string-upcase (json-deserialize component))) nil))
-	(let ((component (intern (string-upcase (json-deserialize component)))))
-	  (component! stream
-		      (aif (query-session component)
-			   it
-			   (update-session component (make-instance component))))))
+     (acond
+       ((and (typep component 'string) (find-component (json-deserialize component)))
+	(let ((component (query-session it)))
+	  (if component
+	      (component! stream component)
+	      (component! stream (update-session it (make-instance it))))))
        (t
 	(with-js () stream
 	  (lambda ()

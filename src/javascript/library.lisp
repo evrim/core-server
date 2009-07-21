@@ -226,7 +226,7 @@
 	      div)))))))
 
   (defun serialize-to-uri (arg)
-    (let ((result ""))	  
+    (let ((result ""))
       (mapobject (lambda (k v)
 		   (setf result
 			 (+ result k ":"

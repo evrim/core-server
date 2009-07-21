@@ -215,8 +215,10 @@
 					 (code-char f3) (code-char f4)))
 	(read s)))))
 
-(defparser escaped-string? (c (acc (make-accumulator :byte)))
-  (:oom (:escaped? c) (:collect c acc))
+(defparser escaped-string? (c (acc (make-accumulator)))
+  (:oom (:or (:escaped? c)
+	     (:type visible-char? c))
+	(:collect c acc))
   (:return acc))
 
 ;; (defparser quoted? ((value (make-accumulator :byte)) c b)
@@ -241,10 +243,12 @@
 (defparser quoted? (c (acc (make-accumulator :byte)))
   (:or (:and #\"
 	     (:zom (:not #\")
-		   (:type octet? c)
+		   (:or (:escaped? c)
+			(:type visible-char? c))
 		   (:collect c acc))
 	     (:return (octets-to-string acc :utf-8)))
-       (:and (:zom (:type (or visible-char? space?) c)
+       (:and (:zom (:or (:escaped? c)
+			(:type (or visible-char? space?) c))
 		   (:collect c acc))
 	     (:return (octets-to-string acc :utf-8)))))
 

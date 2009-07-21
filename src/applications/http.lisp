@@ -112,7 +112,7 @@
     ((handlers :initarg :handlers :accessor http-application+.handlers
 	       :initform nil
 	       :documentation "A list that contains URLs that this application handles")
-     (scanner-cache :initform (make-hash-table)))))
+     (scanner-cache :initform (make-hash-table))))
 
   (defmethod validate-superclass ((class http-application+) (super standard-class)) t)
   (defmethod validate-superclass ((class standard-class) (super http-application+)) nil)
