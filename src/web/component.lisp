@@ -108,12 +108,12 @@
 			       (with-call/cc
 				 (lambda (self)
 				   (funkall self result
-					    (create :result (serialize (,name self ,@args))))))))
+					    (create :result (,name self ,@args)))))))
 		       (with-js (result ,@args) stream
 			 (with-call/cc
 			   (lambda (self)
 			     (funkall self result
-				      (create :result (serialize (,name self ,@args)))))))))))))))))
+				      (create :result (,name self ,@args))))))))))))))))
 
 ;; ----------------------------------------------------------------------------
 ;; defcomponent-accessors Macro: Defines remote and local accessors
