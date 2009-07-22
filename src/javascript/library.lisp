@@ -159,6 +159,8 @@
 	     (cond
 	       ((typep object 'undefined)
 		"{}")
+	       ((typep object 'boolean)
+		(if object "true" "false"))
 	       ((null object)
 		"null")
 	       ((typep object 'number)

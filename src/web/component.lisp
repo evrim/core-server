@@ -142,7 +142,7 @@
 		  (filter (lambda (slot)
 			    (or (eq (cdr slot) 'remote)
 				(eq (cdr slot) 'both)
-				(eq (cdr slot) 'none)))
+				(eq (cdr slot) 'local)))
 			  slots)))))
 
 ;; +----------------------------------------------------------------------------
@@ -312,16 +312,20 @@
 ;; ----------------------------------------------------------------------------
 ;; Default Funkall Method for Components
 ;; ----------------------------------------------------------------------------
-(defun/cc retval (a) a)
+
+(eval-when (:compile-toplevel :execute :load-toplevel)
+  (setf (gethash 'retval +javascript-cps-functions+) t)
+  (setf (gethash 'new-version +javascript-cps-functions+) t))
+
 (defmethod/remote funkall ((self component) action args)
-  (let ((retval (funcall-cc (+ (slot-value self 'url) action "$") args)))
-    (let/cc k
-      (if (typep retval 'function)
-	  (retval self)
-	  retval))))
+  (let ((retval (funcall-cc (+ (slot-value self 'url) action "$") args)))    
+    (if (typep retval 'function)
+	(retval self) 
+	retval)))
 
 (defmethod/remote upgrade ((self component) new-version)
-  (new (new-version (create) self)))
+  (new-version (create) self)
+  t)
 
 (defmethod write-stream ((stream core-stream) (object component))
   (prog1 stream
