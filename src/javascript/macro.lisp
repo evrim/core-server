@@ -73,7 +73,7 @@
 (defjsmacro s-v (b)
   `(slot-value self ,b))
 
-(defjsmacro aif (a b c)
+(defjsmacro aif (a b &optional (c 'nil))
   `((lambda (it)     
       (if it
 	  ,b
