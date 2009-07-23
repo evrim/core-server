@@ -332,11 +332,19 @@
     (with-call/cc
       (component! stream object))))
 
+(defmethod json! ((stream core-stream) (component component))
+  (with-call/cc
+    (component! stream component)))
+
 (defun find-component (name)
-  (find (string-upcase name)
-	(class-subclasses (find-class 'component))
-	:test #'string=
-	:key #'class-name))
+  (car
+   (find name
+	 (mapcar #'cons
+		 (class-subclasses (find-class 'component))
+		 (mapcar (compose #'symbol-to-js #'class-name)
+			 (class-subclasses (find-class 'component))))
+	 :test #'string=
+	 :key #'cdr)))
 
 ;; +----------------------------------------------------------------------------
 ;; | Component Dispatcher

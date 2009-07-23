@@ -233,10 +233,6 @@
 				   (ast-search-type (slot-value closure 'arnesi::env)
 						    'variable-reference))))))
 
-(defmethod json! ((stream core-stream) (component component))
-  (with-call/cc
-    (component! stream component)))
-
 (defun json-serialize (object)
   (let ((s (make-core-stream "")))
     (json! s object)
