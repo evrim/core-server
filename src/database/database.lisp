@@ -236,9 +236,7 @@
 			       (with-slots (cache counter) (slot-value self 'database-cache)
 				 (multiple-value-bind (id foundp) (gethash object cache)
 				   (if foundp
-				       (progn
-					 (format t "found:~A" id)
-					 (<db:ref :id (format nil "~D" id)))
+				       (<db:ref :id (format nil "~D" id))
 				       (let ((xml (xml-serialize object k)))
 					 (setf (gethash object cache) (incf counter)
 					       (slot-value xml 'id) counter)
