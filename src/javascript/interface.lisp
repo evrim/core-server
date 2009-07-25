@@ -49,23 +49,25 @@
 (defmacro js* (&body body)
   `(eval `(js ,,@body)))
 
-(defmacro with-js (vars stream &body body)  
-  (let ((+js-free-variables+ vars))
-    (labels ((expander (form expander)
-	       (expand-render (optimize-render-1 (expand-javascript form expander))
-			      #'expand-render
-			      stream)))
-      `(block rule-block
-	 ,(expand-render
-	   (optimize-render-1
-	    (walk-grammar
-	     (expand-javascript
-	      (fix-javascript-returns
-	       (walk-js-form (if (= 1 (length body)) (car body) `(progn ,@body))))
-	      #'expand-javascript)))
-	   #'expander stream)
-	 (char! ,stream #\Newline)
-	 ,stream))))
+(defmacro with-js (vars stream &body body)
+  (with-unique-names (s)
+    (let ((+js-free-variables+ vars))
+      (labels ((expander (form expander)
+		 (expand-render (optimize-render-1 (expand-javascript form expander))
+				#'expand-render
+				s)))
+	`(block rule-block
+	   (let ((,s ,stream))
+	     ,(expand-render
+	       (optimize-render-1
+		(walk-grammar
+		 (expand-javascript
+		  (fix-javascript-returns
+		   (walk-js-form (if (= 1 (length body)) (car body) `(progn ,@body))))
+		  #'expand-javascript)))
+	       #'expander s))
+	   (char! ,stream #\Newline)
+	   ,stream)))))
 
 (defmacro defrender/js (name args &body body)
   (with-unique-names (stream)
