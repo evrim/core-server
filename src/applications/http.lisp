@@ -118,19 +118,25 @@
   (defmethod validate-superclass ((class standard-class) (super http-application+)) nil)
 
   (defmethod http-application+.handlers ((self http-application+))
-    (let ((cache (slot-value self 'scanner-cache)))
-      (mapcar (lambda (handler)
-		(aif (gethash (car handler) cache)
-		     (cons (car handler) it)
-		     (cons (car handler)
-			   (setf (gethash (car handler) cache)
-				 (cl-ppcre:create-scanner (cdr handler))))))
-	      (uniq (nreverse
-		     (reduce #'append
-			     (mapcar (rcurry #'slot-value 'handlers)
-				     (filter (lambda (a) (if (typep a 'http-application+) a))
-					     (class-superclasses self)))))
-		    :key #'car))))
+    ;; (let ((cache (slot-value self 'scanner-cache)))
+    ;;   (mapcar (lambda (handler)
+    ;; 		(aif (gethash (car handler) cache)
+    ;; 		     (cons (car handler) it)
+    ;; 		     (cons (car handler)
+    ;; 			   (setf (gethash (car handler) cache)
+    ;; 				 (cl-ppcre:create-scanner (cdr handler))))))
+    ;; 	      (uniq (nreverse
+    ;; 		     (reduce #'append
+    ;; 			     (mapcar (rcurry #'slot-value 'handlers)
+    ;; 				     (filter (lambda (a) (if (typep a 'http-application+) a))
+    ;; 					     (class-superclasses self)))))
+    ;; 		    :key #'car)))
+    (uniq (nreverse
+	   (reduce #'append
+		   (mapcar (rcurry #'slot-value 'handlers)
+			   (filter (lambda (a) (if (typep a 'http-application+) a))
+				   (class-superclasses self)))))
+	  :key #'car))
 
   (defmethod add-handler ((application+ http-application+) method-name url)
     (setf (http-application+.handlers application+)
@@ -239,7 +245,7 @@
       (or (funcall it request response) t))
      ((any #'(lambda (handler)
 	       (aif (caar (uri.paths (http-request.uri request)))
-		    (and (cl-ppcre:scan-to-strings (cdr handler) it :sharedp t)
+		    (and (cl-ppcre:scan-to-strings (cl-ppcre:create-scanner (cdr handler)) it)
 			 (car handler))))
 	   (http-application+.handlers (class-of self)))
       (log-me (application.server self) 'http-application
