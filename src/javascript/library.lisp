@@ -241,10 +241,13 @@
     (let/cc current-continuation
       (let ((hash (+ "__result" (.get-time (new (*date))))))
 	(setf (slot-value args "__hash") hash)
-	(let ((script (<:script :src (+ action (serialize-to-uri args)))))
+	(let ((script (make-dom-element "script"
+					(create :src
+						(+ action (serialize-to-uri args)))
+					nil)))
 	  (setf (slot-value script 'onload)
-		(event ()					      
-;;		       (document.body.remove-child script)
+		(event ()
+		  (document.body.remove-child script)
 		  (current-continuation (slot-value window hash))))
 	  (document.body.append-child script)
 	  (suspend)))))
