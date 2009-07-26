@@ -239,12 +239,14 @@
   
   (defun/cc funcall-cc (action args)    
     (let/cc current-continuation
-      (let ((hash (+ "__result" (.get-time (new (*date))))))
+      (let ((hash (+ "__result"
+		     (.get-time (new (*date)))
+		     (.substr (+ "" (*math.random 10)) 3 5))))
 	(setf (slot-value args "__hash") hash)
 	(let ((script (make-dom-element "script"
-					(create :src
-						(+ action (serialize-to-uri args)))
-					nil)))
+		      			(jobject :src
+		      				 (+ "" action (serialize-to-uri args)))
+		      			nil)))
 	  (setf (slot-value script 'onload)
 		(event ()
 		  (document.body.remove-child script)
