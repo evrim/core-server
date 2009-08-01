@@ -139,13 +139,13 @@
 	  :key #'car))
 
   (defmethod add-handler ((application+ http-application+) method-name url)
-    (setf (http-application+.handlers application+)
+    (setf (slot-value application+ 'handlers)
 	  (cons (cons method-name url)
 		(remove-handler application+ method-name))))
 
   (defmethod remove-handler ((application+ http-application+) method-name)
-    (prog1 (setf (http-application+.handlers application+)
-		 (remove method-name (http-application+.handlers application+) :key #'car))
+    (prog1 (setf (slot-value application+ 'handlers)
+		 (remove method-name (slot-value application+ 'handlers) :key #'car))
       (remhash method-name (slot-value application+ 'scanner-cache)))))
 
 ;;+----------------------------------------------------------------------------
@@ -179,7 +179,7 @@
        ,slots
        ,@rest
        (:metaclass http-application+)
-       ;; (:handlers ,@dispatchers)
+       (:handlers ,@dispatchers)
        )))
 
 ;; +----------------------------------------------------------------------------
