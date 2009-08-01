@@ -377,4 +377,4 @@
 	  (progn
 	    (setf (slot-value *registry* name)
 		  (funcall-cc "component.core?" (create :component name)))
-	    (make-component name))))))
+	    (make-component name properties))))))
