@@ -145,9 +145,13 @@
 	     env)))
 
 (defcps-expander/js cond-form (conditions)
-  (funcall expand
-	   (walk-js-form (macroexpand-1 (slot-value form 'source)))
-	   expand k env))
+  (if (typep (caar conditions) 'constant-form)
+      (funcall expand
+	       (cadar conditions)
+	       expand k env)
+      (funcall expand
+	       (walk-js-form (macroexpand-1 (slot-value form 'source)))
+	       expand k env)))
 
 (defcps-expander/js setq-form (var value)
   (with-unique-names (temp)
