@@ -103,3 +103,7 @@
   (declare (ignore initargs))
   (when (s-v 'auto-start)
     (start self)))
+
+(defmethod stop-start ((self server))
+  (stop self)
+  (start self))
