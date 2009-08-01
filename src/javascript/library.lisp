@@ -313,6 +313,13 @@
       (setf window.location.hash hash)
       (return new-value)))
 
+  (defun load-css (url)
+    (let ((link (document.create-element "link")))
+      (setf link.href url
+	    link.rel "stylesheet"
+	    link.type "text/css")
+      (.append-child (aref (document.get-elements-by-tag-name "head") 0) link)
+      (return link)))
 ;; +----------------------------------------------------------------------------
 ;; | Identity Continuation
 ;; +----------------------------------------------------------------------------
