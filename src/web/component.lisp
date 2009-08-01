@@ -174,6 +174,8 @@
 	 ,slots
 	 ,@rest
 	 (:metaclass ,metaclass))
+       (defjsmacro ,name (&rest properties)
+	 `(make-component ,',(symbol-to-js name) (jobject ,@properties)))
        (defcomponent-accessors ,name ,(mapcar (lambda (slot)
 						(cons (car slot)
 						      (or (getf (cdr slot) :host)
