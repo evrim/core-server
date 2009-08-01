@@ -17,14 +17,15 @@
 
 (in-package :core-server)
 
-(defmacro with-field (label input)
+(defmacro with-field (label input &optional (validation nil))
   "Syntactic sugar to handle form label and values"
   `(<:div :class "field"
 	  (<:div :class "label" ,label)
-	  (<:div :class "value" ,input)))
+	  (<:div :class "value" ,input)
+	  ,(if validation validation)))
 
-(defjsmacro with-field (label input)
-  (macroexpand-1 `(with-field ,label ,input)))
+(defjsmacro with-field (label input &optional validation)
+  (macroexpand-1 `(with-field ,label ,input ,validation)))
 
 ;; JS Macros
 (defjsmacro $ (id)
