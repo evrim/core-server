@@ -120,6 +120,8 @@
 (dolist (i *core-server-functions*)
   (cl-indent i 'defun))
 
+(cl-indent 'event 'lambda)
+
 ; Function to run Tidy HTML parser on buffer
 ; NOTE: this requires external Tidy program
 (defun tidy-buffer ()
