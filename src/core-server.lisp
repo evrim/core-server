@@ -274,6 +274,8 @@
    #:with-field
    #:make-component
    #:make-service   
+   #:event
+   #:method
    
    ;; [RFC 2109]
    #:cookie
@@ -794,6 +796,7 @@
    #:component.remote-ctor-arguments
    #:defcomponent-ctor
    #:defcomponent
+   #:defservice
    #:defmethod/local
    #:defmethod/remote
    #:component!

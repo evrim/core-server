@@ -193,6 +193,7 @@
 				   (:file "mime-types")
 				   (:file "tags")
 				   (:file "component")
+				   (:file "service")
 				   (:file "form")
 				   (:file "extra")
 				   (:file "auth")
