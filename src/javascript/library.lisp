@@ -153,6 +153,12 @@
     (if (typep target 'string)
 	(setf (slot-value ($ target) event) lambda)
 	(setf (slot-value target event) lambda)))
+
+  (defun prepend (to item)
+    (to.first-child.insert-before item))
+
+  (defun append (to item)
+    (to.append-child item))
   
   (defun serialize (object)
     (labels ((serialize (object)
