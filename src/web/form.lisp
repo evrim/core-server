@@ -14,25 +14,23 @@
    (valid :host remote :initform nil)))
 
 (defmethod/remote set-validation-message ((self <core:validating-input) message)
-  (setf (slot-value (document.get-element-by-id self.validation-span-id)
-		    'inner-h-t-m-l)
-	message))
+  (let ((element (document.get-element-by-id (validation-span-id self))))
+    (setf (slot-value element 'inner-h-t-m-l) message)))
 
 (defmethod/remote enable-or-disable-form ((self <core:validating-input))
-  (setf valid (reduce (lambda (acc input)
-			(if (typep input.valid 'undefined)
-			    acc
-			    (and acc input.valid)))
-		      (self.form.get-elements-by-tag-name "INPUT")
-		      t))
-
-  (mapcar (lambda (input)
-	    (when (and input.type (eq "SUBMIT" (input.type.to-upper-case)))
-	      (if valid
-		  (setf input.disabled false)
-		  (setf input.disabled true)))
-	    nil)
-	  (self.form.get-elements-by-tag-name "INPUT")))
+  (let ((valid (reduce (lambda (acc input)
+			 (if (eq "undefined" (typeof (slot-value input 'valid)))
+			     acc
+			     (and acc (valid self))))
+		       (self.form.get-elements-by-tag-name "INPUT")
+		       t)))
+    (mapcar (lambda (input)
+	      (when (and input.type (eq "SUBMIT" (input.type.to-upper-case)))
+		(if valid
+		    (setf input.disabled false)
+		    (setf input.disabled true)))
+	      nil)
+	    (self.form.get-elements-by-tag-name "INPUT"))))
 
 (defmethod/remote validate ((self <core:validating-input))
   t)
@@ -41,16 +39,16 @@
   (let ((result (validate self)))
     (cond
       ((typep result 'string)
-       (setf self.valid nil)
+       (setf (valid self) nil)
        (set-validation-message self result)
-       (add-class self self.invalid-class)
-       (remove-class self self.valid-class)
+       (add-class self (invalid-class self))
+       (remove-class self (valid-class self))
        (enable-or-disable-form self))
       (t
-       (setf self.valid t)
+       (setf (valid self) t)
        (set-validation-message self "")
-       (add-class self self.valid-class)
-       (remove-class self self.invalid-class)
+       (add-class self (valid-class self))
+       (remove-class self (invalid-class self))
        (enable-or-disable-form self)))))
 
 (defmethod/remote onchange ((self <core:validating-input) e)

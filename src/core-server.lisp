@@ -828,6 +828,15 @@
    ;; [ Tags ]
    #:input
 
+   ;; [ Form Components ]
+   #:validation-span-id
+   #:valid-class
+   #:invalid-class
+   #:valid
+   #:default-value
+   #:min-length
+   
+   
    ;; [[validating input]]
    #:get-default-value/js
    #:set-default-value/js
