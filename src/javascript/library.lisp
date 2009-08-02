@@ -378,3 +378,7 @@
 	    (setf (slot-value *registry* name)
 		  (funcall-cc "component.core?" (create :component name)))
 	    (make-component name properties))))))
+
+(eval-when (:compile-toplevel :execute :load-toplevel)
+  (setf (gethash 'make-component +javascript-cps-functions+) t
+	(gethash 'make-service +javascript-cps-functions+) t))
