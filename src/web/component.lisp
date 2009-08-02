@@ -171,7 +171,9 @@
 	     :namespace (list ,namespace)
 	     :attributes (list ',attributes))))
        (defclass+ ,name (,@supers component)
-	 ,slots
+	 ,(mapcar (lambda (a) ;; fixing accessors we do not use abc.def.
+		    (append a `(:accessor ,(car a))))
+		  slots)
 	 ,@rest
 	 (:metaclass ,metaclass))
        (defjsmacro ,name (&rest properties)
