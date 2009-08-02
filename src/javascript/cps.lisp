@@ -147,8 +147,9 @@
 (defcps-expander/js cond-form (conditions)
   (if (typep (caar conditions) 'constant-form)
       (funcall expand
-	       (cadar conditions)
-	       expand k env)
+	       (make-instance 'implicit-progn-mixin
+			      :body (cdar conditions))
+	       expand k env) 
       (funcall expand
 	       (walk-js-form (macroexpand-1 (slot-value form 'source)))
 	       expand k env)))
