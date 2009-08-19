@@ -97,6 +97,18 @@
 	    ,@(mapcar (lambda (a)
 			(slot-value a 'source))
 		      (cdr arguments)))))
+    (:catch
+	`(:catch ,(slot-value (car arguments) 'source)
+	   ,(funcall expand (make-instance 'implicit-progn-mixin
+	   				   :body (cdr arguments))
+	   	     expand k env)))
+    (try
+     `(try
+       ,(funcall expand
+		 (make-instance 'implicit-progn-mixin
+				:body (butlast arguments))
+		 expand k env)
+       ,(funcall expand (last1 arguments) expand k env)))
     (t (flet ((constant-p (form)
 		(or (typep form 'constant-form) (typep form 'variable-reference))))
 	 (let* ((arguments (mapcar (lambda (arg)
