@@ -276,6 +276,8 @@
    #:make-service   
    #:event
    #:method
+   #:call-component
+   #:answer-component
    
    ;; [RFC 2109]
    #:cookie
@@ -810,6 +812,12 @@
    #:component.*
    #:service.*
    #:mtor!
+   #:upgrade
+   #:shift
+   #:reset
+   #:suspend
+   #:make-service
+   #:make-component
    #:deftable
    #:defwebcrud
 

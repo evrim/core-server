@@ -89,9 +89,9 @@
 	 (declare (ignore k))
 	 ,(if call-next-method-p
 	      ``(method ,',args
-		  (let ((,',self self))
-		    (flet ((call-next-method () ,@(cddr (call-next-method))))
-		      ,@',body)))
+		  (let ((,',self self)
+			(call-next-method (lambda (self ,@',args) ,@(cddr (call-next-method)))))		    
+		    ,@',body))
 	      ``(method ,',args
 		  (let ((,',self self))
 		    ,@',body))))
@@ -172,7 +172,10 @@
 	     :attributes (list ',attributes))))
        (defclass+ ,name (,@supers component)
 	 ,(mapcar (lambda (a) ;; fixing accessors we do not use abc.def.
-		    (append a `(:accessor ,(car a))))
+		    (let ((gee (copy-list a)))
+		      (if (null (getf (cdr gee) :accessor))
+			  (append a `(:accessor ,(car a)))
+			  a)))
 		  slots)
 	 ,@rest
 	 (:metaclass ,metaclass))
@@ -319,7 +322,8 @@
 
 (eval-when (:compile-toplevel :execute :load-toplevel)
   (setf (gethash 'retval +javascript-cps-functions+) t)
-  (setf (gethash 'new-version +javascript-cps-functions+) t))
+  (setf (gethash 'new-version +javascript-cps-functions+) t)
+  (setf (gethash 'call-next-method +javascript-cps-functions+) t))
 
 (defmethod/remote funkall ((self component) action args)
   (let ((retval (funcall-cc (+ (slot-value self 'url) action "$") args)))    
@@ -330,6 +334,17 @@
 (defmethod/remote upgrade ((self component) new-version)
   (new-version (create) self)
   t)
+
+(defmethod/remote answer-component ((self component) arg)
+  (let ((retval (slot-value self 'k)))
+    (if (typep retval 'function)
+	(apply retval self (array arg))
+	(throw (new (*error "No k found for component"))))))
+
+(defmethod/remote call-component ((self component))
+  (let/cc k1
+    (setf (slot-value self 'k) k1)
+    (suspend)))
 
 (defmethod write-stream ((stream core-stream) (object component))
   (prog1 stream
