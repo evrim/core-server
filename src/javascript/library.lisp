@@ -32,15 +32,14 @@
   
   (defun reduce (fun lst initial-value)
     (if (null lst)
-	(return nil))
-    
-    (let ((result (or (and (not (typep initial-value 'undefined)) initial-value) nil)))
-      (if (not (null lst.length))
-	  (dolist (item lst)
-	    (setf result (fun result item)))
-	  (doeach (item lst)
-	    (setf result (fun result (aref lst item)))))
-      result))
+    	nil    
+    	(let ((result (or (and (not (typep initial-value 'undefined)) initial-value) nil)))
+    	  (if (not (null lst.length))
+    	  	  (dolist (item lst)
+    	  	    (setf result (fun result item)))
+    	  	  (doeach (item lst)
+    	  	    (setf result (fun result (aref lst item)))))
+    	  result)))
 
   (defun reduce0 (fun lst)
     (reduce fun lst nil))
