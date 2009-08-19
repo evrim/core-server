@@ -25,6 +25,11 @@
 ;;
 
 (defrender/js core-library! ()
+  (defun/cc reduce-cc (fun lst initial-value)
+    (if (= 0 lst.length)
+	initial-value
+	(reduce-cc fun (cdr lst) (call/cc fun initial-value (car lst)))))
+  
   (defun reduce (fun lst initial-value)
     (if (null lst)
 	(return nil))
