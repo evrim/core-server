@@ -73,6 +73,14 @@
 (defjsmacro s-v (b)
   `(slot-value self ,b))
 
+(defmacro/js destructuring-bind (list val &body body)
+  (with-unique-names (g)
+    `(let ((,g ,val))
+       (let ,(mapcar (lambda (a seq)
+		       `(,a (nth ,seq ,g)))
+		     list (seq (length list)))
+	 ,@body))))
+
 (defjsmacro aif (a b &optional (c 'nil))
   `((lambda (it)     
       (if it
