@@ -130,6 +130,8 @@
 				  (fun ,@(mapcar #'cdr arguments) ,k)) env))
 		     ((gethash operator +javascript-cps-functions+)
 		      `(,operator ,@(mapcar #'cdr arguments) ,k))
+		     ((eq 'call/cc operator)
+		      `(,(cdar arguments) ,@(mapcar #'cdr (cdr arguments)) ,k))
 		     (t
 ;;		      (describe operator)
 		      `(,k (,operator ,@(mapcar #'cdr arguments)))))))))))
@@ -180,11 +182,20 @@
 	       expand k env)))
 
 (defcps-expander/js setq-form (var value)
-  (with-unique-names (temp)
-    (funcall expand value expand
-	     `(lambda (,temp)
-		(,k (setq ,(slot-value var 'source) ,temp)))
-	     env)))
+  (with-unique-names (temp var1 value1)
+    (if t ;;	(or (typep var 'variable-reference) (typep var 'constant-form))
+	(funcall expand value expand
+		 `(lambda (,temp)
+		    (,k (setq ,(slot-value var 'source) ,temp)))
+		 env)
+	;; (funcall expand var expand
+	;; 	 `(lambda (,var1)
+	;; 	    ,(funcall expand value expand
+	;; 		      `(lambda (,value1)
+	;; 			 (,k (setq ,var1 ,value1)))
+	;; 		      env))
+	;; 	 env)
+	(error "cannot imperatively setf in call/cc"))))
 
 
 (defcps-expander/js defun-form (name arguments body)
@@ -198,7 +209,8 @@
 		   #'javascript->cps 'k nil))
 
 (defmacro/js defun/cc (name args &body body)
-  (setf (gethash name +javascript-cps-functions+) t)
+  (eval-when (:compile-toplevel :execute :load-toplevel)
+    (setf (gethash name +javascript-cps-functions+) t))
   (with-unique-names (k)
     `(defun ,name (,@args ,k)
        (setf ,k (or ,k window.k))
