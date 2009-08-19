@@ -90,6 +90,11 @@
       ((or (typep lst '*array)
 	   (typep lst 'object)) (.slice lst 1))
       (t (list lst))))
+
+  (defun nth (seq lst)
+    (if (= 0 seq)
+	(car lst)
+	(nth (1- seq) (cdr lst))))
   
   (defun mapcar (fun lst)
     (reverse
