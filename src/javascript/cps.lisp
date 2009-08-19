@@ -79,6 +79,19 @@
 			  expand k1 env))))))
     (suspend
      nil)
+    (reset
+     (arnesi::extend env :let 'reset k)
+     (funcall expand
+	      (make-instance 'implicit-progn-mixin
+			       :body  arguments)
+	      expand k env))
+    (shift
+     (let ((r (arnesi::lookup env :let 'reset)))
+       (assert (not (null r)) nil "Reset is not found in js cps env")
+       (funcall expand
+		(make-instance 'implicit-progn-mixin
+			       :body arguments)
+		expand r env)))
     (event
      `(,k (lambda (,@(slot-value (car arguments) 'source))
 	    ,@(mapcar (lambda (a)
