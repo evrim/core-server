@@ -89,12 +89,9 @@
 	 (declare (ignore k))
 	 ,(if call-next-method-p
 	      ``(method ,',args
-		  (let ((,',self self)
-			(call-next-method (lambda (self ,@',args) ,@(cddr (call-next-method)))))		    
+		  (let ((call-next-method (lambda (self ,@',args) ,@(cddr (call-next-method)))))		    
 		    ,@',body))
-	      ``(method ,',args
-		  (let ((,',self self))
-		    ,@',body))))
+	      ``(method ,',args ,@',body)))
        (defmethod/cc ,name ((,self ,class-name) ,@args)
 	 (with-query ((hash "__hash")) (context.request +context+)
 	   (let ((hash (json-deserialize (if (listp hash) (car hash) hash))))
@@ -232,12 +229,12 @@
 	       ;; ----------------------------------------------------------------------------
 	       (with-call/cc
 		 (lambda (properties to-extend)
-		   (if (null to-extend)
-		       (setf to-extend ,(if dom-class
-					    `(document.create-element ,(symbol-to-js (or (xml+.tag dom-class)
-											 (class-name dom-class))))
-					    `(new (*object)))))
-		   (let ((prototype
+		   (let ((to-extend (or to-extend
+					,(if dom-class
+					     `(document.create-element ,(symbol-to-js (or (xml+.tag dom-class)
+											  (class-name dom-class))))
+					     `(new (*object))) ))
+			 (prototype
 			  (create
 			   ;; ----------------------------------------------------------------------------
 			   ;; Remote Slot Initial Values
@@ -268,15 +265,15 @@
 						  (cons (funcall proxy class+ k-url) acc )))))
 				      (mapcar #'cons (class+.local-methods class+) k-urls)))))
 
-		     (extend prototype to-extend))
+		     (extend prototype to-extend)
 
-		   (when (typep properties 'object)
-		     (extend properties to-extend))
+		     (when (typep properties 'object)
+		       (extend properties to-extend))
 
-		   (when (typep to-extend.init 'function)
-		     (init to-extend))
+		     (when (typep to-extend.init 'function)
+		       (init to-extend))
 		 
-		   to-extend))))))
+		     to-extend)))))))
        
        ;; ----------------------------------------------------------------------------
        ;; Component Constructor Renderer
@@ -286,7 +283,8 @@
 	     (setf (slot-value component 'url)
 		   (format nil "/~A/~A"
 			   (web-application.fqdn (context.application +context+))
-			   (apply #'concatenate 'string (flatten (uri.paths (http-request.uri (context.request +context+))))))))
+			   (apply #'concatenate 'string
+				  (flatten (uri.paths (http-request.uri (context.request +context+))))))))
 	 
 	 
 	 (let ,(mapcar (lambda (method k-url)
@@ -323,7 +321,8 @@
 (eval-when (:compile-toplevel :execute :load-toplevel)
   (setf (gethash 'retval +javascript-cps-functions+) t)
   (setf (gethash 'new-version +javascript-cps-functions+) t)
-  (setf (gethash 'call-next-method +javascript-cps-functions+) t))
+  (setf (gethash 'call-next-method +javascript-cps-functions+) t)
+  (setf (gethash 'method +javascript-cps-functions+) t))
 
 (defmethod/remote funkall ((self component) action args)
   (let ((retval (funcall-cc (+ (slot-value self 'url) action "$") args)))    
