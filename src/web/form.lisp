@@ -94,7 +94,7 @@
 
 (defmethod/remote validate-email ((self <core:email-input))
   (let ((expression (regex "/^[a-zA-Z0-9._-]+@([a-zA-Z0-9.-]+\.)+[a-zA-Z0-9.-]{2,4}$/")))
-    (if (expression.test self.value)
+    (if (.test expression self.value)
 	t
 	"Your email is invalid")))
 
@@ -114,5 +114,5 @@
     (t
      t)))
 
-(defmethod/remote validate ((component <core:password-input))
-  (validate-password component))
+(defmethod/remote validate ((self <core:password-input))
+  (validate-password self))

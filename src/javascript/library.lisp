@@ -256,12 +256,12 @@
     (let/cc current-continuation
       (let ((hash (+ "__result"
 		     (.get-time (new (*date)))
-		     (.substr (+ "" (*math.random 10)) 3 5))))
+		     (.substr (*string.concat "" (*math.random 10)) 3 5))))
 	(setf (slot-value args "__hash") hash)
 	(let ((script (make-dom-element "script"
-		      			(jobject :src
-		      				 (+ "" action (serialize-to-uri args)))
-		      			nil)))
+					(jobject :src
+						 (+ "" action (serialize-to-uri args)))
+					nil)))
 	  (setf (slot-value script 'onload)
 		(event ()
 		  (document.body.remove-child script)
@@ -373,8 +373,8 @@
     (let ((service (slot-value *registry* name)))
       (if (not (null service))
 	  service
-	  (let ((ctor (funcall-cc "service.core?" (create :service name))))
-	    (let ((instance (new (ctor properties))))
+	  (let ((retval (funcall-cc "service.core?" (create :service name))))
+	    (let ((instance (call/cc retval properties null)))
 	      (setf (slot-value *registry* name) instance)
 	      instance)))))
 
@@ -384,7 +384,7 @@
   (defun/cc make-component (name properties)
     (let ((retval (slot-value *registry* name)))
       (if (not (null retval))
-	  (retval properties null)
+	  (call/cc retval properties null)
 	  (progn
 	    (setf (slot-value *registry* name)
 		  (funcall-cc "component.core?" (create :component name)))

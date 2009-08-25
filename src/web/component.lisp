@@ -270,7 +270,7 @@
 		     (when (typep properties 'object)
 		       (extend properties to-extend))
 
-		     (when (typep to-extend.init 'function)
+		     (when (typep (slot-value to-extend 'init) 'function)
 		       (init to-extend))
 		 
 		     to-extend)))))))
