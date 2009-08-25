@@ -37,11 +37,7 @@
 (defcps-expander/js lambda-function-form (arguments declares body)
   (with-unique-names (k1)
     `(,k (lambda (,@(unwalk-lambda-list arguments) ,k1)
-	   ,(call-next-method form expand k1 env)
-	   ;; (let ((,k1 (or ,k1 window.k)))
-	   ;; ;; (setf ,k1 (or ,k1 'window.k))	   
-	   ;;   ,(call-next-method form expand k1 env))
-	   ))))
+	   ,(call-next-method form expand k1 env)))))
 
 (defcps-expander/js implicit-progn-mixin (body)
   (case (length body)
@@ -186,19 +182,10 @@
 
 (defcps-expander/js setq-form (var value)
   (with-unique-names (temp var1 value1)
-    (if t ;;	(or (typep var 'variable-reference) (typep var 'constant-form))
-	(funcall expand value expand
-		 `(lambda (,temp)
-		    (,k (setq ,(slot-value var 'source) ,temp)))
-		 env)
-	;; (funcall expand var expand
-	;; 	 `(lambda (,var1)
-	;; 	    ,(funcall expand value expand
-	;; 		      `(lambda (,value1)
-	;; 			 (,k (setq ,var1 ,value1)))
-	;; 		      env))
-	;; 	 env)
-	(error "cannot imperatively setf in call/cc"))))
+    (funcall expand value expand
+	     `(lambda (,temp)
+		(,k (setq ,(slot-value var 'source) ,temp)))
+	     env)))
 
 
 (defcps-expander/js defun-form (name arguments body)
@@ -274,16 +261,13 @@
 	(mapcar (lambda (form)
 		  (let ((last1 (last1 (slot-value form 'arguments))))
 		    (when last1
-		      (describe form)
 		      (setf (slot-value form 'body)
 			    (list
 			     (make-instance 'let-form
 			       :binds (let ((k-arg (unwalk-form last1)))
-					(describe k-arg)
 					(list `(,k-arg . ,(walk-js-form `(or ,k-arg window.k)))))
 			       :body (slot-value form 'body)
-			       :parent (parent form))))))
-		  (mapcar #'describe (slot-value form 'body)))
+			       :parent (parent form)))))))
 		funs)))))
 
 ;; ----------------------------------------------------------------------------
