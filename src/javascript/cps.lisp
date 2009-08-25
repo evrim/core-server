@@ -37,7 +37,7 @@
 (defcps-expander/js lambda-function-form (arguments declares body)
   (with-unique-names (k1)
     `(,k (lambda (,@(unwalk-lambda-list arguments) ,k1)
-	   (setf ,k1 (or ,k1 'window.k))	   
+	   ;; (setf ,k1 (or ,k1 'window.k))	   
 	   ,(call-next-method form expand k1 env)))))
 
 (defcps-expander/js implicit-progn-mixin (body)
@@ -61,14 +61,14 @@
 		       (make-instance 'implicit-progn-mixin
 				      :body (cdr arguments))
 		       expand k-arg env))))    
-    (new
-     (let ((ctor (car arguments)))
-       `(make-instance ,k  ,(operator ctor) ,@(unwalk-forms (arguments ctor)))
-       ;; (funcall expand
-       ;; 		(walk-js-form
-       ;; 		 )
-       ;; 		expand k env)
-       ))
+    ;; (new
+    ;;  (let ((ctor (car arguments)))
+    ;;    `(make-instance ,k  ,(operator ctor) ,@(unwalk-forms (arguments ctor)))
+    ;;    ;; (funcall expand
+    ;;    ;; 		(walk-js-form
+    ;;    ;; 		 )
+    ;;    ;; 		expand k env)
+    ;;    ))
     (method
      (with-unique-names (k1)
        `(,k (lambda (,@(slot-value (car arguments) 'source) ,k1)
@@ -201,12 +201,145 @@
 (defcps-expander/js defun-form (name arguments body)
   (error "Please use defun/cc outside with-call/cc."))
 
+
+;; +----------------------------------------------------------------------------
+;; | Poor mans beta reduction: Fix Excessive Recursions
+;; +----------------------------------------------------------------------------
+(eval-when (:load-toplevel :compile-toplevel :execute)
+  (defun fix-excessive-recursion (form)
+    (flet ((replace-form (source target)
+	     (prog1 target
+	       (change-class target (class-name (class-of source)))
+	       (mapcar (lambda (slot)
+			 (setf (slot-value target slot) (slot-value source slot)))
+		       (remove 'parent
+			       (mapcar #'slot-definition-name (class-slots (class-of source))))))))
+      (let ((applications (ast-search-type form 'lambda-application-form)))
+	(mapcar (lambda (application)
+		  (let ((operator (slot-value application 'operator)))
+		    (mapcar (lambda (arg value)
+			      (if (typep value 'lambda-function-form)
+			      	  (mapcar (lambda (ref)
+			      		    (change-class ref 'lambda-application-form)
+			      		    (setf (slot-value ref 'operator) value)
+			      		    (fix-excessive-recursion ref))
+			      		  (filter (lambda (ref)
+			      			    (eq arg (slot-value ref 'operator)))
+			      			  (ast-search-type operator 'application-form))))
+			      
+			      (let ((refs (append
+					   (filter (lambda (ref)
+						     (eq arg (slot-value ref 'operator)))
+						   (ast-search-type operator 'application-form))
+					   (filter (lambda (ref)
+						     (eq arg (slot-value ref 'name)))
+						   (ast-search-type operator 'variable-reference)))))
+			      	(cond
+			      	  ((or (typep value 'constant-form)
+			      	       (typep value 'variable-reference)
+			      	       (eq 1 (length refs)))
+			      	   (mapcar (lambda (ref)
+					     (if (typep ref 'application-form)
+						 (setf (slot-value ref 'operator)
+						       (unwalk-form value))
+						 (replace-form value ref)))
+			      		   refs))
+			      	  ((not (typep value 'lambda-function-form))
+			      	   (setf (slot-value operator 'body)
+			      		 (list
+			      		  (make-instance 'let-form
+			      				 :binds (list (cons arg value))
+			      				 :body (slot-value operator 'body)
+			      				 :parent operator)))))))
+			    (mapcar #'unwalk-form (slot-value operator 'arguments))
+			    (slot-value application 'arguments))
+		    (change-class application 'progn-form)
+		    (setf (slot-value application 'body)
+		    	  (slot-value operator 'body))))
+		applications)
+	;; (mapcar (lambda (app)
+	;; 	  (let ((op (slot-value app 'operator))
+	;; 		(arg (car (slot-value app 'arguments))))
+	;; 	    ;; Fix function calls
+	;; 	    (let ((refs (filter (lambda (a)
+	;; 				  (eq (unwalk-form (car (slot-value op 'arguments)))
+	;; 				      (slot-value a 'operator)))
+	;; 				(ast-search-type op 'free-application-form))))
+	;; 	      (cond
+	;; 		;; ((> (length refs) 1)
+	;; 		;;  (change-class app 'let-form)
+	;; 		;;  (setf (slot-value app 'body)
+	;; 		;; 	     (mapcar (lambda (a) (prog1 a (setf (slot-value a 'parent) app)))))
+	;; 		;;  (setf (slot-value a 'binds)
+	;; 		;; 	     (list (cons (unwalk-form (car (slot-value op 'arguments)))
+	;; 		;; 			 (walk-s-form (unwalk-form))))))
+	;; 		((eq 1 (length refs))
+	;; 		 (let ((ref (car refs)))
+	;; 		   (change-class app 'progn-form)
+	;; 		   (setf (slot-value app 'body)
+	;; 			 (mapcar (lambda (a) (prog1 a (setf (slot-value a 'parent) app)))
+	;; 				 (slot-value op 'body)))
+	;; 		   (change-class ref 'lambda-application-form)
+	;; 		   (setf (slot-value ref 'operator) arg)))))))
+	;; 	apps)
+	;; form
+	))
+    form
+    ;; (let ((apps (filter (lambda (a)
+    ;; 			  (let ((op (slot-value a 'operator)))
+    ;; 			    (eq 1 (length (slot-value op 'arguments)))))
+    ;; 			(ast-search-type form 'lambda-application-form))))
+    ;;   (mapcar (lambda (app)
+    ;; 		(let ((op (slot-value app 'operator))
+    ;; 		      (arg (car (slot-value app 'arguments))))
+    ;; 		  ;; Fix Variable References
+    ;; 		  (let ((refs (filter (lambda (ref)
+    ;; 					(eq (unwalk-form (car (slot-value op 'arguments)))
+    ;; 					    (unwalk-form ref)))
+    ;; 				      (ast-search-type op 'variable-reference))))
+    ;; 		    (cond
+    ;; 		      ((> (length refs) 1)
+    ;; 		       (change-class app 'let-form)
+    ;; 		       (setf (slot-value app 'body)
+    ;; 			     (mapcar (lambda (a) (prog1 a (setf (slot-value a 'parent) app)))
+    ;; 				     (slot-value op 'body)))
+    ;; 		       (setf (slot-value app 'binds)
+    ;; 			     (list (cons (unwalk-form (car (slot-value op 'arguments)))
+    ;; 					 (walk-js-form (unwalk-form arg) app)))))
+    ;; 		      ((eq 1 (length refs))
+    ;; 		       (let ((ref (car refs)))
+    ;; 			 (change-class app 'progn-form)
+    ;; 			 (setf (slot-value app 'body)
+    ;; 			       (mapcar (lambda (a) (prog1 a (setf (slot-value a 'parent) app)))
+    ;; 				       (slot-value op 'body)))
+    ;; 			 (change-class ref (class-name (class-of arg)))
+    ;; 			 (mapcar (lambda (slot)
+    ;; 				   (setf (slot-value ref slot) (slot-value arg slot)))
+    ;; 				 (remove  'parent
+    ;; 					  (mapcar #'slot-definition-name (class-slots (class-of arg)))))))
+    ;; 		      ((eq 0 (length refs))
+    ;; 		       (change-class app 'progn-form)
+    ;; 		       (setf (slot-value app 'body)
+    ;; 		      	     (if arg
+    ;; 		      		 (cons arg
+    ;; 		      		       (mapcar (lambda (a) (prog1 a (setf (slot-value a 'parent) app)))
+    ;; 		      			       (slot-value op 'body)))
+    ;; 		      		 (mapcar (lambda (a) (prog1 a (setf (slot-value a 'parent) app)))
+    ;; 		      			 (slot-value op 'body)))))
+    ;; 		      ))))
+    ;; 	      apps)
+    ;;   form)
+    ))
+
 ;; ----------------------------------------------------------------------------
 ;; Interface
 ;; ----------------------------------------------------------------------------
 (defmacro/js with-call/cc (&body body)
-  (javascript->cps (walk-js-form `(progn ,@body))
-		   #'javascript->cps 'k nil))
+  (unwalk-form
+   (fix-excessive-recursion
+    (walk-js-form
+     (javascript->cps (walk-js-form `(progn ,@body))
+		      #'javascript->cps 'k nil)))))
 
 (defmacro/js defun/cc (name args &body body)
   (eval-when (:compile-toplevel :execute :load-toplevel)
@@ -214,8 +347,11 @@
   (with-unique-names (k)
     `(defun ,name (,@args ,k)
        (setf ,k (or ,k window.k))
-       ,(javascript->cps (walk-js-form `(progn ,@body))
-			 #'javascript->cps k nil))))
+       ,(unwalk-form
+	 (fix-excessive-recursion
+	  (walk-js-form
+	   (javascript->cps (walk-js-form `(progn ,@body))
+			    #'javascript->cps k nil)))))))
 
 ;; (let ((a (fun-a)))
 ;;   (list a a a))
