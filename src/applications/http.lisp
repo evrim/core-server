@@ -190,6 +190,12 @@
   (aif (gethash id (http-application.sessions application))
        (values it application)))
 
+(defmethod map-session (lambda (application http-application))
+  (mapcar (lambda (k v)
+	    (funcall lambda k v))
+	  (hash-table-keys (slot-value application 'sessions))
+	  (hash-table-values (slot-value application 'sessions))))
+
 (defmethod render-404 ((application http-application)
 		       (request http-request) (response http-response))
   "Override this method to have custom 404 page for your application."
@@ -536,6 +542,8 @@ provide query parameters inside URL as key=value"
   (javascript/suspend
    (lambda (s)
      (core-server::core-library! s))))
+
+
 
 ;; (defapplication test1 (http-application)
 ;;   ()
