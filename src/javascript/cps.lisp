@@ -197,6 +197,7 @@
 ;; +----------------------------------------------------------------------------
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defun fix-excessive-recursion (form)
+;;    (describe (list 'start (unwalk-form form)))
     (flet ((replace-form (source target)
 	     (prog1 target
 	       (change-class target (class-name (class-of source)))
@@ -208,48 +209,58 @@
 	(mapcar (lambda (application)
 		  (let ((operator (slot-value application 'operator)))
 		    (mapcar (lambda (arg value)
-			      (if (typep value 'lambda-function-form)
-			      	  (mapcar (lambda (ref)
-			      		    (change-class ref 'lambda-application-form)
-			      		    (setf (slot-value ref 'operator) value)
-			      		    (fix-excessive-recursion ref))
-			      		  (filter (lambda (ref)
-			      			    (eq arg (slot-value ref 'operator)))
-			      			  (ast-search-type operator 'application-form))))
-			      
-			      (let ((refs (append
-					   (filter (lambda (ref)
-						     (eq arg (slot-value ref 'operator)))
-						   (ast-search-type operator 'application-form))
-					   (filter (lambda (ref)
-						     (eq arg (slot-value ref 'name)))
-						   (ast-search-type operator 'variable-reference)))))
-			      	(cond
-			      	  ((or (typep value 'constant-form)
-			      	       (typep value 'variable-reference)
-			      	       (eq 1 (length refs)))
-			      	   (mapcar (lambda (ref)
-					     (if (typep ref 'application-form)
-						 (setf (slot-value ref 'operator)
-						       (unwalk-form value))
-						 (replace-form value ref)))
-			      		   refs))
-			      	  ((not (typep value 'lambda-function-form))
-				   (if (zerop (length refs))
-				       (setf (slot-value operator 'body)
-					     (cons value (slot-value operator 'body)))
-				       (setf (slot-value operator 'body)
-					     (list
-					      (make-instance 'let-form
-							     :binds (list (cons arg value))
-							     :body (slot-value operator 'body)
-							     :parent operator))))))))
-			    (mapcar #'unwalk-form (slot-value operator 'arguments))
-			    (slot-value application 'arguments))
+			      (cond
+				((typep value 'lambda-function-form)
+				 (mapcar (lambda (ref)
+					   (change-class ref 'lambda-application-form)
+					   (setf (slot-value ref 'operator) value
+						 (slot-value value 'parent) ref)
+					   (fix-excessive-recursion ref))
+					 (filter (lambda (ref) (eq arg (slot-value ref 'operator)))
+						 (ast-search-type operator 'application-form)))
+				 (mapcar (lambda (ref) (replace-form value ref))
+					 (filter (lambda (ref) (eq arg (slot-value ref 'name)))
+						 (ast-search-type operator 'variable-reference))))
+				((typep value 'constant-form)
+				 (mapcar (lambda (ref) (replace-form value ref))
+					 (filter (lambda (ref) (eq arg (slot-value ref 'name)))
+						 (ast-search-type operator 'variable-reference))))
+				((typep value 'variable-reference)
+				 (mapcar (lambda (ref) (replace-form value ref))
+					 (filter (lambda (ref) (eq arg (slot-value ref 'name)))
+						 (ast-search-type operator 'variable-reference)))
+				 (mapcar (lambda (ref) (setf (slot-value ref 'operator) (unwalk-form value)))
+					 (filter (lambda (ref) (eq arg (slot-value ref 'operator)))
+						 (ast-search-type operator 'application-form))))
+				(t
+				 (let ((refs (append
+					     (filter (lambda (ref) (eq arg (slot-value ref 'operator)))
+						     (ast-search-type operator 'application-form))
+					     (filter (lambda (ref)
+						       (eq arg (slot-value ref 'name)))
+						     (ast-search-type operator 'variable-reference)))))
+				   (cond
+				     ((eq 0 (length refs))
+				      (setf (slot-value operator 'body)
+				     	    (cons value (slot-value operator 'body))))
+				     ((and (eq 1 (length refs)) (not (typep (car refs) 'application-form)))
+				      (replace-form value (car refs)))
+				     (t
+				      (setf (slot-value operator 'body)
+					    (list
+					     (make-instance 'let-form
+							    :binds (list (cons arg value))
+							    :body (slot-value operator 'body)
+							    :parent operator)))))))))
+			    (if (slot-boundp operator 'arguments)
+				(mapcar #'unwalk-form (slot-value operator 'arguments)))
+			    (if (slot-boundp application 'arguments)
+				(slot-value application 'arguments)))
 		    (change-class application 'progn-form)
 		    (setf (slot-value application 'body)
 		    	  (slot-value operator 'body))))
 		applications)))
+    ;; (describe (list 'end (unwalk-form form)))
     form)
 
 ;; +----------------------------------------------------------------------------
@@ -257,9 +268,11 @@
 ;; +----------------------------------------------------------------------------
   (defun fix-lambda-k (form)
     (prog1 form
-      (let ((funs (ast-search-type form 'lambda-function-form)))
+      (let ((funs (filter (lambda (a) (> (length (slot-value a 'arguments)) 1))
+			  (ast-search-type form 'lambda-function-form))))
 	(mapcar (lambda (form)
-		  (let ((last1 (last1 (slot-value form 'arguments))))
+		  (let ((last1 (last1 (if (slot-boundp form 'arguments)
+					  (slot-value form 'arguments)))))
 		    (when last1
 		      (setf (slot-value form 'body)
 			    (list
