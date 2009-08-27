@@ -753,6 +753,7 @@
    #:http-application.sessions
    #:defapplication
    #:find-session
+   #:map-session
    #:render-404
    #:render-file
    #:dispatch
