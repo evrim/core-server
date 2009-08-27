@@ -182,10 +182,19 @@
 
 (defcps-expander/js setq-form (var value)
   (with-unique-names (temp var1 value1)
-    (funcall expand value expand
-	     `(lambda (,temp)
-		(,k (setq ,(slot-value var 'source) ,temp)))
-	     env)))
+    (if (not (or (typep var 'constant-form)
+		 (typep var 'variable-reference)))
+	(funcall expand value expand
+		 `(lambda (,value1)
+		    ,(funcall expand var expand
+			      `(lambda (,var1)
+				 (,k (setq ,var1 ,value1)))
+			      env))
+		 env)
+	(funcall expand value expand
+		 `(lambda (,temp)
+		    (,k (setq ,(slot-value var 'source) ,temp)))
+		 env))))
 
 
 (defcps-expander/js defun-form (name arguments body)
