@@ -377,14 +377,14 @@
     target)  
 
   (defvar *registry* (create))  
-  (defun/cc make-service (name properties)
-    (let ((service (slot-value *registry* name)))
-      (if (not (null service))
-	  service
-	  (let ((retval (funcall-cc "service.core?" (create :service name))))
-	    (let ((instance (call/cc retval properties null)))
-	      (setf (slot-value *registry* name) instance)
-	      instance)))))
+  ;; (defun/cc make-service (name properties)
+  ;;   (let ((service (slot-value *registry* name)))
+  ;;     (if (not (null service))
+  ;; 	  service
+  ;; 	  (let ((retval (funcall-cc "service.core?" (create :service name))))
+  ;; 	    (let ((instance (call/cc retval properties null)))
+  ;; 	      (setf (slot-value *registry* name) instance)
+  ;; 	      instance)))))
 
   (defun apply (fun scope args kX)
     (fun.apply scope (reverse (cons kX (reverse args)))))
@@ -392,11 +392,11 @@
   (defun/cc make-component (name properties)
     (let ((retval (slot-value *registry* name)))
       (if (not (null retval))
-	  (call/cc retval properties null)
-	  (progn
-	    (setf (slot-value *registry* name)
-		  (funcall-cc "component.core?" (create :component name)))
-	    (make-component name properties))))))
+   	  (call/cc retval properties null)
+   	  (progn
+   	    (setf (slot-value *registry* name)
+   		  (funcall-cc "component.core?" (create :component name)))
+   	    (make-component name properties))))))
 
 (eval-when (:compile-toplevel :execute :load-toplevel)
   (setf (gethash 'make-component +javascript-cps-functions+) t
