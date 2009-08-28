@@ -168,6 +168,14 @@
 
   (defun append (to item)
     (to.append-child item))
+
+  (defun node2str (item)
+    (try
+     (return (.serialize-to-string (new (*x-m-l-serializer)) item))
+     (:catch (e)
+       (try (return item.xml)
+	(:catch (e)
+	  (throw (new (*error (+ "Node " item " cannot be serialized to string.")))))))))
   
   (defun serialize (object)
     (labels ((serialize (object)
