@@ -254,7 +254,9 @@
 		 (if include-supplied-p
 		     (cons (list symbol initform supplied-p) acc)
 		     (cons (list symbol initform) acc)))))
-	   (reverse (class+.local-slots self))))
+	   (uniq (append (reverse (class+.local-slots self))
+			 (reverse (class+.remote-slots self)))
+		 :test #'equal :key #'slot-definition-name)))
   
 (defmethod class+.ctor-arguments ((self class+) &optional lambda-list)      
   (reduce0 (lambda (acc slot)
@@ -265,7 +267,8 @@
 			  (with-slotdef (name) slot
 			    (member name it)))
 			 (class+.local-slots self))
-		(reverse (class+.local-slots self)))))
+		(append (reverse (class+.local-slots self))
+			(reverse (class+.remote-slots self))))))
 
 (defmethod class+.all-ctor-lambda-list ((self class+) &optional (include-supplied-p nil))
   (reduce0 (lambda (acc slot)
