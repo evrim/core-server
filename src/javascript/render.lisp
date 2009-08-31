@@ -261,6 +261,14 @@
 
 (defmacalias defmacro/js defjsmacro)
 
+(defmacro defmacro-import/js (name)
+  `(defmacro/js ,name (&rest args)
+     (macroexpand-1 `(,',name ,@args))))
+
+(defmacro-import/js acond)
+(defmacro-import/js cond-bind)
+(defmacro-import/js if-bind)
+
 ;; ----------------------------------------------------------------------------
 ;; Javascript Setf Macros
 ;; ----------------------------------------------------------------------------
