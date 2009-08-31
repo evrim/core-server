@@ -39,7 +39,7 @@
 	     (<:input :type "submit" :value "Next")))))
 
 ;; Register a handler
-(defurl *websum-app* "sumtwo" ()
+(defhandler "sumtwo" ((self http-application))
   (web-display (+ (web-read "First Num")
 		  (web-read "Second Num"))))
 

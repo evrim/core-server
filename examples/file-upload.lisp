@@ -61,7 +61,7 @@
     (<:p msg))))
 
 ;; Register a handler
-(defurl *fupload-app* "upload" ()
+(defhandler "upload" ((self http-application))
   (result-page
    (if (preview (read-file "Send us your photo with a description line:"))
        "File saved succesfuly."

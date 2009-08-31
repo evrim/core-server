@@ -13,14 +13,15 @@
    (subject)
    (text)
    (timestamp :initform (get-universal-time))))
+
 (defcrud message)
 
-(defclass guestbook-application (http-application database-server)
+(defapplication guestbook-application (http-application database-server)
   ()
   (:default-initargs
    :fqdn "guestbook"
     :admin-email "john@doe.com"
-    :directory #P"/tmp/guestbook/"
+    :database-directory #P"/tmp/guestbook/"
     :auto-start t))
 
 (defparameter *guestbook* (make-instance 'guestbook-application))
@@ -48,14 +49,14 @@
 (defun/cc guestbook/messages ()
   (template
    (<:div :id "body"
-	  (<:a :href (function/url ()
+	  (<:a :href (action/url ()
 		       (let ((params (send/suspend (guestbook/add))))
-			 (apply #'message-add *guestbook* params)
-			 (guestbook/messages)))
+			 (apply #'message.add *guestbook* params)
+			 (send/suspend (guestbook/messages))))
 	       "Add message")
 	  (<:div :id "messages"
 		 (mapcar #'(lambda (item) (render-message item))
-			 (message-list *guestbook*))))))
+			 (message.list *guestbook*))))))
 
 ;; A form for new messages
 (defun/cc guestbook/add ()
@@ -72,7 +73,8 @@
 			(<:input :type "submit" :value "Sign Guestbook")))))))
 
 ;; http://localhost:8080/guestbook/guestbook
-(defurl *guestbook* "guestbook" ()
+(defhandler "guestbook" ((self guestbook-application))
  (guestbook/messages))
 
 (register *server* *guestbook*)
+(start *guestbook*)
