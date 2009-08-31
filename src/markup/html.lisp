@@ -252,13 +252,12 @@
 ;; Inline Images having src as a rfc 2046 toplevel media
 ;;----------------------------------------------------------------------------
 ;; (<:img :media *a-toplevel-media-from-rfc2046*)
-(defmethod write-stream ((stream html-stream) (media top-level-media))
+(defmethod write-stream ((stream core-string-io-stream) (media top-level-media))
   (prog1 stream
-    (let ((%stream (slot-value stream '%stream)))
-      (string! %stream "data:")
-      (string! %stream (format nil "~{~A~^/~}" (mime.content-type media)))
-      (string! %stream ";base64,")
-      (base64! %stream (mime.data media)))))
+    (string! stream "data:")
+    (string! stream (format nil "~{~A~^/~}" (mime.content-type media)))
+    (string! stream ";base64,")
+    (base64! stream (mime.data media))))
 
 (defmacro with-html-output (stream &body body)
   "Renders dom elements in 'body' to 'stream'"
