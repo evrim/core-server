@@ -202,7 +202,7 @@
 
 
 ;; +----------------------------------------------------------------------------
-;; | Poor mans beta reduction: Fix Excessive Recursions
+;; | Poor mans reduction: Fix Excessive Recursions (alpha,beta)
 ;; +----------------------------------------------------------------------------
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defun fix-excessive-recursion (form)
