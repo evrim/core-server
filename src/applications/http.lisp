@@ -179,8 +179,7 @@
        ,slots
        ,@rest
        (:metaclass http-application+)
-       (:handlers ,@dispatchers)
-       )))
+       (:handlers ,@dispatchers))))
 
 ;; +----------------------------------------------------------------------------
 ;; | HTTP Application Interface
