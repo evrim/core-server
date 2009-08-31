@@ -1,17 +1,30 @@
-;; A persistent multi-user blog example.
-;; http://localhost:8080/blog/index.core
 (in-package :core-server)
 
+;; +----------------------------------------------------------------------------
+;; | Core Server Example - Blog
+;; +----------------------------------------------------------------------------
 (defpackage :blog
-  (:use :cl :core-server :arnesi :cl-prevalence))
+  (:use :cl :core-server :arnesi))
 
 (in-package :blog)
+;;
+;; A persistent multi-user blog example.
+;;
+;; http://localhost:8080/blog/index.core
+;;
+;; To run this example type in the repl:
+;;
+;; (in-package :blog)
+;; (register *server* *app*)
+;; (start *app*)
+;; (init-blog-test-data)
+;;
 
 ;; we define classes and their relations here
 (defclass+ author ()
-  ((username :initform (error "Please specify :username"))
-   (password  :initform (error "Please specify :password"))
-   (email :initform (error "Please specify :email"))
+  ((email :initform (error "Please specify :email"))
+   (password :initform (error "Please specify :password"))
+   (name :initform nil)
    (creation-date :initform (get-universal-time))
    (blogs :type blog* :relation author)
    (comments :type comment* :relation author)))
@@ -36,20 +49,20 @@
 (defcrud blog)
 (defcrud author)
 
-(defclass blog-app (http-application database-server)
+(defapplication blog-app (http-application database-server)
   ()
   (:default-initargs
    :fqdn "blog"
     :admin-email "evrim@core.gen.tr"
-    :directory #P"/tmp/db-blog-app"
+    :database-directory #P"/tmp/db-blog-app/"
     :auto-start t))
 
 (defvar *app* (make-instance 'blog-app))
 
 (defun init-blog-test-data ()
   (with-transaction (*app*)
-    (author-add *app* :username "evrim" :password "mypass" :email "evrim@core.gen.tr")
-    (author-add *app* :username "aycan" :password "mypass" :email "aycan@core.gen.tr")))
+    (author.add *app* :name "evrim" :password "mypass" :email "evrim@core.gen.tr")
+    (author.add *app* :name "aycan" :password "mypass" :email "aycan@core.gen.tr")))
 
 (defun userp ()
   (query-session 'user))
@@ -120,10 +133,10 @@
 (defun/cc auth/login ()
   (<:div :class "login"
 	 (<:form :method "POST"
-		 :action (action/url ((username "username") (password "password"))
-			   (answer (list 'auth/login :username username :password password)))
-		 (<:div (<:p "Username:")
-			(<:p (<:input :type "text" :name "username")))
+		 :action (action/url ((email "email") (password "password"))
+			   (answer (list 'auth/login :email email :password password)))
+		 (<:div (<:p "Email:")
+			(<:p (<:input :type "text" :name "email")))
 		 (<:div (<:p "Password:")
 			(<:p (<:input :type "text" :name "password")))
 		 (<:div (<:input :type "submit" :value "Gir")))))
@@ -139,7 +152,7 @@
 	   (if (userp)
 	       (blog/menu))
 	   (<:div :class "right"
-		  (blog/list (blog-list *app*))
+		  (blog/list (blog.list *app*))
 		  (if (not (userp)) 
 		      (auth/login)))
 	   (<:div :class "left" body)
@@ -147,7 +160,7 @@
 		  (<:i "Blogs - 2008 &copy; Core Server"))))))
 
 ;; entrypoint to our application
-(defurl *app* "index.core" ((blog "blog"))  
+(defhandler "index.core" ((app blog-app) (blog "blog"))  
   (labels ((loopy (result)
 	      (loopy		     
 		 (send/suspend		 
@@ -155,18 +168,18 @@
 		     ((eq 'new result)
 		      (blog/new))
 		     ((eq 'save (car result))
-		      (apply #'blog-add (cons *app* (cdr result)))
-		      (blog/main (mapcar #'blog/short (blog-list *app*))))
+		      (apply #'blog.add (cons app (cdr result)))
+		      (blog/main (mapcar #'blog/short (blog.list app))))
 		     ((eq 'view (car result))
 		      (blog/main (blog/view (cdr result))))
-		     ((eq 'auth/login (car result))
-		      (let ((user (apply #'find-author (cons *app* (cdr result)))))
+		     ((eq 'auth/login (car result))		      
+		      (let ((user (apply #'author.find (cons app (cdr result)))))
 			(when user
 			  (if (equal (author.password user) (getf (cdr result) :password))
 			      (update-session 'user user)))
 			(loopy nil)))
 		     (t
-		      (blog/main (mapcar #'blog/short (blog-list *app*)))))))))
+		      (blog/main (mapcar #'blog/short (blog.list *app*)))))))))
     (loopy nil)))
 
 (defparameter *blog-css*
