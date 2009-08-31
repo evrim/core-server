@@ -146,7 +146,10 @@
   (defmethod remove-handler ((application+ http-application+) method-name)
     (prog1 (setf (slot-value application+ 'handlers)
 		 (remove method-name (slot-value application+ 'handlers) :key #'car))
-      (remhash method-name (slot-value application+ 'scanner-cache)))))
+      (remhash method-name (slot-value application+ 'scanner-cache))))
+
+  (defmethod class+.ctor ((application+ http-application+))
+    nil))
 
 ;;+----------------------------------------------------------------------------
 ;;| HTTP Application
