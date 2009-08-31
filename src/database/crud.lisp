@@ -44,9 +44,9 @@
 					(find-object ',(car slot) ,(car slot))))
 				 (class+.ctor-lambda-list class+ t)))))
 	     (reduce (lambda (set1 set2)
-		       (if set2
-			   (intersection set1 set2)
-			   set1))
+		       (aif (and set2 (intersection (ensure-list set2) (ensure-list set1)))
+			    it
+			    set1))
 		     (cdr set)
 		     :initial-value (car set)))))
        (redefmethod ,add ((server database) &key ,@(class+.ctor-lambda-list class+))
