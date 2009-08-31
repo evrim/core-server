@@ -108,7 +108,7 @@
 ;;| HTTP Application Metaclass
 ;;+----------------------------------------------------------------------------
 (eval-when (:load-toplevel :compile-toplevel :execute)
-  (defclass http-application+ (standard-class)
+  (defclass http-application+ (class+)
     ((handlers :initarg :handlers :accessor http-application+.handlers
 	       :initform nil
 	       :documentation "A list that contains URLs that this application handles")
@@ -175,7 +175,7 @@
                                      (filter (lambda (a) (if (typep a 'http-application+)
                                                              a))
                                              (mapcar #'find-class supers))))))
-    `(defclass ,name ,supers
+    `(defclass+ ,name ,supers
        ,slots
        ,@rest
        (:metaclass http-application+)
