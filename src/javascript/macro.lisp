@@ -58,11 +58,13 @@
 		     rest :initial-value nil)))))
 
 (defjsmacro case (object &rest cases)
-  `(switch ,object
-     ,@(mapcar (lambda (case)
-		 (append case (list 'break)))
-	       (butlast cases))
-     ,(last1 cases)))
+  (flet ((one (case)
+	   (if (eq 't (car case))
+	       `(t ,@(cdr case))
+	       `((eq ,object ,(car case))
+		 ,@(cdr case)))))
+    `(cond
+       ,@(mapcar #'one cases))))
 
 (defjsmacro with-slots (slots object &body body)
   `(let ,(mapcar (lambda (slot)
