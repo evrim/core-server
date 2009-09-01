@@ -4,9 +4,9 @@
 ;; | Dialog Component
 ;; +----------------------------------------------------------------------------
 (defcomponent dialog (<:div)
-  ((dialog.overlay :host remote :initform nil)
-   (dialog.message :host remote :initform "This is a message dialog.")
-   (dialog.title :host remote :initform "Message from server"))
+  ((overlay :host remote :initform nil)
+   (message :host remote :initform "This is a message dialog.")
+   (title :host remote :initform "Message from server"))
   (:default-initargs :class-name "login"))
 
 (defmethod/remote call-component ((self dialog))
@@ -32,8 +32,8 @@
   (array
    (<:div :class "left" (<:a :href "http://www.coretal.net/" ""))
    (<:div :class "right"
-	  (<:div :class "title" (dialog.title self))
-	  (<:div :class "message" (dialog.message self))
+	  (<:div :class "title" (title self))
+	  (<:div :class "message" (message self))
 	  (<:form :action "#"
 		  (<:input :type "button" :class "button"
 			   :value "OK"
@@ -47,7 +47,7 @@
   (setf (overlay self) (<:div :class "overlay")))
 
 ;; +----------------------------------------------------------------------------
-;; | Message Dialog
+;; | Yes-No Dialog
 ;; +----------------------------------------------------------------------------
 (defcomponent yes-no-dialog (dialog)
   ()
@@ -57,8 +57,8 @@
   (array
    (<:div :class "left" (<:a :href "http://www.coretal.net/" ""))
    (<:div :class "right"
-	  (<:div :class "title" (dialog.title self))
-	  (<:div :class "message" (dialog.message self))
+	  (<:div :class "title" (title self))
+	  (<:div :class "message" (message self))
 	  (<:form :action "#"
 		  (<:input :type "button" :class "button"
 			   :value "Yes"
@@ -82,11 +82,11 @@
   (array
    (<:div :class "left" (<:a :href "http://www.coretal.net/" ""))
    (<:div :class "right"
-	  (<:div :class "title" (dialog.title self))
+	  (<:div :class "title" (title self))
 	  (<:form :action "#"
-		  :onsubmit (event (e)
-			      (with-call/cc
-				(let ((password this.password.value))
+		  :onsubmit (event (e)			      
+			      (let ((password this.password.value))
+				(with-call/cc
 				  (setf this.password.value nil)
 				  (answer-component self (cons this.email.value password))))
 			      false)
@@ -115,7 +115,7 @@
   (array
    (<:div :class "left" (<:a :href "http://www.coretal.net/" ""))
    (<:div :class "right"
-	  (<:div :class "title" (dialog.title self))
+	  (<:div :class "title" (title self))
 	  (<:form :action "#"
 		  :onsubmit (event (e)
 			      (with-call/cc (answer-component self this.email.value))
