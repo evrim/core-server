@@ -36,7 +36,10 @@
 
 (defcps-expander/js lambda-function-form (arguments declares body)
   (with-unique-names (k1)
-    `(,k (lambda (,@(unwalk-lambda-list arguments) ,k1)
+    (if k
+	`(,k (lambda (,@(unwalk-lambda-list arguments) ,k1)
+	       ,(call-next-method form expand k1 env)))
+	`(lambda (,@(unwalk-lambda-list arguments) ,k1)
 	   ,(call-next-method form expand k1 env)))))
 
 (defcps-expander/js implicit-progn-mixin (body)
@@ -159,6 +162,12 @@
 	    :parent (parent form))
 	   expand k env))
 
+(defcps-expander/js flet-form (binds body)
+  `(let ,(mapcar (lambda (bind)
+		   `(,(car bind) ,(funcall expand (cdr bind) expand nil env)))
+		 binds)
+     ,(call-next-method expand body expand k env)))
+
 (defcps-expander/js if-form (consequent then else)
   (with-unique-names (value)
     (funcall expand consequent expand
@@ -195,7 +204,6 @@
 		 `(lambda (,temp)
 		    (,k (setq ,(slot-value var 'source) ,temp)))
 		 env))))
-
 
 (defcps-expander/js defun-form (name arguments body)
   (error "Please use defun/cc outside with-call/cc."))
@@ -303,10 +311,10 @@
       (javascript->cps (walk-js-form `(progn ,@body))
 		       #'javascript->cps 'k nil))))))
 
-(defmacro/js defun/cc (name args &body body)
-  (eval-when (:compile-toplevel :execute :load-toplevel)
-    (setf (gethash name +javascript-cps-functions+) t))
-  (with-unique-names (k)
+(defmacro/js defun/cc (name args &body body)  
+  (with-unique-names (k)    
+    (eval-when (:compile-toplevel :execute :load-toplevel)
+      (setf (gethash name +javascript-cps-functions+) t))
     `(defun ,name (,@args ,k)
        (setf ,k (or ,k window.k))
        ,(unwalk-form
