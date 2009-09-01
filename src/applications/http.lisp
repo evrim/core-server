@@ -133,9 +133,10 @@
     ;; 		    :key #'car)))
     (uniq (nreverse
 	   (reduce #'append
-		   (mapcar (rcurry #'slot-value 'handlers)
-			   (filter (lambda (a) (if (typep a 'http-application+) a))
-				   (class-superclasses self)))))
+		   (mapcar #'copy-list
+			   (mapcar (rcurry #'slot-value 'handlers)
+				   (filter (lambda (a) (if (typep a 'http-application+) a))
+					   (class-superclasses self))))))
 	  :key #'car))
 
   (defmethod add-handler ((application+ http-application+) method-name url)
@@ -154,7 +155,7 @@
 ;;+----------------------------------------------------------------------------
 ;;| HTTP Application
 ;;+----------------------------------------------------------------------------
-(eval-when (:load-toplevel :execute :compile-toplevel)
+(eval-when (:load-toplevel :compile-toplevel :execute)
   (defclass http-application (web-application)
     ((sessions :accessor http-application.sessions :initform (make-hash-table :test #'equal)
 	       :documentation "A hash-table that holds sessions"))
@@ -182,7 +183,8 @@
        ,slots
        ,@rest
        (:metaclass http-application+)
-       (:handlers ,@dispatchers))))
+       ;; (:handlers ,@dispatchers)
+       )))
 
 ;; +----------------------------------------------------------------------------
 ;; | HTTP Application Interface
@@ -324,7 +326,7 @@
     (assert (stringp url))
     (with-unique-names (context)
       `(progn
-	 (eval-when (:compile-toplevel :execute :load-toplevel)
+	 (eval-when (:load-toplevel :compile-toplevel :execute)
 	   (add-handler (find-class ',application-class) ',handler-symbol ,url))
 	 (redefmethod ,handler-symbol ((,application ,application-class) (,context http-context))
 	   (prog1 (with-context ,context
