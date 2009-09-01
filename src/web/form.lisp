@@ -13,9 +13,9 @@
    (invalid-class :host remote :initform "invalid")
    (valid :host remote :initform nil)))
 
-(defmethod/remote set-validation-message ((self <core:validating-input) message)
+(defmethod/remote set-validation-message ((self <core:validating-input) msg)
   (let ((element (document.get-element-by-id (validation-span-id self))))
-    (setf (slot-value element 'inner-h-t-m-l) message)))
+    (setf (slot-value element 'inner-h-t-m-l) msg)))
 
 (defmethod/remote enable-or-disable-form ((self <core:validating-input))
   (let ((valid (reduce (lambda (acc input)
