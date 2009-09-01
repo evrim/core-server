@@ -71,11 +71,12 @@
 
 (defmacro defrender/js (name args &body body)
   (with-unique-names (stream)
-    `(defun ,name (,stream ,@args)
-       (with-js ,(extract-argument-names args) ,stream
-	 ,@body)
-       (char! ,stream #\Newline)
-       ,stream)))
+    `(eval-when (:load-toplevel :compile-toplevel :execute)
+       (defun ,name (,stream ,@args)
+	 (with-js ,(extract-argument-names args) ,stream
+	   ,@body)
+	 (char! ,stream #\Newline)
+	 ,stream))))
 
 (defmacro defun/javascript (name params &body body)
   "Defun a function in both worlds (lisp/javascript)"
