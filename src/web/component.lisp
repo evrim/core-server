@@ -15,7 +15,8 @@
 ;; +----------------------------------------------------------------------------
 (defclass+ component ()
   ((url :host remote)
-   (service-name :host remote :initarg :service-name :initform nil))
+   (service-name :host remote :initarg :service-name :initform nil)
+   (k :initform nil))
   (:metaclass component+)
   (:documentation "Base component class"))
 
@@ -343,10 +344,29 @@
 	(apply retval self (array arg))
 	(throw (new (*error "No k found for component"))))))
 
+(defmethod/cc answer-component ((self component) arg)
+  ;; (update-session 'controller (cdr (query-session 'controller)))
+  (answer arg))
+
 (defmethod/remote call-component ((self component))
   (let/cc k1
     (setf (slot-value self 'k) k1)
     (suspend)))
+
+(defmethod/cc call-component ((component component))    
+  (javascript/suspend
+   (lambda (stream)
+     (let ((hash (uri.query (http-request.uri (context.request +context+)) "__hash")))
+       (when (and (stringp hash) (> (length hash) 0))
+	 (string! stream "var ")
+	 (string! stream (json-deserialize hash))
+	 (string! stream " = ")))
+     (component! stream component
+		 ;; (aif (query-session 'controller)
+		 ;;      (car it)
+		 ;;      (car (update-session 'controller (cons component nil))))
+		 ))))
+
 
 (defmethod write-stream ((stream core-stream) (object component))
   (prog1 stream
