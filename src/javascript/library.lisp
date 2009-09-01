@@ -396,9 +396,13 @@
    	  (progn
    	    (setf (slot-value *registry* name)
    		  (funcall-cc "component.core?" (create :component name)))
-   	    (make-component name properties))))))
+   	    (make-component name properties)))))
+
+  (defun make-web-thread (lambda)
+    (window.set-timeout lambda 0)))
 
 (eval-when (:compile-toplevel :execute :load-toplevel)
   (setf (gethash 'make-component +javascript-cps-functions+) t
 	(gethash 'make-service +javascript-cps-functions+) t
-	(gethash 'apply +javascript-cps-functions+) t))
+	(gethash 'apply +javascript-cps-functions+) t
+	(gethash 'funcall-cc +javascript-cps-functions+) t))
