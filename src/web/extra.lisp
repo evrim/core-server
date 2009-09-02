@@ -23,22 +23,22 @@
 ;; ----------------------------------------------------------------------------
 ;; Toaster Component
 ;; ----------------------------------------------------------------------------
-(defcomponent toaster-component ()
-  ((toaster :host remote :initform nil)))
+(defcomponent toaster-component (<:div)
+  ())
 
-(defmethod/remote toast ((self toaster-component) message)
-  (if (= null this.toaster)
-      (progn
-	(dojo.require "dojox.widget.Toaster")
-	(let ((div (document.create-element "div")))
-	  (document.body.append-child div)
-	  (setf this.toaster (new (dojox.widget.*toaster
-				   (create :position-direction "br-left"
-					   :message-topic "toasterTopic"
-					   :duration 1000)
-				   div))))))
+(defmethod/remote template ((self toaster-component))
+  (list
+   (<:img :src "style/login/loading.gif")))
 
-  (dojo.publish "toasterTopic" (array message)))
+(defmethod/remote init ((self toaster-component))
+  (mapcar (lambda (e) (.append-child self e)) (template self))
+  (.append-child document.body self))
+
+(defmethod/remote toast ((self toaster-component) msg)
+  (let ((node (<:div :class "toast" msg)))
+    (.append-child self node)
+    msg))
+
 
 ;; (defcomponent dojo-widget (dom-element)
 ;;   ((dojo-type :initarg :dojo-type :initform (error "Please specify :dojo-type"))

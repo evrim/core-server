@@ -64,7 +64,7 @@
       (setf link.href url
 	    link.rel "stylesheet"
 	    link.type "text/css")
-      (.append-child (aref (document.get-elements-by-tag-name "head") 0) link)
+      (prepend (aref (document.get-elements-by-tag-name "head") 0) link)
       (return link)))
   
   (defun init-core-server ()
@@ -142,6 +142,26 @@
 ;; +----------------------------------------------------------------------------
 ;; | Dojo Components
 ;; +----------------------------------------------------------------------------
+
+;; ----------------------------------------------------------------------------
+;; Toaster Component
+;; ----------------------------------------------------------------------------
+(defcomponent dojo-toaster-component ()
+  ((toaster :host remote :initform nil)))
+
+(defmethod/remote toast ((self dojo-toaster-component) message)
+  (if (= null this.toaster)
+      (progn
+	(dojo.require "dojox.widget.Toaster")
+	(let ((div (document.create-element "div")))
+	  (document.body.append-child div)
+	  (setf this.toaster (new (dojox.widget.*toaster
+				   (create :position-direction "br-left"
+					   :message-topic "toasterTopic"
+					   :duration 1000)
+				   div))))))
+
+  (dojo.publish "toasterTopic" (array message)))
 
 
 ;; Core Server: Web Application Server

@@ -1,12 +1,12 @@
 (in-package :core-server)
 
 ;; +----------------------------------------------------------------------------
-;; | Dialog Component
+;; | Dialog
 ;; +----------------------------------------------------------------------------
 (defcomponent dialog (<:div)
   ((overlay :host remote :initform nil)
    (message :host remote :initform "This is a message dialog.")
-   (title :host remote :initform "Message from server"))
+   (title :host remote :initform "message"))
   (:default-initargs :class-name "login"))
 
 (defmethod/remote call-component ((self dialog))
@@ -29,7 +29,7 @@
   (.remove-child document.body (overlay self)))
 
 (defmethod/remote template ((self dialog))  
-  (array
+  (list
    (<:div :class "left" (<:a :href "http://www.coretal.net/" ""))
    (<:div :class "right"
 	  (<:div :class "title" (title self))
@@ -47,6 +47,27 @@
   (setf (overlay self) (<:div :class "overlay")))
 
 ;; +----------------------------------------------------------------------------
+;; | Prompt Dialog
+;; +----------------------------------------------------------------------------
+(defcomponent prompt-dialog (dialog)
+  ())
+
+(defmethod/remote template ((self prompt-dialog))
+  (list
+   (<:div :class "left" (<:a :href "http://www.coretal.net/" ""))
+   (<:div :class "right"
+	  (<:div :class "title" (title self))
+	  (<:div :class "message" (message self))
+	  (<:form :action "#"		  
+		  (<:input :type "text" :name "prompt")
+		  (<:input :type "submit" :class "button" :value "OK"
+			   :onclick (event (e)
+				      (let ((button this))
+					(with-call/cc
+					  (answer-component self button.form.prompt.value)))
+				      false))))))
+
+;; +----------------------------------------------------------------------------
 ;; | Yes-No Dialog
 ;; +----------------------------------------------------------------------------
 (defcomponent yes-no-dialog (dialog)
@@ -54,7 +75,7 @@
   (:default-initargs :title "yes/no" :message "Do you want to answer Yes?"))
 
 (defmethod/remote template ((self yes-no-dialog))
-  (array
+  (list
    (<:div :class "left" (<:a :href "http://www.coretal.net/" ""))
    (<:div :class "right"
 	  (<:div :class "title" (title self))
@@ -79,7 +100,7 @@
   (:default-initargs :title "login"))
 
 (defmethod/remote template ((self login-dialog))  
-  (array
+  (list
    (<:div :class "left" (<:a :href "http://www.coretal.net/" ""))
    (<:div :class "right"
 	  (<:div :class "title" (title self))
@@ -112,7 +133,7 @@
   (:default-initargs :title "register"))
 
 (defmethod/remote template ((self registration-dialog))  
-  (array
+  (list
    (<:div :class "left" (<:a :href "http://www.coretal.net/" ""))
    (<:div :class "right"
 	  (<:div :class "title" (title self))
