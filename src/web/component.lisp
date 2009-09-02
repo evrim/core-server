@@ -357,16 +357,14 @@
   (javascript/suspend
    (lambda (stream)
      (let ((hash (uri.query (http-request.uri (context.request +context+)) "__hash")))
-       (when (and (stringp hash) (> (length hash) 0))
-	 (string! stream "var ")
-	 (string! stream (json-deserialize hash))
-	 (string! stream " = ")))
-     (component! stream component
-		 ;; (aif (query-session 'controller)
-		 ;;      (car it)
-		 ;;      (car (update-session 'controller (cons component nil))))
-		 ))))
-
+       (if (and (stringp hash) (> (length hash) 0))
+	   (let ((hash (intern hash)))
+	     (with-js (hash component) stream
+	       (let ((component component))
+		 (setf (slot-value window hash)
+		       (component null null window.k)))))
+	   (with-js (component) stream
+	     (component null null window.k)))))))
 
 (defmethod write-stream ((stream core-stream) (object component))
   (prog1 stream
