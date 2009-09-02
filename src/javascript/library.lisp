@@ -71,7 +71,10 @@
   (defun cons (atom lst)
     (if (null lst)
 	(array atom)
-	(.concat (array atom) lst)))
+	(.concat (array atom)
+		 (if (instanceof lst *array)
+		     lst
+		     (list lst)))))
 
   (defun car (lst)
     (cond
@@ -265,7 +268,8 @@
     (let/cc current-continuation
       (let ((hash (+ "__result"
 		     (.get-time (new (*date)))
-		     (.substr (*string.concat "" (*math.random 10)) 3 5))))
+		     (.substr (.concat "" (*math.random 10)) 3 5)))
+	    (img (<:img :class "coretal-loading" :src "style/login/loading.gif")))
 	(setf (slot-value args "__hash") hash)
 	(let ((script (make-dom-element "script"
 					(jobject :src
