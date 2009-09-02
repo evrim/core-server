@@ -278,6 +278,7 @@
    #:method
    #:call-component
    #:answer-component
+   #:funcall-cc
    
    ;; [RFC 2109]
    #:cookie
@@ -853,6 +854,13 @@
    #:onfocus/js
    #:onblur/js
 
+   [[Dialog Components]]
+   #:dialog
+   #:login-dialog
+   #:yes-no-dialog
+   #:registration-dialog
+   #:prompt-dialog
+   
    #:init/js
    
    ;; [DOm Components]
@@ -861,9 +869,12 @@
    #:tag
    #:id
    #:div-element
+
    ;; [HTTP Components]
    #:fckeditor-component
    #:toaster-component
+   #:toast
+   
    #:login-component
    #:feedback-component
    #:hedee-component

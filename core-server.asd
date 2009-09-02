@@ -195,6 +195,7 @@
 				   (:file "component")
 				   (:file "service")
 				   (:file "form")
+				   (:file "dialog")
 				   (:file "extra")
 				   (:file "auth")
 				   (:file "table")
