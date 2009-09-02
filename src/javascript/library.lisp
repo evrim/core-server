@@ -260,7 +260,8 @@
 		 arg)
       result))
   
-  (defun/cc funcall-cc (action args)    
+  (defun/cc funcall-cc (action args)
+    (console.debug (list "funcall" action args))
     (let/cc current-continuation
       (let ((hash (+ "__result"
 		     (.get-time (new (*date)))
@@ -398,11 +399,12 @@
    		  (funcall-cc "component.core?" (create :component name)))
    	    (make-component name properties)))))
 
-  (defun make-web-thread (lambda)
-    (window.set-timeout lambda 0)))
+  (defun/cc make-web-thread (fun)
+    (window.set-timeout (event () (with-call/cc (call/cc fun))) 0)))
 
 (eval-when (:compile-toplevel :execute :load-toplevel)
   (setf (gethash 'make-component +javascript-cps-functions+) t
 	(gethash 'make-service +javascript-cps-functions+) t
 	(gethash 'apply +javascript-cps-functions+) t
-	(gethash 'funcall-cc +javascript-cps-functions+) t))
+	(gethash 'funcall-cc +javascript-cps-functions+) t
+	(gethash 'make-web-thread +javascript-cps-functions+) t))
