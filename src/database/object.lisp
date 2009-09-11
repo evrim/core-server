@@ -43,12 +43,16 @@
   (setf (gethash (class-index-name server class) (database.root server)) value))
 
 (defmethod add-to-class-index ((server database) object)
-  (setf (class-index server (class-of object))
-	(cons object (class-index server (class-of object)))))
+  (mapcar (lambda (class)
+	    (setf (class-index server class)
+		  (cons object (class-index server class))))
+	  (class+.superclasses (class-of object))))
 
 (defmethod delete-from-class-index ((server database) object)
-  (setf (class-index server (class-of object))
-	(delete object (class-index server (class-of object)))))
+  (mapcar (lambda (class)
+	    (setf (class-index server class)
+		  (delete object (class-index server class))))
+	  (class+.superclasses (class-of object))))
 
 (defmethod find-all-objects ((server database) (class standard-class))
   (class-index server class))
