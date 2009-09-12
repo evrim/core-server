@@ -17,12 +17,46 @@
 
 (in-package :tr.gen.core.server)
 
+;; +-------------------------------------------------------------------------
+;; | Warning, this server is outdated and not loaded.
+;; +-------------------------------------------------------------------------
+
 ;;+----------------------------------------------------------------------------
 ;;| Ticker Server
 ;;+----------------------------------------------------------------------------
-;;
-;; This file implements ticket server.
-;;
+(defclass ticket-model ()
+  ((tickets :accessor ticket-model.tickets :initarg :tickets
+	    :initform (make-hash-table :test #'equal)
+	    :documentation "A list that holds tickets"))  
+  (:documentation "Model class for Ticket server"))
+
+(defclass ticket ()
+  ((hash :accessor ticket.hash :initarg :hash :initform (error "No hash given.")
+	 :documentation "A random string")
+   (type :accessor ticket.type :initarg :type :initform nil
+	 :documentation "Type of this ticket")
+   (used :accessor ticket.used :initarg :used :initform nil
+	 :documentation "t if this ticket is already used"))
+  (:documentation "A Ticket that can be sent to people over the net to give them
+temporary or permanent access to a resource"))
+
+(defun create-unique-hash (table)
+  "Creates a unique random hash string to be used with ticket server"
+  (let ((hash (arnesi::random-string 10)))
+    (cond
+      ((null (cadr (multiple-value-list (gethash hash table)))) hash)
+      (t (create-unique-hash table)))))
+
+(defclass ticket-server (server)
+  ((db :accessor ticket-server.db :initarg :db
+       :initform (error "Ticket database not found! Please use :db argument.")
+       :documentation "Database server of this ticker server")
+   (hash-fun :accessor ticket-server.hash-fun :initarg :hash-fun
+	     :initform #'(lambda (oldhashlist) 
+			   (create-unique-hash oldhashlist))
+	     :documentation "Customizable hash function for ticket.hash"))
+  (:default-initargs :name "Ticket Server"))
+
 
 (defun make-ticket-server (path &key (auto-start nil))
   "Returns a new ticket server instance, if 'auto-start' is t, server
@@ -32,7 +66,6 @@ is started"
 				    :db-auto-start auto-start
 				    :model-class 'ticket-model
 				    :directory path)))
-
 
 (defmethod tickets ((self ticket-server))
   "Returns list of tickets that this server owns"

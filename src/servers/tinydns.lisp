@@ -109,6 +109,21 @@
 ;;-----------------------------------------------------------------------------
 ;; Server Implementation
 ;;-----------------------------------------------------------------------------
+(defclass+ tinydns-server (server)
+  ((svc-pathname :accessor tinydns-server.svc-pathname
+		 :initarg :svc-pathame :initform (whereis "svc"))
+   (svstat-pathname :accessor tinydns-server.svstat-pathname
+		    :initarg :svscan-pathname :initform (whereis "svstat"))
+   (root-pathname :accessor tinydns-server.root-pathname :initarg :root-pathname
+		  :initform (make-pathname :directory '(:absolute "service" "tinydns")))
+   (compiler-pathname :accessor tinydns-server.compiler-pathname :initarg :compiler-pathname
+		      :initform (whereis "tinydns-data"))
+   (domains :accessor tinydns-server.domains :initform nil)
+   (%timestamp :initform (get-universal-time)))
+  (:default-initargs :name "TinyDNS Server - Mix this class with your
+server to manage TinyDNS server. See src/servers/tinydns.lisp for
+implementation"))
+
 (defmethod tinydns-server.data-pathname ((self tinydns-server))
   (merge-pathnames (make-pathname :directory '(:relative "root") :name "data")
 		   (s-v 'root-pathname)))

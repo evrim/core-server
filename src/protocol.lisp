@@ -26,36 +26,25 @@
 ;;-----------------------------------------------------------------------------
 (defgeneric start (server)
   (:documentation "Starts the server. This method is surrounded by server.mutex")
-  (:method-combination sysv-standard :type :start)
-  (:method ((self null)) t)
-  (:method ((self server)) t))
+  (:method-combination sysv-standard :type :start))
 
 (defgeneric stop (server)
   (:documentation "Stops the server. This method is surrounded by server.mutex")
-  (:method-combination sysv-standard :type :stop)
-  (:method ((self null)) t)
-  (:method ((self server)) t))
+  (:method-combination sysv-standard :type :stop))
 
 (defgeneric status (server)
   (:documentation "Returns t if server is running, nil otherwise.")
-  (:method-combination sysv-standard :type :status)
-  (:method ((self null)) nil)
-  (:method ((self web-server)) t)
-  (:method ((self server)) t))
+  (:method-combination sysv-standard :type :status))
 
 (defgeneric register (server app)
   (:documentation "Deploys an application to server. This method
   is surrounded by server.mutex")
-  (:method-combination sysv-standard :type :register)
-  (:method ((self null) app) nil)
-  (:method ((self web-server) app) nil))
+  (:method-combination sysv-standard :type :register))
 
 (defgeneric unregister (server app)
   (:documentation "Undeploys an application from a server. This
   method is surrounded by server.mutex")
-  (:method-combination sysv-standard :type :unregister)
-  (:method ((self null) app) nil)
-  (:method ((self web-server) app) nil))
+  (:method-combination sysv-standard :type :unregister))
 
 ;;-----------------------------------------------------------------------------
 ;; Name-server Protocol

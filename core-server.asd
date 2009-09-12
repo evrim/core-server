@@ -122,7 +122,7 @@
 				  :components
 				  ((:file "install")))
 			 (:file "vars")
-                         (:file "classes")
+                         ;; (:file "classes")
                          (:file "protocol")
                          (:file "application")
                          (:file "server")
@@ -169,15 +169,18 @@
                                   ((:file "serializable-application")
                                    (:file "darcs")
                                    (:file "git")
+				   (:file "web")
+				   (:file "apache")
                                    (:file "http")
                                    (:file "dns")))
                          (:module :servers
                                   :components
                                   ((:file "tinydns")
                                    (:file "apache")
+				   (:file "mail")
                                    (:file "postfix")
                                    (:file "logger")
-                                   (:file "ticket")
+                                   ;; (:file "ticket")
                                    (:file "socket")
                                    (:file "http")))
                          (:module :services

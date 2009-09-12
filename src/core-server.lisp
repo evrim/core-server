@@ -526,6 +526,8 @@
    ;; Accessors
    #:application.server
    #:application.debug
+   #:auto-start
+   #:debug
    #:server.name
    #:server.mutex
    #:web-application.fqdn
@@ -587,7 +589,9 @@
    #:database.serialize
    #:database.deserialize
    #:log-transaction
-   
+   #:database.directory
+   #:database-directory
+
    ;; Object Database
    #:object-with-id
    #:get-id
@@ -929,6 +933,35 @@
    #:defrule
    #:defparser
    #:defrender
+   ;; [ DNS Application ]
+   #:dns-application
+   #:dns-application.ns
+   #:dns-application.mx
+   #:dns-application.alias
+   #:ns
+   #:mx
+   #:alias
+   #:deploy-ns
+   #:deploy-mx
+   #:deploy-alias   
+   ;; [ Web Application ]
+   #:fqdn
+   #:admin-email
+   #:project-name
+   #:project-pathname
+   #:htdocs-pathname
+   #:web-application.fqdn
+   #:web-application.admin-email
+   #:web-application.project-name
+   #:web-application.project-pathname
+   #:web-application.htdocs-pathname
+   ;; [ Application ]
+   #:initargs
+   #:server
+   #:debug
+   #:application.initargs
+   #:application.debug
+   #:application.server
    ))
 
 (defpackage :tr.gen.core.server.io

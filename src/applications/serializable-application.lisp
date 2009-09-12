@@ -42,8 +42,29 @@
 ;; 2) Darcs   darcs-application
 ;; 3)  Git    git-application
 ;;
-;; Refer to src/classes.lisp for class definitions.
-;; 
+(defclass serializable-web-application (web-application)
+  ((sources :accessor serializable-web-application.sources :initarg :sources
+	    :initform '(src/packages src/model src/tx src/interfaces
+			src/application src/security src/ui/main))
+   (directories :accessor serializable-web-application.directories
+		:initarg :directories
+		:initform (list (make-pathname :directory '(:relative "src"))
+				(make-pathname :directory '(:relative "src" "ui"))
+				(make-pathname :directory '(:relative "t"))
+				(make-pathname :directory '(:relative "doc"))
+				(make-pathname :directory '(:relative "wwwroot"))
+				(make-pathname :directory '(:relative "wwwroot" "style"))
+				(make-pathname :directory '(:relative "wwwroot" "images"))
+				(make-pathname :directory '(:relative "templates"))
+				(make-pathname :directory '(:relative "db"))))
+   (use :accessor serializable-web-application.use :initarg :use
+	:initform (list :common-lisp :core-server :arnesi))
+   (depends-on :accessor serializable-web-application.depends-on :initarg :depends-on
+	       :initform (list :arnesi :core-server)))
+  (:documentation "Base class for template application - This class is
+used to create a new application. See
+src/applications/serializable-application.lisp for implementation"))
+
 (defmethod package-keyword ((self serializable-web-application) &optional long)
   (or (and long (make-keyword (strcat "tr.gen.core." (web-application.project-name self))))
       (make-keyword (web-application.project-name self))))

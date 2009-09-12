@@ -159,7 +159,7 @@
   (defclass http-application (web-application)
     ((sessions :accessor http-application.sessions :initform (make-hash-table :test #'equal)
 	       :documentation "A hash-table that holds sessions"))
-    (:default-initargs :directory nil)
+    ;; (:default-initargs :directory nil)
     (:documentation "HTTP Application Class")
     (:metaclass http-application+)))
 
@@ -292,7 +292,7 @@
 ;; Overriden get-directory method: This allows us to use default
 ;; database directory for database driven http applications.
 ;; ----------------------------------------------------------------------------
-(defmethod get-directory ((application http-application))
+(defmethod database.directory ((application http-application))
   (ensure-directories-exist
    (merge-pathnames
     (make-pathname :directory (list :relative "var" (web-application.fqdn application) "db"))

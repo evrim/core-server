@@ -20,9 +20,29 @@
 ;;+----------------------------------------------------------------------------
 ;;| Apache2 Web Server
 ;;+----------------------------------------------------------------------------
-;;
-;; This file implements Apache2 Web Server Controller
-;;
+(defclass+ apache-server (web-server)
+  ((apachectl-pathname
+    :accessor apache-server.apachectl-pathname :initarg :apachectl-pathname
+    :initform
+    #+pardus (make-pathname :directory '(:absolute "usr" "sbin") :name "apache2ctl")
+    #+debian (make-pathname :directory '(:absolute "usr" "sbin") :name "apache2ctl")
+    #+(not (or pardus debian)) (make-pathname :directory '(:absolute "etc" "init.d") :name "apache2"))
+   (htpasswd-pathname
+    :accessor apache-server.htpasswd-pathname :initarg :htpasswd-pathname
+    :initform
+    #+debian (make-pathname :directory '(:absolute "usr" "bin") :name "htpasswd")
+    #-debian (make-pathname :directory '(:absolute "usr" "sbin") :name "htpasswd2"))
+   (vhosts.d-pathname
+    :accessor apache-server.vhosts.d-pathname :initarg :vhosts.d-pathname
+    :initform
+    #+debian (make-pathname :directory '(:absolute "etc" "apache2" "sites-enabled"))
+    #-debian (make-pathname :directory '(:absolute "etc" "apache2" "vhosts.d")))
+   (htdocs-pathname :accessor apache-server.htdocs-pathname :initarg :htdocs-pathname
+		    :initform (make-pathname :directory '(:absolute "var" "www"))))
+  (:documentation "Apache2 Web Server Class - Mix this class with your
+server to manage Apache2 Web Server. See src/servers/apache for
+implementation")
+  (:default-initargs :name "Apache2 Web Server"));;
 
 ;; FIXmE: move two accessor to apache web application file.
 (defmethod apache-web-application.config-pathname

@@ -20,9 +20,6 @@
 ;;+----------------------------------------------------------------------------
 ;;| Logger Server
 ;;+----------------------------------------------------------------------------
-;;
-;; This file implements logger server a basic logger.
-;;
 
 ;;-----------------------------------------------------------------------------
 ;; Usage
@@ -38,6 +35,14 @@
 ;; (defparameter *logger*
 ;;  (make-instance 'logger-server :log-stream nil))
 ;;
+(defclass logger-server (local-unit)
+  ((log-stream :accessor log-stream :initarg :log-stream :initform nil) ;;*core-output*
+   (log-path :accessor log-path :initarg :log-path
+	     :initform (merge-pathnames (make-pathname :directory '(:relative "var" "log"))
+					(bootstrap:home))))
+  (:documentation "Log Server mixin class - Mix this class with your
+server to enable logging features. See src/servers/logger.lisp for
+implementation"))
 
 (defmethod/unit log-me :async-no-return ((self logger-server) tag message)
   (string! (log-stream self) (time->string (get-universal-time) :short))

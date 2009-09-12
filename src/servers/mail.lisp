@@ -15,14 +15,11 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-(in-package :core-server)
+(in-package :tr.gen.core.server)
 
-;;-----------------------------------------------------------------------------
-;; Application Classes
-;;-----------------------------------------------------------------------------
-(defclass application ()
-  ((server :accessor application.server :initform nil
-	   :documentation "On which server this application is running, setf'ed after (register)")
-   (debug :accessor application.debug :initarg :debug :initform t
-	  :documentation "Debugging flag for this application"))
-  (:documentation "Base Application Class"))
+;; +-------------------------------------------------------------------------
+;; | Email Server
+;; +-------------------------------------------------------------------------
+(defclass+ email-server (server)
+  ()
+  (:documentation "Base class for an email server"))

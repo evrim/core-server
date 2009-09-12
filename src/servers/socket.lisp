@@ -20,9 +20,30 @@
 ;;+----------------------------------------------------------------------------
 ;;| Socket Server
 ;;+----------------------------------------------------------------------------
-;;
-;; This file implements socket server.
-;;
+(defclass+ socket-server (server)
+  ((host :initarg :host :initform "0.0.0.0"
+	 :documentation "IP address that this server binds to")
+   (port :initarg :port :initform 3009
+	 :documentation "Port that this server binds to")
+   (protocol :initarg :protocol :initform :tcp
+	     :documentation "Network Protocol, can be :udp, :tcp")
+   (reuse-address :initarg :reuse-address :initform t
+		  :documentation "TCP reuse address option")
+   (backlog :initarg :backlog :initform 1
+	    :documentation "TCP backlog option")
+   (peers-max :initarg :peers-max :initform 4
+	      :documentation "Number of peers that this server manages")
+   (element-type :initarg :element-type :initform '(unsigned-byte 8)
+		 :documentation "Data type for socket stream")
+   (external-format :initarg :external-format :initform :utf-8
+		    :documentation "External format for stream")
+   (peer-class :initarg :peer-class :initform 'stream-peer
+	       :documentation "Class to instantiate as peer thread.")
+   ;;   (request-timeout-length :initarg :request-timeout-length :initform 90)
+   (%socket :initform nil) (%peers :initform nil) (%socket-thread :initform nil)
+   (%debug-unit :initform nil))
+  (:documentation "Socket Server Class"))
+
 (defmethod socket-server.run ((self socket-server))
   "Run method of Socket Server"
   (loop

@@ -24,6 +24,11 @@
 ;; This application is the extension of serializable-application to be used
 ;; along with SCM Git (http://git.or.cz)
 ;;
+(defclass git-application (serializable-web-application)
+  ()
+  (:documentation "Git Application Class - A serializable-application
+that uses GIT (http://git.or.cz) as SCM"))
+
 (defun make-git-application (fqdn project-name admin-email project-pathname
 			     &optional use depends-on)
   "Returns a new git-application having parameters provided"

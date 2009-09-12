@@ -20,9 +20,24 @@
 ;;+----------------------------------------------------------------------------
 ;;| Server Implementation
 ;;+----------------------------------------------------------------------------
-;;
-;; This file contains implementation of protocol defined in 'protocol.lisp'.
-;;
+(defclass+ server ()
+  ((name :accessor server.name :initarg :name :initform "Abstract Server"
+	 :documentation "Name of the server" :host local)
+   (mutex :accessor server.mutex :initarg :mutex :initform (sb-thread:make-mutex :name "Server mutex")
+	  :documentation "Lock used to synchronize some operations on server"
+	  :host none)
+   (auto-start :accessor server.auto-start :initarg :auto-start :initform nil
+	       :documentation "If t, the server would be started when created"
+	       :host local)
+   (debug  :accessor server.debug :initarg :debug :initform t
+	   :documentation "Debugging flag of generic server"
+	   :host local))
+  (:documentation "Server Base Class"))
+
+(defmethod print-object ((self server) stream)
+  (print-unreadable-object (self stream :type t :identity t)
+    (format stream "\"~A\" is~A running." (server.name self)
+	    (if (status self) "" " *not*"))))
 
 (defmacro with-server-mutex (server &body body)
   "Execute 'body' while holding 'server' lock"
@@ -107,3 +122,11 @@
 (defmethod stop-start ((self server))
   (stop self)
   (start self))
+
+;; +-------------------------------------------------------------------------
+;; | Web Server
+;; +-------------------------------------------------------------------------
+(defclass+ web-server (server)
+  ()
+  (:documentation "Web Server Base Class"))
+

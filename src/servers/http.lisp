@@ -1,8 +1,19 @@
 (in-package :core-server)
 
-;; +----------------------------------------------------------------------------
-;; | HTTP Server Implementation
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
+;; | HTTP Server
+;; +-------------------------------------------------------------------------
+(defclass+ http-server (web-server socket-server logger-server)
+  ((applications :accessor server.applications :initform '()))
+  (:default-initargs :port 3001 :peer-class '(http-unit)))
+
+;; (defclass nio-custom-http-peer (nio-http-peer-mixin custom-http-peer)
+;;   ())
+
+;; (defclass+ nio-http-server (web-server nio-socket-server logger-server)
+;;   ()
+;;   (:default-initargs :peer-class '(nio-custom-http-peer)))
+
 (defvar +default-encoding-for-remote-mimes+
   :utf-8 "FIXME: Browser shoudl supply in which encoding did it encode data.")
 
