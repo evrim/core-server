@@ -92,6 +92,9 @@
   (filter (lambda (m) (eq 'remote (cadr m)))
 	  (class+.methods class)))
 
+(defun class+.slot-boundp (object slot)
+  (and (slot-exists-p object slot) (slot-boundp object slot)))
+
 ;; -----------------------------------------------------------------------------
 ;; MOP Implementation
 ;; -----------------------------------------------------------------------------
@@ -250,18 +253,22 @@
 (defmethod class+.ctor-lambda-list ((self class+) &optional (include-supplied-p nil))
   (reduce0 (lambda (acc slot)
 	     (with-slotdef (initarg initform supplied-p) slot
-	       (let ((symbol (intern (symbol-name initarg))))
-		 (if include-supplied-p
-		     (cons (list symbol initform supplied-p) acc)
-		     (cons (list symbol initform) acc)))))
+	       (if initarg
+		   (let ((symbol (intern (symbol-name initarg))))
+		     (if include-supplied-p
+			 (cons (list symbol initform supplied-p) acc)
+			 (cons (list symbol initform) acc)))
+		   acc)))
 	   (uniq (append (reverse (class+.local-slots self))
 			 (reverse (class+.remote-slots self)))
 		 :test #'equal :key #'slot-definition-name)))
   
 (defmethod class+.ctor-arguments ((self class+) &optional lambda-list)      
   (reduce0 (lambda (acc slot)
-	     (with-slotdef (initarg) slot	       
-	       (cons initarg (cons (intern (symbol-name initarg)) acc))))
+	     (with-slotdef (initarg) slot
+	       (if initarg
+		   (cons initarg (cons (intern (symbol-name initarg)) acc))
+		   acc)))
 	   (aif (extract-argument-names lambda-list)
 		(filter (lambda (slot)
 			  (with-slotdef (name) slot
@@ -273,16 +280,20 @@
 (defmethod class+.all-ctor-lambda-list ((self class+) &optional (include-supplied-p nil))
   (reduce0 (lambda (acc slot)
 	     (with-slotdef (initarg initform supplied-p) slot
-	       (let ((symbol (intern (symbol-name initarg))))
-		 (if include-supplied-p
-		     (cons (list symbol initform supplied-p) acc)
-		     (cons (list symbol initform) acc)))))
+	       (if initarg
+		   (let ((symbol (intern (symbol-name initarg))))
+		     (if include-supplied-p
+			 (cons (list symbol initform supplied-p) acc)
+			 (cons (list symbol initform) acc)))
+		   acc)))
 	   (reverse (class+.slots self))))
 
 (defmethod class+.all-ctor-arguments ((self class+) &optional lambda-list)      
   (reduce0 (lambda (acc slot)
-	     (with-slotdef (initarg) slot	       
-	       (cons initarg (cons (intern (symbol-name initarg)) acc))))
+	     (with-slotdef (initarg) slot
+	       (if initarg
+		   (cons initarg (cons (intern (symbol-name initarg)) acc))
+		   acc)))
 	   (aif (extract-argument-names lambda-list)
 		(filter (lambda (slot)
 			  (with-slotdef (name) slot

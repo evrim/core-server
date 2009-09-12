@@ -30,7 +30,7 @@
 (defclass abstract-database (server)
   ((database-directory :type pathname :accessor database.directory
 		       :initarg :database-directory
-		       :initform (error "Please specify :database-directory"))
+		       :initform nil)
    (database-log-stream :type core-stream :accessor database.stream :initform nil)
    (database-root :type hash-table :accessor database.root
 		  :initform (make-hash-table :test #'equal))
@@ -264,6 +264,9 @@
   ())
 
 (defmethod start ((self database))
+  (if (null (database.directory self))
+      (error "Please set database directory"))
+  
   (when (not (equal (directory-namestring (database.directory self))
 		    (namestring (database.directory self))))
     (error "Database directory is a filename, please check. ~A"

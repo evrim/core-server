@@ -63,8 +63,9 @@
         :test #'equal))
 
 (deftransaction update-object ((server database) (object standard-object) &rest slots-and-values)
-  (reduce (lambda (object slot-val)	    
-	    (setf (slot-value object (car slot-val)) (cdr slot-val))
+  (reduce (lambda (object slot-val)
+	    (when (slot-exists-p object (car slot-val))
+	      (setf (slot-value object (car slot-val)) (cdr slot-val)))
 	    object)
 	  slots-and-values :initial-value object))
 
@@ -124,13 +125,13 @@
       (setf (slot-index server object slot) (make-hash-table :test #'equal))))
 
 (defmethod add-to-slot-index ((server database) object slot)
-  (when (slot-boundp object slot)
+  (when (class+.slot-boundp object slot)
     (setf (gethash (slot-value object slot) (slot-index server object slot))
 	  object))
   object)
 
 (defmethod delete-from-slot-index ((server database) object slot)
-  (when (slot-boundp object slot)
+  (when (class+.slot-boundp object slot)
     (remhash (slot-value object slot) (slot-index server object slot)))
   object)
 
@@ -147,56 +148,57 @@
   (reduce
    (lambda (object slot-val)	    
      (destructuring-bind (name . new-value) slot-val
-       (let ((old-value (and (slot-boundp object name) (slot-value object name))))		
+       (let ((old-value (and (class+.slot-boundp object name) (slot-value object name))))		
 	 (let ((slot (class+.find-slot (class-of object) name)))
-	   (with-slotdef (index relation) slot
+	   (when slot
+	     (with-slotdef (index relation) slot
 
-	     (cond
-	       ((and relation old-value)
-		(multiple-value-bind (relation-type relational-slot) (slot-definition-relation-type slot)
-		  (case relation-type
-		    (:n-to-one
-		     (setf (slot-value old-value (slot-definition-name relational-slot))				 
-			   (remove object (slot-value old-value (slot-definition-name relational-slot)))))
-		    (:one-to-n
-		     (reduce (lambda (object old-value)
-			       (setf (slot-value old-value (slot-definition-name relational-slot))
-				     object)
-			       object)
-			     (ensure-list old-value) :initial-value object))
-		    (:n-to-n
-		     (reduce (lambda (object target)
-			       (setf (slot-value target (slot-definition-name relational-slot))
-				     (remove object (slot-value target (slot-definition-name relational-slot))))
-			       object)
-			     old-value :initial-value object)))))
-	       ((and (null relation) index)
-		(delete-from-slot-index server object name)))
+	       (cond
+		 ((and relation old-value)
+		  (multiple-value-bind (relation-type relational-slot) (slot-definition-relation-type slot)
+		    (case relation-type
+		      (:n-to-one
+		       (setf (slot-value old-value (slot-definition-name relational-slot))				 
+			     (remove object (slot-value old-value (slot-definition-name relational-slot)))))
+		      (:one-to-n
+		       (reduce (lambda (object old-value)
+				 (setf (slot-value old-value (slot-definition-name relational-slot))
+				       object)
+				 object)
+			       (ensure-list old-value) :initial-value object))
+		      (:n-to-n
+		       (reduce (lambda (object target)
+				 (setf (slot-value target (slot-definition-name relational-slot))
+				       (remove object (slot-value target (slot-definition-name relational-slot))))
+				 object)
+			       old-value :initial-value object)))))
+		 ((and (null relation) index)
+		  (delete-from-slot-index server object name)))
 		  
-	     (setf (slot-value object name) new-value)
+	       (setf (slot-value object name) new-value)
 
-	     (cond
-	       ((and (null relation) index)
-		(add-to-slot-index server object name))
-	       ((and relation new-value)		       
-		(multiple-value-bind (relation-type relational-slot) (slot-definition-relation-type slot)
-		  (case relation-type
-		    (:n-to-one
-		     (setf (slot-value new-value (slot-definition-name relational-slot))
-			   (cons object
-				 (remove object (slot-value new-value (slot-definition-name relational-slot))))))
-		    (:one-to-n
-		     (reduce (lambda (object new-value)
-			       (setf (slot-value new-value (slot-definition-name relational-slot))
-				     object)
-			       object)
-			     (ensure-list new-value) :initial-value object))
-		    (:n-to-n
-		     (reduce (lambda (object target)
-			       (setf (slot-value target (slot-definition-name relational-slot))
-				     (cons object (slot-value target (slot-definition-name relational-slot))))
-			       object)
-			     new-value :initial-value object))))))))))
+	       (cond
+		 ((and (null relation) index)
+		  (add-to-slot-index server object name))
+		 ((and relation new-value)		       
+		  (multiple-value-bind (relation-type relational-slot) (slot-definition-relation-type slot)
+		    (case relation-type
+		      (:n-to-one
+		       (setf (slot-value new-value (slot-definition-name relational-slot))
+			     (cons object
+				   (remove object (slot-value new-value (slot-definition-name relational-slot))))))
+		      (:one-to-n
+		       (reduce (lambda (object new-value)
+				 (setf (slot-value new-value (slot-definition-name relational-slot))
+				       object)
+				 object)
+			       (ensure-list new-value) :initial-value object))
+		      (:n-to-n
+		       (reduce (lambda (object target)
+				 (setf (slot-value target (slot-definition-name relational-slot))
+				       (cons object (slot-value target (slot-definition-name relational-slot))))
+				 object)
+			       new-value :initial-value object)))))))))))
      object)
    slots-and-values :initial-value object))
 
@@ -224,7 +226,7 @@
 
   ;; Remove From Relational Objects
   (reduce (lambda (object slot)
-	    (let ((old-value (and (slot-boundp object (slot-definition-name slot))
+	    (let ((old-value (and (class+.slot-boundp object (slot-definition-name slot))
 				  (slot-value object  (slot-definition-name slot)))))
 	      (when old-value
 		(multiple-value-bind (relation-type relational-slot) (slot-definition-relation-type slot)
