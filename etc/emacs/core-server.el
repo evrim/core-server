@@ -81,6 +81,7 @@
 (font-lock-add-keywords 'slime-mode '(("\\(defun\\/cc" . font-lock-keyword-face)))
 (font-lock-add-keywords 'slime-mode '(("\\(defmethod\\/local" . font-lock-keyword-face)))
 (font-lock-add-keywords 'slime-mode '(("\\(defhtml\-tag" . font-lock-keyword-face)))
+(font-lock-add-keywords 'slime-mode '(("\\(defclass+" . font-lock-keyword-face)))
 
 ;; DARCSUM
 (load-el "darcsum.el")
@@ -147,17 +148,16 @@
 (define-skeleton skeleton-comment-1
     "Insert a Comment Header"
   "Header Text: "
-  ";; +----------------------------------------------------------------------------
+  ";; +-------------------------------------------------------------------------
 ;; | " str "
-;; +----------------------------------------------------------------------------"
-  )
+;; +-------------------------------------------------------------------------")
 
 (define-skeleton skeleton-comment-2
     "Insert a Comment Header"
   "Header Text: "
-  ";; ----------------------------------------------------------------------------
+  ";; -------------------------------------------------------------------------
 ;; " str "
-;; ----------------------------------------------------------------------------"
+;; -------------------------------------------------------------------------"
   )
 
 (defun make-backup-file-name (file)
