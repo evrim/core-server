@@ -129,7 +129,7 @@
   (:default-initargs :cmd (whereis "rm")))
 
 (defmethod render-arguments ((self rm))
-  (list (s-v 'path)))
+  (append (ensure-list (shell.args self)) (list (s-v 'path))))
 
 ;; ----------------------------------------------------------------------------
 ;; Find
