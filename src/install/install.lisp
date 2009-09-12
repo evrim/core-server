@@ -475,9 +475,9 @@ this 'layout' to '(layout.systems self)'"))
 
      (in-package :core-server)
 
-     (defclass core-server ,(if (eq (layout.server-type self) :mod-lisp)
-				`(apache-server http-server)
-				`(http-server))
+     (defclass+ core-server ,(if (eq (layout.server-type self) :mod-lisp)
+				 `(apache-server http-server)
+				 `(http-server))
        ()
        (:default-initargs :name "Core-serveR" :port 8080))
      (defvar *server* (make-instance 'core-server))
@@ -809,9 +809,9 @@ exit 0
 
      (in-package :core-server)
 
-     (defclass core-server ,(if (eq (layout.server-type self) :mod-lisp)
-				`(apache-server http-server)
-				`(http-server))
+     (defclass+ core-server ,(if (eq (layout.server-type self) :mod-lisp)
+				 `(apache-server http-server)
+				 `(http-server))
        ()
        (:default-initargs :name "Core-serveR"))
      
