@@ -42,7 +42,7 @@
 ;; 2) Darcs   darcs-application
 ;; 3)  Git    git-application
 ;;
-(defclass serializable-web-application (web-application)
+(defclass+ serializable-web-application (web-application)
   ((sources :accessor serializable-web-application.sources :initarg :sources
 	    :initform '(src/packages src/model src/tx src/interfaces
 			src/application src/security src/ui/main))

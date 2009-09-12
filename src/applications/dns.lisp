@@ -24,7 +24,7 @@
 ;; This file contains the application mixin to be used along with Tiny DNS
 ;; server. 
 ;;
-(defclass dns-application (web-application)
+(defclass+ dns-application (web-application)
   ((ns :accessor dns-application.ns :initform (list +ns1+ +ns2+) :initarg :ns
        :documentation "List of nameserver IP addresses")
    (mx :accessor dns-application.mx :initform (list +mx+) :initarg :mx

@@ -44,19 +44,6 @@ server to manage Apache2 Web Server. See src/servers/apache for
 implementation")
   (:default-initargs :name "Apache2 Web Server"));;
 
-;; FIXmE: move two accessor to apache web application file.
-(defmethod apache-web-application.config-pathname
-    ((self apache-web-application) (server apache-server))
-  "Returns confiugration pathname of the application 'self'"
-  (merge-pathnames (make-pathname :name (web-application.fqdn self)
-				  :type *apache-default-config-extenstion*)
-		   (apache-server.vhosts.d-pathname server)))
-
-(defmethod apache-web-application.docroot-pathname
-    ((self apache-web-application) &optional (server nil))
-  (merge-pathnames (make-pathname :directory (list :relative (web-application.fqdn self)))
-		   (apache-server.htdocs-pathname (or server (application.server self)))))
-
 ;;-----------------------------------------------------------------------------
 ;; Apache2Ctl Command
 ;;-----------------------------------------------------------------------------
@@ -104,7 +91,7 @@ implementation")
 (defmethod create-vhost-config ((self apache-server) (app apache-web-application))
   "Creates a vhost configuration file for 'app' and writes it to
 server config directory"
-  (let* ((config-pathname (apache-web-application.config-pathname app self))
+  (let* ((config-pathname (apache-web-application.config-pathname app))
 	 (config-data (read-string-from-file (apache-web-application.vhost-template-pathname app))))
     (with-open-file (s config-pathname :direction :output :if-exists :supersede :if-does-not-exist :create) 
       (write-string  
@@ -161,7 +148,7 @@ permissions accordingly"
   (apache-server.refresh self app))
 
 (defmethod unregister ((self apache-server) (app apache-web-application))  
-  (let* ((config-pathname (apache-web-application.config-pathname app self)))
+  (let* ((config-pathname (apache-web-application.config-pathname app)))
     (when (probe-file config-pathname)
       (delete-file config-pathname))
     (graceful self)))

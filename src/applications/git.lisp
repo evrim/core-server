@@ -24,7 +24,7 @@
 ;; This application is the extension of serializable-application to be used
 ;; along with SCM Git (http://git.or.cz)
 ;;
-(defclass git-application (serializable-web-application)
+(defclass+ git-application (serializable-web-application)
   ()
   (:documentation "Git Application Class - A serializable-application
 that uses GIT (http://git.or.cz) as SCM"))

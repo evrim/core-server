@@ -166,10 +166,10 @@
 				   (:file "crud")))
                          (:module :applications
                                   :components
-                                  ((:file "serializable-application")
-                                   (:file "darcs")
-                                   (:file "git")
-				   (:file "web")
+                                  ((:file "web")
+				   (:file "serializable-application")
+                                   (:file "darcs" :depends-on ("serializable-application"))
+                                   (:file "git" :depends-on ("serializable-application"))
 				   (:file "apache")
                                    (:file "http")
                                    (:file "dns")))

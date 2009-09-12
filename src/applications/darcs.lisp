@@ -24,7 +24,7 @@
 ;; This application is the extension of serializable-application to be used
 ;; along with SCM Darcs (http://darcs.net)
 ;;
-(defclass darcs-application (serializable-web-application)
+(defclass+ darcs-application (serializable-web-application)
   ()
   (:documentation "Darcs Application Class - A
 serializable-application that uses Darcs (http://darcs.net) as SCM"))
