@@ -27,19 +27,23 @@
    (cache :initform (make-hash-table :weakness :key-or-value)))
   (:ctor ()))
 
-(defclass abstract-database (server)
+(defclass+ abstract-database (server)
   ((database-directory :type pathname :accessor database.directory
 		       :initarg :database-directory
-		       :initform nil)
-   (database-log-stream :type core-stream :accessor database.stream :initform nil)
+		       :initform nil :host local)
+   (database-log-stream :type core-stream :accessor database.stream
+			:initform nil :host none)
    (database-root :type hash-table :accessor database.root
-		  :initform (make-hash-table :test #'equal))
+		  :initform (make-hash-table :test #'equal)
+		  :host none)
    (database-cache :type serialization-cache
 		   :initform (serialization-cache)
-		   :accessor database.cache)
+		   :accessor database.cache
+		   :host none)
    (database-closure-cache :type hash-table
 			   :initform (make-hash-table)
-			   :accessor database.closure-cache))
+			   :accessor database.closure-cache
+			   :host none))
   (:default-initargs :name "Database Server"))
 
 (defmethod database.transaction-log-pathname ((self abstract-database) &optional suffix)
@@ -257,10 +261,10 @@
 (defmethod database.status ((self abstract-database))
   (not (null (database.stream self))))
 
-(defclass database (abstract-database)
+(defclass+ database (abstract-database)
   ())
 
-(defclass database-server (database)
+(defclass+ database-server (database)
   ())
 
 (defmethod start ((self database))
