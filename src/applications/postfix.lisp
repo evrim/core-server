@@ -18,8 +18,8 @@
 (in-package :tr.gen.core.server)
 
 ;; +-------------------------------------------------------------------------
-;; | Email Server
+;; | Mail Application
 ;; +-------------------------------------------------------------------------
-(defclass+ mail-server (server)
-  ()
-  (:documentation "Base class for an email server"))
+(defclass+ postfix-application (mail-application)
+  ())
+

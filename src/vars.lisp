@@ -74,7 +74,7 @@
 ;;-----------------------------------------------------------------------------
 ;; Postfix Specific Variables
 ;;-----------------------------------------------------------------------------
-(defvar +postmap+ #P"/usr/sbin/postmap") ;;can't be found on all.
+(defvar +postmap+ (sudo (whichm :name "postmap" :errorp nil)))
 
 ;;-----------------------------------------------------------------------------
 ;; DNS Specific Variables

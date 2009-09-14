@@ -649,7 +649,7 @@
 
    ;; [Postfix]
    ;; Classes
-   #:email-server
+   #:mail-server
    #:postfix-server
    ;; API
    #:add-email
@@ -692,6 +692,9 @@
    #:drop
    #:flatten
    #:flatten1
+
+   ;; [Applications]
+   #:postfix-application
    
    ;; [Serializable Application]
    #:serializable-web-application

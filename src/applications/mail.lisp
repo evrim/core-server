@@ -18,8 +18,10 @@
 (in-package :tr.gen.core.server)
 
 ;; +-------------------------------------------------------------------------
-;; | Email Server
+;; | Mail Application
 ;; +-------------------------------------------------------------------------
-(defclass+ mail-server (server)
-  ()
-  (:documentation "Base class for an email server"))
+(defclass+ mail-application (application)
+  ((domain :accessor mail-application.domain
+	   :initarg :domain
+	   :initform (error "Please specify mail :domain"))))
+

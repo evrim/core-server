@@ -49,6 +49,13 @@
   `(sb-thread:with-recursive-lock ((server.mutex ,@server))
      ,@body))
 
+(defmacro defsynhronized (name args &body body)
+  `(progn
+     (redefmethod ,name :around ,args
+       (with-server-lock (,(caar args))
+	  (call-next-method)))
+     (redefmethod ,name ,args ,@body)))
+
 ;; +----------------------------------------------------------------------------
 ;; | Auto Start Feature for Servers
 ;; +----------------------------------------------------------------------------

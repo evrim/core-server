@@ -38,7 +38,7 @@
     :documentation "Skeleton Pathname which is copied to htdoc directory. setq nil no to."))
   (:documentation "Apache Web Application Class - This class is used
 this to manage vhost configuration for this application. It generates
-a new vhost configuration from 'vhost-template-pathname' and writes it
+a new vhost configuration from 'vhost-template-pathname' and wkrites it
 to apache vhost configuration directory.  See src/servers/apache.lisp
 for implementation."))
 

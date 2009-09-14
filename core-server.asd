@@ -167,22 +167,24 @@
                          (:module :applications
                                   :components
                                   ((:file "web")
+				   (:file "mail")
+				   (:file "dns")
 				   (:file "serializable-application")
                                    (:file "darcs" :depends-on ("serializable-application"))
                                    (:file "git" :depends-on ("serializable-application"))
-				   (:file "apache")
+				   (:file "apache" :depends-on ("web"))
                                    (:file "http")
-                                   (:file "dns")))
+				   (:file "postfix" :depends-on ("mail"))))
                          (:module :servers
                                   :components
                                   ((:file "tinydns")
                                    (:file "apache")
 				   (:file "mail")
-                                   (:file "postfix")
+                                   (:file "postfix" :depends-on ("mail"))
                                    (:file "logger")
                                    ;; (:file "ticket")
                                    (:file "socket")
-                                   (:file "http")))
+                                   (:file "http" :depends-on ("logger"))))
                          (:module :services
                                   :components
                                   ((:file "whois")
