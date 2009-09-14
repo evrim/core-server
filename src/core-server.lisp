@@ -651,6 +651,7 @@
    ;; Classes
    #:mail-server
    #:postfix-server
+   #:POSTFIX-SCRIPT-PATHNAME
    ;; API
    #:add-email
    #:del-email

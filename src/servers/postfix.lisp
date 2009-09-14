@@ -22,7 +22,7 @@
 ;;+----------------------------------------------------------------------------
 (defclass+ postfix-server (mail-server)
   ((postfix-script-pathname :accessor postfix-server.postfix-script-pathname
-			    :initarg postfix-script-pathname
+			    :initarg :postfix-script-pathname
 			    :initform (make-pathname :directory '(:absolute "etc" "init.d")
 						     :name "postfix"))
    (virtual-domains-pathname :accessor postfix-server.virtual-domains-pathname
