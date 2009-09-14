@@ -26,47 +26,56 @@
      (fmakunbound ',name)
      (deftransaction ,name ,args ,@body)))
 
-(defmacro defcrud (class &optional (prefix nil))
-  (let ((class+ (find-class+ class))
-	(all (intern (format nil "~A.LIST" (or prefix class))))
-	(find (intern (format nil "~A.FIND" (or prefix class))))
-	(add (intern (format nil "~A.ADD"  (or prefix class))))
-	(delete (intern (format nil "~A.DELETE" (or prefix class))))
-	(update (intern (format nil "~A.UPDATE" (or prefix class)))))
-    `(progn
-       (redefmethod ,all ((server database)) (find-all-objects server ',class))
-       (redefmethod ,find ((server database) &key ,@(class+.ctor-lambda-list class+ t))
-	 (flet ((find-object (slot value)
-		  (ensure-list (find-object-with-slot server ',class slot value))))
-	   (let ((set (append
+(defmacro defcrud (class &optional prefix)
+  (let ((class+ (find-class+ class)))
+    (let ((all (class+.list-function class+ prefix))
+	  (find (class+.find-function class+ prefix))
+	  (query (class+.query-function class+ prefix))
+	  (add (class+.add-function class+ prefix))
+	  (delete (class+.delete-function class+ prefix))
+	  (update (class+.update-function class+ prefix)))
+      `(progn
+	 (redefmethod ,all ((server database)) (find-all-objects server ',class))
+	 (redefmethod ,query ((server database) &key ,@(class+.ctor-lambda-list class+ t))
+	   (flet ((find-object (slot value)
+		    (core-server::find-objects-with-slot server ',class slot value)))
+	     (let ((set (filter (compose #'not #'null)
+				(list
+				 ,@(mapcar (lambda (slot)
+					     `(if ,(caddr slot)
+						  (find-object ',(car slot) ,(car slot))))
+					   (class+.ctor-lambda-list class+ t))))))
+	       (nreverse
+		(reduce (lambda (set1 set2)
+			  (intersection (ensure-list set2) (ensure-list set1)))
+			(cdr set)
+			:initial-value (car set))))))
+	 (redefmethod ,find ((server database) &key ,@(class+.ctor-lambda-list class+ t))
+	   (flet ((find-object (slot value)
+		    (find-object-with-slot server ',class slot value)))
+	     (or
+	      ,@(mapcar (lambda (slot)
+			  `(if ,(caddr slot)
+			       (find-object ',(car slot) ,(car slot))))
+			(class+.ctor-lambda-list class+ t)))))
+	 (redefmethod ,add ((server database) &key ,@(class+.ctor-lambda-list class+))
+	   (add-object server ',class
 		       ,@(mapcar (lambda (slot)
-				   `(if ,(caddr slot)
-					(find-object ',(car slot) ,(car slot))))
-				 (class+.ctor-lambda-list class+ t)))))
-	     (reduce (lambda (set1 set2)
-		       (aif (and set2 (intersection (ensure-list set2) (ensure-list set1)))
-			    it
-			    set1))
-		     (cdr set)
-		     :initial-value (car set)))))
-       (redefmethod ,add ((server database) &key ,@(class+.ctor-lambda-list class+))
-	 (add-object server ',class
-		     ,@(mapcar (lambda (slot)
-				 `(cons ',(car slot) ,(car slot)))
-			       (class+.ctor-lambda-list class+))))
-       (redefmethod ,update ((server database) (instance ,class)
-			   &key ,@(class+.ctor-lambda-list class+ t))
-	 (apply #'update-object server instance
-		(filter (lambda (a) (not (null a)))
-			(list
-			 ,@(reduce (lambda (acc slot)
-				     (cons
-				      `(if ,(caddr slot)
-					   (cons ',(car slot) ,(car slot)))
-				      acc))
-				   (class+.ctor-lambda-list class+ t) :initial-value nil)))))
-       (redefmethod ,delete ((server database) (instance ,class))
-	 (delete-object server instance)))))
+				   `(cons ',(car slot) ,(car slot)))
+				 (class+.ctor-lambda-list class+))))
+	 (redefmethod ,update ((server database) (instance ,class)
+			       &key ,@(class+.ctor-lambda-list class+ t))
+	   (apply #'update-object server instance
+		  (filter (lambda (a) (not (null a)))
+			  (list
+			   ,@(reduce (lambda (acc slot)
+				       (cons
+					`(if ,(caddr slot)
+					     (cons ',(car slot) ,(car slot)))
+					acc))
+				     (class+.ctor-lambda-list class+ t) :initial-value nil)))))
+	 (redefmethod ,delete ((server database) (instance ,class))
+	   (delete-object server instance))))))
 
 
 ;; Ibreti kendime asagidakilerin -evrim.

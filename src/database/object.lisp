@@ -18,6 +18,9 @@
 (defmethod find-object-with-slot ((server database) (class symbol) (slot symbol) value)
   (find-object-with-slot server (find-class class) slot value))
 
+(defmethod find-objects-with-slot ((server database) (class symbol) (slot symbol) value)
+  (find-objects-with-slot server (find-class class) slot value))
+
 (defgeneric add-object (server class &rest slots-and-values)
   (:documentation "Creates a new instances of class having slots-and-values"))
 
@@ -57,10 +60,16 @@
 (defmethod find-all-objects ((server database) (class standard-class))
   (class-index server class))
 
+(defmethod find-objects-with-slot ((server database) (class standard-class) (slot symbol) value)
+  (nreverse
+   (reduce0 (lambda (acc object)
+	      (if (equal value (slot-value object slot))
+		  (cons object acc)
+		  acc))
+	    (find-all-objects server class))))
+
 (defmethod find-object-with-slot ((server database) (class standard-class) (slot symbol) value)
-  (find value (find-all-objects server class)
-        :key (lambda (object) (slot-value object slot))
-        :test #'equal))
+  (car (find-objects-with-slot server class slot value)))
 
 (deftransaction update-object ((server database) (object standard-object) &rest slots-and-values)
   (reduce (lambda (object slot-val)
@@ -127,19 +136,24 @@
 (defmethod add-to-slot-index ((server database) object slot)
   (when (class+.slot-boundp object slot)
     (setf (gethash (slot-value object slot) (slot-index server object slot))
-	  object))
+	  (cons object (gethash (slot-value object slot) (slot-index server object slot)))))
   object)
 
 (defmethod delete-from-slot-index ((server database) object slot)
   (when (class+.slot-boundp object slot)
-    (remhash (slot-value object slot) (slot-index server object slot)))
+    (if (null (setf (gethash (slot-value object slot) (slot-index server object slot))
+		    (cdr (gethash (slot-value object slot) (slot-index server object slot)))))
+	(remhash (slot-value object slot) (slot-index server object slot))))
   object)
 
-(defmethod find-object-with-slot ((server database) (class class+) (slot symbol) value)
+(defmethod find-objects-with-slot ((server database) (class class+) (slot symbol) value)
   (let ((slot (class+.find-slot class slot)))
     (if (slot-definition-index slot)
 	(gethash value (slot-index server class (slot-definition-name slot)))
 	(call-next-method))))
+
+(defmethod find-object-with-slot ((server database) (class class+) (slot symbol) value)
+  (car (find-objects-with-slot server class slot value)))
 
 (defmethod find-object-with-id ((server database) id)
   (find-object-with-slot server (find-class+ 'object-with-id) 'id id))

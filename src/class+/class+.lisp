@@ -39,14 +39,19 @@
 	    (setf (slot-value class '%timestamp) timestamp))
 	  (cons class (class+.subclasses class))))
 
+(defvar +standard-class-slots+ (class-slots (find-class 'standard-class)))
+
 (defmethod class+.slots ((class class+))
   (when (not (class-finalized-p class))
     (finalize-inheritance class))
 
-  (filter (lambda (s)
-	    (and (typep s 'class+-slot-definition)
-		 (not (eq 'none (slot-definition-host s)))))
-	  (class-slots class)))
+  (filter (lambda (e)
+	    (not (member (slot-definition-name e) +standard-class-slots+
+			 :key #'slot-definition-name)))
+	  (filter (lambda (s)
+		    (and (typep s 'class+-slot-definition)
+			 (not (eq 'none (slot-definition-host s)))))
+		  (class-slots class))))
 
 (defmethod class+.add-method ((class class+) name type args)
   (setf (class+.%methods class)
@@ -237,6 +242,28 @@
 	:n-to-n)
        (t (error "Unknown type of relation slot: ~A" slot)))
      relational-slot)))
+
+;; -------------------------------------------------------------------------
+;; Operations
+;; -------------------------------------------------------------------------
+(defmethod class+.list-function ((self class+) &optional prefix)
+  (intern (format nil "~A.LIST" (or prefix (class-name self)))))
+
+(defmethod class+.find-function ((self class+) &optional prefix)
+  (intern (format nil "~A.FIND" (or prefix (class-name self)))))
+
+(defmethod class+.query-function ((self class+) &optional prefix)
+  (intern (format nil "~A.QUERY" (or prefix (class-name self)))))
+
+(defmethod class+.add-function ((self class+) &optional prefix)
+  (intern (format nil "~A.ADD" (or prefix (class-name self)))))
+
+(defmethod class+.delete-function ((self class+) &optional prefix)
+  (intern (format nil "~A.DELETE" (or prefix (class-name self)))))
+
+(defmethod class+.update-function ((self class+) &optional prefix)
+  (intern (format nil "~A.UPDATE" (or prefix (class-name self)))))
+
 
 ;; ----------------------------------------------------------------------------
 ;; Indexes
