@@ -20,11 +20,7 @@
 ;;-----------------------------------------------------------------------------
 ;; DNS Application
 ;;-----------------------------------------------------------------------------
-;;
-;; This file contains the application mixin to be used along with Tiny DNS
-;; server. 
-;;
-(defclass+ dns-application (web-application)
+(defclass+ abstract-dns-application ()
   ((ns :accessor dns-application.ns :initform (list +ns1+ +ns2+) :initarg :ns
        :documentation "List of nameserver IP addresses")
    (mx :accessor dns-application.mx :initform (list +mx+) :initarg :mx
@@ -32,35 +28,37 @@
    (alias :accessor dns-application.alias :initform nil :initarg :alias
 	  :documentation "List of aliases that this application has")))
 
-(defmethod deploy-ns ((self dns-application))
+(defmethod deploy-ns ((self abstract-dns-application))
   "Add nameserver records for 'application' to nameserver configuration"
   (mapcar (lambda (ns)
 	    (when (null (find-ns (application.server self) (web-application.fqdn self)))	      
 	      (add-ns (application.server self) (web-application.fqdn self) ns)))
 	  (ensure-list (dns-application.ns self))))
 
-(defmethod deploy-mx ((self dns-application))
+(defmethod deploy-mx ((self abstract-dns-application))
   "Add mail exchanger records for 'application' to nameserver configuration"
   (mapcar (lambda (mx)
 	    (when (null (find-mx (application.server self) (web-application.fqdn self)))	      
 	      (add-mx (application.server self) (web-application.fqdn self) mx)))
 	  (ensure-list (dns-application.mx self))))
 
-(defmethod deploy-alias ((self dns-application))
+(defmethod deploy-alias ((self abstract-dns-application))
   "Add aliases record for 'application' to nameserver configuration"
   (mapcar (lambda (alias)
 	    (when (null (find-alias (application.server self) (web-application.fqdn self)))	      
 	      (add-alias (application.server self) (car alias) (cdr alias))))
 	  (ensure-list (dns-application.alias self))))
 
-(defmethod start ((self dns-application))
+(defmethod start ((self abstract-dns-application))
   "Add related records to nameserver configuration like nameserver,
 mail exchanger, aliases"
   (deploy-ns self)
   (deploy-mx self)
   (deploy-alias self))
 
-(defmethod stop ((self dns-application))
+(defmethod stop ((self abstract-dns-application))
   )
 
 
+(defclass+ dns-application (abstract-dns-application)
+  ())
