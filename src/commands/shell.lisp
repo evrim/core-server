@@ -103,6 +103,12 @@
     (let ((result (read-line (command.output-stream self))))
       (pathname result))))
 
+(defmethod run-sudo :around ((self which))
+  (call-next-method)
+  (when (zerop (shell.exit-code self))
+    (let ((result (read-line (command.output-stream self))))
+      (pathname result))))
+
 (defun whereis (name)
   (which :name name))
 
@@ -193,6 +199,27 @@
       (list (s-v 'mode) "-R" (s-v 'path))
       (list (s-v 'mode) (s-v 'path))))
 
+;; -------------------------------------------------------------------------
+;; Mkdir
+;; -------------------------------------------------------------------------
+(defcommand mkdir (shell)
+  ((path :host local :initform (error "Please specify :path")))
+  (:default-initargs :cmd (whereis "mkdir")))
+
+(defmethod render-arguments ((self mkdir))
+  (append (s-v 'args) (list (s-v 'path))))
+
+;; -------------------------------------------------------------------------
+;; Mv
+;; -------------------------------------------------------------------------
+(defcommand mv (shell)
+  ((source :host local :initform (error "Please specify :source"))
+   (target :host local :initform (error "Please specify :target")))
+  (:default-initargs :cmd (whereis "mv")))
+
+(defmethod render-arguments ((self mv))
+  (append (s-v 'args) (list (s-v 'source) (s-v 'target))))
+
 ;; ----------------------------------------------------------------------------
 ;; Wget
 ;; ----------------------------------------------------------------------------
@@ -216,6 +243,40 @@
 ;; ----------------------------------------------------------------------------
 (defun rmdir (pathname)
   (sb-posix::rmdir pathname))
+
+;; +-------------------------------------------------------------------------
+;; | Mighty Sudo
+;; +-------------------------------------------------------------------------
+;; Use m version of commands along with sudo.
+;;
+;; SERVER> (sudo (postfix-sysv-scriptm :args '("start")))
+;; 0
+;; SERVER> (sudo (postfix-sysv-scriptm :args '("start") :verbose t))
+;; Executing command: sudo /etc/init.d/postfix start
+;; Starting Postfix Mail Transport Agent: postfix.
+;; 0
+(defmethod run-sudo ((self shell))
+  (flet ((ensure-cmd (cmd)
+	   (cond
+	     ((pathnamep cmd) (namestring cmd))
+	     (t (error "Please provide cmd slot")))))
+    (if (s-v 'verbose)
+	(format t "Executing command: sudo ~A ~{~A~^ ~}~%" (s-v 'cmd) (render-arguments self)))
+    (setf (shell.process self)
+	  (sb-ext:run-program (ensure-cmd +sudo+)
+			      (cons (namestring (shell.cmd self)) (render-arguments self))
+			      :wait nil
+			      :input (if (s-v 'verbose) t :stream)
+			      :output (if (s-v 'verbose)
+					  *standard-output*
+					  :stream)
+			      :error :output))
+    (if (shell.wait self)
+	(wait-process self) 
+	(values))))
+
+(defun sudo (command)
+  (run-sudo command))
 
 ;; Core Server: Web Application Server
 
