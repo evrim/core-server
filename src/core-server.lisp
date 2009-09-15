@@ -544,6 +544,9 @@
    ;; Classes
    #:apache-server
    #:apache-web-application
+   #:vhost-template-pathname
+   #:skel-pathname
+   #:default-entry-point
    ;; Accessors
    #:apache-web-application.vhost-template-pathname
    #:apache-web-application.redirector-pathname
