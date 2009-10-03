@@ -67,12 +67,13 @@ for traceing a closed system"
        (defun ,untrace-symbol (&optional (methods ,var-symbol))
 	 (mapcar (lambda (e) (eval `(untrace ,e))) methods)))))
 
+;; FIXME: he who wrote this below should be doomed! -evrim.
 (defun uniq (lst &key (test #'eq) (key #'identity))  
   (nreverse
    (reduce0 (lambda (acc atom)
 	      (pushnew atom acc :key key :test test)
 	      acc)
-	    lst)))
+	    (copy-list lst))))
 
 (defun prepend (&rest lists)
   "Prepends lists to a single list"
