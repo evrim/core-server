@@ -299,8 +299,8 @@
 	   (aif (extract-argument-names lambda-list)
 		(filter (lambda (slot)
 			  (with-slotdef (name) slot
-			    (member name it)))
-			 (class+.local-slots self))
+			    (member name it :test #'string=)))
+			(class+.local-slots self))
 		(append (reverse (class+.local-slots self))
 			(reverse (class+.remote-slots self))))))
 
@@ -381,7 +381,8 @@
 		     (list `(:rest ',rest))
 		     (filter (lambda (a)
 			       (and (not (eq :ctor (car a)))
-				    (not (eq :metaclass (car a)))))
+				    (not (eq :metaclass (car a)))
+				    (not (eq :rest (car a)))))
 			     rest)))))
 
 (defclass class+-object ()
