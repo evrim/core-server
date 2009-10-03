@@ -9,6 +9,9 @@
     (symbol (find-class class+ nil))
     (class+ class+)))
 
+(defun class+.find (class+)
+  (find-class+ class+))
+
 (defgeneric class+.name (class+)
   (:documentation "Name of this class+"))
 
