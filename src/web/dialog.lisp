@@ -1,8 +1,8 @@
 (in-package :core-server)
 
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | Dialog
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (defcomponent dialog (<:div)
   ((overlay :host remote :initform nil)
    (message :host remote :initform "This is a message dialog.")
@@ -15,6 +15,12 @@
 
 (defmethod/remote answer-component ((self dialog) arg)  
   (hide self)
+  (call-next-method self arg))
+
+(defmethod/cc call-component ((self dialog))
+  (call-next-method self))
+
+(defmethod/cc answer-componetn ((self dialog) arg)
   (call-next-method self arg))
 
 (defmethod/remote show ((self dialog))
@@ -46,9 +52,9 @@
   (mapcar (lambda (a) (.append-child self a)) (template self))
   (setf (overlay self) (<:div :class "overlay")))
 
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | Prompt Dialog
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (defcomponent prompt-dialog (dialog)
   ())
 
@@ -67,9 +73,9 @@
 					  (answer-component self button.form.prompt.value)))
 				      false))))))
 
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | Yes-No Dialog
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (defcomponent yes-no-dialog (dialog)
   ()
   (:default-initargs :title "yes/no" :message "Do you want to answer Yes?"))
@@ -84,17 +90,19 @@
 		  (<:input :type "button" :class "button"
 			   :value "Yes"
 			   :onclick (event (e)
-				      (with-call/cc (answer-component self t))
+				      (with-call/cc
+					(answer-component self t))
 				      false))
 		  (<:input :type "button" :class "button"
 			   :value "No"
 			   :onclick (event (e)
-				      (with-call/cc (answer-component self nil))
+				      (with-call/cc
+					(answer-component self nil))
 				      false))))))
 
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | Login Dialog
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (defcomponent login-dialog (dialog)
   ()
   (:default-initargs :title "login"))
@@ -103,31 +111,34 @@
   (list
    (<:div :class "left" (<:a :href "http://www.coretal.net/" ""))
    (<:div :class "right"
-	  (<:div :class "title" (title self))
-	  (<:form :action "#"
-		  :onsubmit (event (e)			      
-			      (let ((password this.password.value))
-				(with-call/cc
-				  (setf this.password.value nil)
-				  (answer-component self (cons this.email.value password))))
-			      false)
-		  (with-field
-		      (<core:email-input :class-name "text" :type "text" :name "email"
-					 :validation-span-id "email-validation"
-					 :default-value "Email")
-		    (<:span :class "validation" :id "email-validation" "Enter your email address"))
-		  (with-field
-		      (<core:password-input :class-name "text" :default-value "password"
-					    :type "password" :name "password"
-					    :validation-span-id "password-validation")
-		    (<:span :class "validation" :id "password-validation" "Enter your password"))
-		  (with-field ""
-		    (<:input :type "submit" :class "button"
-			     :value "login or register" :disabled t))))))
+      (<:div :class "title" (title self))
+      (<:form :action "#"
+	      :onsubmit (event (e)			      
+			  (let ((password this.password.value))
+			    (with-call/cc
+			      (setf this.password.value nil)
+			      (answer-component self (cons this.email.value password))))
+			  false)
+	(with-field
+	    (<core:email-input :class-name "text" :type "text" :name "email"
+			       :validation-span-id "email-validation"
+			       :default-value "Email")
+	  (<:span :class "validation"
+		  :id "email-validation" "Enter your email address"))
+	(with-field
+	    (<core:password-input :class-name "text"
+				  :default-value "password"
+				  :type "password" :name "password"
+				  :validation-span-id "password-validation")
+	  (<:span :class "validation"
+		  :id "password-validation" "Enter your password"))
+	(with-field ""
+	  (<:input :type "submit" :class "button"
+		   :value "login or register" :disabled t))))))
 
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | Registration Dialog
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (defcomponent registration-dialog (dialog)
   ()
   (:default-initargs :title "register"))
