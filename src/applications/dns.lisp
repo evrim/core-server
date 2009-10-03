@@ -49,16 +49,15 @@
 	      (add-alias (application.server self) (car alias) (cdr alias))))
 	  (ensure-list (dns-application.alias self))))
 
-(defmethod start ((self abstract-dns-application))
+(defclass+ dns-application (abstract-dns-application)
+  ())
+
+(defmethod start ((self dns-application))
   "Add related records to nameserver configuration like nameserver,
 mail exchanger, aliases"
   (deploy-ns self)
   (deploy-mx self)
   (deploy-alias self))
 
-(defmethod stop ((self abstract-dns-application))
+(defmethod stop ((self dns-application))
   )
-
-
-(defclass+ dns-application (abstract-dns-application)
-  ())
