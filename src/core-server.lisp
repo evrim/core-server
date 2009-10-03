@@ -587,6 +587,7 @@
    #:deftransaction
    #:execute
    #:snapshot
+   #:purge
    #:database.root
    #:database.get
    #:database.serialize

@@ -258,6 +258,14 @@
     (values (database.snapshot-pathname self)
 	    (database.snapshot-pathname self timestamp))))
 
+
+(defmethod purge ((self abstract-database))
+  (let ((state (database.status self)))
+    (if state (stop self))
+    (rm :args '("-r") :path (database.directory self))
+    (if state (start self))
+    self))
+
 (defmethod database.status ((self abstract-database))
   (not (null (database.stream self))))
 
