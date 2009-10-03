@@ -264,7 +264,6 @@
       result))
   
   (defun/cc funcall-cc (action args)
-    (console.debug (list "funcall" action args))
     (let/cc current-continuation
       (let ((hash (+ "__result"
 		     (.get-time (new (*date)))
@@ -278,7 +277,9 @@
 	  (setf (slot-value script 'onload)
 		(event ()
 		  (document.body.remove-child script)
+		  (document.body.remove-child img)
 		  (current-continuation (slot-value window hash))))
+	  (document.body.append-child img)
 	  (document.body.append-child script)
 	  (suspend)))))
 
@@ -394,14 +395,14 @@
   (defun apply (fun scope args kX)
     (fun.apply scope (reverse (cons kX (reverse args)))))
   
-  (defun/cc make-component (name properties)
+  (defun/cc make-component (name properties to-extend)
     (let ((retval (slot-value *registry* name)))
       (if (not (null retval))
-   	  (call/cc retval properties null)
+   	  (call/cc retval properties to-extend)
    	  (progn
    	    (setf (slot-value *registry* name)
    		  (funcall-cc "component.core?" (create :component name)))
-   	    (make-component name properties)))))
+   	    (make-component name properties to-extend)))))
 
   (defun/cc make-web-thread (fun)
     (window.set-timeout (event () (with-call/cc (call/cc fun))) 0)))
