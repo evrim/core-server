@@ -166,7 +166,9 @@
   `(let ,(mapcar (lambda (bind)
 		   `(,(car bind) ,(funcall expand (cdr bind) expand nil env)))
 		 binds)
-     ,(call-next-method expand body expand k env)))
+     ,(funcall expand (make-instance 'implicit-progn-mixin
+				     :body body)
+	       expand k env)))
 
 (defcps-expander/js if-form (consequent then else)
   (with-unique-names (value)
@@ -228,16 +230,16 @@
 		    (mapcar (lambda (arg value)
 			      (cond
 				((typep value 'lambda-function-form)
+				 (mapcar (lambda (ref) (replace-form value ref))
+					 (filter (lambda (ref) (eq arg (slot-value ref 'name)))
+						 (ast-search-type operator 'variable-reference)))
 				 (mapcar (lambda (ref)
 					   (change-class ref 'lambda-application-form)
 					   (setf (slot-value ref 'operator) value
 						 (slot-value value 'parent) ref)
 					   (fix-excessive-recursion ref))
 					 (filter (lambda (ref) (eq arg (slot-value ref 'operator)))
-						 (ast-search-type operator 'application-form)))
-				 (mapcar (lambda (ref) (replace-form value ref))
-					 (filter (lambda (ref) (eq arg (slot-value ref 'name)))
-						 (ast-search-type operator 'variable-reference))))
+						 (ast-search-type operator 'application-form))))
 				((typep value 'constant-form)
 				 (mapcar (lambda (ref) (replace-form value ref))
 					 (filter (lambda (ref) (eq arg (slot-value ref 'name)))
@@ -251,11 +253,11 @@
 						 (ast-search-type operator 'application-form))))
 				(t
 				 (let ((refs (append
-					     (filter (lambda (ref) (eq arg (slot-value ref 'operator)))
-						     (ast-search-type operator 'application-form))
-					     (filter (lambda (ref)
-						       (eq arg (slot-value ref 'name)))
-						     (ast-search-type operator 'variable-reference)))))
+					      (filter (lambda (ref) (eq arg (slot-value ref 'operator)))
+						      (ast-search-type operator 'application-form))
+					      (filter (lambda (ref)
+							(eq arg (slot-value ref 'name)))
+						      (ast-search-type operator 'variable-reference)))))
 				   (cond
 				     ((eq 0 (length refs))
 				      (setf (slot-value operator 'body)
