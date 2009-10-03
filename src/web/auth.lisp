@@ -1,55 +1,91 @@
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | Authentication Components
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (in-package :core-server)
 
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 ;; Login Box
-;; ----------------------------------------------------------------------------
-(defcomponent login (<:div)
-  ())
+;; --------------------------------------------------------------------------
+(defcomponent login-box (<:div)
+  ()
+  (:default-initargs :id "loginBox"))
 
-(defmethod/local auth ((self login) username password)
-  (answer/dispatch 'login username password))
+(defmethod/remote template ((self login-box))
+  (list
+   (<:form :action "#"
+	   :onsubmit (event (e)
+		       (let ((password this.password.value))
+			 (with-call/cc
+			   (setf this.password.value nil)
+			   (answer-component self
+			       (cons this.email.value password)))
+			 false))
+      (with-field
+	  (<core:email-input :class-name "text" :type "text" :name "email"
+			     :validation-span-id "email-validation"
+			     :default-value "Email")
+	(<:span :class "validation"
+		:id "email-validation" "Enter your email address"))
+      (with-field
+	  (<core:password-input :class-name "text"
+				:default-value "password"
+				:type "password" :name "password"
+				:validation-span-id "password-validation")
+	(<:span :class "validation"
+		:id "password-validation" "Enter your password"))
+      (with-field ""
+	(<:input :type "submit" :class "button"
+		 :value "login or register" :disabled t)))))
 
-(defmethod/remote template ((self login))
-  (<:form :action "#"
-	  :id "login-form"
-	  :onsubmit (lambda (e)
-		      (let ((form e.target))
-			(self.auth form.username.value form.password.value)
-			false))
-	  (<:div :class "field-name" "Username:")
-	  (<:div :class "field-value" (<:input :type "text" :name "username" :id "username-field"))
-	  (<:div :class "field-name" "Password:")
-	  (<:div :class "field-value" (<:input :type "password" :name "password" :id "password-field"))
-	  (<:div :class "field-name")
-	  (<:div :class "field-value" (<:input :type "submit" :value "Enter"))))
+(defmethod/remote init ((self login-box))
+  (mapcar (lambda (a) (.append-child self a)) (template self)))
 
-(defmethod/remote init ((self login))
-  (setf this.inner-h-t-m-l "")
-  (self.append-child (template self)))
+;; -------------------------------------------------------------------------
+;; Registration Box
+;; -------------------------------------------------------------------------
+(defcomponent registration-box (<:div)
+  ()
+  (:default-initargs :id "registrationBox"))
+
+(defmethod/remote template ((self registration-box))
+  (list
+   (<:form :action "#"
+	   :onsubmit (event (e)
+		       (with-call/cc
+			 (answer-component self this.email.value))
+		       false)
+      (with-field
+	  (<core:email-input :class-name "text" :type "text" :name "email"
+			     :validation-span-id "email-validation"
+			     :default-value "Email")
+	(<:span :class "validation" :id "email-validation" "Enter your email address"))
+      (with-field ""
+	(<:input :type "submit" :class "button"
+		 :value "login or register" :disabled t)))))
+
+(defmethod/remote init ((self registration-box))
+  (mapcar (lambda (a) (.append-child self a)) (template self)))
 
 ;;(defcomponent-ctor login)
 ;; (defhtmlcomponent-ctor login)
 
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 ;; Authentication Component
-;; ----------------------------------------------------------------------------
-(defcomponent <core:auth ()
-  ((user :host local)))
+;; --------------------------------------------------------------------------
+;; (defcomponent <core:auth ()
+;;   ((user :host local)))
 
-(defmethod/local get-name ((self <core:auth))
-  (slot-value (s-v 'user) 'name))
+;; (defmethod/local get-name ((self <core:auth))
+;;   (slot-value (s-v 'user) 'name))
 
-(defmethod/local is-authenticated ((self <core:auth))
-  (and (s-v 'user) t))
+;; (defmethod/local is-authenticated ((self <core:auth))
+;;   (and (s-v 'user) t))
 
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 ;; Login Dialog
-;; ----------------------------------------------------------------------------
-(defcomponent login-box (<:a)
-  ())
+;; --------------------------------------------------------------------------
+;; (defcomponent login-box (<:a)
+;;   ())
 
 ;; (defcomponent login-component ()
 ;;   ())
