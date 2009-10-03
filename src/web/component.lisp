@@ -179,7 +179,7 @@
 	 ,@rest
 	 (:metaclass ,metaclass))
        (defjsmacro ,name (&rest properties)
-       	 `(make-component ,',(symbol-to-js name) (jobject ,@properties)))
+       	 `(make-component ,',(symbol-to-js name) (jobject ,@properties) nil))
        (defcomponent-accessors ,name ,(mapcar (lambda (slot)
 						(cons (car slot)
 						      (cons (or (getf (cdr slot) :accessor)
@@ -335,10 +335,14 @@
 	retval)))
 
 (defmethod/remote upgrade ((self component) new-version)
+  (console.debug (list "upgrade" self new-version))
+  (doeach (i self)
+    (delete (slot-value self i)))
   (new-version (create) self)
   t)
 
 (defmethod/remote answer-component ((self component) arg)
+  (console.debug (list "answering" arg))
   (let ((retval (slot-value self 'k)))
     (if (typep retval 'function)
 	(apply retval self (array arg))
@@ -364,7 +368,8 @@
 		 (setf (slot-value window hash)
 		       (component null null window.k)))))
 	   (with-js (component) stream
-	     (component null null window.k)))))))
+	     (let ((component component))
+	       (component null null window.k))))))))
 
 (defmethod write-stream ((stream core-stream) (object component))
   (prog1 stream
