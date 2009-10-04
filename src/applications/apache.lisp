@@ -20,7 +20,7 @@
 ;; +-------------------------------------------------------------------------
 ;; | Apache Web Application
 ;; +-------------------------------------------------------------------------
-(defclass+ %apache-web-application (application)
+(defclass+ apache-web-application (application)
   ((vhost-template-pathname
     :accessor apache-web-application.vhost-template-pathname :initarg :vhost-template-pathname
     :initform (merge-pathnames
@@ -41,9 +41,6 @@ this to manage vhost configuration for this application. It generates
 a new vhost configuration from 'vhost-template-pathname' and wkrites it
 to apache vhost configuration directory.  See src/servers/apache.lisp
 for implementation."))
-
-(defclass+ apache-web-application (%apache-web-application web-application)
-  ())
 
 ;; FIXmE: move two accessor to apache web application file.
 (defmethod apache-web-application.config-pathname ((self apache-web-application))
