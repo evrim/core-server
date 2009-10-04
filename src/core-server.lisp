@@ -683,6 +683,10 @@
    #:whois
    ;; Helpers
    #:reduce0
+   #:reduce-cc
+   #:reduce0-cc
+   #:mapcar-cc
+   #:reverse-cc
    #:filter
    #:uniq
    #:prepend
