@@ -51,8 +51,12 @@
 ;; +----------------------------------------------------------------------------
 (defmacro defmethod/local (name ((self class-name) &rest args) &body body)
   (let ((metaclass (class-name (class-of (find-class class-name))))
-	(proxy (intern (format nil "~A/JS" name) (symbol-package name)))
-	(js-method-name (intern (format nil ".~A" name) (symbol-package :name))))
+	(proxy (if (eq (find-package :common-lisp) (symbol-package name))
+		   (intern (format nil "~A/JS" name) (find-package :core-server))
+		   (intern (format nil "~A/JS" name) (symbol-package name))))
+	(js-method-name (if (eq (find-package :common-lisp) (symbol-package name))
+			    (intern (format nil ".~A" name) (find-package :core-server))
+			    (intern (format nil ".~A" name) (symbol-package :name)))))
     `(progn
        (class+.add-method (find-class+ ',class-name) ',name 'local '((,self ,class-name) ,@args))
        (eval-when (:load-toplevel :compile-toplevel :execute)
@@ -74,8 +78,12 @@
 ;; +----------------------------------------------------------------------------
 (defmacro defmethod/remote (name ((self class-name) &rest args) &body body)
   (let ((metaclass (class-name (class-of (find-class class-name))))
-	(proxy (intern (format nil "~A/JS" name) (symbol-package name)))
-	(js-method-name (intern (format nil ".~A" name) (symbol-package name)))
+	(proxy (if (eq (find-package :common-lisp) (symbol-package name))
+		   (intern (format nil "~A/JS" name) (find-package :core-server))
+		   (intern (format nil "~A/JS" name) (symbol-package name))))
+	(js-method-name (if (eq (find-package :common-lisp) (symbol-package name))
+			    (intern (format nil ".~A" name) (find-package :core-server))
+			    (intern (format nil ".~A" name) (symbol-package :name))))
 	(call-next-method-p (any (lambda (application-form)
 				   (eq 'call-next-method (operator application-form)))
 				 (ast-search-type (walk-form `(lambda () ,@body))
@@ -100,18 +108,18 @@
 	      (lambda (stream)
 		(let ((result (action/url ((result "result"))
 				(answer (json-deserialize result)))))		  
-		  (aif (and hash (intern (string-upcase hash)))
-		       (with-js (result it ,@args) stream
-			 (setf it
-			       (with-call/cc
-				 (lambda (self)
-				   (funkall self result
-					    (create :result (,name self ,@args)))))))
-		       (with-js (result ,@args) stream
-			 (with-call/cc
-			   (lambda (self)
-			     (funkall self result
-				      (create :result (,name self ,@args))))))))))))))))
+		  (if hash
+		      (with-js (result hash ,@args) stream
+			(with-call/cc
+			  (apply (slot-value window hash) window
+				 (list (lambda (self)
+					 (funkall self result
+						  (create :result (,name self ,@args))))))))
+		      (with-js (result ,@args) stream
+			(with-call/cc
+			  (lambda (self)
+			    (funkall self result
+				     (create :result (,name self ,@args))))))))))))))))
 
 ;; ----------------------------------------------------------------------------
 ;; defcomponent-accessors Macro: Defines remote and local accessors
@@ -253,7 +261,10 @@
 			   ;; ----------------------------------------------------------------------------
 			   ,@(reduce0 (lambda (acc method)
 					(let ((proxy (intern (format nil "~A/JS" (car method))
-							     (symbol-package (car method)))))
+							     (if (eq (symbol-package (car method))
+								     (find-package :common-lisp))
+								 (find-package :core-server)
+								 (symbol-package (car method))))))
 					  (cons (make-keyword (car method))
 						(cons (funcall proxy class+ nil) acc ))))
 				      (class+.remote-methods class+))
@@ -264,7 +275,10 @@
 			   ,@(reduce0 (lambda (acc method)
 					(destructuring-bind (method . k-url) method
 					  (let ((proxy (intern (format nil "~A/JS" (car method))
-							       (symbol-package (car method)))))
+							       (if (eq (symbol-package (car method))
+								       (find-package :common-lisp))
+								   (find-package :core-server)
+								   (symbol-package (car method))))))
 					    (cons (make-keyword (car method))
 						  (cons (funcall proxy class+ k-url) acc )))))
 				      (mapcar #'cons (class+.local-methods class+) k-urls)))))
@@ -308,12 +322,13 @@
 						(hash (json-deserialize (if (listp hash) (car hash) hash))))
 					    (javascript/suspend
 					     (lambda (stream)
-					       (aif (and hash (intern (string-upcase hash)))
-						    (with-js (result it) stream
-						      (setf it (with-call/cc (lambda (self) result))))
-						    (with-js (result) stream
-						      (with-call/cc
-							(lambda (self) result))))))
+					       (if hash
+						   (with-js (result hash) stream
+						     (apply (slot-value window hash)
+							    window (list result)))
+						   (with-js (result) stream
+						     (with-call/cc
+						       (lambda (self) result))))))
 					    nil)))))))
 		       (class+.local-methods class+) k-urls)
 	   (%component! stream component ,@k-urls))))))
@@ -331,7 +346,7 @@
 (defmethod/remote funkall ((self component) action args)
   (let ((retval (funcall-cc (+ (slot-value self 'url) action "$") args)))    
     (if (typep retval 'function)
-	(retval self) 
+	(call/cc retval self) 
 	retval)))
 
 (defmethod/remote upgrade ((self component) new-version)
@@ -364,12 +379,16 @@
        (if (and (stringp hash) (> (length hash) 0))
 	   (let ((hash (intern hash)))
 	     (with-js (hash component) stream
-	       (let ((component component))
-		 (setf (slot-value window hash)
-		       (component null null window.k)))))
+	       (apply (slot-value window hash) window (list component))
+	       ;; (let ((component component))
+	       ;; 	 (setf (slot-value window hash)
+	       ;; 	       (component null null window.k)))
+	       ))
 	   (with-js (component) stream
-	     (let ((component component))
-	       (component null null window.k))))))))
+	     component
+	     ;; (let ((component component))
+	     ;;   (component null null window.k))
+	     ))))))
 
 (defmethod write-stream ((stream core-stream) (object component))
   (prog1 stream
