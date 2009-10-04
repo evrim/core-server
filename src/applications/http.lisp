@@ -342,10 +342,11 @@
   (let ((handler-symbol (intern (string-upcase url))))
     (assert (stringp url))
     (with-unique-names (context)
+      (setf context (intern (symbol-name context)))
       `(progn
 	 (eval-when (:load-toplevel :compile-toplevel :execute)
 	   (add-handler (find-class ',application-class) ',handler-symbol ,url))
-	 (redefmethod ,handler-symbol ((,application ,application-class) (,context http-context))
+	 (defmethod ,handler-symbol ((,application ,application-class) (,context http-context))
 	   (prog1 (with-context ,context
 		    (with-html-output (http-response.stream (context.response ,context))
 		      (with-query ,queries (context.request ,context)
