@@ -25,6 +25,16 @@
 ;;
 
 (defrender/js core-library! ()
+  (defun atom (a)
+    (cond
+      ((null a) t)
+      ((null a.length) t)
+      ((typep a 'string) t)
+      (t nil)))
+
+  (defun listp (a)
+    (not (atom a)))
+  
   (defun/cc reduce-cc (fun lst initial-value)
     (if (= 0 lst.length)
 	initial-value
@@ -41,9 +51,17 @@
     	  	    (setf result (fun result (aref lst item)))))
     	  result)))
 
+  (defun/cc reduce0-cc (fun lst)
+    (reduce-cc fun lst nil))
+  
   (defun reduce0 (fun lst)
     (reduce fun lst nil))
 
+  (defun/cc reverse-cc (lst)
+    (if (null lst)
+	nil
+	(reduce0-cc (lambda (acc a) (cons a acc)) lst)))
+  
   (defun reverse (lst)
     (if (null lst)
 	nil
@@ -98,6 +116,13 @@
     (if (= 0 seq)
 	(car lst)
 	(nth (1- seq) (cdr lst))))
+
+  (defun/cc mapcar-cc (fun lst)
+    (reverse-cc
+     (reduce-cc (lambda (acc atom)
+		  (cons (call/cc fun atom) acc))
+		lst
+		nil)))
   
   (defun mapcar (fun lst)
     (reverse
@@ -268,17 +293,20 @@
       (let ((hash (+ "__result"
 		     (.get-time (new (*date)))
 		     (.substr (.concat "" (*math.random 10)) 3 5)))
-	    (img (<:img :class "coretal-loading" :src "style/login/loading.gif")))
+	    (img (make-dom-element "IMG"
+				   (jobject :class "coretal-loading" :src "style/login/loading.gif")
+				   nil))
+	    (args (if (null args) (jobject) args)))
 	(setf (slot-value args "__hash") hash)
 	(let ((script (make-dom-element "script"
 					(jobject :src
 						 (+ "" action (serialize-to-uri args)))
 					nil)))
+	  (setf (slot-value window hash) current-continuation)
 	  (setf (slot-value script 'onload)
 		(event ()
 		  (document.body.remove-child script)
-		  (document.body.remove-child img)
-		  (current-continuation (slot-value window hash))))
+		  (document.body.remove-child img)))
 	  (document.body.append-child img)
 	  (document.body.append-child script)
 	  (suspend)))))
@@ -412,4 +440,8 @@
 	(gethash 'make-service +javascript-cps-functions+) t
 	(gethash 'apply +javascript-cps-functions+) t
 	(gethash 'funcall-cc +javascript-cps-functions+) t
-	(gethash 'make-web-thread +javascript-cps-functions+) t))
+	(gethash 'make-web-thread +javascript-cps-functions+) t
+	(gethash 'mapcar-cc +javascript-cps-functions+) t
+	(gethash 'reverse-cc +javascript-cps-functions+) t
+	(gethash 'reduce0-cc +javascript-cps-functions+) t
+	(gethash 'reduce-cc +javascript-cps-functions+) t))
