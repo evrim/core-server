@@ -345,16 +345,31 @@
   (setf (gethash 'call-next-method +javascript-cps-functions+) t)
   (setf (gethash 'method +javascript-cps-functions+) t))
 
+(defmethod/remote init ((self component))  self)
+
 (defmethod/remote funkall ((self component) action args)
   (let ((retval (funcall-cc (+ (slot-value self 'url) action "$") args)))    
     (if (typep retval 'function)
 	(call/cc retval self) 
 	retval)))
 
+(defmethod/remote replace-component ((self component) new-version)
+  (doeach (i self) (delete (slot-value self i)))
+  (new-version (create) self) t)
+
+(defmethod/cc replace-component ((component component) new-version)
+  (javascript/suspend
+   (lambda (stream)
+     (let ((hash (uri.query (http-request.uri (context.request +context+)) "__hash")))
+       (if (and (stringp hash) (> (length hash) 0))
+	   (let ((hash (intern hash)))
+	     (with-js (hash new-version) stream
+	       (apply (slot-value window hash) window
+		      (list (lambda (self) (replace-component self new-version))))))
+	   (with-js (component) stream
+	     component))))))
+
 (defmethod/remote upgrade ((self component) new-version)
-  (console.debug (list "upgrade" self new-version))
-  (doeach (i self)
-    (delete (slot-value self i)))
   (new-version (create) self)
   t)
 

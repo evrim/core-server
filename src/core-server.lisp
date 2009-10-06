@@ -277,6 +277,8 @@
    #:event
    #:method
    #:call-component
+   #:replace-component
+   #:upgrade-component
    #:answer-component
    #:funcall-cc
    
