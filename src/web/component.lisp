@@ -98,9 +98,11 @@
 	 (declare (ignore k))
 	 ,(if call-next-method-p
 	      ``(method ,',args
-		  (let ((call-next-method (lambda (self ,@',args) ,@(cddr (call-next-method)))))		    
+		  (let ((call-next-method (lambda (,',self ,@',args) ,@(cddr (call-next-method)))))		    
 		    ,@',body))
-	      ``(method ,',args ,@',body)))
+	      ``(method ,',args
+		  (let ((,',self self))
+		    ,@',body))))
        (defmethod/cc ,name ((,self ,class-name) ,@args)
 	 (with-query ((hash "__hash")) (context.request +context+)
 	   (let ((hash (json-deserialize (if (listp hash) (car hash) hash))))
