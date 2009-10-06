@@ -300,7 +300,7 @@
 		(filter (lambda (slot)
 			  (with-slotdef (name) slot
 			    (member name it :test #'string=)))
-			(class+.local-slots self))
+			(class+.slots self))
 		(append (reverse (class+.local-slots self))
 			(reverse (class+.remote-slots self))))))
 
