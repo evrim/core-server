@@ -129,6 +129,18 @@
      (reduce (lambda (acc atom)
 	       (cons (fun atom) acc))
 	     lst)))
+
+  (defun mapcar2 (fun lst1 lst2)
+    (mapcar (lambda (index)
+	      (fun (nth index lst1) (nth index lst2)))
+	    (seq (*math.min (slot-value lst1 'length)
+			    (slot-value lst2 'length)))))
+  
+  (defun seq (num)
+    (cond
+      ((>= num 1)
+       (reverse (cons (- num 1) (reverse (seq (- num 1))))))
+      (t (array))))
   
   (defun mapobject (fun obj)
     (let ((result (new (*object))))
