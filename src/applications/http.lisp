@@ -150,10 +150,11 @@
     ;; 					     (class-superclasses self)))))
     ;; 		    :key #'car)))
     (uniq (nreverse
-	   (reduce #'append
-		   (mapcar (rcurry #'slot-value 'handlers)
-			   (filter (lambda (a) (if (typep a 'http-application+) a))
-				   (class-superclasses self)))))
+	   (copy-list
+	    (reduce #'append
+		    (mapcar (rcurry #'slot-value 'handlers)
+			    (filter (lambda (a) (if (typep a 'http-application+) a))
+				    (class-superclasses self))))))
 	  :key #'car))
 
   (defmethod add-handler ((application+ http-application+) method-name url)
