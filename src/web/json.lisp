@@ -137,39 +137,63 @@
 	((null pos) (string-capitalize label))
       (setf (aref label pos) #\Space))))
 
-(defun slot->jobject (object slot)
+(defun slot->jobject (slot)
   (with-slotdef (name client-type label) slot
     (cond 
       ((string= 'password client-type)
        (jobject :name (symbol-to-js name)
-		:value ""
+		;; :value ""
 		:type "password"
 		:label (or label (convert-label-to-javascript name))))
       ((string= 'string client-type)
        (jobject :name (symbol-to-js name)
-		:value (let ((value (slot-value object name)))
-			 (typecase value
-			   (symbol (symbol-to-js value))
-			   (t value)))
+		;; :value (let ((value (slot-value object name)))
+		;; 	 (typecase value
+		;; 	   (symbol (symbol-to-js value))
+		;; 	   (t value)))
 		:type "string"
 		:label (or label (convert-label-to-javascript name))))
       (t
        (jobject :name (symbol-to-js name)
-		:value (slot-value object name)
-		:type (typecase (slot-value object name)
-			(string "string")
-			(boolean "boolean")
-			(t (symbol-to-js client-type)))		
+		;; :value (slot-value object name)
+		:type (symbol-to-js client-type)
+		;; (typecase (slot-value object name)
+		;;   (string "string")
+		;;   (boolean "boolean")
+		;;   (t (symbol-to-js client-type)))
+		
 		:label (or label (convert-label-to-javascript name)))))))
 
-(defun object->jobject (object &optional (template-class nil))
-  (apply #'jobject	 
+(defun class->jobject (class)
+  (apply #'jobject
 	 (reduce0 (lambda (acc slot)
-		    (with-slotdef (name) slot
-		      (cons (make-keyword name)
-			    (cons (slot->jobject object slot)
-				  acc))))
-		  (class+.remote-slots (or template-class (class-of object))))))
+				(cons (make-keyword (slot-definition-name slot))
+				      (cons (slot->jobject slot)
+					    acc)))
+			      (class+.remote-slots class))
+	 ;; (cons :class-name
+	 ;;       (cons (string-downcase (class-name class))
+	 ;; 	     (reduce0 (lambda (acc slot)
+	 ;; 			(cons (make-keyword (slot-definition-name slot))
+	 ;; 			      (cons (slot->jobject slot)
+	 ;; 				    acc)))
+	 ;; 		      (class+.remote-slots class))))
+	 ))
+
+(defun object->jobject (object &optional (template-class nil))
+  (apply #'jobject
+	 (append (list :class
+		       (class->jobject (if template-class
+					   (if (symbolp template-class)
+					       (class+.find template-class)
+					       template-class)
+					   (class-of object))))
+		 (reduce0 (lambda (acc slot)
+			    (with-slotdef (name client-type) slot
+			      (cons (make-keyword name)
+				    (cons (if (not (string= 'password client-type))
+					      (slot-value object name)) acc))))
+			  (class+.remote-slots (or template-class (class-of object)))))))
 
 (defmethod json! ((stream core-stream) (jobject jobject))
   (prog1 stream
