@@ -156,6 +156,7 @@
    
    ;; [Class+]
    #:find-class+
+   #:class+.find
    #:class+
    #:class+.name
    #:class+.direct-superclasses
