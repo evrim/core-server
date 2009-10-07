@@ -581,6 +581,9 @@
 (defmethod rewind-stream ((stream wrapping-stream))
   (rewind-stream (slot-value stream '%stream)))
 
+(defmethod commit-stream ((stream wrapping-stream))
+  (commit-stream (slot-value stream '%stream)))
+
 (defmethod read-stream ((stream wrapping-stream))
   (error "Could not read from ~A" stream))
 
