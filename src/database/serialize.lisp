@@ -18,7 +18,7 @@
 	   #:ratio #:complex #:float #:vector #:cons #:hash-table
 	   #:hash-table-entry #:hash-table-key #:hash-table-value
 	   #:slot #:struct #:class #:instance #:ref #:object-with-id
-	   #:ref #:transaction))
+	   #:transaction #:pathname))
 
 ;; ----------------------------------------------------------------------------
 ;; Lisp->XML
@@ -295,6 +295,22 @@
 				    (funcall k (slot-value object slot) k)))
 			(slots-of object))))
 
+;; +-------------------------------------------------------------------------
+;; | Pathname
+;; +-------------------------------------------------------------------------
+(defxml <db:pathname name type)
+
+(defmethod xml-deserialize ((xml <db:pathname) &optional (k #'xml-deserialize))
+  (with-slots (children name type) xml
+    (make-pathname :directory (mapcar (lambda (c) (funcall k c k)) children)
+		   :name name
+		   :type type)))
+
+(defmethod xml-serialize ((object pathname) &optional (k #'xml-serialize))
+  (<db:pathname :name (pathname-name object)
+		:type (pathname-type object)
+		(mapcar (lambda (directory) (funcall k directory k))
+			(pathname-directory object))))
 
 ;; TODO: serialize hashtable rehash size -evrim.
 

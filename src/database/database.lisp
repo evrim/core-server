@@ -58,30 +58,31 @@
 				  :type "xml")
 		   (database.directory self)))
 
-(defmethod database.deserialize ((self abstract-database) object
-				 &optional (k (curry #'database.deserialize self)))
-  (xml-deserialize object k))
+;; -------------------------------------------------------------------------
+;; Serialization Overrides
+;; -------------------------------------------------------------------------
+(defgeneric database.serialize (db object &optional k)
+  (:method ((self abstract-database) object &optional k)
+    (xml-serialize object (or k (curry #'database.serialize self))))
+  (:method ((self abstract-database) object &optional k)
+    (xml-serialize object (or k (curry #'database.serialize self)))))
 
-(defmethod database.deserialize ((self abstract-database) (object null)
-				 &optional k)
-  (declare (ignore k))
-  nil)
-
-(defxml <db:ref id)
-(defmethod database.deserialize ((self abstract-database) (object <db:ref)
-				 &optional k)
-  (declare (ignore k))
-  (gethash (parse-integer (slot-value object 'id))
-	   (slot-value (database.cache self) 'cache)))
-
-(defmethod database.deserialize ((self abstract-database) (object <db:class)
-				 &optional (k (curry #'database.deserialize self)))
-  (xml-deserialize object k))
+;; -------------------------------------------------------------------------
+;; Deserialization Overrides
+;; -------------------------------------------------------------------------
+(defgeneric database.deserialize (db object &optional k)
+  (:method ((self abstract-database) object &optional k)
+    (xml-deserialize object (or k (curry #'database.deserialize self))))
+  (:method ((self abstract-database) (object <db:class) &optional k)
+    (xml-deserialize object (or k (curry #'database.deserialize self))))
+  (:method ((self abstract-database) (object null) &optional k)
+    (declare (ignore k)) nil))
 
 ;; ----------------------------------------------------------------------------
 ;; Transaction
 ;; ----------------------------------------------------------------------------
 (defxml <db:transaction)
+
 (defmethod database.deserialize ((self abstract-database) (xml <db:transaction)
 				 &optional (k (curry #'database.deserialize self)))
   (with-slots (class children) xml
@@ -101,20 +102,62 @@
 		       (funcall k (slot-value object slot) k)))
 	   (slots-of object))))
 
+;; -------------------------------------------------------------------------
+;; Reference Object for Graph Detection
+;; -------------------------------------------------------------------------
+(defxml <db:ref id)
 
-(defmethod database.serialize ((self abstract-database) object
+(defmethod database.deserialize ((self abstract-database) (object <db:ref) &optional k)
+  (declare (ignore k))
+  (with-slots (id) object
+    (let ((id (read-from-string id)))
+      (with-slots (cache) (database.cache self)
+	(multiple-value-bind (object foundp) (gethash id cache)
+	  (if foundp
+	      object
+	      (prog1 nil
+		(warn "reference to id ~A not found, relations are broken now." id))))))))
+
+;; -------------------------------------------------------------------------
+;; Instance Serialization Override
+;; -------------------------------------------------------------------------
+(defmethod database.deserialize ((self abstract-database) (xml <db:instance) &optional k)
+  (let ((k (or k (curry #'database.deserialize self))))
+    (with-slots (class children id) xml
+      (let ((instance (allocate-instance (find-class (read-from-string class))))
+	    (id (read-from-string id)))
+	(with-slots (cache counter) (database.cache self)
+	  (setf (gethash id cache) instance)
+	  (initialize-instance
+	   (reduce (lambda (instance slot)
+		     (multiple-value-bind (name value) (funcall k slot k)
+		       (setf (slot-value instance name) value)
+		       instance))
+		   children :initial-value instance)))))))
+
+(defmethod database.serialize ((self abstract-database) (object standard-object)
 			       &optional (k (curry #'database.serialize self)))
-  (xml-serialize object k))
+  (with-slots (cache counter) (slot-value self 'database-cache)
+    (multiple-value-bind (id foundp) (gethash object cache)
+      (if foundp
+	  (<db:ref :id (format nil "~D" id))
+	  (let ((counter (incf counter)))
+	    (setf (gethash object cache) counter)
+	    (<db:instance :class (symbol->string (class-name (class-of object)))
+			  :id counter
+			  (mapcar (lambda (slot)
+				    (<db:slot :name (symbol->string slot)
+					      (funcall k (slot-value object slot) k)))
+				  (slots-of object))))))))
 
-(defmethod database.serialize ((self abstract-database) (object standard-class)
-			       &optional (k (curry #'database.serialize self)))
-  (xml-serialize object k))
 
+;; -------------------------------------------------------------------------
+;; HashMap & Structure Serialization Override
+;; -------------------------------------------------------------------------
 (defmacro %defserialization-cache (type xml-type)
   `(progn
      (defmethod database.serialize ((self abstract-database) (object ,type)
 				    &optional (k (curry #'database.serialize self)))
-;;        (declare (ignore k))
        (with-slots (cache counter) (slot-value self 'database-cache)
 	 (multiple-value-bind (id foundp) (gethash object cache)
 	   (if foundp
@@ -135,15 +178,11 @@
 
 (%defserialization-cache hash-table <db:hash-table)
 (%defserialization-cache structure-object <db:struct)
-(%defserialization-cache standard-object <db:instance)
 
 (defmethod log-transaction ((self abstract-database) (transaction transaction))
-  ;; (checkpoint-stream (database.stream self))
+  (checkpoint-stream (database.stream self))
   (write-stream (database.stream self) (database.serialize self transaction))
-  (sb-impl::flush-output-buffer (slot-value (slot-value (database.stream self) '%stream)
-					    '%stream))
-  ;; (commit-stream (database.stream self))
-  )
+  (commit-stream (database.stream self)))
 
 (defmethod execute-on ((self abstract-database) (tx transaction))
   (etypecase (transaction.code tx)
@@ -167,9 +206,7 @@
   "Execute a transaction on a system and log it to the transaction log"
   (flet ((execute ()
 	   ;; (handler-bind ((error #'(lambda (condition)
-;; 				   (format *standard-output* 
-;;                                              ";; Notice: system rollback/restore due to error (~a)~%" 
-;;                                              condition)
+;;	   (format *standard-output* "Notice: system rollback/restore due to error (~a)~%" condition)
 ;; 				   (restore self))))
 ;; 	   (execute-on self transaction))
 	   (execute-on self transaction)
@@ -208,10 +245,11 @@
 
 (defun open-database-stream (pathname)
   (make-xml-stream
-   (make-core-stream
-    (open pathname
-	  :direction :output :if-does-not-exist :create :if-exists :append
-	  :element-type '(unsigned-byte 8)))))
+   (make-indented-stream
+    (make-core-stream
+     (open pathname
+	   :direction :output :if-does-not-exist :create :if-exists :append
+	   :element-type '(unsigned-byte 8))))))
 
 (defmethod snapshot ((self abstract-database))
   (unless (database.status self)
@@ -227,26 +265,14 @@
       (cp :from snapshot :to (database.snapshot-pathname self timestamp)))
 
     (let ((stream (make-xml-stream
-		   (make-core-stream
-		    (open (database.snapshot-pathname self)
-			  :direction :output :if-does-not-exist :create :if-exists :supersede
-			  :element-type '(unsigned-byte 8))))))
+		   (make-indented-stream
+		    (make-core-stream
+		     (open (database.snapshot-pathname self)
+			   :direction :output :if-does-not-exist :create :if-exists :supersede
+			   :element-type '(unsigned-byte 8)))))))
+      
       (setf (database.cache self) (serialization-cache))
-      (unwind-protect (write-stream stream
-			(database.serialize self (database.root self)
-			  (lambda (object k)
-			    (typecase object
-			      (object-with-id
-			       (with-slots (cache counter) (slot-value self 'database-cache)
-				 (multiple-value-bind (id foundp) (gethash object cache)
-				   (if foundp
-				       (<db:ref :id (format nil "~D" id))
-				       (let ((xml (xml-serialize object k)))
-					 (setf (gethash object cache) (incf counter)
-					       (slot-value xml 'id) counter)
-					 xml)))))
-			      (t
-			       (database.serialize self object k))))))
+      (unwind-protect (write-stream stream (database.serialize self (database.root self)))
 	(close-stream stream)))
 
     (when (probe-file tx-log)

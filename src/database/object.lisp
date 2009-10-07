@@ -97,15 +97,18 @@
 ;;   ((id :host both :index t :reader get-id :initform -1 :initarg :id :print t))
 ;;   (:metaclass class+))
 
-(defmethod database.serialize ((self abstract-database) (object object-with-id)
-			       &optional (k (curry #'database.serialize self)))
-  (declare (ignore k))
-  (<db:object-with-id :id (format nil "~D" (slot-value object 'id))))
+;; (defmethod database.serialize ((self abstract-database) (object object-with-id)
+;; 			       &optional (k (curry #'database.serialize self)))
+;;   (declare (ignore k))
+;;   (with-slots (id) object
+;;     (if (> id 0)
+;; 	(<db:object-with-id :id (format nil "~D" (slot-value object 'id)))
+;; 	(call-next-method))))
 
-(defmethod database.deserialize ((self abstract-database) (object <db:object-with-id)
-				 &optional (k (curry #'database.deserialize self)))
-  (declare (ignore k))
-  (find-object-with-slot self 'object-with-id 'id (parse-integer (slot-value object 'id))))
+;; (defmethod database.deserialize ((self abstract-database) (object <db:object-with-id)
+;; 				 &optional (k (curry #'database.deserialize self)))
+;;   (declare (ignore k))
+;;   (find-object-with-slot self 'object-with-id 'id (parse-integer (slot-value object 'id))))
 
 (deftransaction next-id ((server database))
   (let ((current (database.get server :id-counter)))
