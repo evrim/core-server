@@ -79,9 +79,15 @@
 	  slots-and-values :initial-value object))
 
 (deftransaction add-object ((server database) (class standard-class) &rest slots-and-values)
-  (let ((object (allocate-instance class)))
+  (let ((object (apply #'allocate-instance class (class-default-initargs class)))
+	(initargs (reduce0 #'append
+		   (uniq
+		    (filter (lambda (a) (not (member (car a) slots-and-values :key #'car :test #'string=)))
+			    (mapcar (lambda (a) (list (car a) (cadr a)))
+				    (class-default-initargs class)))
+				 :key #'car))))
     (apply #'update-object server object slots-and-values)
-    (initialize-instance object)
+    (apply #'initialize-instance object initargs)
     (add-to-class-index server object)
     object))
 
@@ -96,6 +102,11 @@
 ;; (defclass object-with-id ()
 ;;   ((id :host both :index t :reader get-id :initform -1 :initarg :id :print t))
 ;;   (:metaclass class+))
+
+
+(defmethod core-server::database.serialize ((self database) (class+ class+) &optional k)
+  (declare (ignore k))
+  (<db:class (core-server::symbol->string (class-name class+))))
 
 ;; (defmethod database.serialize ((self abstract-database) (object object-with-id)
 ;; 			       &optional (k (curry #'database.serialize self)))
@@ -225,10 +236,16 @@
 	    (cons (cons 'id (next-id server))
 		  (remove 'id slots-and-values :key #'car))))
   
-  (let ((object (allocate-instance class)))
+  (let ((object (allocate-instance class))
+	(initargs (reduce0 #'append
+		   (uniq
+		    (filter (lambda (a) (not (member (car a) slots-and-values :key #'car :test #'string=)))
+			    (mapcar (lambda (a) (list (car a) (cadr a)))
+				    (class-default-initargs class)))
+				 :key #'car))))
     (add-to-class-index server object)
     (apply #'update-object server object slots-and-values)
-    (initialize-instance object)
+    (apply #'initialize-instance object initargs)
     object))
 
 (deftransaction delete-object ((server database) (object class+-object))

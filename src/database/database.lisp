@@ -224,15 +224,17 @@
 
 (defmethod restore ((self abstract-database))
   (clrhash (database.root self))
-
+  (setf (database.cache self) (serialization-cache))
+    
   ;; Load Snapshot
   (when (probe-file (database.snapshot-pathname self))
     (with-core-stream (s (database.snapshot-pathname self))
       (let ((xml (read-stream (make-xml-stream s))))
 	(aif (and xml (database.deserialize self xml))
-	     (setf (database.root self) it
-		   (database.cache self) (serialization-cache))))))
+	     (setf (database.root self) it)))))
 
+  (setf (database.cache self) (serialization-cache))
+  
   ;; Load Transaction Log
   (when (probe-file (database.transaction-log-pathname self))
     (let ((+transactionalp+ t))
