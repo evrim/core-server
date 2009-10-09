@@ -170,6 +170,14 @@
 				     :body body)
 	       expand k env)))
 
+(defcps-expander/js labels-form (binds body)
+  `(let ,(mapcar (lambda (bind)
+		   `(,(car bind) ,(funcall expand (cdr bind) expand nil env)))
+		 binds)
+     ,(funcall expand (make-instance 'implicit-progn-mixin
+				     :body body)
+	       expand k env)))
+
 (defcps-expander/js if-form (consequent then else)
   (with-unique-names (value)
     (funcall expand consequent expand
