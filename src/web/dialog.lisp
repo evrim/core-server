@@ -10,11 +10,11 @@
   (:default-initargs :class-name "login"))
 
 (defmethod/remote call-component ((self dialog))
-  (show self)
+  (show-component self)
   (call-next-method self))
 
 (defmethod/remote answer-component ((self dialog) arg)  
-  (hide self)
+  (hide-component self)
   (call-next-method self arg))
 
 (defmethod/cc call-component ((self dialog))
@@ -23,14 +23,14 @@
 (defmethod/cc answer-componetn ((self dialog) arg)
   (call-next-method self arg))
 
-(defmethod/remote show ((self dialog))
+(defmethod/remote show-component ((self dialog))
   (load-css "style/login/login.css")
   (add-class document.body "coretal")
   (append document.body self)
   (append document.body (overlay self))
   (setf document.body.style.overflow "hidden"))
 
-(defmethod/remote hide ((self dialog))
+(defmethod/remote hide-component ((self dialog))
   (.remove-child document.body self)
   (.remove-child document.body (overlay self)))
 

@@ -8,6 +8,7 @@
    (hilight-class :initform "hilighted" :host remote)
    (selected-class :initform "selected" :host remote)
    (selected :initform nil :host remote)
+   (primary-field :initform "name" :host remote)
    (slots :initform nil :host remote)))
 
 (defmethod/remote add-selected ((component <core:table) selection)
@@ -42,42 +43,40 @@
     (mapcar (lambda (slot)
 	      (with-slots (name label) slot
 		(<:th :class name (or label name))))
-	    (get-slots component)))))
+	    (or (slot-value (car (instances self)) 'class)
+		(get-slots component))))))
 
-(defmethod/local handle-click ((component <core:table) object)
-  (let ((object (find object (table.instances component) :key #'get-id)))
-    (when object
-      (answer (cons :select object)))))
+(defmethod/remote on-select ((component <core:table) object)
+  (answer-component component object))
 
 (defmethod/remote tbody ((component <core:table))
-  (if (null (get-instances component))
-      (return (<:tbody (<:tr (<:th "Table has no elements.")))))
-  
-  (let ((i 0))
-    (<:tbody
-     (mapcar
-      (lambda (object)
-	(let ((checkbox (<:input :type "checkbox"
-				 :onchange (lambda (e)
-					     (if this.checked
-						 (add-selected component object)
-						 (remove-selected component object))))))
-	  (setf (slot-value object "checkbox") checkbox)
-	  (setf i (+ 1 i))
-	  (<:tr :class (if (eq 0 (mod i 2)) (get-hilight-class component))
-		(<:td :class "checkbox" checkbox)	       
-		(mapcar (lambda (slot)			  
-			  (let ((name (slot-value slot "name"))
-				(value (slot-value (slot-value object name) 'value)))
-			    (<:td :class name
-				  (if (eq name "name")
-				      (<:a :onclick (lambda (e)
-						      (handle-click component object)
-						      false)
-					   value)
-				      value))))
-			(get-slots component)))))
-      (get-instances component)))))
+  (let ((instances (get-instances component)))
+    (if (null instances)
+	(<:tbody (<:tr (<:th "Table has no elements.")))
+	(<:tbody
+	 (mapcar2
+	  (lambda (object index)
+	    (let ((checkbox (<:input :type "checkbox"
+				     :onchange (lambda (e)
+						 (if this.checked
+						     (add-selected component object)
+						     (remove-selected component object))))))
+	      (setf (slot-value object "checkbox") checkbox)
+	      (<:tr :class (if (eq 0 (mod index 2)) (get-hilight-class component))
+		    (<:td :class "checkbox" checkbox)	       
+		    (mapcar (lambda (slot)			  
+			      (let ((name (slot-value slot 'name))
+				    (value (slot-value object (slot-value slot 'name))))
+				(<:td :class name
+				      (if (equal name (primary-field self))
+					  (<:a :onclick (event (e)
+							  (with-call/cc (on-select component object))
+							  false)
+					       value)
+					  value))))
+			    (or (get-slots component)
+				(slot-value object 'class))))))
+	  (get-instances component) (seq (slot-value instances 'length)))))))
 
 (defmethod/remote tfoot ((component <core:table))
   (<:tfoot))
