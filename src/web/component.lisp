@@ -285,6 +285,9 @@
 						  (cons (funcall proxy class+ k-url) acc )))))
 				      (mapcar #'cons (class+.local-methods class+) k-urls)))))
 
+		     (if (slot-value to-extend 'id)
+			 (delete (slot-value prototype 'id)))
+		     
 		     (extend prototype to-extend)
 
 		     (when (typep properties 'object)
