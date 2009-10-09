@@ -48,10 +48,12 @@
   (filter (lambda (e)
 	    (not (member (slot-definition-name e) +standard-class-slots+
 			 :key #'slot-definition-name)))
-	  (filter (lambda (s)
-		    (and (typep s 'class+-slot-definition)
-			 (not (eq 'none (slot-definition-host s)))))
-		  (class-slots class))))
+	  ;; (filter (lambda (s)
+	  ;; 	    (and (typep s 'class+-slot-definition)
+	  ;; 		 (not (eq 'none (slot-definition-host s)))))
+	  ;; 	  (class-slots class))
+	  (class-slots class)
+	  ))
 
 (defmethod class+.add-method ((class class+) name type args)
   (setf (class+.%methods class)
@@ -107,7 +109,7 @@
 (defmethod validate-superclass ((class standard-class) (super class+)) nil)
 
 (defclass class+-slot-definition (standard-slot-definition)
-  ((host :initarg :host :initform 'local :accessor slot-definition-host)
+  ((host :initarg :host :initform 'none :accessor slot-definition-host)
    (client-type :initarg :client-type :initform 'primitive :accessor slot-definition-client-type)
    (relation :initarg :relation :initform nil :accessor slot-definition-relation)
    (index :initarg :index :initform nil :accessor slot-definition-index)
@@ -150,13 +152,13 @@
   (let ((initarg (car (reverse (slot-definition-initargs slot)))))
     (list :name (slot-definition-name slot)
 	  :initarg initarg
-	  :initform (let ((initform (assoc initarg
-					   (reverse
-					    (class-default-initargs
-					     (class-name (sb-pcl::slot-definition-class slot)))))))
-		      (if initform
-			  (cadr initform)		      
-			  (slot-definition-initform slot)))
+	  :initform ;; (slot-definition-initform slot)
+	  (let ((initform (assoc initarg
+				 (class-default-initargs
+				  (class-name (sb-pcl::slot-definition-class slot))))))
+	    (if initform
+		(cadr initform)		      
+		(slot-definition-initform slot)))
 	  :supplied-p (slot-definition-supplied-p slot)
 	  :host (slot-definition-host slot)
 	  :client-type (slot-definition-client-type slot)
@@ -384,6 +386,14 @@
 				    (not (eq :metaclass (car a)))
 				    (not (eq :rest (car a)))))
 			     rest)))))
+
+;; (defmethod shared-initialize :after ((self class+) slot-names &rest initargs)
+;;   (declare (ignore initargs))
+;;   (let ((initargs (assoc :default-initargs (cadar (slot-value self 'rest)))))
+;;     (mapcar (lambda (arg)
+;; 	      (setf (slot-definition-initform (class+.find-slot self (car arg))) (cdr arg)))
+;; 	    (plist-to-alist (cdr initargs))))
+;;   self)
 
 (defclass class+-object ()
   ()
