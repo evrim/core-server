@@ -879,7 +879,8 @@
    #:yes-no-dialog
    #:registration-dialog
    #:prompt-dialog
-   
+
+   #:init
    #:init/js
    
    ;; [DOm Components]
