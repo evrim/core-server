@@ -358,7 +358,8 @@
 
 (defmethod/remote replace-component ((self component) new-version)
   (doeach (i self) (delete (slot-value self i)))
-  (new-version (create) self) t)
+  (new-version (create) self)
+  t)
 
 (defmethod/cc replace-component ((component component) new-version)
   (javascript/suspend
@@ -368,7 +369,7 @@
 	   (let ((hash (intern hash)))
 	     (with-js (hash new-version) stream
 	       (apply (slot-value window hash) window
-		      (list (lambda (self) (replace-component self new-version))))))
+		      (list (with-call/cc (lambda (self) (replace-component self new-version)))))))
 	   (with-js (component) stream
 	     component))))))
 
@@ -377,7 +378,7 @@
   t)
 
 (defmethod/remote answer-component ((self component) arg)
-  (console.debug (list "answering" arg))
+  ;; (console.debug (list "answering" arg))
   (let ((retval (slot-value self 'k)))
     (if (typep retval 'function)
 	(apply retval self (array arg))
