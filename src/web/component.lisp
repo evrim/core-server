@@ -433,8 +433,8 @@
 ;; +----------------------------------------------------------------------------
 ;; | Component Dispatcher
 ;; +----------------------------------------------------------------------------
-(defhandler "component.*" ((application http-application) (component "component")
-			   (hash "__hash"))
+(defhandler "^component\.core" ((application http-application) (component "component")
+				(hash "__hash"))
   (javascript/suspend
    (lambda (stream)
      (when (and (stringp hash) (> (length hash) 0))
@@ -452,8 +452,8 @@
 ;; +----------------------------------------------------------------------------
 ;; | Service Dispatcher
 ;; +----------------------------------------------------------------------------
-(defhandler "service.*" ((application http-application) (component "service")
-			 (hash "__hash"))
+(defhandler "^service\.core$" ((application http-application) (component "service")
+			       (hash "__hash"))
   (javascript/suspend
    (lambda (stream)
      (when (and (stringp hash) (> (length hash) 0))

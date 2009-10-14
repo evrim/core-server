@@ -12,20 +12,18 @@
    (slots :initform nil :host remote)))
 
 (defmethod/remote add-selected ((component <core:table) selection)
-  (add-class (slot-value
-	      (slot-value (slot-value selection 'checkbox) 'parent-node)
-	      'parent-node)
-	     (get-selected-class component))
-  (set-selected component (cons selection
-				(remove-selected component selection))))
+  (let ((node (slot-value (slot-value (slot-value selection 'checkbox) 'parent-node) 'parent-node)))
+    (add-class node (selected-class self))
+    (remove-class node (hilight-class self))
+    (set-selected component (cons selection
+				  (remove-selected component selection)))))
+
 
 (defmethod/remote remove-selected ((component <core:table) selection)
-  (remove-class (slot-value
-		 (slot-value (slot-value selection 'checkbox) 'parent-node)
-		 'parent-node)
-		(get-selected-class component))
-  (set-selected component (filter (lambda (a) (not (eq a selection)))
-				  (get-selected component))))
+  (let ((node (slot-value (slot-value (slot-value selection 'checkbox) 'parent-node) 'parent-node)))
+    (remove-class node (selected-class component))
+    (set-selected component (filter (lambda (a) (not (eq a selection)))
+				    (get-selected component)))))
 
 (defmethod/remote thead ((component <core:table))
   (<:thead
@@ -43,8 +41,8 @@
     (mapcar (lambda (slot)
 	      (with-slots (name label) slot
 		(<:th :class name (or label name))))
-	    (or (slot-value (car (instances self)) 'class)
-		(get-slots component))))))
+	    (or (get-slots component)
+		(slot-value (car (instances self)) 'class))))))
 
 (defmethod/remote on-select ((component <core:table) object)
   (answer-component component object))
@@ -72,8 +70,8 @@
 					  (<:a :onclick (event (e)
 							  (with-call/cc (on-select component object))
 							  false)
-					       value)
-					  value))))
+					       (or value (slot-value slot 'initform)))
+					  (or value (slot-value slot 'initform))))))
 			    (or (get-slots component)
 				(slot-value object 'class))))))
 	  (get-instances component) (seq (slot-value instances 'length)))))))
@@ -83,6 +81,7 @@
 
 (defmethod/remote init ((component <core:table))
   (add-class component "grid")
+  (setf (slot-value component 'inner-h-t-m-l) nil)
   (mapcar (lambda (i) (.append-child component i))
 	  (list (thead component) (tbody component) (tfoot component))))
 

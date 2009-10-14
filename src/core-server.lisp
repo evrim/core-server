@@ -840,6 +840,7 @@
    #:make-service
    #:make-component
    #:deftable
+   #:instances
    #:defwebcrud
 
    ;; [ Web Component Stacks ]
@@ -900,6 +901,9 @@
    #:hedee-component
    #:make-hedee
    #:hilighter
+   #:button-set
+   #:buttons
+   
    ;; [Helpers]
    #:make-keyword
    #:make-unique-random-string

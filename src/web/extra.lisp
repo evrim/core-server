@@ -20,6 +20,30 @@
 	(setf item.parent-node.class-name this.passive-class
 	      item.class-name this.passive-class))))
 
+;; -------------------------------------------------------------------------
+;; Button Set
+;; -------------------------------------------------------------------------
+(defcomponent button-set (<:div)
+  ((buttons :host remote :initform nil)))
+
+(defmethod/remote template ((self button-set))
+  (<:form
+   (<:ul :class "inline"
+	 (mapcar (lambda (button)
+		   (<:li (<:input :type "button"
+				  :onclick (lambda (e)
+					     (make-web-thread
+					      (lambda () (answer-component self button)))
+					     false)
+				  :value (.to-string button))))
+		 (buttons self)))))
+
+(defmethod/remote init ((self button-set))
+  (add-class self "button-set")
+  (setf (slot-value self 'inner-h-t-m-l) nil)
+  (.append-child self (template self))
+  self)
+
 ;; --------------------------------------------------------------------------
 ;; Toaster Component
 ;; --------------------------------------------------------------------------

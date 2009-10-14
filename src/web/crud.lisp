@@ -49,7 +49,14 @@
 			     (console.debug "edit")
 			     (show edit)
 			     (hide view)
-			     (call/cc (slot-value edit 'focus)))
+			     (console.debug edit)
+			     (make-web-thread
+			      (lambda ()
+				(try
+				 (let ((focus (slot-value edit 'focus)))
+				   (console.debug focus)
+				   (focus))
+				 (:catch (e) (console.debug e))))))
 			   (save-it ()
 			     (console.debug "save")
 			     (set-value component name (slot-value edit 'value))
@@ -70,9 +77,10 @@
 			  (slot-value edit 'onkeydown)
 			  (event (e)
 			    (with-call/cc
-			      (let ((keycode (if window.event
-						 window.event.key-code
-						 e.key-code)))
+			      (let ((keycode e.key-code;; (if window.event
+					     ;; 	 window.event.key-code
+					     ;; 	 e.key-code)
+				      ))
 				(cond
 				  ((eq 27 keycode) ;; escape
 				   (call/cc cancel-it))
@@ -82,7 +90,7 @@
 				   (console.debug (+ "key:" keycode))))))
 			    ;; 					  (setf edit.onblur (lambda (e) false))
 			    true))
-		    (with-field (+ label ":") (list view edit))))))
+		    (with-field label (list view edit))))))
 	    (get-class component)))
    (<:p (<:b "Note: ") "Click on the field to modify, press enter to save or escape to cancel.")))
 

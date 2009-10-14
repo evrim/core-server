@@ -135,6 +135,12 @@
 	      (fun (nth index lst1) (nth index lst2)))
 	    (seq (*math.min (slot-value lst1 'length)
 			    (slot-value lst2 'length)))))
+
+  (defun any (fun lst)
+    (dolist (i lst)
+      (if (fun i)
+	  (return i)))
+    (return nil))
   
   (defun seq (num)
     (cond
@@ -301,12 +307,13 @@
       result))
   
   (defun/cc funcall-cc (action args)
+    ;; (console.debug (list "(" action " " args ")"))
     (let/cc current-continuation
       (let ((hash (+ "__result"
 		     (.get-time (new (*date)))
 		     (.substr (.concat "" (*math.random 10)) 3 5)))
 	    (img (make-dom-element "IMG"
-				   (jobject :class "coretal-loading" :src "style/login/loading.gif")
+				   (jobject :class-name "coretal-loading" :src "style/login/loading.gif")
 				   nil))
 	    (args (if (null args) (jobject) args)))
 	(setf (slot-value args "__hash") hash)
@@ -314,9 +321,13 @@
 					(jobject :src
 						 (+ "" action (serialize-to-uri args)))
 					nil)))
-	  (setf (slot-value window hash) current-continuation)
+	  (setf (slot-value window hash)
+		(lambda (val)
+		  ;; (console.debug (list "retval(" action args ")=>" val))
+		  (current-continuation val)))
 	  (setf (slot-value script 'onload)
-		(event ()
+		(event (e)
+		  ;; (console.debug (list "ret>(" action " " args ")"))
 		  (document.body.remove-child script)
 		  (document.body.remove-child img)))
 	  (document.body.append-child img)
