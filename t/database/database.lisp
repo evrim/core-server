@@ -7,13 +7,13 @@
 (sb-alien:define-alien-routine "tmpnam" sb-alien:c-string
   (dest (* sb-alien:c-string)))
 
-(defparameter *dbpath*
-  (pathname (format nil "~A/" (tmpnam nil))))
+(defparameter *dbpath* #P"/tmp/core-server-test/")
 
 (defvar *db* nil)
 
 (defun test-db ()
   (setf *dB* (make-instance 'database :database-directory *dbpath*))
+  (purge *db*)
   (start *db*)
   *db*)
 
@@ -71,7 +71,7 @@
 
 
 (defclass+ user (object-with-id)
-  ((name :initform "name" :print t)
+  ((name :initform "name" :print t :host local)
    (blogs :type blog* :relation user)
    (domains :type domain* :relation users)))
 
@@ -130,11 +130,11 @@
 (defcrud user)
 (deftest database-8
     (let* ((db (test-db))
-	   (u1 (user-add db :name "foo")))
-      (user-update db u1 :name "bar")
+	   (u1 (user.add db :name "foo")))
+      (user.update db u1 :name "bar")
       
       (prog1 (user.name u1)
-	(user-delete db u1)))
+	(user.delete db u1)))
   "bar")
 
 ;; ;; http://www.cs.vu.nl/boilerplate/

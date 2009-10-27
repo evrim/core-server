@@ -65,6 +65,8 @@
   (:method ((self abstract-database) object &optional k)
     (xml-serialize object (or k (curry #'database.serialize self))))
   (:method ((self abstract-database) object &optional k)
+    (xml-serialize object (or k (curry #'database.serialize self))))
+  (:method ((self abstract-database) (object standard-class) &optional k)
     (xml-serialize object (or k (curry #'database.serialize self)))))
 
 ;; -------------------------------------------------------------------------
@@ -127,7 +129,8 @@
       (let ((instance (allocate-instance (find-class (read-from-string class))))
 	    (id (read-from-string id)))
 	(with-slots (cache counter) (database.cache self)
-	  (setf (gethash id cache) instance)
+	  (setf (gethash id cache) instance
+		counter (max counter id))
 	  (initialize-instance
 	   (reduce (lambda (instance slot)
 		     (multiple-value-bind (name value) (funcall k slot k)
@@ -233,7 +236,9 @@
 	(aif (and xml (database.deserialize self xml))
 	     (setf (database.root self) it)))))
 
-  (setf (database.cache self) (serialization-cache))
+  (let ((cache (slot-value (database.cache self) 'cache)))
+    (maphash (lambda (k v) (setf (gethash v cache) k))
+	     cache))
   
   ;; Load Transaction Log
   (when (probe-file (database.transaction-log-pathname self))
@@ -281,8 +286,9 @@
       (cp :from tx-log :to (database.transaction-log-pathname self timestamp))
       (rm :path tx-log))
     
-    (setf (database.stream self) (open-database-stream tx-log)
-	  (database.cache self) (serialization-cache))
+    (restore self)
+    (setf (database.stream self) (open-database-stream tx-log))
+
     (values (database.snapshot-pathname self)
 	    (database.snapshot-pathname self timestamp))))
 
@@ -290,7 +296,8 @@
 (defmethod purge ((self abstract-database))
   (let ((state (database.status self)))
     (if state (stop self))
-    (rm :args '("-r") :path (database.directory self))
+    (if (probe-file (database.directory self))
+	(rm :args '("-r") :path (database.directory self)))
     (if state (start self))
     self))
 
@@ -299,6 +306,9 @@
 
 (defclass+ database (abstract-database)
   ())
+
+(defprint-object (self database)
+  (format t "Status: ~A" (status self)))
 
 (defclass+ database-server (database)
   ())

@@ -49,13 +49,13 @@
   (mapcar (lambda (class)
 	    (setf (class-index server class)
 		  (cons object (class-index server class))))
-	  (class+.superclasses (class-of object))))
+	  (cons (class-of object) (class+.superclasses (class-of object)))))
 
 (defmethod delete-from-class-index ((server database) object)
   (mapcar (lambda (class)
 	    (setf (class-index server class)
 		  (delete object (class-index server class))))
-	  (class+.superclasses (class-of object))))
+	  (cons (class-of object) (class+.superclasses (class-of object)))))
 
 (defmethod find-all-objects ((server database) (class standard-class))
   (class-index server class))
@@ -73,26 +73,45 @@
 
 (deftransaction update-object ((server database) (object standard-object) &rest slots-and-values)
   (reduce (lambda (object slot-val)
-	    (when (slot-exists-p object (car slot-val))
-	      (setf (slot-value object (car slot-val)) (cdr slot-val)))
-	    object)
-	  slots-and-values :initial-value object))
+  	    (when (slot-exists-p object (car slot-val))
+  	      (setf (slot-value object (car slot-val)) (cdr slot-val)))
+  	    object)
+  	  slots-and-values :initial-value object))
 
 (deftransaction add-object ((server database) (class standard-class) &rest slots-and-values)
   (let ((object (apply #'allocate-instance class (class-default-initargs class)))
 	(initargs (reduce0 #'append
 		   (uniq
-		    (filter (lambda (a) (not (member (car a) slots-and-values :key #'car :test #'string=)))
+		    (filter (lambda (a)
+			      (not (member (car a) slots-and-values :key #'car :test #'string=)))
 			    (mapcar (lambda (a) (list (car a) (cadr a)))
 				    (class-default-initargs class)))
-				 :key #'car))))
+		    :key #'car))))
     (apply #'update-object server object slots-and-values)
     (apply #'initialize-instance object initargs)
     (add-to-class-index server object)
+
+;; -------------------------------------------------------------------------
+;; Add this object to cache so that it wont be serialized again. -evrim.
+;; -------------------------------------------------------------------------
+    (with-slots (cache counter) (slot-value server 'database-cache)
+      (let ((counter (incf counter)))
+	(setf (gethash counter cache) object)
+	(setf (gethash object cache) counter)))
     object))
 
+
+;; -------------------------------------------------------------------------
+;; We cannot remove an object from cache since logging will take place
+;; after this execution. -evrim.
+;; -------------------------------------------------------------------------
 (deftransaction delete-object ((server database) (object standard-object))
-  (prog1 object (delete-from-class-index server object)))
+  (prog1 object (delete-from-class-index server object)
+    ;; (with-slots (cache) (slot-value server 'database-cache)
+    ;;   (let ((counter (gethash object cache)))
+    ;; 	(remhash counter cache)
+    ;; 	(remhash object cache)))
+    ))
 
 ;; +----------------------------------------------------------------------------
 ;; | Extended Object Database (class+, slot indexes, relations)
@@ -103,10 +122,9 @@
 ;;   ((id :host both :index t :reader get-id :initform -1 :initarg :id :print t))
 ;;   (:metaclass class+))
 
-
-(defmethod core-server::database.serialize ((self database) (class+ class+) &optional k)
-  (declare (ignore k))
-  (<db:class (core-server::symbol->string (class-name class+))))
+;; (defmethod core-server::database.serialize ((self database) (class+ class+) &optional k)
+;;   (declare (ignore k))
+;;   (<db:class (core-server::symbol->string (class-name class+))))
 
 ;; (defmethod database.serialize ((self abstract-database) (object object-with-id)
 ;; 			       &optional (k (curry #'database.serialize self)))
@@ -119,7 +137,10 @@
 ;; (defmethod database.deserialize ((self abstract-database) (object <db:object-with-id)
 ;; 				 &optional (k (curry #'database.deserialize self)))
 ;;   (declare (ignore k))
-;;   (find-object-with-slot self 'object-with-id 'id (parse-integer (slot-value object 'id))))
+;;   (let ((obj (find-object-with-slot self 'object-with-id 'id (parse-integer (slot-value object 'id)))))
+;;     (if obj
+;; 	obj
+;; 	(prog1 nil (warn "Object With Id ~A not found. Relations are broken." (slot-value object 'id))))))
 
 (deftransaction next-id ((server database))
   (let ((current (database.get server :id-counter)))
@@ -243,16 +264,26 @@
 			    (mapcar (lambda (a) (list (car a) (cadr a)))
 				    (class-default-initargs class)))
 				 :key #'car))))
-    (add-to-class-index server object)
+
     (apply #'update-object server object slots-and-values)
     (apply #'initialize-instance object initargs)
+    (add-to-class-index server object)
+    
+;; -------------------------------------------------------------------------
+;; Add this object to cache so that it wont be serialized again. -evrim.
+;; -------------------------------------------------------------------------
+    (with-slots (cache counter) (slot-value server 'database-cache)
+      (let ((counter (incf counter)))
+	(setf (gethash counter cache) object)
+	(setf (gethash object cache) counter)))
+
     object))
 
 (deftransaction delete-object ((server database) (object class+-object))
   ;; Remove From Class Index
   (delete-from-class-index server object)
 
-  ;; Remove Indexes
+  ;; Remove From Slot Indexes
   (reduce (lambda (object slot)
 	    (delete-from-slot-index server object (slot-definition-name slot))
 	    object)
