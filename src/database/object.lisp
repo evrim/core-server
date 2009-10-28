@@ -49,13 +49,15 @@
   (mapcar (lambda (class)
 	    (setf (class-index server class)
 		  (cons object (class-index server class))))
-	  (cons (class-of object) (class+.superclasses (class-of object)))))
+	  (cons (class-of object)
+		(remove (class-of object) (class+.superclasses (class-of object))))))
 
 (defmethod delete-from-class-index ((server database) object)
   (mapcar (lambda (class)
 	    (setf (class-index server class)
 		  (delete object (class-index server class))))
-	  (cons (class-of object) (class+.superclasses (class-of object)))))
+	  (cons (class-of object)
+		(remove (class-of object) (class+.superclasses (class-of object))))))
 
 (defmethod find-all-objects ((server database) (class standard-class))
   (class-index server class))
@@ -116,31 +118,21 @@
 ;; +----------------------------------------------------------------------------
 ;; | Extended Object Database (class+, slot indexes, relations)
 ;; +----------------------------------------------------------------------------
-
-;; Object with id is defined in src/class+/class+.lisp
-;; (defclass object-with-id ()
-;;   ((id :host both :index t :reader get-id :initform -1 :initarg :id :print t))
-;;   (:metaclass class+))
-
-;; (defmethod core-server::database.serialize ((self database) (class+ class+) &optional k)
-;;   (declare (ignore k))
-;;   (<db:class (core-server::symbol->string (class-name class+))))
-
-;; (defmethod database.serialize ((self abstract-database) (object object-with-id)
-;; 			       &optional (k (curry #'database.serialize self)))
-;;   (declare (ignore k))
-;;   (with-slots (id) object
-;;     (if (> id 0)
-;; 	(<db:object-with-id :id (format nil "~D" (slot-value object 'id)))
-;; 	(call-next-method))))
-
-;; (defmethod database.deserialize ((self abstract-database) (object <db:object-with-id)
-;; 				 &optional (k (curry #'database.deserialize self)))
-;;   (declare (ignore k))
-;;   (let ((obj (find-object-with-slot self 'object-with-id 'id (parse-integer (slot-value object 'id)))))
-;;     (if obj
-;; 	obj
-;; 	(prog1 nil (warn "Object With Id ~A not found. Relations are broken." (slot-value object 'id))))))
+(defmethod database.serialize ((self abstract-database) (object class+-instance)
+			       &optional (k (curry #'database.serialize self)))
+  (with-slots (cache counter) (slot-value self 'database-cache)
+    (multiple-value-bind (id foundp) (gethash object cache)
+      (if foundp
+	  (<db:ref :id (format nil "~D" id))
+	  (let ((counter (incf counter)))
+	    (setf (gethash object cache) counter)
+	    (<db:instance :class (symbol->string (class-name (class-of object)))
+			  :id counter
+			  (mapcar (lambda (slot)
+				    (let ((slot (slot-definition-name slot)))
+				      (<db:slot :name (symbol->string slot)
+						(funcall k (slot-value object slot) k))))
+				  (class+.local-slots (class-of object)))))))))
 
 (deftransaction next-id ((server database))
   (let ((current (database.get server :id-counter)))
@@ -193,7 +185,7 @@
 (defmethod find-object-with-id ((server database) id)
   (find-object-with-slot server (find-class+ 'object-with-id) 'id id))
 
-(deftransaction update-object ((server database) (object class+-object) &rest slots-and-values)
+(deftransaction update-object ((server database) (object class+-instance) &rest slots-and-values)
   (reduce
    (lambda (object slot-val)	    
      (destructuring-bind (name . new-value) slot-val
@@ -279,7 +271,7 @@
 
     object))
 
-(deftransaction delete-object ((server database) (object class+-object))
+(deftransaction delete-object ((server database) (object class+-instance))
   ;; Remove From Class Index
   (delete-from-class-index server object)
 

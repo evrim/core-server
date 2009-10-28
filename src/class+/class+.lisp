@@ -395,7 +395,7 @@
 ;; 	    (plist-to-alist (cdr initargs))))
 ;;   self)
 
-(defclass class+-object ()
+(defclass class+-instance ()
   ()
   (:metaclass class+))
 
@@ -408,8 +408,9 @@
      (eval-when (:compile-toplevel :load-toplevel :execute)
        (deftype ,(intern (format nil "~A*" name)) ()
 	 '(or null cons))
-       (defclass ,name (,@(remove 'class+-object (remove 'object-with-id supers))
-			  object-with-id class+-object)
+       (defclass ,name (;; ,@(remove 'class+-object (remove 'object-with-id supers))
+			;;   object-with-id class+-object
+			  ,@(remove 'class+-object supers) class+-instance)
 	 ,(mapcar (lambda (slot) (%fix-slot-definition name slot)) slots)
 	 ,@(%filter-rest rest))       
        (fmakunbound ',name)
