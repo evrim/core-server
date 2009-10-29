@@ -364,33 +364,9 @@
   (new-version (jobject) self)
   (suspend))
 
-;; (defmethod/cc replace-component ((component component) new-version)
-;;   (javascript/suspend
-;;    (lambda (stream)
-;;      (let ((hash (uri.query (http-request.uri (context.request +context+)) "__hash")))
-;;        (if (and (stringp hash) (> (length hash) 0))
-;; 	   (let ((hash (intern hash)))
-;; 	     (with-js (hash new-version) stream
-;; 	       (apply (slot-value window hash) window
-;; 		      (list (with-call/cc (lambda (self) (replace-component self new-version)))))))
-;; 	   (with-js (component) stream
-;; 	     component))))))
-
 (defmethod/remote upgrade-component ((self component) new-version)
   (new-version (create) self)
   (suspend))
-
-;; (defmethod/cc upgrade-component ((component component) new-version)
-;;   (javascript/suspend
-;;    (lambda (stream)
-;;      (let ((hash (uri.query (http-request.uri (context.request +context+)) "__hash")))
-;;        (if (and (stringp hash) (> (length hash) 0))
-;; 	   (let ((hash (intern hash)))
-;; 	     (with-js (hash new-version) stream
-;; 	       (apply (slot-value window hash) window
-;; 		      (list (with-call/cc (lambda (self) (replace-component self new-version)))))))
-;; 	   (with-js (component) stream
-;; 	     component))))))
 
 (defmethod/cc continue-component ((self component) &optional value)
   (prog1 nil
@@ -520,3 +496,27 @@
 ;; ;;                                                         (create)
 ;; ;;                                                         (document.get-element-by-id ,(slot-value object 'id)))))))))))))
 ;;   )
+
+;; (defmethod/cc replace-component ((component component) new-version)
+;;   (javascript/suspend
+;;    (lambda (stream)
+;;      (let ((hash (uri.query (http-request.uri (context.request +context+)) "__hash")))
+;;        (if (and (stringp hash) (> (length hash) 0))
+;; 	   (let ((hash (intern hash)))
+;; 	     (with-js (hash new-version) stream
+;; 	       (apply (slot-value window hash) window
+;; 		      (list (with-call/cc (lambda (self) (replace-component self new-version)))))))
+;; 	   (with-js (component) stream
+;; 	     component))))))
+
+;; (defmethod/cc upgrade-component ((component component) new-version)
+;;   (javascript/suspend
+;;    (lambda (stream)
+;;      (let ((hash (uri.query (http-request.uri (context.request +context+)) "__hash")))
+;;        (if (and (stringp hash) (> (length hash) 0))
+;; 	   (let ((hash (intern hash)))
+;; 	     (with-js (hash new-version) stream
+;; 	       (apply (slot-value window hash) window
+;; 		      (list (with-call/cc (lambda (self) (replace-component self new-version)))))))
+;; 	   (with-js (component) stream
+;; 	     component))))))
