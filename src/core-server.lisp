@@ -281,6 +281,7 @@
    #:replace-component
    #:upgrade-component
    #:answer-component
+   #:continue-component
    #:funcall-cc
    
    ;; [RFC 2109]

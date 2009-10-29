@@ -213,7 +213,7 @@
 		  (cdr keys) (cdr values))
 	  (string! stream " }"))))))
 
-(defmethod json! ((stream core-stream) (object object-with-id))
+(defmethod json! ((stream core-stream) (object class+-instance))
   (json! stream (object->jobject object)))
 
 (defrule json? (value)

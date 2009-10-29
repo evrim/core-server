@@ -21,8 +21,10 @@
   (:documentation "Base component class"))
 
 (defmethod shared-initialize :after ((self component) slots &key &allow-other-keys)
-  (if (or (not (slot-boundp self 'id)) (null (slot-value self 'id)))
-      (setf (slot-value self 'id) (random-string 5)))
+  (if (member 'id (mapcar #'slot-definition-name (class+.slots (class-of self))))
+      (if (or (not (slot-boundp self 'id)) (null (slot-value self 'id)))
+	  (setf (slot-value self 'id) (random-string 5))))
+  
   (if (typep self 'xml)
       (setf (xml.children self)
 	    (cons 
@@ -140,14 +142,15 @@
 			    (accessor (cadr slot))
 			    (host (cddr slot)))			
 			(append acc
-			 `((,(method-type host) ,(reader name) ((self ,class-name))
-			     (slot-value self ',name))
-			   (,(method-type host) ,(writer name) ((self ,class-name) value)
-			     (setf (slot-value self ',name) value))
-			   (defmacro/js ,accessor (self)
-			     `(,',(reader name) ,self))
-			   (defsetf/js ,accessor (value self)
-			     `(,',(writer name) ,self ,value)))))))
+				`((,(method-type host) ,(reader name) ((self ,class-name))
+				    (slot-value self ',name))
+				  (,(method-type host) ,(writer name) ((self ,class-name) value)
+				    (setf (slot-value self ',name) value))
+				  (eval-when (:compile-toplevel :execute :load-toplevel)
+				    (defmacro/js ,accessor (self)
+				      `(,',(reader name) ,self))
+				    (defsetf/js ,accessor (value self)
+				      `(,',(writer name) ,self ,value))))))))
 		  (filter (lambda (slot)
 			    (or (eq (cddr slot) 'remote)
 				(eq (cddr slot) 'both)
@@ -348,7 +351,7 @@
   (setf (gethash 'call-next-method +javascript-cps-functions+) t)
   (setf (gethash 'method +javascript-cps-functions+) t))
 
-(defmethod/remote init ((self component))  self)
+(defmethod/remote init ((self component)) self)
 
 (defmethod/remote funkall ((self component) action args)
   (let ((retval (funcall-cc (+ (slot-value self 'url) action "$") args)))    
@@ -358,24 +361,50 @@
 
 (defmethod/remote replace-component ((self component) new-version)
   (doeach (i self) (delete (slot-value self i)))
-  (new-version (create) self)
-  t)
+  (new-version (jobject) self)
+  (suspend))
 
-(defmethod/cc replace-component ((component component) new-version)
-  (javascript/suspend
-   (lambda (stream)
-     (let ((hash (uri.query (http-request.uri (context.request +context+)) "__hash")))
-       (if (and (stringp hash) (> (length hash) 0))
-	   (let ((hash (intern hash)))
-	     (with-js (hash new-version) stream
-	       (apply (slot-value window hash) window
-		      (list (with-call/cc (lambda (self) (replace-component self new-version)))))))
-	   (with-js (component) stream
-	     component))))))
+;; (defmethod/cc replace-component ((component component) new-version)
+;;   (javascript/suspend
+;;    (lambda (stream)
+;;      (let ((hash (uri.query (http-request.uri (context.request +context+)) "__hash")))
+;;        (if (and (stringp hash) (> (length hash) 0))
+;; 	   (let ((hash (intern hash)))
+;; 	     (with-js (hash new-version) stream
+;; 	       (apply (slot-value window hash) window
+;; 		      (list (with-call/cc (lambda (self) (replace-component self new-version)))))))
+;; 	   (with-js (component) stream
+;; 	     component))))))
 
-(defmethod/remote upgrade ((self component) new-version)
+(defmethod/remote upgrade-component ((self component) new-version)
   (new-version (create) self)
-  t)
+  (suspend))
+
+;; (defmethod/cc upgrade-component ((component component) new-version)
+;;   (javascript/suspend
+;;    (lambda (stream)
+;;      (let ((hash (uri.query (http-request.uri (context.request +context+)) "__hash")))
+;;        (if (and (stringp hash) (> (length hash) 0))
+;; 	   (let ((hash (intern hash)))
+;; 	     (with-js (hash new-version) stream
+;; 	       (apply (slot-value window hash) window
+;; 		      (list (with-call/cc (lambda (self) (replace-component self new-version)))))))
+;; 	   (with-js (component) stream
+;; 	     component))))))
+
+(defmethod/cc continue-component ((self component) &optional value)
+  (prog1 nil
+    (http-response.set-content-type (context.response +context+) '("text" "javascript" ("charset" "UTF-8")))
+    (let ((stream (if (application.debug (context.application +context+))
+		      (make-indented-stream (http-response.stream (context.response +context+)))
+		      (make-compressed-stream (http-response.stream (context.response +context+)))))
+	  (hash (uri.query (http-request.uri (context.request +context+)) "__hash")))
+      (if (and (stringp hash) (> (length hash) 0))
+	  (let ((hash (intern hash)))
+	    (with-js (hash value) stream
+	      (apply (slot-value window hash) window (list value))))
+	  (with-js (value) stream
+	    value)))))
 
 (defmethod/remote answer-component ((self component) arg)
   ;; (console.debug (list "answering" arg))
