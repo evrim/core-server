@@ -245,21 +245,25 @@
 	       ;; Constructor
 	       ;; ----------------------------------------------------------------------------
 	       (with-call/cc
-		 (lambda (properties to-extend)
-		   (let ((to-extend (or to-extend
-					,(if dom-class
-					     `(document.create-element ,(symbol-to-js (or (xml+.tag dom-class)
-											  (class-name dom-class))))
-					     `(new (*object))) ))
-			 (prototype
-			  (create
-			   ;; ----------------------------------------------------------------------------
-			   ;; Remote Slot Initial Values
-			   ;; ----------------------------------------------------------------------------
+		 (lambda (to-extend)
+		   (let ((to-extend ,(if dom-class
+					 `(or (and to-extend (not (null to-extend.node-name)) to-extend)
+					      (extend to-extend
+						      (document.create-element
+						       ,(symbol-to-js (or (xml+.tag dom-class)
+									  (class-name dom-class))))))
+					 `(or to-extend (new (*object)))))
+			 (slots
+			  (jobject
+			  ;; ----------------------------------------------------------------------------
+			  ;; Remote Slot Initial Values
+			  ;; ----------------------------------------------------------------------------
 			   ,@(reduce0 (lambda (acc slot)
 					(cons (make-keyword (car slot))
 					      (cons (cadr slot) acc)))
-				      remote-slots)
+				      remote-slots)))
+			 (methods
+			  (jobject
 	       
 			   ;; ----------------------------------------------------------------------------
 			   ;; Remote Methods
@@ -288,14 +292,20 @@
 						  (cons (funcall proxy class+ k-url) acc )))))
 				      (mapcar #'cons (class+.local-methods class+) k-urls)))))
 
-		     (if (slot-value to-extend 'id)
-			 (delete (slot-value prototype 'id)))
+		     		     
+		     ;; -------------------------------------------------------------------------
+                     ;; Inject Methods to Instance
+                     ;; -------------------------------------------------------------------------
+		     (extend methods to-extend)
+
+		     ;; -------------------------------------------------------------------------
+                     ;; Inject Default Values Differentially
+                     ;; -------------------------------------------------------------------------
+		     (mapobject (lambda (k v)
+				  (if (null (slot-value to-extend k))
+				      (setf (slot-value to-extend k) v)))
+				slots)
 		     
-		     (extend prototype to-extend)
-
-		     (when (typep properties 'object)
-		       (extend properties to-extend))
-
 		     (when (typep (slot-value to-extend 'init) 'function)
 		       (init to-extend))
 		 
@@ -361,11 +371,11 @@
 
 (defmethod/remote replace-component ((self component) new-version)
   (doeach (i self) (delete (slot-value self i)))
-  (new-version (jobject) self)
+  (call/cc new-version self)
   (suspend))
 
 (defmethod/remote upgrade-component ((self component) new-version)
-  (new-version (create) self)
+  (call/cc new-version self)
   (suspend))
 
 (defmethod/cc continue-component ((self component) &optional value)
@@ -409,7 +419,8 @@
 	       ;; (let ((component component))
 	       ;; 	 (setf (slot-value window hash)
 	       ;; 	       (component null null window.k)))
-	       ))
+	       )
+	     (unintern hash))
 	   (with-js (component) stream
 	     component
 	     ;; (let ((component component))
