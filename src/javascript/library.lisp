@@ -210,7 +210,9 @@
 	(setf (slot-value target event) lambda)))
 
   (defun prepend (to item)
-    (to.first-child.insert-before item))
+    (if to.first-child
+	(to.first-child.insert-before item)
+	(to.append-child item)))
 
   (defun append (to item)
     (to.append-child item))
@@ -307,31 +309,30 @@
       result))
   
   (defun/cc funcall-cc (action args)
-    ;; (console.debug (list "(" action " " args ")"))
+    (console.debug (list "funcall/cc" action args))
     (let/cc current-continuation
       (let ((hash (+ "__result"
 		     (.get-time (new (*date)))
 		     (.substr (.concat "" (*math.random 10)) 3 5)))
 	    (img (make-dom-element "IMG"
-				   (jobject :class-name "coretal-loading" :src "style/login/loading.gif")
+				   (jobject :class-name "coretal-loading"
+					    :src "http://www.coretal.net/style/login/loading.gif")
 				   nil))
 	    (args (if (null args) (jobject) args)))
 	(setf (slot-value args "__hash") hash)
 	(let ((script (make-dom-element "script"
 					(jobject :src
 						 (+ "" action (serialize-to-uri args)))
-					nil)))
-	  (setf (slot-value window hash)
-		(lambda (val)
-		  ;; (console.debug (list "retval(" action args ")=>" val))
-		  (current-continuation val)))
+					nil))
+	      (head (aref (.get-elements-by-tag-name document "HEAD") 0))
+	      (body (slot-value document 'body)))
+	  (setf (slot-value window hash) (lambda (val) (current-continuation val)))
 	  (setf (slot-value script 'onload)
 		(event (e)
-		  ;; (console.debug (list "ret>(" action " " args ")"))
-		  (document.body.remove-child script)
-		  (document.body.remove-child img)))
-	  (document.body.append-child img)
-	  (document.body.append-child script)
+		  (.remove-child head script)
+		  (if body (.remove-child body img))))
+	  (if body (append body img))
+	  (append head script)
 	  (suspend)))))
 
   (defun make-dom-element (tag properties children)
@@ -358,7 +359,11 @@
        (dolist (a arr)
 	 (let ((key (.substr a 0 (.search a ":")))
 	       (value (.substr a (+ 1 (.search a ":")))))
-	   ;; 	  (debug (+ "key:" key " val:" value))
+	   ;; (console.debug (list "key:" key " val:" value))
+
+	   (if (and (null name) (eq "" key) value)
+	       (return value))
+	   
 	   (if (= (key.to-lower-case) (name.to-lower-case))
 	       (return (eval (+ "(" (unescape value) ")"))))))
        (:catch (e)))
@@ -433,30 +438,19 @@
 	       source)
     target)  
 
-  (defvar *registry* (create))  
-  ;; (defun/cc make-service (name properties)
-  ;;   (let ((service (slot-value *registry* name)))
-  ;;     (if (not (null service))
-  ;; 	  service
-  ;; 	  (let ((retval (funcall-cc "service.core?" (create :service name))))
-  ;; 	    (let ((instance (call/cc retval properties null)))
-  ;; 	      (setf (slot-value *registry* name) instance)
-  ;; 	      instance)))))
-
   (defun apply (fun scope args kX)
     (fun.apply scope (reverse (cons kX (reverse args)))))
   
-  (defun/cc make-component (name properties to-extend)
-    (let ((retval (slot-value *registry* name)))
-      (if (not (null retval))
-   	  (call/cc retval properties to-extend)
-   	  (progn
-   	    (setf (slot-value *registry* name)
-   		  (funcall-cc "component.core?" (create :component name)))
-   	    (make-component name properties to-extend)))))
+  (defun make-web-thread (fun)
+    (window.set-timeout (lambda () (fun (lambda (a) a))) 0))
 
-  (defun/cc make-web-thread (fun)
-    (window.set-timeout (event () (with-call/cc (call/cc fun))) 0)))
+  (defun random-string (len)
+    (let ((len (or len 8))
+	  (alphabet "0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz"))
+      (flet ((one ()
+	       (aref alphabet (*math.floor (* (*math.random) (slot-value alphabet 'length))))))
+	(reduce (lambda (acc atom) (+ acc (one)))
+		(seq (- len 1)) (one))))))
 
 (eval-when (:compile-toplevel :execute :load-toplevel)
   (setf (gethash 'make-component +javascript-cps-functions+) t
@@ -468,3 +462,23 @@
 	(gethash 'reverse-cc +javascript-cps-functions+) t
 	(gethash 'reduce0-cc +javascript-cps-functions+) t
 	(gethash 'reduce-cc +javascript-cps-functions+) t))
+
+
+  ;; (defvar *registry* (create))  
+  ;; (defun/cc make-service (name properties)
+  ;;   (let ((service (slot-value *registry* name)))
+  ;;     (if (not (null service))
+  ;; 	  service
+  ;; 	  (let ((retval (funcall-cc "service.core?" (create :service name))))
+  ;; 	    (let ((instance (call/cc retval properties null)))
+  ;; 	      (setf (slot-value *registry* name) instance)
+  ;; 	      instance)))))
+
+;; (defun/cc make-component (name properties to-extend)
+  ;;   (let ((retval (slot-value *registry* name)))
+  ;;     (if (not (null retval))
+  ;;  	  (call/cc retval properties to-extend)
+  ;;  	  (progn
+  ;;  	    (setf (slot-value *registry* name)
+  ;;  		  (funcall-cc "component.core?" (create :component name)))
+  ;;  	    (make-component name properties to-extend)))))
