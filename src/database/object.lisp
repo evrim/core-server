@@ -192,7 +192,7 @@
        (let ((old-value (and (class+.slot-boundp object name) (slot-value object name))))		
 	 (let ((slot (class+.find-slot (class-of object) name)))
 	   (when slot
-	     (with-slotdef (index relation) slot
+	     (with-slotdef (name index relation) slot
 
 	       (cond
 		 ((and relation old-value)

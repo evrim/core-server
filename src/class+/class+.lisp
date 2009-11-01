@@ -288,36 +288,9 @@
 			 (cons (list symbol initform supplied-p) acc)
 			 (cons (list symbol initform) acc)))
 		   acc)))
-	   (uniq (append (reverse (class+.local-slots self))
-			 (reverse (class+.remote-slots self)))
-		 :test #'equal :key #'slot-definition-name)))
-  
-(defmethod class+.ctor-arguments ((self class+) &optional lambda-list)      
-  (reduce0 (lambda (acc slot)
-	     (with-slotdef (initarg) slot
-	       (if initarg
-		   (cons initarg (cons (intern (symbol-name initarg)) acc))
-		   acc)))
-	   (aif (extract-argument-names lambda-list)
-		(filter (lambda (slot)
-			  (with-slotdef (name) slot
-			    (member name it :test #'string=)))
-			(class+.slots self))
-		(append (reverse (class+.local-slots self))
-			(reverse (class+.remote-slots self))))))
-
-(defmethod class+.all-ctor-lambda-list ((self class+) &optional (include-supplied-p nil))
-  (reduce0 (lambda (acc slot)
-	     (with-slotdef (initarg initform supplied-p) slot
-	       (if initarg
-		   (let ((symbol (intern (symbol-name initarg))))
-		     (if include-supplied-p
-			 (cons (list symbol initform supplied-p) acc)
-			 (cons (list symbol initform) acc)))
-		   acc)))
 	   (reverse (class+.slots self))))
 
-(defmethod class+.all-ctor-arguments ((self class+) &optional lambda-list)      
+(defmethod class+.ctor-arguments ((self class+) &optional lambda-list)      
   (reduce0 (lambda (acc slot)
 	     (with-slotdef (initarg) slot
 	       (if initarg
@@ -442,3 +415,55 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>
 
+
+
+;; (defmethod class+.ctor-lambda-list ((self class+) &optional (include-supplied-p nil))
+;;   (reduce0 (lambda (acc slot)
+;; 	     (with-slotdef (initarg initform supplied-p) slot
+;; 	       (if initarg
+;; 		   (let ((symbol (intern (symbol-name initarg))))
+;; 		     (if include-supplied-p
+;; 			 (cons (list symbol initform supplied-p) acc)
+;; 			 (cons (list symbol initform) acc)))
+;; 		   acc)))
+;; 	   (uniq (append (reverse (class+.local-slots self))
+;; 			 (reverse (class+.remote-slots self)))
+;; 		 :test #'equal :key #'slot-definition-name)))
+  
+;; (defmethod class+.ctor-arguments ((self class+) &optional lambda-list)      
+;;   (reduce0 (lambda (acc slot)
+;; 	     (with-slotdef (initarg) slot
+;; 	       (if initarg
+;; 		   (cons initarg (cons (intern (symbol-name initarg)) acc))
+;; 		   acc)))
+;; 	   (aif (extract-argument-names lambda-list)
+;; 		(filter (lambda (slot)
+;; 			  (with-slotdef (name) slot
+;; 			    (member name it :test #'string=)))
+;; 			(class+.slots self))
+;; 		(append (reverse (class+.local-slots self))
+;; 			(reverse (class+.remote-slots self))))))
+
+;; (defmethod class+.all-ctor-lambda-list ((self class+) &optional (include-supplied-p nil))
+;;   (reduce0 (lambda (acc slot)
+;; 	     (with-slotdef (initarg initform supplied-p) slot
+;; 	       (if initarg
+;; 		   (let ((symbol (intern (symbol-name initarg))))
+;; 		     (if include-supplied-p
+;; 			 (cons (list symbol initform supplied-p) acc)
+;; 			 (cons (list symbol initform) acc)))
+;; 		   acc)))
+;; 	   (reverse (class+.slots self))))
+
+;; (defmethod class+.all-ctor-arguments ((self class+) &optional lambda-list)      
+;;   (reduce0 (lambda (acc slot)
+;; 	     (with-slotdef (initarg) slot
+;; 	       (if initarg
+;; 		   (cons initarg (cons (intern (symbol-name initarg)) acc))
+;; 		   acc)))
+;; 	   (aif (extract-argument-names lambda-list)
+;; 		(filter (lambda (slot)
+;; 			  (with-slotdef (name) slot
+;; 			    (member name it)))
+;; 			 (class+.slots self))
+;; 		(reverse (class+.slots self)))))

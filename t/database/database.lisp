@@ -137,6 +137,32 @@
 	(user.delete db u1)))
   "bar")
 
+
+;; More Crud Tests
+(defun db-value (a) (format nil "test-~A" a))
+(defclass+ test-class1 ()
+  ((transient :host none :initarg :transient :initform (db-value "transient"))
+   (persistent :host local :initarg :persistent :initform (db-value "persistent"))))
+
+(defcrud test-class1)
+(deftest database-9
+    (let* ((db (test-db))
+	   (t1 (test-class1.add db)))
+      (snapshot db)
+      (slot-value (car (test-class1.list db)) 'transient))
+  "test-transient")
+
+(deftest database-10
+    (let* ((db (test-db))
+	   (t1 (test-class1.add db)))
+      (snapshot db)
+      (stop db)
+      (start db)
+      (let ((obj (car (test-class1.list db))))
+	(describe obj)
+	(slot-value obj 'persistent)))
+  "test-persistent")
+
 ;; ;; http://www.cs.vu.nl/boilerplate/
 ;; ;;
 ;; ;; Scrap Your Boilerplate: A Practical Design Pattern for Generic Programming

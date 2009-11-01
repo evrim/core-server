@@ -118,7 +118,7 @@
 	  (if foundp
 	      object
 	      (prog1 nil
-		(warn "reference to id ~A not found, relations are broken now." id))))))))
+		(warn "reference to id ~A is not found, relations are broken now." id))))))))
 
 ;; -------------------------------------------------------------------------
 ;; Instance Serialization Override
