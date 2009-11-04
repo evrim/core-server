@@ -90,7 +90,7 @@ epilogue() {
     echo "|                                                               |"
     echo "| Base directory: $1"
     echo "| Init script: $1/bin/core-server"
-    echo "| Init lisp script: $1/bin/start.lisp"
+    echo "| Init lisp script: $1/etc/start.lisp"
     echo "|                                                               |"
     echo "| To start:  $1/bin/core-server start"
     echo "| To attach: $1/bin/core-server attach"
