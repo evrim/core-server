@@ -224,6 +224,9 @@
       (char! %stream #\Newline)
       (call-next-method stream element))))
 
+(defmethod write-stream ((stream html-stream) (element string))
+  (write-stream (slot-value stream '%stream) element))
+
 (defmethod write-stream ((stream html-stream) (element empty-html-element))
   (prog1 stream
     (let ((%stream (slot-value stream '%stream)))

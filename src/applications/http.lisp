@@ -349,8 +349,9 @@
 	   (add-handler (find-class ',application-class) ',handler-symbol ,url))
 	 (defmethod ,handler-symbol ((,application ,application-class) (,context http-context))
 	   (prog1 (with-context ,context
-		    (with-query ,queries (context.request ,context)
-		      (send/suspend ,@body)))
+		    (with-html-output (http-response.stream (context.response +context+))
+		      (with-query ,queries (context.request ,context)
+			,@body)))
 	     (setf (context.request ,context) nil
 		   (context.response ,context) nil)))))))
 
