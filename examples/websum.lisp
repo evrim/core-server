@@ -22,10 +22,11 @@
 
 ;; Display the result
 (defun/cc web-display (num)
-  (page
-   (<:div
-    (<:p (format nil "The result is ~D" num))
-    (<:a :href "sumtwo" "Restart"))))
+  (send/suspend
+    (page
+     (<:div
+      (<:p (format nil "The result is ~D" num))
+      (<:a :href "sumtwo" "Restart")))))
 
 ;; Read an integer
 (defun/cc web-read (msg)
