@@ -21,7 +21,7 @@
 ;;
 
 ;; we define classes and their relations here
-(defclass+ author ()
+(defclass+ author (object-with-id)
   ((email :initform (error "Please specify :email"))
    (password :initform (error "Please specify :password"))
    (name :initform nil)
@@ -29,14 +29,14 @@
    (blogs :type blog* :relation author)
    (comments :type comment* :relation author)))
 
-(defclass+ comment ()
+(defclass+ comment (object-with-id)
   ((author :type author :relation comments :initform (error "please specify :author"))
    (text :initform (error "please specify :text"))
    (timestamp :initform (get-universal-time))
    (blog :type blog :relation comments))
   (:ctor (author text)))
 
-(defclass+ blog ()
+(defclass+ blog (object-with-id)
   ((author :type author :relation blogs)
    (title :type string :initform (error "Please specify :title"))
    (text :type string :initform (error "please specify :text"))
@@ -59,10 +59,9 @@
 
 (defvar *app* (make-instance 'blog-app))
 
-(defun init-blog-test-data ()
-  (with-transaction (*app*)
-    (author.add *app* :name "evrim" :password "mypass" :email "evrim@core.gen.tr")
-    (author.add *app* :name "aycan" :password "mypass" :email "aycan@core.gen.tr")))
+(deftransaction init-database ((self database))
+  (author.add self :name "evrim" :password "mypass" :email "evrim@core.gen.tr")
+  (author.add self :name "aycan" :password "mypass" :email "aycan@core.gen.tr"))
 
 (defun userp ()
   (query-session 'user))
@@ -99,7 +98,7 @@
 	   (<:div :class "field text"
 		  (<:div :class "description" "Text:")
 		  (<:script :type "text/javascript"
-			    :src "http://wiki.moxiecode.com/examples/tinymce/jscripts/tiny_mce/tiny_mce.js")
+			    :src "http://tinymce.moxiecode.com/js/tinymce/jscripts/tiny_mce/tiny_mce.js")
 		  (<:script :type "text/javascript" *tinymce-config*)
 		  (<:div :class "value" (<:textarea :name "text" (blog.text blog))))
 	   (<:div :class "submit" (<:input :type "submit" :value "Save")))))
@@ -139,7 +138,7 @@
 			(<:p (<:input :type "text" :name "email")))
 		 (<:div (<:p "Password:")
 			(<:p (<:input :type "text" :name "password")))
-		 (<:div (<:input :type "submit" :value "Gir")))))
+		 (<:div (<:input :type "submit" :value "Login")))))
 
 (defun/cc blog/main (&rest body)
   (<:html
@@ -172,7 +171,7 @@
 		      (blog/main (mapcar #'blog/short (blog.list app))))
 		     ((eq 'view (car result))
 		      (blog/main (blog/view (cdr result))))
-		     ((eq 'auth/login (car result))		      
+		     ((eq 'auth/login (car result))
 		      (let ((user (apply #'author.find (cons app (cdr result)))))
 			(when user
 			  (if (equal (author.password user) (getf (cdr result) :password))
