@@ -184,7 +184,7 @@
                                    (:file "logger")
                                    ;; (:file "ticket")
                                    (:file "socket")
-                                   (:file "http" :depends-on ("logger"))))
+                                   (:file "http" :depends-on ("socket" "logger"))))
                          (:module :services
                                   :components
                                   ((:file "whois")

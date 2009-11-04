@@ -349,9 +349,8 @@
 	   (add-handler (find-class ',application-class) ',handler-symbol ,url))
 	 (defmethod ,handler-symbol ((,application ,application-class) (,context http-context))
 	   (prog1 (with-context ,context
-		    (with-html-output (http-response.stream (context.response ,context))
-		      (with-query ,queries (context.request ,context)
-			,@body)))
+		    (with-query ,queries (context.request ,context)
+		      (send/suspend ,@body)))
 	     (setf (context.request ,context) nil
 		   (context.response ,context) nil)))))))
 
@@ -435,7 +434,7 @@ executing 'body'"
 			      ,@body))))))	   
 	   (prog1 ,name	   
 	     (setf (gethash ,name (session.continuations (context.session ,context))) kont)
-	     (setf (context.returns ,context)
+	     (setf (context.returns +context+)
 		     (cons (cons ,name (lambda ,(mapcar #'car parameters)
 					 (funcall kont
 						  (make-instance 'http-request
@@ -558,7 +557,12 @@ executing 'body'"
 provide query parameters inside URL as key=value"
   (assert (stringp url))
   (dispatch application
-	    (make-instance 'http-request :uri (uri? (make-core-stream url)))
+	    (make-instance 'http-request
+			   :uri (uri?
+				 (make-core-stream
+				  (let ((paths (uri.paths (uri? (make-core-stream url)))))
+				    (or (caadr paths) (caar paths)))))
+			   :stream *core-output*)
 	    (make-response *core-output*)))
 
 (defhandler "library.core" ((self http-application))

@@ -265,10 +265,8 @@
     `(let ((,%stream (if (typep ,stream 'xml-stream)
 			 ,stream
 			 (make-html-stream ,stream))))
-       ,@(mapcar #'(lambda (elem)
-		     `(let ((,element ,elem))
-			(write-stream ,%stream ,element)))
-		 body))))
+       (let ((,element (progn ,@body)))
+	 (write-stream ,%stream ,element)))))
 
 ;;-----------------------------------------------------------------------------
 ;; Html to Javascript Transformation

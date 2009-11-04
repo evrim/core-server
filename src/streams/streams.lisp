@@ -108,9 +108,7 @@
       (call-next-method)))
 
 (defmethod commit-stream :around ((self core-stream))
-  (if (not (transactionalp self))
-      -1
-      (call-next-method)))
+  (call-next-method))
 
 (defmethod close-stream :around ((self core-stream))
   (when (transactionalp self)
@@ -133,6 +131,9 @@
     nil)
 
   (defmethod checkpoint-stream ((self core-standard-output))
+    nil)
+  
+  (defmethod commit-stream ((self core-standard-output))
     nil)
 
   (defmethod write-stream ((self core-standard-output) (vector vector))
