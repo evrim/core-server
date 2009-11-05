@@ -24,25 +24,23 @@
   (with-transaction (*db*)
     (loop
        for i from 1 to count
-       do (pilot-add *db* :name (format nil "Pilot_~D" i) :firstname "Herkules" :points i :licenseid i))))
+       do (pilot.add *db* :name (format nil "Pilot_~D" i) :firstname "Herkules" :points i :licenseid i))))
 
 (defun pp-read (count)
   (loop
      for i from 1 to count
-     do (find-pilot *db* :points i)))
+     do (pilot.find *db* :points i)))
 
 (defun pp-delete (count)
-  (let ((sid (core-server::get-id (find-pilot *db* :points 1))))
-   (with-transaction (*db*)
-     (loop
-	for i from sid to count
-	do (pilot-delete *db* i)))))
+  (with-transaction (*db*)
+    (mapcar (arnesi::curry #'pilot.delete *db*) (take count (pilot.list *db*)))))
 
-(defun test ()
+(defun test (&optional (count 3000))
   (start *db*)
-  (format t "* Creating 30000 objects~%")
-  (time (pp-write 30000))
-  (format t "* Reading 30000 objects~%")
-  (time (pp-read 30000))
-  (format t "* Deleting 30000 objects~%")
-  (time (pp-delete 30000)))
+  (format t "* Creating ~A objects~%" count)
+  (time (pp-write count))
+  (format t "* Reading ~A objects~%" count)
+  (time (pp-read count))
+  (format t "* Deleting ~A objects~%" count)
+  (time (pp-delete count))
+  nil)
