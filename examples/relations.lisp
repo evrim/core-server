@@ -1,5 +1,7 @@
 ;; A simple example demonstrating relations between objects
-
+;;
+;;
+;; (progn (test *db*) (list *db*))
 (defpackage :relations
   (:use :cl :core-server :arnesi))
 
@@ -22,9 +24,9 @@
 		 :auto-start t))
 
 (defun make-new-category (db label objs)
-  (let ((cat (category-add db :label label)))
+  (let ((cat (category.add db :label label)))
     (mapcar #'(lambda (c)
-                (cobject-add db :name c :category cat))
+                (cobject.add db :name c :category cat))
             objs)))
 
 (defun test (db)
@@ -35,6 +37,6 @@
 
 (defun list-db (db)
   (start db)
-  (mapcar #'describe (cobject-list db))
+  (mapcar #'describe (cobject.list db))
   (stop db))
 
