@@ -83,7 +83,7 @@
 	      (<:input :type "submit" :value "Begin"))))))
 
 ;; Register a handler
-(defurl *quiz-app* "begin" ()
+(defhandler "begin" ((self http-application))
   (begin-quiz)
   (let ((wrongs (reverse (ask-questions *questions*))))
     (send-result wrongs)))
