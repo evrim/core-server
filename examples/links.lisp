@@ -25,7 +25,7 @@
   (let ((val (gethash url *links-db*)))
     (setf (gethash url *links-db*) (cons (car val) (+ rate (cdr val))))))
 
-(defun all-links (db)
+(defun/cc all-links (db)
   (mapcar #'display-link (hash-table-keys db) (hash-table-values db)))
 
 ;; Render a page
@@ -57,7 +57,7 @@
 	   (<:input :type "submit" :value "Post"))))
 
 ;; Register a handler
-(defurl *links-app* "main" ()
+(defhandler "main" ((self http-application))
   (labels ((ctl (ans)
 	     (case (car ans)
 	       (:new
