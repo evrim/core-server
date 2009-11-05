@@ -30,20 +30,22 @@
   ())
 
 (defmethod/local send-message ((self guestbook-component) sender subject text)
-  (message-add *app* :sender sender :subject subject :text text))
+  (message.add (component.application self) :sender sender :subject subject :text text))
 
 (defmethod/local get-messages ((self guestbook-component))
-  (message-list *app*))
+  (message.list (component.application self)))
 
 (defmethod/remote add-form ((self guestbook-component))
   (<:div :id "add-form"
     (<:h1 "Sign the guestbook:")
     (<:form :id "send-message"
             :action "#"
-            :onsubmit (lambda (ev)
-                        (send-message self this.sender.value this.subject.value this.text.value)
-                        (replace (document.get-element-by-id "messages") (show-guestbook self))
-                        (return false))
+            :onsubmit (event (ev)
+			(with-call/cc
+			  (send-message self this.sender.value this.subject.value this.text.value)
+			  (replace-node (document.get-element-by-id "show-guestbook")
+					(show-guestbook self)))
+                        false)
             (<:p "Sender: " (<:input :type "text" :name "sender"))
             (<:p "Subject: " (<:input :type "text" :name "subject"))
             (<:p "Message: " (<:textarea :rows "10" :cols "40" :name "text"))
@@ -56,17 +58,17 @@
              (mapcar (lambda (m)
                        (list
                         (<:tr (<:td "From: ")
-                              (<:td (unescape (slot-value (slot-value m 'sender) 'value))))
+                              (<:td (unescape (slot-value m 'sender))))
                         (<:tr (<:td "Subject: ")
-                              (<:td (unescape (slot-value (slot-value m 'subject) 'value))))
-                        (<:tr (<:td :colspan "2" (unescape (slot-value (slot-value m 'text) 'value))))
+                              (<:td (unescape (slot-value m 'subject))))
+                        (<:tr (<:td :colspan "2" (unescape (slot-value m 'text))))
                         (<:tr (<:td :colspan "2" (<:hr)))))
-                     (self.get-messages)))))
+                     (get-messages self)))))
 
 (defmethod/remote init ((self guestbook-component))
   (mapcar (lambda (e) (self.append-child e))
-          (list (self.add-form)
-                (self.show-guestbook))))
+          (list (add-form self)
+                (show-guestbook self))))
 
 ;; http://localhost:8080/guestbook/guestbook
 (defhandler "jsguestbook.html" ((self jsguestbook-app))
