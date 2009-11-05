@@ -70,8 +70,7 @@
           (list (add-form self)
                 (show-guestbook self))))
 
-;; http://localhost:8080/guestbook/guestbook
-(defhandler "jsguestbook.html" ((self jsguestbook-app))
+(defhandler "index.html" ((self jsguestbook-app))
   (<:html
    (<:head
     (<:meta :http--equiv "Content-Type" :content "text/html; charset=utf-8")
