@@ -31,16 +31,13 @@
 	     (<:script :type "text/javascript"
 		       (with-call/cc		
 			 (lambda (stream)
-			   (let ((stream (make-indented-stream stream)))
-			     (component! stream self)
-			     (when (typep self 'xml)
-			       (write-stream stream
-					     (js*
-					       `(progn
-						  (new
-						   (,(class-name (class-of self))
-						     (create)
-						     (document.get-element-by-id ,(slot-value self 'id))))))))))))
+			   (let ((stream (make-indented-stream stream))
+				 (component self)
+				 (id (slot-value self 'id)))
+			     (with-js (component id) stream
+			       ((lambda ()
+				  (let ((ctor component))
+				    (ctor (document.get-element-by-id id) window.k)))))))))
 	     (xml.children self))))
   self)
 
@@ -531,3 +528,13 @@
 ;; 		      (list (with-call/cc (lambda (self) (replace-component self new-version)))))))
 ;; 	   (with-js (component) stream
 ;; 	     component))))))
+
+;; (component! stream self)
+		     ;; (when (typep self 'xml)
+			     ;;   (write-stream stream
+			     ;; 		     (js*
+			     ;; 		       `(progn
+			     ;; 			  (new
+			     ;; 			   (,(class-name (class-of self))
+			     ;; 			     (create)
+			     ;; 			     (document.get-element-by-id ,(slot-value self 'id))))))))
