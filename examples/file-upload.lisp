@@ -55,10 +55,11 @@
 		    (<:input :type "submit" :value "Cancel"))))))
 
 (defun/cc result-page (msg)
-  (page
-   (<:div
-    (<:a :href "/fupload/upload" "Return to Main")
-    (<:p msg))))
+  (send/suspend
+   (page
+    (<:div
+     (<:a :href "/fupload/upload" "Return to Main")
+     (<:p msg)))))
 
 ;; Register a handler
 (defhandler "upload" ((self http-application))
