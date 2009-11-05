@@ -948,6 +948,7 @@
    #:command.local-args
    #:command.remote-args
    #:shell
+   #:render-arguments
    #:whereis
    #:thumbnail
    ;; [ Core Parser ]

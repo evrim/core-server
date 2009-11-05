@@ -6,6 +6,20 @@
 
 (in-package :pinger)
 
+;; -------------------------------------------------------------------------
+;; Ping - Command Example
+;; -------------------------------------------------------------------------
+;;
+;; PINGER> (ping :ping-host "www.google.com" :ping-count 3)
+;; Executing command: /bin/ping -q -c 3 www.google.com
+;; PING www.l.google.com (74.125.43.147) 56(84) bytes of data.
+
+;; --- www.l.google.com ping statistics ---
+;; 3 packets transmitted, 3 received, 0% packet loss, time 2007ms
+;; rtt min/avg/max/mdev = 85.446/146.500/191.014/44.659 ms
+;; NIL
+
+
 ;; path to ping executable
 (defparameter +ping+ (core-server::whereis "ping"))
 
@@ -48,14 +62,15 @@
 (defcommand ping (shell)
   ((ping-host :host local :initform (error "Specify host"))
    (ping-count :host local :initform "1"))
-  (:default-initargs :cmd +ping+ :verbose nil))
+  (:default-initargs :cmd +ping+ :verbose t))
 
 (defmethod render-arguments ((self ping))
-  (list "-q" "-c" (s-v 'ping-count) (s-v 'ping-host)))
+  (list "-q" "-c" (slot-value self 'ping-count) (slot-value self 'ping-host)))
 
 ;; In the run method, we're setting the command arguments according to
 ;; the commands protocol. And then parse output with ping?.
-(defmethod run-command ((self ping) args)
+(defmethod run ((self ping))
   (call-next-method)
   (with-core-stream (s (command.output-stream self))
     (ping? s)))
+

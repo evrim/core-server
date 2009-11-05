@@ -76,7 +76,8 @@
 	(format t "Executing command: ~A ~{~A~^ ~}~%" (s-v 'cmd) (render-arguments self)))
     (setf (shell.process self)
 	  (sb-ext:run-program (ensure-cmd (shell.cmd self))
-			      (render-arguments self)
+			      (mapcar (lambda (a) (format nil "~A" a))
+				      (render-arguments self))
 			      :wait nil
 			      :input (if (s-v 'verbose) t :stream)
 			      :output (if (s-v 'verbose)
