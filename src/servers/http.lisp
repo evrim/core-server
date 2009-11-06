@@ -246,17 +246,17 @@ evaulates to a HTTP response. Its' server is an instance of http-server"))
 		  (render-response (peer.server peer) response request))))
 	(close-stream stream)))))
 
-(defclass http-cps-unit (local-unit peer)
-  ((%max-events :initarg :max-events :initform 100)
-   (%timeout :initarg :timeout :initform 10)
-   (%continuations :initform (make-hash-table))
-   (%epoll-fd :initform nil)
-   (%epoll-size :initarg :epoll-size :initform 131072)
-   (%stream :initform (make-instance 'core-cps-stream :stack (list)))
-   (%receive-messages :initform t)))
+;; (defclass http-cps-unit (local-unit peer)
+;;   ((%max-events :initarg :max-events :initform 100)
+;;    (%timeout :initarg :timeout :initform 10)
+;;    (%continuations :initform (make-hash-table))
+;;    (%epoll-fd :initform nil)
+;;    (%epoll-size :initarg :epoll-size :initform 131072)
+;;    (%stream :initform (make-instance 'core-cps-stream :stack (list)))
+;;    (%receive-messages :initform t)))
 
-(defmethod start ((self http-cps-unit))
-  (setf (s-v '%epoll-fd) (core-ffi::epoll-create (s-v '%epoll-size))))
+;; (defmethod start ((self http-cps-unit))
+;;   (setf (s-v '%epoll-fd) (core-ffi::epoll-create (s-v '%epoll-size))))
 
 (defmethod start ((self http-server))
 ;; ;;   (thread-kill (s-v '%socket-thread))
@@ -266,144 +266,144 @@ evaulates to a HTTP response. Its' server is an instance of http-server"))
 ;;     (handle-accept (car (s-v '%peers)) listenfd (s-v '%peers)))
   )
 
-(defmethod/unit add-fd ((self http-cps-unit) fd modes k)
-  (setf (gethash fd (s-v '%continuations)) k)
-  (with-foreign-object (event 'core-ffi::epoll-event)
-    (core-ffi::bzero event core-ffi::size-of-epoll-event)
-    (with-foreign-slots ((core-ffi::events core-ffi::data) event core-ffi::epoll-event)
-      (setf core-ffi::events (apply #'logior (ensure-list modes))
-	    (foreign-slot-value
-	     (foreign-slot-value event 'core-ffi::epoll-event 'core-ffi::data)
-	     'core-ffi::epoll-data 'core-ffi::fd) fd))
-    (core-ffi::epoll-ctl (s-v '%epoll-fd) core-ffi::epoll-ctl-add fd event)))
+;; (defmethod/unit add-fd ((self http-cps-unit) fd modes k)
+;;   (setf (gethash fd (s-v '%continuations)) k)
+;;   (with-foreign-object (event 'core-ffi::epoll-event)
+;;     (core-ffi::bzero event core-ffi::size-of-epoll-event)
+;;     (with-foreign-slots ((core-ffi::events core-ffi::data) event core-ffi::epoll-event)
+;;       (setf core-ffi::events (apply #'logior (ensure-list modes))
+;; 	    (foreign-slot-value
+;; 	     (foreign-slot-value event 'core-ffi::epoll-event 'core-ffi::data)
+;; 	     'core-ffi::epoll-data 'core-ffi::fd) fd))
+;;     (core-ffi::epoll-ctl (s-v '%epoll-fd) core-ffi::epoll-ctl-add fd event)))
 
-(defmethod/unit del-fd ((self http-cps-unit) fd)
-  (core-ffi::epoll-ctl (s-v '%epoll-fd) core-ffi::epoll-ctl-del fd (null-pointer)))
+;; (defmethod/unit del-fd ((self http-cps-unit) fd)
+;;   (core-ffi::epoll-ctl (s-v '%epoll-fd) core-ffi::epoll-ctl-del fd (null-pointer)))
 
-(defmethod receive-messages ((self http-cps-unit))
-  (let ((thread (or (s-v '%thread) (current-thread))))
-    (let* ((mbox (thread-mailbox thread))
-	   (lock (mailbox.lock mbox)))
-      (with-lock-held (lock)
-	(loop
-	   (let ((q (mailbox.queue mbox)))
-	     (setf (mailbox.queue mbox) '())
-	     (return q)))))))
+;; (defmethod receive-messages ((self http-cps-unit))
+;;   (let ((thread (or (s-v '%thread) (current-thread))))
+;;     (let* ((mbox (thread-mailbox thread))
+;; 	   (lock (mailbox.lock mbox)))
+;;       (with-lock-held (lock)
+;; 	(loop
+;; 	   (let ((q (mailbox.queue mbox)))
+;; 	     (setf (mailbox.queue mbox) '())
+;; 	     (return q)))))))
 
-(defmethod receive-events ((self http-cps-unit))
-  (when (s-v '%epoll-fd)
-    (with-foreign-object (events 'core-ffi::epoll-event (s-v '%max-events))
-      (core-ffi::bzero events (* (s-v '%max-events) core-ffi::size-of-epoll-event))
-      (labels ((collect (i &optional (acc nil))
-		 (if (< i 0)
-		     acc
-		     (collect (1- i) (cons
-				      (foreign-slot-value
-				       (foreign-slot-value
-					(mem-ref events 'core-ffi::epoll-event (1- i))
-					'core-ffi::epoll-event 'core-ffi::data)
-				       'core-ffi::epoll-data 'core-ffi::fd) acc)))))
-	(let ((n (core-ffi::epoll-wait (s-v '%epoll-fd) events (s-v '%max-events)
-				       (if (s-v '%receive-messages)
-					   (s-v '%timeout)
-					   -1))))
-	  (if (> n 0)
-	      (collect n)
-	      nil))))))
+;; (defmethod receive-events ((self http-cps-unit))
+;;   (when (s-v '%epoll-fd)
+;;     (with-foreign-object (events 'core-ffi::epoll-event (s-v '%max-events))
+;;       (core-ffi::bzero events (* (s-v '%max-events) core-ffi::size-of-epoll-event))
+;;       (labels ((collect (i &optional (acc nil))
+;; 		 (if (< i 0)
+;; 		     acc
+;; 		     (collect (1- i) (cons
+;; 				      (foreign-slot-value
+;; 				       (foreign-slot-value
+;; 					(mem-ref events 'core-ffi::epoll-event (1- i))
+;; 					'core-ffi::epoll-event 'core-ffi::data)
+;; 				       'core-ffi::epoll-data 'core-ffi::fd) acc)))))
+;; 	(let ((n (core-ffi::epoll-wait (s-v '%epoll-fd) events (s-v '%max-events)
+;; 				       (if (s-v '%receive-messages)
+;; 					   (s-v '%timeout)
+;; 					   -1))))
+;; 	  (if (> n 0)
+;; 	      (collect n)
+;; 	      nil))))))
 
-(defmethod run ((self http-cps-unit))
-  (handler-bind ((error (lambda (condition)
-			  (let ((swank::*sldb-quit-restart* 'ignore-error))
-			    (restart-case (swank:swank-debugger-hook condition nil)
-			      (ignore-error ()
-				:report "Ignore the error and return (values)")
-			      (retry ()
-				:report "Retry the funcall"))))))
-    (flet ((process-message (message)	  	   
-	     (cond
-	       ((eq message 'shutdown) (return-from run nil))
-	       ((functionp message) (funcall message self))
-	       (t (format *standard-output* "Uniw ~A got unkown message:~A~%" self message))))
-	   (process-event (fd)
-	     (let ((k (gethash fd (s-v '%continuations))))
-	       (when k
-		 (remhash k (s-v '%continuations))
-		 (let ((+stream+ (s-v '%stream)))
-		   (setf (slot-value +stream+ '%stack) (list k))
-		   (run +stream+))))))
-      (loop
-	 (progn
-	   (if (s-v '%receive-messages) (mapc #'process-message (receive-messages self)))
-	   (mapc #'process-event (receive-events self)))))))
+;; (defmethod run ((self http-cps-unit))
+;;   (handler-bind ((error (lambda (condition)
+;; 			  (let ((swank::*sldb-quit-restart* 'ignore-error))
+;; 			    (restart-case (swank:swank-debugger-hook condition nil)
+;; 			      (ignore-error ()
+;; 				:report "Ignore the error and return (values)")
+;; 			      (retry ()
+;; 				:report "Retry the funcall"))))))
+;;     (flet ((process-message (message)	  	   
+;; 	     (cond
+;; 	       ((eq message 'shutdown) (return-from run nil))
+;; 	       ((functionp message) (funcall message self))
+;; 	       (t (format *standard-output* "Uniw ~A got unkown message:~A~%" self message))))
+;; 	   (process-event (fd)
+;; 	     (let ((k (gethash fd (s-v '%continuations))))
+;; 	       (when k
+;; 		 (remhash k (s-v '%continuations))
+;; 		 (let ((+stream+ (s-v '%stream)))
+;; 		   (setf (slot-value +stream+ '%stack) (list k))
+;; 		   (run +stream+))))))
+;;       (loop
+;; 	 (progn
+;; 	   (if (s-v '%receive-messages) (mapc #'process-message (receive-messages self)))
+;; 	   (mapc #'process-event (receive-events self)))))))
 
-(defmethod/cc1 handle-stream4 ((peer http-cps-unit) (stream core-fd-nio-stream) address)
-;;   (describe (current-checkpoint stream))
-;;   (checkpoint-stream stream)
-  (let ((time (get-universal-time)))
-    ;; (let ((request (parse-request (peer.server peer) stream)))
-;;       ;; (if request
-;; ;; 	  (let ((response (eval-request (peer.server peer) request)))
-;; ;; 	    (if response
-;; ;; 		(render-response (peer.server peer) response request))))
-;;       (if request
-;; 	  (render-response (peer.server peer) (make-response) request))
-;;       (close-stream stream)
-;;       (push (- (get-universal-time) time) *timing*))
-    (write-stream stream "HTTP/1.1 200 OK
-DATE: Thu, 30 Nov 2008 17:58:12 GMT
-CONNECTION: keep-alive
-SERVER: Core-serveR - www.core.gen.tr
-CONTENT-LENGTH: 5192
-CONTENT-TYPE: text/html
+;; (defmethod/cc1 handle-stream4 ((peer http-cps-unit) (stream core-fd-nio-stream) address)
+;; ;;   (describe (current-checkpoint stream))
+;; ;;   (checkpoint-stream stream)
+;;   (let ((time (get-universal-time)))
+;;     ;; (let ((request (parse-request (peer.server peer) stream)))
+;; ;;       ;; (if request
+;; ;; ;; 	  (let ((response (eval-request (peer.server peer) request)))
+;; ;; ;; 	    (if response
+;; ;; ;; 		(render-response (peer.server peer) response request))))
+;; ;;       (if request
+;; ;; 	  (render-response (peer.server peer) (make-response) request))
+;; ;;       (close-stream stream)
+;; ;;       (push (- (get-universal-time) time) *timing*))
+;;     (write-stream stream "HTTP/1.1 200 OK
+;; DATE: Thu, 30 Nov 2008 17:58:12 GMT
+;; CONNECTION: keep-alive
+;; SERVER: Core-serveR - www.core.gen.tr
+;; CONTENT-LENGTH: 5192
+;; CONTENT-TYPE: text/html
 
-")
-;;     (write-stream stream *5k*)
-    (write-content stream)
-    (close-stream stream)
-    ;; (render-response (peer.server peer) (make-response) nil)
-    ))
+;; ")
+;; ;;     (write-stream stream *5k*)
+;;     (write-content stream)
+;;     (close-stream stream)
+;;     ;; (render-response (peer.server peer) (make-response) nil)
+;;     ))
 
-(defmethod/unit handle-stream :async-no-return ((peer http-cps-unit) (stream core-stream) address)
-  (let ((fd (sb-sys::fd-stream-fd (slot-value stream '%stream))))
-    (add-fd peer fd (list core-ffi::epollin #.(ash 1 31))
-	    (lambda (&rest values)
-	      (declare (ignore values))
-	      (handle-stream4 peer
-			      (make-instance 'core-fd-nio-stream
-					     :stream fd
-					     :unit peer)
-			      address)))))
+;; (defmethod/unit handle-stream :async-no-return ((peer http-cps-unit) (stream core-stream) address)
+;;   (let ((fd (sb-sys::fd-stream-fd (slot-value stream '%stream))))
+;;     (add-fd peer fd (list core-ffi::epollin #.(ash 1 31))
+;; 	    (lambda (&rest values)
+;; 	      (declare (ignore values))
+;; 	      (handle-stream4 peer
+;; 			      (make-instance 'core-fd-nio-stream
+;; 					     :stream fd
+;; 					     :unit peer)
+;; 			      address)))))
 
-(defmethod/unit handle-stream :async-no-return ((peer http-cps-unit) (stream number) address)
-  (let ((fd stream))
-    (add-fd peer fd (list core-ffi::epollin #.(ash 1 31))
-	    (lambda (&rest values)
-	      (declare (ignore values))
-	      (handle-stream4 peer
-			      (make-instance 'core-fd-nio-stream
-					     :stream fd
-					     :unit peer)
-			      address)))))
+;; (defmethod/unit handle-stream :async-no-return ((peer http-cps-unit) (stream number) address)
+;;   (let ((fd stream))
+;;     (add-fd peer fd (list core-ffi::epollin #.(ash 1 31))
+;; 	    (lambda (&rest values)
+;; 	      (declare (ignore values))
+;; 	      (handle-stream4 peer
+;; 			      (make-instance 'core-fd-nio-stream
+;; 					     :stream fd
+;; 					     :unit peer)
+;; 			      address)))))
 
-(defmethod/unit handle-accept :async-no-return ((self http-cps-unit) listenfd peers)
-  (let* ((peers (copy-list peers))
-	 (peers2 (copy-list peers)))
-    (labels ((kont (&rest values)
-	       (declare (ignore values))
-	       (multiple-value-bind (fd address) (core-ffi::accept listenfd)
-		 (handle-stream self fd address)
-		 ;; (if (car peers)
-;; 		     (progn
-;; 		       (handle-stream (car peers) fd address)
-;; 		       (setq peers (cdr peers))
-;; 		       ;; reschedule
-;; 		       (setf (gethash listenfd (s-v '%continuations)) #'kont))
-;; 		     (progn
-;; 		       (setq peers peers2)
-;; 		       (kont values)))
-		 )))
-      (add-fd (car peers) listenfd (list core-ffi::epollin #.(ash 1 31)) #'kont)
-      (setf (s-v '%receive-messages) nil))))
+;; (defmethod/unit handle-accept :async-no-return ((self http-cps-unit) listenfd peers)
+;;   (let* ((peers (copy-list peers))
+;; 	 (peers2 (copy-list peers)))
+;;     (labels ((kont (&rest values)
+;; 	       (declare (ignore values))
+;; 	       (multiple-value-bind (fd address) (core-ffi::accept listenfd)
+;; 		 (handle-stream self fd address)
+;; 		 ;; (if (car peers)
+;; ;; 		     (progn
+;; ;; 		       (handle-stream (car peers) fd address)
+;; ;; 		       (setq peers (cdr peers))
+;; ;; 		       ;; reschedule
+;; ;; 		       (setf (gethash listenfd (s-v '%continuations)) #'kont))
+;; ;; 		     (progn
+;; ;; 		       (setq peers peers2)
+;; ;; 		       (kont values)))
+;; 		 )))
+;;       (add-fd (car peers) listenfd (list core-ffi::epollin #.(ash 1 31)) #'kont)
+;;       (setf (s-v '%receive-messages) nil))))
 
 (deftrace http-server
     '(handle-stream dispatch render-error render-response eval-request parse-request
