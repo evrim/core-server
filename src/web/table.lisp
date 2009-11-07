@@ -9,7 +9,25 @@
    (selected-class :initform "selected" :host remote)
    (selected :initform nil :host remote)
    (primary-field :initform "name" :host remote)
-   (slots :initform nil :host remote)))
+   (template-class :initform nil :host none)
+   (local-cache :initform (make-hash-table :weakness :value :test #'equal)
+		:host none)))
+
+(defmethod/local get-instances ((self <core:table))
+  (mapcar (lambda (jobject instance)
+	    (describe jobject)
+	    (setf (slot-value jobject 'attributes)
+		  (cons :ref-id
+			(cons (let ((str (random-string 5)))
+				(setf (gethash str (local-cache self)) instance)
+				str)
+			      (slot-value jobject 'attributes))))
+	    jobject)
+	  (mapcar (rcurry #'object->jobject
+			  (or (template-class self)
+			      (class-of (car (instances self)))))
+		  (instances self))
+	  (instances self)))
 
 (defmethod/remote add-selected ((component <core:table) selection)
   (let ((node (slot-value (slot-value (slot-value selection 'checkbox) 'parent-node) 'parent-node)))
@@ -30,22 +48,29 @@
    (<:tr
     (<:th :class "checkbox"
 	  (<:input :type "checkbox"
-		   :onchange (lambda (e)
+		   :onchange (event (e)
 			       (let ((checked this.checked))
-				 (mapcar (lambda (object) (setf object.checkbox.checked checked))
-					 (get-instances component))
-				 (if checked
-				     (set-selected component (get-instances component))
-				     (set-selected component nil)))
+				 (with-call/cc
+				   (mapcar (lambda (object)
+					     (setf (slot-value (slot-value object 'checkbox) 'checked)
+						   checked))
+					   (get-instances component))
+				   (if checked
+				       (set-selected component (get-instances component))
+				       (set-selected component nil))))
 			       false)))
     (mapcar (lambda (slot)
 	      (with-slots (name label) slot
 		(<:th :class name (or label name))))
-	    (or (get-slots component)
-		(slot-value (car (instances self)) 'class))))))
+	    (slot-value (car (instances self)) 'class)))))
 
-(defmethod/remote on-select ((component <core:table) object)
-  (answer-component component object))
+(defmethod/local _set-selected ((self <core:table) ref-id)
+  (setf (slot-value self 'selected) (gethash ref-id (local-cache self)))
+  t)
+
+(defmethod/remote on-select ((self <core:table) object)
+  (_set-selected self (slot-value object 'ref-id))
+  (answer-component self object))
 
 (defmethod/remote tbody ((component <core:table))
   (let ((instances (get-instances component)))
@@ -55,10 +80,13 @@
 	 (mapcar2
 	  (lambda (object index)
 	    (let ((checkbox (<:input :type "checkbox"
-				     :onchange (lambda (e)
-						 (if this.checked
-						     (add-selected component object)
-						     (remove-selected component object))))))
+				     :onchange (event (e)
+						 (let ((checked this.checked))
+						   (with-call/cc
+						     (if checked
+							 (add-selected component object)
+							 (remove-selected component object))))
+						false))))
 	      (setf (slot-value object "checkbox") checkbox)
 	      (<:tr :class (if (eq 0 (mod index 2)) (get-hilight-class component))
 		    (<:td :class "checkbox" checkbox)	       
@@ -68,12 +96,11 @@
 				(<:td :class name
 				      (if (equal name (primary-field self))
 					  (<:a :onclick (event (e)
-							  (with-call/cc (on-select component object))
-							  false)
+							       (with-call/cc (on-select component object))
+							       false)
 					       (or value (slot-value slot 'initform)))
 					  (or value (slot-value slot 'initform))))))
-			    (or (get-slots component)
-				(slot-value object 'class))))))
+			    (slot-value object 'class)))))
 	  (get-instances component) (seq (slot-value instances 'length)))))))
 
 (defmethod/remote tfoot ((component <core:table))
@@ -90,7 +117,8 @@
      (defcomponent ,name (,@supers <core:table)
        ()
        (:default-initargs
-	 :slots (list
+	 :slots (jobject
+		 :class
 		 ,@(mapcar
 		    (lambda (slot)
 		      `(core-server::jobject :name ',(symbol-to-js (car slot)) ,@(cdr slot)))
