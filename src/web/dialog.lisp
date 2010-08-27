@@ -24,7 +24,7 @@
   (call-next-method self arg))
 
 (defmethod/remote show-component ((self dialog))
-  (load-css "style/login/login.css")
+  (load-css "http://www.coretal.net/style/login/login.css")
   (add-class document.body "coretal")
   (append document.body self)
   (append document.body (overlay self))
@@ -64,14 +64,19 @@
    (<:div :class "right"
 	  (<:div :class "title" (title self))
 	  (<:div :class "message" (message self))
-	  (<:form :action "#"		  
-		  (<:input :type "text" :name "prompt")
-		  (<:input :type "submit" :class "button" :value "OK"
-			   :onclick (event (e)
-				      (let ((button this))
-					(with-call/cc
-					  (answer-component self button.form.prompt.value)))
-				      false))))))
+	  (<:form :action "#"
+		  (<:input :type "text" :name "prompt" :class "text")
+		  (<:div
+		   (<:input :type "submit" :class "button" :value "OK"
+			    :onclick
+			    (event (e)
+				   (let ((button this))
+				     (with-call/cc
+				       (answer-component self button.form.prompt.value)))
+				   false))
+		   (<:input :type "button" :class "button"
+			    :value "Cancel"
+			    :onclick (lambda (e) (hide-component self))))))))
 
 ;; +-------------------------------------------------------------------------
 ;; | Yes-No Dialog
@@ -104,7 +109,8 @@
 ;; | Login Dialog
 ;; +-------------------------------------------------------------------------
 (defcomponent login-dialog (dialog)
-  ()
+  ((email-input :host remote :initform (<core:email-input))
+   (password-input :host remote :initform (<core:password-input)))
   (:default-initargs :title "login"))
 
 (defmethod/remote template ((self login-dialog))  
@@ -120,27 +126,32 @@
 			      (answer-component self (cons this.email.value password))))
 			  false)
 	(with-field
-	    (<core:email-input :class-name "text" :type "text" :name "email"
-			       :validation-span-id "email-validation"
-			       :default-value "Email")
+	    (call/cc (email-input self)
+		     (jobject :class-name "text" :type "text" :name "email"
+			      :validation-span-id "email-validation"
+			      :default-value "Email"))
 	  (<:span :class "validation"
 		  :id "email-validation" "Enter your email address"))
 	(with-field
-	    (<core:password-input :class-name "text"
-				  :default-value "password"
-				  :type "password" :name "password"
-				  :validation-span-id "password-validation")
+	    (call/cc (password-input self)
+		     (jobject :class-name "text"
+			      :default-value "password"
+			      :type "password" :name "password"
+			      :validation-span-id "password-validation"))
 	  (<:span :class "validation"
 		  :id "password-validation" "Enter your password"))
 	(with-field ""
-	  (<:input :type "submit" :class "button"
-		   :value "login or register" :disabled t))))))
+	  (<:div (<:input :type "submit" :class "button"
+			  :value "login or register" :disabled t)
+		 (<:input :type "button" :class "button"
+			  :value "cancel"
+			  :onclick (lambda (e) (hide-component self)))))))))
 
 ;; +-------------------------------------------------------------------------
 ;; | Registration Dialog
 ;; +-------------------------------------------------------------------------
 (defcomponent registration-dialog (dialog)
-  ()
+  ((email-input :host remote :initform (<core:email-input)))
   (:default-initargs :title "register"))
 
 (defmethod/remote template ((self registration-dialog))  
@@ -153,9 +164,11 @@
 			      (with-call/cc (answer-component self this.email.value))
 			      false)
 		  (with-field
-		      (<core:email-input :class-name "text" :type "text" :name "email"
-					 :validation-span-id "email-validation"
-					 :default-value "Email")
+		      (call/cc (email-input self)
+			       (jobject :class-name "text" :type "text"
+					:name "email"
+					:validation-span-id "email-validation"
+					:default-value "Email"))
 		    (<:span :class "validation" :id "email-validation" "Enter your email address"))
 		  (with-field ""
 		    (<:input :type "submit" :class "button"
