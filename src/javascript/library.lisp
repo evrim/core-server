@@ -175,6 +175,11 @@
 	      (or acc (equal atom obj)))
 	    lst))
 
+  (defun has-class (node class-name)
+    (if (member class-name (node.class-name.split " "))
+	t
+	nil))
+  
   (defun remove-class (node class-name)    
     (let ((classes (node.class-name.split " ")))
       (when (and classes classes.length)
