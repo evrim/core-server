@@ -286,23 +286,23 @@
 
 (defmethod write-stream ((stream xml-stream) (string string))
   (string! (slot-value stream '%stream)
-	   (reduce (lambda (acc atom)
-		     (cond
-		       ((eq atom #\<)
-			(push-atom #\& acc)
-			(push-atom #\g acc)
-			(push-atom #\t acc)
-			(push-atom #\; acc))
-		       ((eq atom #\>)
-			(push-atom #\& acc)
-			(push-atom #\l acc)
-			(push-atom #\t acc)
-			(push-atom #\; acc))
-		       (t
-			(push-atom atom acc)))
-		     acc)
-		   string
-		   :initial-value (make-accumulator))))
+  	   (reduce (lambda (acc atom)
+  		     (cond
+  		       ((eq atom #\<)
+  			(push-atom #\& acc)
+  			(push-atom #\g acc)
+  			(push-atom #\t acc)
+  			(push-atom #\; acc))
+  		       ((eq atom #\>)
+  			(push-atom #\& acc)
+  			(push-atom #\l acc)
+  			(push-atom #\t acc)
+  			(push-atom #\; acc))
+  		       (t
+  			(push-atom atom acc)))
+  		     acc)
+  		   string
+  		   :initial-value (make-accumulator))))
 
 (defmethod write-stream ((xml-stream xml-stream) (object xml))
   (flet ((intro! (stream)
@@ -324,8 +324,8 @@
 	   stream)
 	 (child! (stream child)
 	   (increase-indent stream)
-	   (char! stream #\Newline)
-	   (write-stream stream child)
+	   (char! stream #\Newline)	   
+	   (write-stream xml-stream child)
 	   (decrease-indent stream)
 	   stream)
 	 (outro! (stream)
