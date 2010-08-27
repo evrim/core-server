@@ -17,7 +17,7 @@
 ;; (in-package :blog)
 ;; (register *server* *app*)
 ;; (start *app*)
-;; (init-blog-test-data)
+;; (init-database *app*)
 ;;
 
 ;; we define classes and their relations here
