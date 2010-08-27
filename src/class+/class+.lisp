@@ -48,12 +48,15 @@
   (filter (lambda (e)
 	    (not (member (slot-definition-name e) +standard-class-slots+
 			 :key #'slot-definition-name)))
-	  ;; (filter (lambda (s)
-	  ;; 	    (and (typep s 'class+-slot-definition)
-	  ;; 		 (not (eq 'none (slot-definition-host s)))))
-	  ;; 	  (class-slots class))
-	  (class-slots class)
-	  ))
+	  (class-slots class)))
+
+(defmethod class+.self-slots ((class class+))
+  (set-difference 
+   (class+.slots class)
+   (reduce #'append 
+	   (mapcar (lambda (a) (class+.slots a))
+		   (remove class (class+.superclasses class))))
+   :key #'core-server::slot-definition-name))
 
 (defmethod class+.add-method ((class class+) name type args)
   (setf (class+.%methods class)
