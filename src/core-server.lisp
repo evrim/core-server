@@ -210,6 +210,10 @@
    ;; [XML Stream]
    #:make-xml-stream
    #:xml-stream
+
+   ;; [HTML Stream]
+   #:make-html-stream
+   #:html-stream
    
    ;; [Dom Markup]
    #:dom-element
@@ -224,6 +228,7 @@
    #:dom-element!
    #:dom-element?
    #:dom2string
+   
    ;; [Html markup]
    #:html-element
    #:empty-html-element
@@ -282,6 +287,7 @@
    #:upgrade-component
    #:answer-component
    #:continue-component
+   #:continue/js
    #:funcall-cc
    
    ;; [RFC 2109]
@@ -692,6 +698,10 @@
    #:mapcar-cc
    #:reverse-cc
    #:filter
+   #:filter-cc
+   #:load-css
+   #:load-javascript
+   
    #:uniq
    #:prepend
    #:make-keyword
@@ -814,6 +824,8 @@
    #:component.javascript-writer
    #:component.remote-method-proxy
    #:component.local-method-proxy
+   #:component+.remote-morphism
+   #:component+.local-morphism
    #:component.remote-slots
    #:component.local-slots
    #:component.remote-methods
@@ -893,7 +905,7 @@
    #:div-element
 
    ;; [HTTP Components]
-   #:fckeditor-component
+   #:ckeditor-component
    #:toaster-component
    #:toast
    
