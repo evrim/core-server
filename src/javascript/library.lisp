@@ -36,7 +36,7 @@
     (not (atom a)))
   
   (defun/cc reduce-cc (fun lst initial-value)
-    (if (= 0 lst.length)
+    (if (or (null lst) (= 0 lst.length))
 	initial-value
 	(reduce-cc fun (cdr lst) (call/cc fun initial-value (car lst)))))
   
@@ -86,6 +86,12 @@
 		    acc))
 	      lst)))
 
+  (defun/cc filter-cc (fun lst)
+    (reverse-cc
+     (reduce0-cc (lambda (acc a)
+		  (if (call/cc fun a) (cons a acc) acc))
+		 lst)))
+  
   (defun cons (atom lst)
     (if (null lst)
 	(array atom)
@@ -98,6 +104,10 @@
     (cond
       ((null lst) nil)
       ((instanceof lst *array) (aref lst 0))
+      ((and (typep lst 'object)
+	    (not (null lst.length))
+	    (> lst.length 0))
+       (aref lst 0))
       ((typep lst 'object)
        (let ((result))
 	 (doeach (i lst)
@@ -107,10 +117,15 @@
 
   (defun cdr (lst)
     (cond
-      ((null lst) nil)      
-      ((or (typep lst '*array)
-	   (typep lst 'object)) (.slice lst 1))
-      (t (list lst))))
+      ((null lst) nil)
+      ((atom lst) lst)
+      ((and (or (typep lst '*array)
+		(typep lst 'object))
+	    (not (null (slot-value lst 'slice))))
+       (.slice lst 1))
+      (t
+       (cdr (mapcar (lambda (a) (return a))
+		    lst)))))
 
   (defun nth (seq lst)
     (if (= 0 seq)
@@ -122,7 +137,7 @@
      (reduce-cc (lambda (acc atom)
 		  (cons (call/cc fun atom) acc))
 		lst
-		nil)))
+		null)))
   
   (defun mapcar (fun lst)
     (reverse
