@@ -430,6 +430,25 @@
 	    link.type "text/css")
       (.append-child (aref (document.get-elements-by-tag-name "head") 0) link)
       (return link)))
+
+  (defun/cc load-javascript (url)
+    (let/cc current-continuation
+      (let ((img (make-dom-element "IMG"
+		   (jobject :class-name "coretal-loading"
+			    :src "http://www.coretal.net/style/login/loading.gif")
+		   nil)))
+	(let ((script (make-dom-element "script" (jobject :src url) nil))
+	      (head (aref (.get-elements-by-tag-name document "HEAD") 0))
+	      (body (slot-value document 'body)))
+	  (setf (slot-value script 'onload)
+		(event (e)
+		  (.remove-child head script)
+		  (if body (.remove-child body img))
+		  (current-continuation t)))
+	  (if body (append body img))
+	  (append head script)
+	  (suspend)))))
+  
 ;; +----------------------------------------------------------------------------
 ;; | Identity Continuation
 ;; +----------------------------------------------------------------------------
@@ -464,10 +483,8 @@
 	   (k (new (ctor)))))))
 
   (defun extend (source target)
-    (mapobject (lambda (k v)
-		 (setf (slot-value target k) v))
-	       source)
-    target)  
+    (mapobject (lambda (k v) (setf (slot-value target k) v)) source)
+    target)
 
   (defun apply (fun scope args kX)
     (fun.apply scope (reverse (cons kX (reverse args)))))
@@ -481,7 +498,14 @@
       (flet ((one ()
 	       (aref alphabet (*math.floor (* (*math.random) (slot-value alphabet 'length))))))
 	(reduce (lambda (acc atom) (+ acc (one)))
-		(seq (- len 1)) (one))))))
+		(seq (- len 1)) (one)))))
+  (defun date-to-string (date)
+    (+
+     (date.get-day) "/" (date.get-month) "/" (date.get-full-year) " - "
+     (date.get-hours) ":" (date.get-minutes) ":" (date.get-seconds)))
+
+  (defun Y (f)
+    (f f)))
 
 (eval-when (:compile-toplevel :execute :load-toplevel)
   (setf (gethash 'make-component +javascript-cps-functions+) t
