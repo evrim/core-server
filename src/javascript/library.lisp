@@ -330,15 +330,16 @@
 		 arg)
       result))
 
-  (defun debug (what k)
-    (if (and console console.debug)
+  (defun _debug (what k)
+    (if (and (not (null console))
+	     (not (null console.debug)))
 	(console.debug what))
     (if (typep k '*function)
 	(k what)
 	what))
   
   (defun/cc funcall-cc (action args)
-    (debug (list "funcall/cc" action args))
+    (_debug (list "funcall/cc" action args))
     (let/cc current-continuation
       (let ((hash (+ "__result"
 		     (.get-time (new (*date)))
