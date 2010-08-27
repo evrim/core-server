@@ -151,16 +151,13 @@
 	   expand k env))
 
 (defcps-expander/js let*-form (binds body)
-  (funcall expand
-	   (make-instance
-	    'application-form
-	    :operator (make-instance 'lambda-function-form
-				     :arguments (walk-lambda-list (mapcar #'car binds)
-								  (parent form) nil)
-				     :body body)
-	    :arguments (mapcar #'cdr binds)
-	    :parent (parent form))
-	   expand k env))
+  (labels ((recursive-let (binds body)	     
+	     `(let ((,(caar binds) ,(unwalk-form (cdar binds))))
+		,@(if (null (cdr binds))
+		      (unwalk-forms body)
+		      (list (recursive-let (cdr binds) body))))))
+    (funcall expand (walk-form (recursive-let binds body))
+    	     expand k env)))
 
 (defcps-expander/js flet-form (binds body)
   `(let ,(mapcar (lambda (bind)
