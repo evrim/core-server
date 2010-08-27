@@ -216,13 +216,15 @@
     node)
   
   (defun add-on-load (fun)
-    (if (typep window.onload 'function)
-	(let ((current window.onload))
-	  (setf window.onload
-		(lambda ()
-		  (current)
-		  (fun))))
-	(setf window.onload fun)))
+    (if (eq "complete" document.ready-state)
+	(fun)
+	(if (typep window.onload 'function)
+	    (let ((current window.onload))
+	      (setf window.onload
+		    (lambda ()
+		      (current)
+		      (fun))))
+	    (setf window.onload fun))))
 
   (defun connect (target event lambda)
     (if (typep target 'string)
