@@ -394,10 +394,11 @@
 	   (if (and (null name) (eq "" key) value)
 	       (return value))
 	   
-	   (if (= (key.to-lower-case) (name.to-lower-case))
+	   (if (and (not (null name))
+		    (= (key.to-lower-case) (name.to-lower-case)))
 	       (return (eval (+ "(" (unescape value) ")"))))))
-       (:catch (e)))
-      (return nil)))
+       (:catch (e)
+	 (return nil)))))
 
   (defun set-parameter (name new-value)
     (let ((params (.substr window.location.hash 1))
