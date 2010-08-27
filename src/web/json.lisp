@@ -164,21 +164,13 @@
 		
 		:label (or label (convert-label-to-javascript name)))))))
 
-(defun class->jobject (class)
+(defun class->jobject (class &optional (slots (class+.remote-slots class)))
   (apply #'jobject
 	 (reduce0 (lambda (acc slot)
 				(cons (make-keyword (slot-definition-name slot))
 				      (cons (slot->jobject slot)
 					    acc)))
-			      (class+.remote-slots class))
-	 ;; (cons :class-name
-	 ;;       (cons (string-downcase (class-name class))
-	 ;; 	     (reduce0 (lambda (acc slot)
-	 ;; 			(cons (make-keyword (slot-definition-name slot))
-	 ;; 			      (cons (slot->jobject slot)
-	 ;; 				    acc)))
-	 ;; 		      (class+.remote-slots class))))
-	 ))
+			      slots)))
 
 (defun object->jobject (object &optional (template-class nil))
   (apply #'jobject
@@ -290,3 +282,13 @@
 
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+
+	 ;; (cons :class-name
+	 ;;       (cons (string-downcase (class-name class))
+	 ;; 	     (reduce0 (lambda (acc slot)
+	 ;; 			(cons (make-keyword (slot-definition-name slot))
+	 ;; 			      (cons (slot->jobject slot)
+	 ;; 				    acc)))
+	 ;; 		      (class+.remote-slots class))))
