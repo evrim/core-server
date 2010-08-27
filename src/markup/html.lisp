@@ -75,7 +75,7 @@
 (defmacro defhtml (name supers &rest attributes)  
   `(progn
      (defclass+ ,name (,@supers xml)
-       (,@(mapcar (lambda (attr) (list attr :print t)) (remove 'id attributes)))
+       (,@(mapcar (lambda (attr) (list attr :print t :host 'remote)) (remove 'id attributes)))
        (:metaclass html+)
        (:tag ,(string-downcase (symbol-name name)))
        (:namespace nil)
