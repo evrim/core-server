@@ -20,8 +20,8 @@
 (defmacro with-field (label input &optional (validation nil))
   "Syntactic sugar to handle form label and values"
   `(<:div :class "field"
-	  (<:div :class "label" ,label)
 	  (<:div :class "value" ,input)
+	  (<:div :class "label" ,label)
 	  ,(if validation validation)))
 
 (defjsmacro with-field (label input &optional validation)

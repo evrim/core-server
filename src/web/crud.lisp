@@ -1,5 +1,7 @@
 (in-package :core-server)
 
+;; Date lazim, Integer->Date
+;; Text Editor
 (defcomponent <core:crud (<:div)
   ((instance :host none :initform nil)
    (template-class :host none :initform nil)))

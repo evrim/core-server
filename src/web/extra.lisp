@@ -64,6 +64,37 @@
     msg))
 
 
+;; -------------------------------------------------------------------------
+;; History Component
+;; -------------------------------------------------------------------------
+(defcomponent history-component ()
+  ((timeout-id :host remote :initform 0)
+   (listeners :host remote :initform nil)
+   (current-hash :host remote :initform nil)))
+
+(defmethod/remote register-history-observer ((self history-component) thunk)
+  (setf (listeners self)
+	(cons thunk (listeners self))))
+
+(defmethod/remote start-history-timeout ((self history-component))
+  (setf (current-hash self) window.location.hash)
+  (setf (timeout-id self)
+	(window.set-interval
+	 (event ()
+	   (with-call/cc
+	     (when (not (eq (current-hash self) window.location.hash))
+	       (setf (current-hash self) window.location.hash)
+	       (mapcar-cc (lambda (observer) (observer))
+			  (listeners self)))))
+	 400)))
+
+(defmethod/remote stop-history-timeout ((self history-component))
+  (window.clear-interval (timeout-id self)))
+
+(defmethod/remote init ((self history-component))
+  (call-next-method self)
+  (start-history-timeout self))
+
 ;; (defcomponent dojo-widget (dom-element)
 ;;   ((dojo-type :initarg :dojo-type :initform (error "Please specify :dojo-type"))
 ;;    (dojo-args :initarg :dojo-args :initform '())))

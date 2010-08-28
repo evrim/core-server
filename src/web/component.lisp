@@ -358,7 +358,7 @@
        (defmethod/cc component! ((stream core-stream) (component ,class-name))
 	 (if (and +context+ (context.request +context+))
 	     (setf (slot-value component 'url)
-		   (format nil "http://~A/~A"
+		   (format nil "http://~A:8080/~A"
 			   (web-application.fqdn (context.application +context+))
 			   (apply #'concatenate 'string
 				  (flatten (uri.paths (http-request.uri (context.request +context+))))))))

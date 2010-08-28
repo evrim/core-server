@@ -105,7 +105,8 @@
 ;; | Password HTML Component
 ;; +----------------------------------------------------------------------------
 (defcomponent <core:password-input (<core:default-value-input <core:validating-input)
-  ((min-length :initform 6 :host remote)))
+  ((min-length :initform 6 :host remote))
+  (:default-initargs :type "password"))
 
 (defmethod/remote validate-password ((self <core:password-input))
   (cond

@@ -26,6 +26,7 @@
 			(call/cc current-continuation null))))))
       (Y recurse)
       (suspend)))
+  (debug (config self))
   (let* ((textarea (target self))
 	 (editor (-c-k-e-d-i-t-o-r.replace textarea (config self)))
 	 (form (slot-value textarea 'form)))
@@ -42,6 +43,7 @@
     (call-next-method self)))
 
 (defmethod/remote init ((self ckeditor-component))
+  (load-css "http://www.coretal.net/style/ckeditor.css")
   (load-javascript "http://www.coretal.net/js/ckeditor/ckeditor.js"))
 
 ;; (defvar +fck-image-extensions+ '("bmp" "gif" "jpeg" "jpg" "png" "psd" "tif" "tiff"))
