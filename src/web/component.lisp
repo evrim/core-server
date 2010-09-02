@@ -288,7 +288,7 @@
 								   (find-package :core-server)
 								   (symbol-package (car method))))))
 					    (cons (make-keyword (car method))
-						  (cons (funcall proxy class+ nil) acc))))
+						  (cons `(make-method ,(funcall proxy class+ nil)) acc))))
 					(class+.remote-methods class+))
 			 
 			     ;; ----------------------------------------------------------------------------
@@ -329,7 +329,7 @@
 							   ,(symbol-to-js dom-tag)))
 		       				  to-extend)
 		       			     'to-extend)))
-
+			 
 		       	 (when (typep (slot-value to-extend 'init) 'function)
 		       	   (init to-extend))
 		 
@@ -366,7 +366,9 @@
 					     (lambda (stream)
 					       (if hash
 						   (with-js (result hash) stream
-						     (apply (slot-value window hash) window (list result)))
+						     (with-call/cc
+						       (apply (slot-value window hash) window
+							      (list (lambda (self) result)))))
 						   (with-js (result) stream
 						     (with-call/cc
 						       (lambda (self) result))))))
@@ -385,30 +387,15 @@
 (defmethod/remote init ((self component)) self)
 
 (defmethod/remote funkall ((self component) action args)
-  (let ((retval (funcall-cc (+ (slot-value self 'url) action "$") args)))    
-    ;; (if (typep retval 'function)
-    ;; 	(call/cc retval self) 
-    ;; 	retval)
-    retval
-    ))
+  (let ((retval (funcall-cc (+ (slot-value self 'url) action "$") args)))
+    (if (typep retval 'function)
+    	(call/cc retval self) 
+    	retval)))
 
 (defmethod/remote upgrade-component ((self component) new-version)
   (call/cc new-version self)
   (suspend))
 
-;; (defmethod/cc continue-component ((self component) &optional value)
-;;   (prog1 nil
-;;     (http-response.set-content-type (context.response +context+) '("text" "javascript" ("charset" "UTF-8")))
-;;     (let ((stream (if (application.debug (context.application +context+))
-;; 		      (make-indented-stream (http-response.stream (context.response +context+)))
-;; 		      (make-compressed-stream (http-response.stream (context.response +context+)))))
-;; 	  (hash (uri.query (http-request.uri (context.request +context+)) "__hash")))
-;;       (if (and (stringp hash) (> (length hash) 0))
-;; 	  (let ((hash (intern hash)))
-;; 	    (with-js (hash value) stream
-;; 	      (apply (slot-value window hash) window (list value))))
-;; 	  (with-js (value) stream
-;; 	    value)))))
 (defmethod/cc continue-component ((component component) &optional value)
   (javascript/suspend
    (lambda (stream)
@@ -417,10 +404,13 @@
        (if (and (stringp hash) (> (length hash) 0))
 	   (let ((hash (intern hash)))
 	     (with-js (value hash component) stream
-	       (apply (slot-value window hash) window (list value)))
+	       (with-call/cc
+		 (apply (slot-value window hash) window
+			(list (lambda (self) value)))))
 	     (unintern hash))
 	   (with-js (component) stream
-	     value))))))
+	     (with-call/cc
+	       (lambda (self) value))))))))
 
 (defmethod/cc continue/js (value)
   (javascript/suspend
@@ -430,10 +420,13 @@
        (if (and (stringp hash) (> (length hash) 0))
 	   (let ((hash (intern hash)))
 	     (with-js (value hash) stream
-	       (apply (slot-value window hash) window (list value)))
+	       (with-call/cc
+		 (apply (slot-value window hash) window
+			(list (lambda (self) value)))))
 	     (unintern hash))
 	   (with-js () stream
-	     value))))))
+	     (with-call/cc
+	       (lambda (self) value))))))))
 
 (defmethod/remote answer-component ((self component) arg)
   ;; (console.debug (list "answering" arg))
@@ -458,18 +451,14 @@
        (if (and (stringp hash) (> (length hash) 0))
 	   (let ((hash (intern hash)))
 	     (with-js (hash component) stream
-	       (apply (slot-value window hash) window (list component))
-	       ;; (let ((component component))
-	       ;; 	 (setf (slot-value window hash)
-	       ;; 	       (component null null window.k)))
-	       )
+	       (with-call/cc
+		 (apply (slot-value window hash) window
+			(list (lambda (self) component)))))
 	     (unintern hash))
 	   (with-js (component) stream
 	     ((lambda ()
 		(let ((component component))
-		  (component null window.k))))
-	     ;; component
-	     ))))))
+		  (component null window.k))))))))))
 
 (defmethod write-stream ((stream core-stream) (object component))
   (prog1 stream
@@ -523,48 +512,60 @@
 	 :test #'string=
 	 :key #'cdr)))
 
-;; +----------------------------------------------------------------------------
-;; | Component Dispatcher
-;; +----------------------------------------------------------------------------
-(defhandler "^component\.core" ((application http-application) (component "component")
-				(hash "__hash"))
-  (javascript/suspend
-   (lambda (stream)
-     (when (and (stringp hash) (> (length hash) 0))
-       (string! stream "var ")
-       (string! stream (json-deserialize hash))
-       (string! stream " = "))
-     (acond
-      ((and (typep component 'string) (find-component (json-deserialize component)))
-       (component! stream (make-instance it)))
-      (t
-       (with-js () stream
-	 (lambda ()
-	   (throw (new (*error "No Components Found - Core Server [http://labs.core.gen.tr]"))))))))))
+;; (defmethod/cc continue-component ((self component) &optional value)
+;;   (prog1 nil
+;;     (http-response.set-content-type (context.response +context+) '("text" "javascript" ("charset" "UTF-8")))
+;;     (let ((stream (if (application.debug (context.application +context+))
+;; 		      (make-indented-stream (http-response.stream (context.response +context+)))
+;; 		      (make-compressed-stream (http-response.stream (context.response +context+)))))
+;; 	  (hash (uri.query (http-request.uri (context.request +context+)) "__hash")))
+;;       (if (and (stringp hash) (> (length hash) 0))
+;; 	  (let ((hash (intern hash)))
+;; 	    (with-js (hash value) stream
+;; 	      (apply (slot-value window hash) window (list value))))
+;; 	  (with-js (value) stream
+;; 	    value)))))
 
-;; +----------------------------------------------------------------------------
-;; | Service Dispatcher
-;; +----------------------------------------------------------------------------
-(defhandler "^service\.core$" ((application http-application) (component "service")
-			       (hash "__hash"))
-  (javascript/suspend
-   (lambda (stream)
-     (when (and (stringp hash) (> (length hash) 0))
-       (string! stream "var ")
-       (string! stream (json-deserialize hash))
-       (string! stream " = "))
-     (acond
-       ((and (typep component 'string) (find-component (json-deserialize component)))
-	(let ((component (query-session it)))
-	  (if component
-	      (component! stream component)
-	      (component! stream (update-session it (make-instance it))))))
-       (t
-	(with-js () stream
-	  (lambda ()
-	    (throw (new (*error "No Services Found - Core Server [http://labs.core.gen.tr]"))))))))))
+;; ;; +----------------------------------------------------------------------------
+;; ;; | Component Dispatcher
+;; ;; +----------------------------------------------------------------------------
+;; (defhandler "^component\.core" ((application http-application) (component "component")
+;; 				(hash "__hash"))
+;;   (javascript/suspend
+;;    (lambda (stream)
+;;      (when (and (stringp hash) (> (length hash) 0))
+;;        (string! stream "var ")
+;;        (string! stream (json-deserialize hash))
+;;        (string! stream " = "))
+;;      (acond
+;;       ((and (typep component 'string) (find-component (json-deserialize component)))
+;;        (component! stream (make-instance it)))
+;;       (t
+;;        (with-js () stream
+;; 	 (lambda ()
+;; 	   (throw (new (*error "No Components Found - Core Server [http://labs.core.gen.tr]"))))))))))
 
-
+;; ;; +----------------------------------------------------------------------------
+;; ;; | Service Dispatcher
+;; ;; +----------------------------------------------------------------------------
+;; (defhandler "^service\.core$" ((application http-application) (component "service")
+;; 			       (hash "__hash"))
+;;   (javascript/suspend
+;;    (lambda (stream)
+;;      (when (and (stringp hash) (> (length hash) 0))
+;;        (string! stream "var ")
+;;        (string! stream (json-deserialize hash))
+;;        (string! stream " = "))
+;;      (acond
+;;        ((and (typep component 'string) (find-component (json-deserialize component)))
+;; 	(let ((component (query-session it)))
+;; 	  (if component
+;; 	      (component! stream component)
+;; 	      (component! stream (update-session it (make-instance it))))))
+;;        (t
+;; 	(with-js () stream
+;; 	  (lambda ()
+;; 	    (throw (new (*error "No Services Found - Core Server [http://labs.core.gen.tr]"))))))))))
 
 ;; (defmethod write-stream ((stream html-stream) (object component))
 ;;     (call-next-method)
