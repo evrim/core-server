@@ -18,27 +18,6 @@
   (:metaclass component+)
   (:documentation "Base component class"))
 
-(defmethod shared-initialize :after ((self component) slots &key &allow-other-keys)
-  (if (member 'id (mapcar #'slot-definition-name (class+.slots (class-of self))))
-      (if (or (not (slot-boundp self 'id)) (null (slot-value self 'id)))
-	  (setf (slot-value self 'id) (random-string 5))))
-  
-  (if (typep self 'xml)
-      (setf (xml.children self)
-  	    (cons 
-  	     (<:script :type "text/javascript"
-  		       (with-call/cc		
-  			 (lambda (stream)
-  			   (let ((stream (make-indented-stream stream))
-  				 (component self)
-  				 (id (slot-value self 'id)))
-  			     (with-js (component id) stream
-  			       ((lambda ()
-  				  (let ((ctor component))
-  				    (ctor (document.get-element-by-id id) window.k)))))))))
-  	     (xml.children self))))
-  self)
-
 (defmethod component.application ((self component))
   "Returns application associated with this component."
   (context.application +context+))
@@ -218,13 +197,14 @@
 	 (:metaclass ,metaclass))
        (defjsmacro ,name (&rest properties)
        	 `(make-component ,',(symbol-to-js name) (jobject ,@properties) nil))
-       (defcomponent-accessors ,name ,(mapcar (lambda (slot)
-						(cons (car slot)
-						      (cons (or (getf (cdr slot) :accessor)
-								(car slot))
-							    (or (getf (cdr slot) :host)
-								'local))))
-					      slots))
+       (defcomponent-accessors ,name ,(mapcar
+				       (lambda (slot)
+					 (cons (car slot)
+					       (cons (or (getf (cdr slot) :accessor)
+							 (car slot))
+						     (or (getf (cdr slot) :host)
+							 'local))))
+				       slots))
        (find-class+ ',name))))
 
 ;; ----------------------------------------------------------------------------
@@ -275,23 +255,25 @@
 		 ;; ----------------------------------------------------------------------------
 		 (with-call/cc
 		   (lambda (to-extend)
-		     (let ((to-extend (or to-extend (new (*object)))
-			    ;; ,(if dom-class
-				      ;; 	   `(or (and to-extend (not (null to-extend.node-name)) to-extend)
-				      ;; 		(extend to-extend
-				      ;; 			(document.create-element
-				      ;; 			 ,(symbol-to-js (or (xml+.tag dom-class)
-				      ;; 					    (class-name dom-class))))))
-				      ;; 	   `(or to-extend (new (*object))))
-			     )
+		     (let ((to-extend (or to-extend (new (*object))))
 			   (slots
 			    (jobject
 			     ;; ----------------------------------------------------------------------------
 			     ;; Remote Slot Initial Values
 			     ;; ----------------------------------------------------------------------------
 			     ,@(reduce0 (lambda (acc slot)
-					  (cons (make-keyword (car slot))
-						(cons (cadr slot) acc)))
+					  (cond
+					    ((eq (car slot) 'class)
+					     (cons :class-name (cons (cadr slot) acc)))
+					    ((member (car slot)
+						     '(style onmouseup onmousemove
+						       onclick className ondblclick
+						       onmousedown onkeypress onkeydown
+						       onkeyup dir lang dojoType open
+						       onmouseover onmouseout))
+					     acc)
+					    (t
+					     (cons (make-keyword (car slot)) (cons (cadr slot) acc)))))
 					remote-slots)))
 			   (methods
 			    (jobject
@@ -333,17 +315,18 @@
 		       ;; Inject Default Values Differentially
 		       ;; -------------------------------------------------------------------------
 		       (mapobject (lambda (k v)
-				    (if (and (not (null v))
-					     (or (eq "" (slot-value to-extend k))
-						 (null (slot-value to-extend k))))
+				    (if (or (and (not (null v))
+						 (or (eq "" (slot-value to-extend k))
+						     (null (slot-value to-extend k))))
+					    (eq "undefined" (typeof (slot-value to-extend k))))
 					(setf (slot-value to-extend k) v)))
 				  slots)
 
 		       (let ((to-extend ,(if dom-tag
 		       			     `(if (null (slot-value to-extend 'node-name))
-							(extend to-extend
-								(document.create-element
-								 ,(symbol-to-js dom-tag)))
+						  (extend to-extend
+							  (document.create-element
+							   ,(symbol-to-js dom-tag)))
 		       				  to-extend)
 		       			     'to-extend)))
 
@@ -358,7 +341,7 @@
        (defmethod/cc component! ((stream core-stream) (component ,class-name))
 	 (if (and +context+ (context.request +context+))
 	     (setf (slot-value component 'url)
-		   (format nil "http://~A:8080/~A"
+		   (format nil "http://~A/~A"
 			   (web-application.fqdn (context.application +context+))
 			   (apply #'concatenate 'string
 				  (flatten (uri.paths (http-request.uri (context.request +context+))))))))
@@ -383,8 +366,7 @@
 					     (lambda (stream)
 					       (if hash
 						   (with-js (result hash) stream
-						     (apply (slot-value window hash)
-							    window (list result)))
+						     (apply (slot-value window hash) window (list result)))
 						   (with-js (result) stream
 						     (with-call/cc
 						       (lambda (self) result))))))
@@ -483,15 +465,37 @@
 	       )
 	     (unintern hash))
 	   (with-js (component) stream
-	     component
-	     ;; (let ((component component))
-	     ;;   (component null null window.k))
+	     ((lambda ()
+		(let ((component component))
+		  (component null window.k))))
+	     ;; component
 	     ))))))
 
 (defmethod write-stream ((stream core-stream) (object component))
   (prog1 stream
     (with-call/cc
       (component! stream object))))
+
+(defmethod shared-initialize :after ((self component) slots &key &allow-other-keys)
+  (if (member 'id (mapcar #'slot-definition-name (class+.slots (class-of self))))
+      (if (or (not (slot-boundp self 'id)) (null (slot-value self 'id)))
+	  (setf (slot-value self 'id) (random-string 5))))
+  
+  (if (typep self 'xml)
+      (setf (xml.children self)
+  	    (cons 
+  	     (<:script :type "text/javascript"
+  		       (with-call/cc		
+  			 (lambda (stream)
+  			   (let ((stream (make-indented-stream stream))
+  				 (component self)
+  				 (id (slot-value self 'id)))
+  			     (with-js (component id) stream
+  			       ((lambda ()
+  				  (let ((ctor component))
+  				    (ctor (document.get-element-by-id id) window.k)))))))))
+  	     (xml.children self))))
+  self)
 
 (defmethod write-stream ((stream html-stream) (self component))
   (write-stream stream
@@ -503,7 +507,7 @@
 				(with-js (component) stream
 				  ((lambda ()
 				     (let ((ctor component))
-				       (ctor null window.k))))))))))  )
+				       (ctor null window.k)))))))))))
 
 (defmethod json! ((stream core-stream) (component component))
   (with-call/cc
