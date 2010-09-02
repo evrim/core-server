@@ -32,6 +32,7 @@
   (setf document.body.style.overflow "hidden"))
 
 (defmethod/remote hide-component ((self dialog))
+  (remove-css "http://www.coretal.net/style/login/login.css")
   (setf document.body.style.overflow "visible")
   (.remove-child document.body self)
   (.remove-child document.body (overlay self)))
@@ -178,3 +179,31 @@
 		   (with-field ""
 		     (<:input :type "submit" :class "button"
 			      :value "login or register" :disabled t))))))
+
+;; -------------------------------------------------------------------------
+;; Forgot Password
+;; -------------------------------------------------------------------------
+(defcomponent forgot-password-dialog (dialog)
+  ((email-input :host remote :initform (<core:email-input)))
+  (:default-initargs :title "password"))
+
+(defmethod/remote template ((self forgot-password-dialog))    
+  (<:div :class "center text-center"
+    (<:div :class "left" (<:a :href "http://www.coretal.net/" ""))
+    (<:div :class "right"
+	   (<:div :class "title" (title self))
+	   (<:form :action "#"
+		   :onsubmit (event (e)
+				    (with-call/cc
+				      (answer-component self this.email.value))
+				    false)
+		   (with-field
+		       (call/cc (email-input self)
+				(jobject :class-name "text" :type "text"
+					 :name "email"
+					 :validation-span-id "email-validation"
+					 :default-value "Email"))
+		     (<:span :class "validation" :id "email-validation" "Enter your email address"))
+		   (with-field ""
+		     (<:input :type "submit" :class "button"
+			      :value "send my password" :disabled t))))))
