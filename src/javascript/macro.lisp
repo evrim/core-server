@@ -119,3 +119,18 @@
 
 (defjsmacro $fck (id)
   `(*f-c-keditor-a-p-i.*get-instance ,id))
+
+(defmacro/js make-component (ctor &rest args)
+  `(call/cc ,ctor (jobject ,@args)))
+
+(defmacro/js lift1 (fun)
+  `(lambda (arg) (call/cc ,fun arg)))
+
+(defmacro/js lift0 (fun)
+  `(lambda () (call/cc ,fun)))
+
+;; -------------------------------------------------------------------------
+;; Lift Javascript Event Handler with a call/cc function.
+;; -------------------------------------------------------------------------
+(defmacro/js lifte (fun)
+  `(lambda (e) (call/cc ,fun)))
