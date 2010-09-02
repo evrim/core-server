@@ -358,8 +358,9 @@
 	      (body (slot-value document 'body)))
 	  (setf (slot-value window hash)
 		(event (val)
-		  (.remove-child head script)
-		  (if body (.remove-child body img))
+		  (when (not (null (slot-value script 'parent-node)))
+		    (.remove-child head script)
+		    (if body (.remove-child body img)))
 		  (current-continuation val)))
 	  (if body (append body img))
 	  (append head script)
@@ -487,6 +488,18 @@
   
   (defun make-web-thread (fun)
     (window.set-timeout (lambda () (fun (lambda (a) a))) 0))
+
+  ;; FIX IE stack overflow bug
+  (defun make-method (method)
+    (if (> (.search navigator.user-agent "MSIE") 0)
+	(return
+	  (lambda ()
+	    (let ((args arguments)
+		  (self this))
+	      (make-web-thread
+	       (lambda ()
+		 (apply method self args))))))
+	method))
 
   (defun random-string (len)
     (let ((len (or len 8))
