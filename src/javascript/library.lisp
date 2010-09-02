@@ -216,7 +216,7 @@
     node)
   
   (defun add-on-load (fun)
-    (if (eq "complete" document.ready-state)
+    (if (eq "complete" document.ready-state) ;; yalan bu ya
 	(fun)
 	(if (typep window.onload 'function)
 	    (let ((current window.onload))
@@ -233,7 +233,7 @@
 
   (defun prepend (to item)
     (if to.first-child
-	(to.first-child.insert-before item)
+	(to.insert-before item to.first-child)
 	(to.append-child item)))
 
   (defun append (to item)
@@ -356,11 +356,11 @@
 					nil))
 	      (head (aref (.get-elements-by-tag-name document "HEAD") 0))
 	      (body (slot-value document 'body)))
-	  (setf (slot-value window hash) (lambda (val) (current-continuation val)))
-	  (setf (slot-value script 'onload)
-		(event (e)
+	  (setf (slot-value window hash)
+		(event (val)
 		  (.remove-child head script)
-		  (if body (.remove-child body img))))
+		  (if body (.remove-child body img))
+		  (current-continuation val)))
 	  (if body (append body img))
 	  (append head script)
 	  (suspend)))))
