@@ -380,48 +380,35 @@
       element))
   
   (defun get-parameter (name)
-;;     (debug "get-param:" name)
-    (let ((params (+ (.substr window.location.hash 1)
-		     "$"
-		     (.substr window.location.search 1)))
-	  (arr (params.split "$")))
-      (try
-       (dolist (a arr)
-	 (let ((key (.substr a 0 (.search a ":")))
-	       (value (.substr a (+ 1 (.search a ":")))))
-	   ;; (console.debug (list "key:" key " val:" value))
-
-	   (if (and (null name) (eq "" key) value)
-	       (return value))
-	   
-	   (if (and (not (null name))
-		    (= (key.to-lower-case) (name.to-lower-case)))
-	       (return (eval (+ "(" (unescape value) ")"))))))
-       (:catch (e)
-	 (return nil)))))
+    (let ((data (+ (.substr window.location.hash 1) "$"
+		   (.substr window.location.search 1))))
+      (if (null name)
+	  (car (.split data "$"))
+	  (car
+	   (cdr
+	    (car
+	     (filter (lambda (a) (debug a) (eq (car a) name))
+		     (mapcar (lambda (a) (.split a ":"))
+			     (.split data "$")))))))))
 
   (defun set-parameter (name new-value)
-    (let ((params (.substr window.location.hash 1))
-	  (arr (params.split "$"))
-	  (hash "")
-	  (found nil))
-      (dolist (a arr)
-	(let ((key (aref (a.split ":") 0))
-	      (value (aref (a.split ":") 1)))
-;;	  (debug key value)
-	  (cond
-	    ((or (null key) (null value))
-	     hash)
-	    ((= (key.to-lower-case) (name.to-lower-case))
-	     (setf hash (+ hash (+ key ":"
-				   (encode-u-r-i-component (serialize new-value)) "$"))
-		   found t))
-	    (t
-	     (setf hash (+ hash (+ key ":" value "$")))))))
-      (if (not found)
-	  (setf hash (+ hash (+ name ":" (encode-u-r-i-component (serialize new-value))))))
-      (setf window.location.hash hash)
-      (return new-value)))
+    (let ((append2 (lambda (a b)
+		     (if (null a) b (if (null b) "" (+ a b)))))
+	  (one (lambda (a) (append2 (car a) (append2 ":" (car (cdr a))))))
+	  (elements (mapcar (lambda (a)
+			      (destructuring-bind (key value) a
+				(if (eq name key)
+				    (cons name new-value)
+				    a)))
+			    (mapcar (lambda (a) (.split a ":"))
+				    (.split (.substr window.location.hash 1) "$")))))
+      (setf window.location.hash
+	    (reduce (lambda (acc a) (append2 acc (append2 "$" (one a))))
+		    (cdr elements)
+		    (if (and (null new-value)
+			     (null (car (cdr (car elements)))))
+			name
+			(one (car elements)))))))
 
   (defun load-css (url)
     (let ((link (document.create-element "link")))
