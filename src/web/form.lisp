@@ -1,12 +1,12 @@
 (in-package :core-server)
 
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | Form/Input Components
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | Validting HTML Input
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (defcomponent <core:validating-input (<:input)
   ((validation-span-id :host remote :initform nil)
    (valid-class :host remote :initform "valid")
@@ -18,12 +18,12 @@
     (setf (slot-value element 'inner-h-t-m-l) msg)))
 
 (defmethod/remote enable-or-disable-form ((self <core:validating-input))
-  (let ((valid (reduce (lambda (acc input)
-			 (if (eq "undefined" (typeof (slot-value input 'valid)))
-			     acc
-			     (and acc (valid self))))
-		       (self.form.get-elements-by-tag-name "INPUT")
-		       t)))
+  (let ((valid (reduce-cc (lambda (acc input)
+			    (if (eq "undefined" (typeof (slot-value input 'valid)))
+				acc
+				(and acc input.valid)))
+			  (self.form.get-elements-by-tag-name "INPUT")
+			  t)))
     (mapcar (lambda (input)
 	      (when (and input.type (eq "SUBMIT" (input.type.to-upper-case)))
 		(if valid
@@ -46,7 +46,7 @@
        (enable-or-disable-form self))
       (t
        (setf (valid self) t)
-       (set-validation-message self "")
+       (set-validation-message self "OK")
        (add-class self (valid-class self))
        (remove-class self (invalid-class self))
        (enable-or-disable-form self)))))
@@ -69,13 +69,9 @@
 (defmethod/remote adjust-default-value ((self <core:default-value-input))
   (cond
     ((equal self.default-value self.value)
-     (setf self.value ""
-;; 	   self.style.opacity 1.0
-	   ))
+     (setf self.value ""))
     ((equal "" self.value)
-     (setf self.value self.default-value
-	   ;; self.style.opacity 0.5
-	   ))))
+     (setf self.value self.default-value))))
 
 (defmethod/remote onfocus ((self <core:default-value-input) e)
   (adjust-default-value self))
@@ -84,7 +80,9 @@
   (adjust-default-value self))
 
 (defmethod/remote init ((self <core:default-value-input))
-  (setf self.value self.default-value))
+  (if (null (slot-value self 'default-value))
+      (setf (slot-value self 'default-value) (slot-value self 'value))
+      (setf self.value self.default-value)))
 
 ;; +----------------------------------------------------------------------------
 ;; | Email HTML Component
