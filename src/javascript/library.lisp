@@ -442,15 +442,15 @@
 	  (append head script)
 	  (suspend)))))
   
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | Identity Continuation
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
   (defun k (value)
     value)
 
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | 'new' Operator replacement for Continuations
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
   (defun make-instance (k ctor arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8)
     (if (> arguments.length 9)
 	(throw (new (*error (+ "Cannot makeInstance, too many arguments:"
@@ -476,7 +476,10 @@
 	   (k (new (ctor)))))))
 
   (defun extend (source target)
-    (mapobject (lambda (k v) (setf (slot-value target k) v)) source)
+    (mapobject (lambda (k v)
+		 (try (setf (slot-value target k) v)
+		      (:catch (err) (_debug err))))
+	       source)
     target)
 
   (defun apply (fun scope args kX)
@@ -487,9 +490,12 @@
 
   (defun random-string (len)
     (let ((len (or len 8))
-	  (alphabet "0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz"))
+	  (alphabet (+  "0123456789" "ABCDEFGHIJKLMNOPQRSTUVWXTZ"
+			"abcdefghiklmnopqrstuvwxyz")))
       (flet ((one ()
-	       (aref alphabet (*math.floor (* (*math.random) (slot-value alphabet 'length))))))
+	       (aref alphabet
+		     (*math.floor
+		      (* (*math.random) (slot-value alphabet 'length))))))
 	(reduce (lambda (acc atom) (+ acc (one)))
 		(seq (- len 1)) (one)))))
   (defun date-to-string (date)
