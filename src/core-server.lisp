@@ -279,6 +279,9 @@
    #:instanceof
    #:with-field
    #:make-component
+   #:lift1
+   #:lift0
+   #:lifte
    #:make-service   
    #:event
    #:method
@@ -892,8 +895,10 @@
    #:login-dialog
    #:yes-no-dialog
    #:registration-dialog
+   #:forgot-password-dialog
    #:prompt-dialog
-
+   #:template
+   
    #:init
    #:init/js
    
@@ -916,6 +921,10 @@
    #:hilighter
    #:button-set
    #:buttons
+   #:history-component
+   #:register-history-observer
+   #:start-history-timeout
+   #:stop-history-timeout
    
    ;; [Helpers]
    #:make-keyword
