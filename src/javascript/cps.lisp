@@ -305,7 +305,14 @@
 					(list `(,k-arg . ,(walk-js-form `(or ,k-arg window.k)))))
 			       :body (slot-value form 'body)
 			       :parent (parent form)))))))
-		funs)))))
+		funs))))
+
+  (defun fix-progn (form)
+    (cond
+      ((and (typep form 'progn-form)
+	    (eq (length (slot-value form 'body)) 1))
+       (car (slot-value form 'body)))
+      (t form))))
 
 ;; ----------------------------------------------------------------------------
 ;; Interface
@@ -313,10 +320,14 @@
 (defmacro/js with-call/cc (&body body)
   (unwalk-form
    (fix-lambda-k
-    (fix-excessive-recursion
-     (walk-js-form
-      (javascript->cps (walk-js-form `(progn ,@body))
-		       #'javascript->cps 'k nil))))))
+    (fix-progn
+     (fix-excessive-recursion
+      (walk-js-form
+       (javascript->cps (walk-js-form
+			 (if (= 1 (length body))
+			     (car body)
+			     `(progn ,@body)))
+			#'javascript->cps '(lambda (val) val) nil)))))))
 
 (defmacro/js defun/cc (name args &body body)  
   (with-unique-names (k)    

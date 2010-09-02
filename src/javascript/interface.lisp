@@ -53,7 +53,8 @@
   (with-unique-names (s)
     (let ((+js-free-variables+ vars))
       (labels ((expander (form expander)
-		 (expand-render (optimize-render-1 (expand-javascript form expander))
+		 (expand-render (optimize-render-1
+				 (expand-javascript form expander))
 				#'expand-render
 				s)))
 	`(block rule-block
@@ -63,10 +64,12 @@
 		(walk-grammar
 		 (expand-javascript
 		  (fix-javascript-returns
-		   (walk-js-form (if (= 1 (length body)) (car body) `(progn ,@body))))
+		   (walk-js-form (if (= 1 (length body))
+				     (car body)
+				     `(progn ,@body))))
 		  #'expand-javascript)))
 	       #'expander s))
-	   (char! ,stream #\Newline)
+	   ;; (char! ,stream #\Newline)
 	   ,stream)))))
 
 (defmacro defrender/js (name args &body body)
