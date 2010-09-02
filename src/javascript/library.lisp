@@ -431,6 +431,12 @@
       (.append-child (aref (document.get-elements-by-tag-name "head") 0) link)
       (return link)))
 
+  (defun remove-css (url)
+    (mapcar (lambda (link)
+	      (when (eq link.href url)
+		(link.parent-node.remove-child link)))
+	    (document.get-elements-by-tag-name "LINK")))
+  
   (defun/cc load-javascript (url)
     (let/cc current-continuation
       (let ((img (make-dom-element "IMG"
