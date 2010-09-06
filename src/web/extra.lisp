@@ -95,6 +95,100 @@
   (call-next-method self)
   (start-history-timeout self))
 
+;; ;; -------------------------------------------------------------------------
+;; ;; Orderable List
+;; ;; -------------------------------------------------------------------------
+;; (defcomponent sortable-list-component (<:ul)
+;;   ())
+
+
+;; ;; function mouseCoords (ev)
+;; ;; {
+;; ;;     if (ev.pageX || ev.pageY)
+;; ;; {
+;; ;;         return {x:ev.pageX, y:ev.pageY};
+;; ;;     }
+;; ;;     return {
+;; ;;     x:ev.clientX + document.body.scrollLeft - document.body.clientLeft,
+;; ;;     y:ev.clientY + document.body.scrollTop  - document.body.clientTop
+;; ;;     };
+;; ;;}
+
+;; (defmethod/remote mouse-coordinates ((self sortable-list-component) event)
+;;   (cond
+;;     ((or (slot-value event 'page-x) (slot-value event 'page-y))
+;;      (jobject :x (slot-value event 'page-x)
+;; 	      :y (slot-value event 'page-y)))
+;;     (t
+;;      (with-slots (scroll-left client-left scroll-top client-top) document.body	
+;;        (jobject :x (- (+ (slot-value event 'client-x) scroll-left)
+;; 		      client-left)
+;; 		:y (- (+ (slot-value event 'client-y) scroll-top)
+;; 		      client-top))))))
+
+;; ;; function getPosition (e)
+;; ;; {
+;; ;; 16    var left = 0;
+;; ;; 17    var top  = 0;
+;; ;; 18
+;; ;; 19    while (e.offsetParent)
+;; ;; {
+;; ;; 20        left += e.offsetLeft;
+;; ;; 21        top  += e.offsetTop;
+;; ;; 22        e     = e.offsetParent;
+;; ;; 23    }
+;; ;; 24
+;; ;; 25    left += e.offsetLeft;
+;; ;; 26    top  += e.offsetTop;
+;; ;; 27
+;; ;; 28    return {x:left, y:top};
+;; ;; 29} 
+;; (defmethod/remote node-coordinates ((self sortable-list-component) node)
+;;   (with-slots (offset-left offset-top offset-parent
+;; 			   offset-width offset-height child-nodes) node
+;;       (jobject :x (+ offset-left (if offset-parent
+;; 				     (slot-value offset-parent 'offset-left)
+;; 				     0))
+;; 	       :y (+ offset-top (if offset-parent
+;; 				    (slot-value offset-parent 'offset-top)
+;; 				    0))
+;; 	       :height offset-height
+;; 	       :width offset-width)))
+
+;; (defmethod/remote get-drop-target ((self sortable-list-component) coords)
+;;   (car
+;;    (filter-cc (lambda (child)
+;; 		(let ((target-coords (node-coordinates self child)))
+;; 		  (with-slots (x y height width) target-coords
+;; 		    (_debug (+ "x:" x ",y:" y ",height:" height
+;; 			       ",width:" width))
+;; 		    (and (> (slot-value coords 'x) x)
+;; 			 (< (slot-value coords 'x) (+ x width))
+;; 			 (> (slot-value coords 'y) y)
+;; 			 (< (slot-value coords 'y) (+ y height))))))
+;; 	      (.get-elements-by-tag-name self "LI"))))
+
+;; (defmethod/remote init ((self sortable-list-component))
+;;   (let ((draggables (.get-elements-by-tag-name self "LI")))
+;;     (mapcar-cc (lambda (draggable)
+;; 		 (setf (slot-value draggable 'onmousedown)
+;; 		       (lambda (e)
+;; 			 (_debug e)
+;; 			 (_debug this)
+;; 			 (let ((coord (mouse-coordinates self
+;; 					    (or e (extend window.event
+;; 							  (jobject))))))
+;; 			   (_debug (+ " x:" (slot-value coord 'x)
+;; 				      " y:" (slot-value coord 'y))))))
+;; 		 (setf (slot-value draggable 'onmouseup)
+;; 		       (lambda (e)
+;; 			 (_debug "up!")
+;; 			 (_debug (get-drop-target self
+;; 				     (mouse-coordinates self
+;; 					 (or e (extend window.event
+;; 						       (jobject)))))))))
+;; 	       draggables)))
+
 ;; (defcomponent dojo-widget (dom-element)
 ;;   ((dojo-type :initarg :dojo-type :initform (error "Please specify :dojo-type"))
 ;;    (dojo-args :initarg :dojo-args :initform '())))
