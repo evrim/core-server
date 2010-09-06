@@ -245,7 +245,10 @@
      (:catch (e)
        (try (return item.xml)
 	(:catch (e)
-	  (throw (new (*error (+ "Node " item " cannot be serialized to string.")))))))))
+	  (throw
+	      (new
+	       (*error
+		(+ "Node " item " cannot be serialized to string.")))))))))
   
   (defun serialize (object)
     (labels ((serialize (object)
@@ -293,7 +296,6 @@
 	(setf xhr (new (*active-x-object "Microsoft.XMLHTTP")))
 	(setf xhr (new (*x-m-l-http-request))))
     (xhr.open "POST" action false)
-;;     (xhr.set-request-header "Content-Type" "application/x-www-form-urlencoded")
     (xhr.set-request-header "Content-Type" "text/json")
     (xhr.send (serialize arguments))
 
@@ -345,8 +347,8 @@
 		     (.get-time (new (*date)))
 		     (.substr (.concat "" (*math.random 10)) 3 5)))
 	    (img (make-dom-element "IMG"
-				   (jobject :class-name "coretal-loading"
-					    :src "http://www.coretal.net/style/login/loading.gif")
+		     (jobject :class-name "coretal-loading"
+			      :src "http://www.coretal.net/style/login/loading.gif")
 				   nil))
 	    (args (if (null args) (jobject) args)))
 	(setf (slot-value args "__hash") hash)
@@ -380,15 +382,19 @@
 		children))
       element))
   
-  (defun get-parameter (name)
-    (let ((data (+ (.substr window.location.hash 1) "$"
-		   (.substr window.location.search 1))))
+  (defun get-parameter (name href)
+    (let ((data nil))
+      (if (not (null href))
+	  (setf data (.substr (.substr href (.search href "#")) 1))
+	  (setf data (+ (.substr window.location.hash 1) "$"
+			(.substr window.location.search 1))))
+      
       (if (null name)
 	  (car (.split data "$"))
 	  (car
 	   (cdr
 	    (car
-	     (filter (lambda (a) (debug a) (eq (car a) name))
+	     (filter (lambda (a) (eq (car a) name))
 		     (mapcar (lambda (a) (.split a ":"))
 			     (.split data "$")))))))))
 
@@ -406,7 +412,7 @@
       (setf window.location.hash
 	    (reduce (lambda (acc a) (append2 acc (append2 "$" (one a))))
 		    (cdr elements)
-		    (if (and (null new-value)
+ 		    (if (and (null new-value)
 			     (null (car (cdr (car elements)))))
 			name
 			(one (car elements)))))))
@@ -416,7 +422,8 @@
       (setf link.href url
 	    link.rel "stylesheet"
 	    link.type "text/css")
-      (.append-child (aref (document.get-elements-by-tag-name "head") 0) link)
+      (.append-child (aref (document.get-elements-by-tag-name "head") 0)
+		     link)
       (return link)))
 
   (defun remove-css (url)
@@ -425,56 +432,36 @@
 		(link.parent-node.remove-child link)))
 	    (document.get-elements-by-tag-name "LINK")))
   
-  (defun/cc load-javascript (url)
+  (defun/cc load-javascript (url loaded-p)
+    (_debug (list "load-javascript" url loaded-p))
     (let/cc current-continuation
-      (let ((img (make-dom-element "IMG"
-		   (jobject :class-name "coretal-loading"
-			    :src "http://www.coretal.net/style/login/loading.gif")
-		   nil)))
-	(let ((script (make-dom-element "script" (jobject :src url) nil))
-	      (head (aref (.get-elements-by-tag-name document "HEAD") 0))
-	      (body (slot-value document 'body)))
-	  (setf (slot-value script 'onload)
-		(event (e)
-		  (.remove-child head script)
-		  (if body (.remove-child body img))
-		  (current-continuation t)))
-	  (if body (append body img))
-	  (append head script)
-	  (suspend)))))
+      (let* ((img (<:img :class "coretal-loading"
+			 :src (+ "http://www.coretal.net"
+				 "/style/login/loading.gif")))
+	     (script (<:script :type "text/javascript" :src url))
+	     (head (aref (.get-elements-by-tag-name document "HEAD") 0))
+	     (body (slot-value document 'body))
+	     (loaded-p (or loaded-p (lambda () t)))
+	     (recurse
+	      (lambda (r)
+		(cond		   
+		  ((loaded-p window.k)
+		   (when (not (null (slot-value script 'parent-node)))
+		     (.remove-child head script)
+		     (if body (.remove-child body img)))
+		   (current-continuation null))
+		  (t
+		   (make-web-thread (lambda () (Y r)))
+		   (suspend))))))
+	(if body (append body img))
+	(append head script)
+	(Y recurse))))
   
 ;; +-------------------------------------------------------------------------
 ;; | Identity Continuation
 ;; +-------------------------------------------------------------------------
   (defun k (value)
     value)
-
-;; +-------------------------------------------------------------------------
-;; | 'new' Operator replacement for Continuations
-;; +-------------------------------------------------------------------------
-  (defun make-instance (k ctor arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8)
-    (if (> arguments.length 9)
-	(throw (new (*error (+ "Cannot makeInstance, too many arguments:"
-			       arguments.length ", ctor:" ctor))))
-	(cond
-	  ((not (typep arg8 'undefined))
-	   (k (new (ctor arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8))))
-	  ((not (typep arg7 'undefined))
-	   (k (new (ctor arg1 arg2 arg3 arg4 arg5 arg6 arg7))))
-	  ((not (typep arg6 'undefined))
-	   (k (new (ctor arg1 arg2 arg3 arg4 arg5 arg6))))
-	  ((not (typep arg5 'undefined))
-	   (k (new (ctor arg1 arg2 arg3 arg4 arg5))))
-	  ((not (typep arg4 'undefined))
-	   (k (new (ctor arg1 arg2 arg3 arg4))))
-	  ((not (typep arg3 'undefined))
-	   (k (new (ctor arg1 arg2 arg3))))
-	  ((not (typep arg2 'undefined))
-	   (k (new (ctor arg1 arg2))))
-	  ((not (typep arg1 'undefined))
-	   (k (new (ctor arg1))))
-	  (t
-	   (k (new (ctor)))))))
 
   (defun extend (source target)
     (mapobject (lambda (k v)
@@ -511,13 +498,15 @@
 		      (* (*math.random) (slot-value alphabet 'length))))))
 	(reduce (lambda (acc atom) (+ acc (one)))
 		(seq (- len 1)) (one)))))
+
   (defun date-to-string (date)
     (+
      (date.get-day) "/" (date.get-month) "/" (date.get-full-year) " - "
      (date.get-hours) ":" (date.get-minutes) ":" (date.get-seconds)))
 
-  (defun Y (f)
-    (f f)))
+  (defun/cc Y (f)
+    (f f)
+    (suspend)))
 
 (eval-when (:compile-toplevel :execute :load-toplevel)
   (setf (gethash 'make-component +javascript-cps-functions+) t
@@ -549,3 +538,30 @@
   ;;  	    (setf (slot-value *registry* name)
   ;;  		  (funcall-cc "component.core?" (create :component name)))
   ;;  	    (make-component name properties to-extend)))))
+
+;; ;; +-------------------------------------------------------------------------
+;; ;; | 'new' Operator replacement for Continuations
+;; ;; +-------------------------------------------------------------------------
+;;   (defun make-instance (k ctor arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8)
+;;     (if (> arguments.length 9)
+;; 	(throw (new (*error (+ "Cannot makeInstance, too many arguments:"
+;; 			       arguments.length ", ctor:" ctor))))
+;; 	(cond
+;; 	  ((not (typep arg8 'undefined))
+;; 	   (k (new (ctor arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8))))
+;; 	  ((not (typep arg7 'undefined))
+;; 	   (k (new (ctor arg1 arg2 arg3 arg4 arg5 arg6 arg7))))
+;; 	  ((not (typep arg6 'undefined))
+;; 	   (k (new (ctor arg1 arg2 arg3 arg4 arg5 arg6))))
+;; 	  ((not (typep arg5 'undefined))
+;; 	   (k (new (ctor arg1 arg2 arg3 arg4 arg5))))
+;; 	  ((not (typep arg4 'undefined))
+;; 	   (k (new (ctor arg1 arg2 arg3 arg4))))
+;; 	  ((not (typep arg3 'undefined))
+;; 	   (k (new (ctor arg1 arg2 arg3))))
+;; 	  ((not (typep arg2 'undefined))
+;; 	   (k (new (ctor arg1 arg2))))
+;; 	  ((not (typep arg1 'undefined))
+;; 	   (k (new (ctor arg1))))
+;; 	  (t
+;; 	   (k (new (ctor)))))))
