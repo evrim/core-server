@@ -131,20 +131,23 @@
 					(answer-component self (cons this.email.value password))))
 				    false)
 		   (with-field
-		       (call/cc (email-input self)
-				(jobject :class-name "text" :type "text" :name "email"
-					 :validation-span-id "email-validation"
-					 :default-value "Email"))
-		     (<:span :class "validation"
-			     :id "email-validation" "Enter your email address"))
+		       (<:span :class "validation"
+			       :id "email-validation"
+			       "Enter your email address")
+		     (call/cc (email-input self)
+			      (jobject :class-name "text" :type "text"
+				       :name "email"
+				       :validation-span-id "email-validation"
+				       :default-value "Email")))
 		   (with-field
+		       (<:span :class "validation"
+			       :id "password-validation"
+			       "Enter your password")
 		       (call/cc (password-input self)
 				(jobject :class-name "text"
 					 :default-value "password"
 					 :type "password" :name "password"
-					 :validation-span-id "password-validation"))
-		     (<:span :class "validation"
-			     :id "password-validation" "Enter your password"))
+					 :validation-span-id "password-validation")))
 		   (with-field ""
 		     (<:div (<:input :type "submit" :class "button"
 				     :value "login or register" :disabled t)
@@ -170,12 +173,13 @@
 				      (answer-component self this.email.value))
 				    false)
 		   (with-field
+		       (<:span :class "validation" :id "email-validation"
+			       "Enter your email address")
 		       (call/cc (email-input self)
 				(jobject :class-name "text" :type "text"
 					 :name "email"
 					 :validation-span-id "email-validation"
-					 :default-value "Email"))
-		     (<:span :class "validation" :id "email-validation" "Enter your email address"))
+					 :default-value "Email")))
 		   (with-field ""
 		     (<:input :type "submit" :class "button"
 			      :value "login or register" :disabled t))))))
@@ -194,16 +198,17 @@
 	   (<:div :class "title" (title self))
 	   (<:form :action "#"
 		   :onsubmit (event (e)
-				    (with-call/cc
-				      (answer-component self this.email.value))
+			       (with-call/cc
+				 (answer-component self this.email.value))
 				    false)
 		   (with-field
-		       (call/cc (email-input self)
-				(jobject :class-name "text" :type "text"
-					 :name "email"
-					 :validation-span-id "email-validation"
-					 :default-value "Email"))
-		     (<:span :class "validation" :id "email-validation" "Enter your email address"))
+		       (<:span :class "validation" :id "email-validation"
+			       "Enter your email address")
+		     (call/cc (email-input self)
+			      (jobject :class-name "text" :type "text"
+				       :name "email"
+				       :validation-span-id "email-validation"
+				       :default-value "Email")))
 		   (with-field ""
 		     (<:input :type "submit" :class "button"
 			      :value "send my password" :disabled t))))))
