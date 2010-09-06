@@ -14,19 +14,7 @@
 		      :base-path "http://www.coretal.net/js/ckeditor/"))))
 
 (defmethod/remote call-component ((self ckeditor-component))
-  (let/cc current-continuation
-    (setf (slot-value (slot-value (target self) 'form) 'onsubmit)
-	  (event (e) (alert "moo") (return false)))
-    (let ((recurse (lambda (r)
-		     (cond
-		       ((null -c-k-e-d-i-t-o-r)
-			(make-web-thread (lambda () (Y r)))
-			(suspend))
-		       (t
-			(call/cc current-continuation null))))))
-      (Y recurse)
-      (suspend)))
-  (debug (config self))
+  (_debug (config self))
   (let* ((textarea (target self))
 	 (editor (-c-k-e-d-i-t-o-r.replace textarea (config self)))
 	 (form (slot-value textarea 'form)))
@@ -44,7 +32,8 @@
 
 (defmethod/remote init ((self ckeditor-component))
   (load-css "http://www.coretal.net/style/ckeditor.css")
-  (load-javascript "http://www.coretal.net/js/ckeditor/ckeditor.js"))
+  (load-javascript "http://www.coretal.net/js/ckeditor/ckeditor.js"
+		   (lambda () (not (null -c-k-e-d-i-t-o-r)))))
 
 ;; (defvar +fck-image-extensions+ '("bmp" "gif" "jpeg" "jpg" "png" "psd" "tif" "tiff"))
 ;; (defvar +fck-flash-extensions+ '("swf" "fla"))
