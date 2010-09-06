@@ -306,16 +306,23 @@
 			 (class+.slots self))
 		(reverse (class+.slots self)))))
 
+(defmethod class+.ctor-name ((self class+))
+  (or (and (atom (caar (slot-value self 'ctor)))
+	   (caar (slot-value self 'ctor)))
+      (class+.name self)))
+
 (defmethod class+.%ctor ((self class+))
-  (caar (slot-value self 'ctor)))
+  (if (atom (caar (slot-value self 'ctor)))
+      (cadar (slot-value self 'ctor))
+      (caar (slot-value self 'ctor))))
 
 (defmethod class+.ctor ((self class+))
   (let ((name (class+.name self)))
     (aif (class+.%ctor self)
-	 `(defun ,name ,it
+	 `(defun ,(class+.ctor-name self) ,it
 	    (make-instance ',name ,@(class+.ctor-arguments self it)))
 	 (let ((keywords (class+.ctor-lambda-list self t)))
-	   `(defun ,name (&key ,@keywords)
+	   `(defun ,(class+.ctor-name self) (&key ,@keywords)
 	      (declare (ignorable ,@(mapcar #'caddr keywords)))
 	      (make-instance ',name ,@(class+.ctor-arguments self)))))))
 
@@ -389,7 +396,6 @@
 			  ,@(remove 'class+-object supers) class+-instance)
 	 ,(mapcar (lambda (slot) (%fix-slot-definition name slot)) slots)
 	 ,@(%filter-rest rest))       
-       (fmakunbound ',name)
        (defclass+-ctor ,name))
      (defclass+-print-object ,name)
      (find-class ',name)))
