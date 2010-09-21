@@ -43,12 +43,17 @@
 (defmethod xml+.namespace ((self xml+))
   (car (slot-value self 'namespace)))
 
+(defmethod class+.ctor-name ((self xml+))
+  (class+.name self))
+
 (defmethod class+.ctor ((self xml+))
   (let ((name (class+.name self)))
-    `(defun ,name (&rest args)
-       (multiple-value-bind (attributes children) (tag-attributes args)
-	 (apply #'make-instance ',name
-		(list* :children (flatten children) attributes))))))
+    `(progn
+       (fmakunbound ',(class+.ctor-name self))
+       (defun ,(class+.ctor-name self) (&rest args)
+	 (multiple-value-bind (attributes children) (tag-attributes args)
+	   (apply #'make-instance ',name
+		  (list* :children (flatten children) attributes)))))))
 
 ;; ----------------------------------------------------------------------------
 ;; XML Base Class
