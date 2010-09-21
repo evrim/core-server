@@ -45,10 +45,13 @@
   (when (not (class-finalized-p class))
     (finalize-inheritance class))
 
-  (filter (lambda (e)
+  (uniq (reverse
+	 (filter
+	  (lambda (e)
 	    (not (member (slot-definition-name e) +standard-class-slots+
 			 :key #'slot-definition-name)))
 	  (class-slots class)))
+	:key #'slot-definition-name :test #'string=))
 
 (defmethod class+.self-slots ((class class+))
   (set-difference 
@@ -309,7 +312,10 @@
 (defmethod class+.ctor-name ((self class+))
   (or (and (atom (caar (slot-value self 'ctor)))
 	   (caar (slot-value self 'ctor)))
-      (class+.name self)))
+      (class+.name self)
+      ;; (intern (format nil "MAKE-~A" (class+.name self))
+      ;; 	      (symbol-package (class+.name self)))
+      ))
 
 (defmethod class+.%ctor ((self class+))
   (if (atom (caar (slot-value self 'ctor)))
@@ -319,12 +325,16 @@
 (defmethod class+.ctor ((self class+))
   (let ((name (class+.name self)))
     (aif (class+.%ctor self)
-	 `(defun ,(class+.ctor-name self) ,it
-	    (make-instance ',name ,@(class+.ctor-arguments self it)))
+	 `(progn
+	    (fmakunbound ',it)
+	    (defun ,(class+.ctor-name self) ,it
+	      (make-instance ',name ,@(class+.ctor-arguments self it))))
 	 (let ((keywords (class+.ctor-lambda-list self t)))
-	   `(defun ,(class+.ctor-name self) (&key ,@keywords)
-	      (declare (ignorable ,@(mapcar #'caddr keywords)))
-	      (make-instance ',name ,@(class+.ctor-arguments self)))))))
+	   `(progn
+	      (fmakunbound ',(class+.ctor-name self))
+	      (defun ,(class+.ctor-name self) (&key ,@keywords)
+		(declare (ignorable ,@(mapcar #'caddr keywords)))
+		(make-instance ',name ,@(class+.ctor-arguments self))))))))
 
 (defmacro defclass+-ctor (name)
   (class+.ctor (find-class+ name)))
