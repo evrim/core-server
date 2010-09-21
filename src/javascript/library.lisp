@@ -150,7 +150,7 @@
 	      (fun (nth index lst1) (nth index lst2)))
 	    (seq (*math.min (slot-value lst1 'length)
 			    (slot-value lst2 'length)))))
-
+  
   (defun any (fun lst)
     (dolist (i lst)
       (if (fun i)
@@ -175,6 +175,25 @@
 	      (or acc (equal atom obj)))
 	    lst))
 
+  (defun sort (fun lst)
+    (let ((first (car lst))
+	  (rest (cdr lst)))
+      (if first
+	  (flet ((compare (a) (fun first a)))
+	    (append (sort fun (filter compare rest))
+		    (cons first
+			  (sort fun
+				(filter (lambda (a) (not (compare a)))
+					rest))))))))
+
+  (defun uniq (key-fun lst)
+    (reverse
+     (reduce (lambda (acc atom)
+	       (if (eq (key-fun (car acc)) (key-fun atom))
+		   acc
+		   (cons atom acc)))
+	     (sort (lambda (a b) (eq (key-fun a) (key-fun b))) lst))))
+  
   (defun has-class (node class-name)
     (if (member class-name (node.class-name.split " "))
 	t
@@ -237,8 +256,28 @@
 	(to.append-child item)))
 
   (defun append (to item)
-    (to.append-child item))
+    (if (null to)
+	item
+	(if (null item)
+	    to
+	    (if (slot-value to 'node-name)
+		(to.append-child item)
+		(reduce (flip cons)
+			(reduce (flip cons) to)
+			(reverse (reduce (flip cons) item)))))))
 
+  (defun flip (fun) (return (lambda (a b) (fun b a))))
+  (defun flip-cc (fun k) (return (lambda (a b k) (fun b a k))))
+
+  (defun node-search (goal-p context)
+    (let ((context (or context document)))
+      (filter goal-p (.get-elements-by-tag-name context "*"))))
+
+  (defun find (goal-p lst)
+    (reduce (lambda (acc atom)
+	      (or acc (and (goal-p atom) atom)))
+	    lst nil))
+  
   (defun node2str (item)
     (try
      (return (.serialize-to-string (new (*x-m-l-serializer)) item))
@@ -435,10 +474,14 @@
   (defun/cc load-javascript (url loaded-p)
     (_debug (list "load-javascript" url loaded-p))
     (let/cc current-continuation
-      (let* ((img (<:img :class "coretal-loading"
-			 :src (+ "http://www.coretal.net"
-				 "/style/login/loading.gif")))
-	     (script (<:script :type "text/javascript" :src url))
+      (let* ((img (make-dom-element "IMG"
+		   (jobject :class-name "coretal-loading"
+			    :src "http://www.coretal.net/style/login/loading.gif")
+		   nil))
+	     (script (make-dom-element "SCRIPT"
+				       (jobject :type "text/javascript"
+						:src url)
+				       nil))
 	     (head (aref (.get-elements-by-tag-name document "HEAD") 0))
 	     (body (slot-value document 'body))
 	     (loaded-p (or loaded-p (lambda () t)))
@@ -506,6 +549,10 @@
 
   (defun/cc Y (f)
     (f f)
+    (suspend))
+
+  (defun/cc Y1 (arg1 f)
+    (f arg1 f)
     (suspend)))
 
 (eval-when (:compile-toplevel :execute :load-toplevel)

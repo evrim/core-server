@@ -132,5 +132,14 @@
 ;; -------------------------------------------------------------------------
 ;; Lift Javascript Event Handler with a call/cc function.
 ;; -------------------------------------------------------------------------
-(defmacro/js lifte (fun)
-  `(lambda (e) (call/cc ,fun)))
+(defmacro/js lifte (fun &rest args)
+  `(event (e)
+     (with-call/cc (call/cc ,fun ,@args))
+     false))
+
+;; -------------------------------------------------------------------------
+;; Method Macro
+;; -------------------------------------------------------------------------
+(defmacro/js method (lambda-list &rest body)
+  `(lambda ,lambda-list     
+     (javascript-cps-method-body ,@body)))

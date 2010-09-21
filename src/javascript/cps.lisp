@@ -71,14 +71,20 @@
     ;;    ;; 		 )
     ;;    ;; 		expand k env)
     ;;    ))
-    (method
-     (with-unique-names (k1)
-       `(,k (lambda (,@(slot-value (car arguments) 'source) ,k1)
-	      (let ((self (or self this)))
-		,(funcall expand
-			  (make-instance 'implicit-progn-mixin
-					 :body (cdr arguments))
-			  expand k1 env))))))
+    (javascript-cps-method-body
+     `(let ((self (or self this)))
+	,(funcall expand
+		  (make-instance 'implicit-progn-mixin
+				 :body arguments)
+		  expand k env))
+     ;; (with-unique-names (k1)
+     ;;   `(,k (lambda (,@(slot-value (car arguments) 'source) ,k1)
+     ;; 	      (let ((self (or self this)))
+     ;; 		,(funcall expand
+     ;; 			  (make-instance 'implicit-progn-mixin
+     ;; 					 :body (cdr arguments))
+     ;; 			  expand k1 env)))))
+     )
     (suspend
      nil)
     (reset
