@@ -168,11 +168,14 @@
 ;; | defcomponent Macro: Defines a new component
 ;; +----------------------------------------------------------------------------
 (defmacro defcomponent (name supers slots &rest rest)
-  (let* ((metaclass (intern (format nil "~A+" name)))
-	 (metasupers (uniq
-		      (append
-		       (mapcar (compose #'class-name #'class-of #'find-class) supers)
-		       (list 'component+))))
+  (let* ((metaclass1 (cadr (assoc :metaclass rest)))
+	 (metaclass (intern (format nil "~A+" name)))
+	 (metasupers (remove 'class+
+		       (uniq
+			(append
+			 (mapcar (compose #'class-name #'class-of #'find-class)
+				 supers)
+			 (list 'component+)))))
 	 (dom-classes (filter (lambda (a) (typep a 'xml+))
 			      (mapcar #'find-class supers)))
 	 (tag (any (lambda (a) (if (not (null a)) a))
@@ -180,13 +183,17 @@
 	 (namespace (any (lambda (a) (if (not (null a)) a))
 			 (mapcar #'xml+.namespace dom-classes)))
 	 (attributes (any (lambda (a) (if (not (null a)) a))
-			  (mapcar #'xml+.attributes dom-classes))))
+			  (mapcar #'xml+.attributes dom-classes)))
+	 (supers (if (member 'component supers)
+		     supers
+		     (reverse (cons 'component (reverse supers))))))
     `(progn
-       (defclass+ ,metaclass ,metasupers
-	 ()
-	 (:default-initargs :tag (list ,tag) :namespace (list ,namespace)
-			    :attributes (list ',attributes)))
-       (defclass+ ,name (,@supers component)
+       ,(when (null metaclass1)
+	 `(defclass+ ,metaclass ,metasupers
+	    ()
+	    (:default-initargs :tag (list ,tag) :namespace (list ,namespace)
+			       :attributes (list ',attributes))))
+       (defclass+ ,name (,@supers)
 	 ,(mapcar (lambda (a) ;; fixing accessors we do not use abc.def.
 		    (let ((gee (copy-list a)))
 		      (if (null (getf (cdr gee) :accessor))
@@ -194,7 +201,7 @@
 			  a)))
 		  slots)
 	 ,@rest
-	 (:metaclass ,metaclass))
+	 (:metaclass ,(or metaclass1 metaclass)))
        (defjsmacro ,name (&rest properties)
        	 `(make-component ,',(symbol-to-js name) (jobject ,@properties) nil))
        (defcomponent-accessors ,name ,(mapcar
