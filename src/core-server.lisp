@@ -635,6 +635,7 @@
 ;;;    #:update-slots
    #:defcrud
    #:redefmethod
+   #:copy-slots
    ;; [Nameserver]
    ;; Classes
    #:name-server
@@ -897,7 +898,9 @@
    #:registration-dialog
    #:forgot-password-dialog
    #:prompt-dialog
-   #:template
+   #:big-dialog
+   ;; #:template
+   #:buttons
    
    #:init
    #:init/js
@@ -925,6 +928,7 @@
    #:register-history-observer
    #:start-history-timeout
    #:stop-history-timeout
+   #:sortable-list-component
    
    ;; [Helpers]
    #:make-keyword
