@@ -6,8 +6,9 @@
 (defcomponent dialog (<:div)
   ((overlay :host remote :initform nil)
    (message :host remote :initform "This is a message dialog.")
-   (title :host remote :initform "message"))
-  (:default-initargs :class-name "login"))
+   (title :host remote :initform "message")
+   (css-url :host remote :initform "http://www.coretal.net/style/dialog/dialog.css"))
+  (:default-initargs :class "coretal-dialog"))
 
 (defmethod/remote call-component ((self dialog))
   (show-component self)
@@ -24,23 +25,22 @@
   (call-next-method self arg))
 
 (defmethod/remote show-component ((self dialog))
-  (load-css "http://www.coretal.net/style/login/login.css")
-  (add-class document.body "coretal")
+  (load-css (css-url self))
   (window.scroll 0 0)
   (prepend document.body (overlay self))
   (prepend document.body self)
   (setf document.body.style.overflow "hidden"))
 
 (defmethod/remote hide-component ((self dialog))
-  (remove-css "http://www.coretal.net/style/login/login.css")
+  (remove-css (css-url self))
   (setf document.body.style.overflow "visible")
   (.remove-child document.body self)
   (.remove-child document.body (overlay self)))
 
 (defmethod/remote template ((self dialog))    
   (<:div :class "center text-center"
-	 (<:div :class "left" (<:a :href "http://www.coretal.net/" ""))
-	 (<:div :class "right"
+	 (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
+	 (<:div :class "right right-bg"
 		(<:div :class "title" (title self))
 		(<:div :class "message" (message self))
 		(<:form :action "#"
@@ -52,9 +52,8 @@
 					    false))))))
 
 (defmethod/remote init ((self dialog))
-  (add-class self "login")
   (.append-child self (template self))
-  (setf (overlay self) (<:div :class "overlay")))
+  (setf (overlay self) (<:div :class "coretal-dialog-overlay")))
 
 ;; +-------------------------------------------------------------------------
 ;; | Prompt Dialog
@@ -64,8 +63,8 @@
 
 (defmethod/remote template ((self prompt-dialog))  
   (<:div :class "center text-center"
-    (<:div :class "left" (<:a :href "http://www.coretal.net/" ""))
-    (<:div :class "right"
+    (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
+    (<:div :class "right right-bg"
 	   (<:div :class "title" (title self))
 	   (<:div :class "message" (message self))
 	   (<:form :action "#"
@@ -92,8 +91,8 @@
 
 (defmethod/remote template ((self yes-no-dialog))  
   (<:div :class "center text-center"
-    (<:div :class "left" (<:a :href "http://www.coretal.net/" ""))
-    (<:div :class "right"
+    (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
+    (<:div :class "right right-bg"
 	   (<:div :class "title" (title self))
 	   (<:div :class "message" (message self))
 	   (<:form :action "#"
@@ -120,8 +119,8 @@
 
 (defmethod/remote template ((self login-dialog))    
   (<:div :class "center text-center"
-    (<:div :class "left text-left" (<:a :href "http://www.coretal.net/" ""))
-    (<:div :class "right text-left"
+    (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
+    (<:div :class "right right-bg"
 	   (<:div :class "title" (title self))
 	   (<:form :action "#"
 		   :onsubmit (event (e)			      
@@ -164,8 +163,8 @@
 
 (defmethod/remote template ((self registration-dialog))    
   (<:div :class "center text-center"
-    (<:div :class "left" (<:a :href "http://www.coretal.net/" ""))
-    (<:div :class "right"
+    (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
+    (<:div :class "right right-bg"
 	   (<:div :class "title" (title self))
 	   (<:form :action "#"
 		   :onsubmit (event (e)
@@ -193,8 +192,8 @@
 
 (defmethod/remote template ((self forgot-password-dialog))    
   (<:div :class "center text-center"
-    (<:div :class "left" (<:a :href "http://www.coretal.net/" ""))
-    (<:div :class "right"
+    (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
+    (<:div :class "right right-bg"
 	   (<:div :class "title" (title self))
 	   (<:form :action "#"
 		   :onsubmit (event (e)
@@ -212,3 +211,25 @@
 		   (with-field ""
 		     (<:input :type "submit" :class "button"
 			      :value "send my password" :disabled t))))))
+
+;; -------------------------------------------------------------------------
+;; Big Dialog
+;; -------------------------------------------------------------------------
+(defcomponent big-dialog (dialog)
+  ()
+  (::default-initargs :class "coretal-big-dialog coretal-dialog" :title "Dialog"))
+
+(defmethod/remote buttons ((self big-dialog))
+  (<:div :class "buttons right pad10"
+	 (<:input :type "button" :value "Close"
+		  :onclick (lifte self.hide-component))))
+
+(defmethod/remote template ((self big-dialog))
+  (<:div :class "center text-center"
+	 (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
+	 (<:div :class "right right-bg2"
+		(<:div :class "title" (title self))
+		(<:div :class "bg-pad-top center text-center")
+		(<:div :class "center content bg-white pad10" (message self))
+		(<:div :class "clear bg-pad-bottom center text-center")
+		(buttons self))))
