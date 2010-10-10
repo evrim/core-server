@@ -95,6 +95,32 @@
   (call-next-method self)
   (start-history-timeout self))
 
+;; -------------------------------------------------------------------------
+;; History Change Mixin
+;; -------------------------------------------------------------------------
+(defcomponent history-mixin ()
+  ((timeout-id :host remote :initform 0)
+   (current-hash :host remote :initform nil)))
+
+(defmethod/remote on-history-change ((self history-mixin))
+  (_debug (list "history-change" (current-hash self) window.location.hash)))
+
+(defmethod/remote start-history-timeout ((self history-mixin))
+  (setf (current-hash self) window.location.hash)
+  (setf (timeout-id self)
+	(window.set-interval
+	 (event ()
+	   (with-call/cc
+	     (when (not (eq (current-hash self) window.location.hash))
+	       (setf (current-hash self) window.location.hash)
+	       (stop-history-timeout self)
+	       (on-history-change self)
+	       (start-history-timeout self))))
+	 400)))
+
+(defmethod/remote stop-history-timeout ((self history-mixin))
+  (window.clear-interval (timeout-id self)))
+
 ;; ;; -------------------------------------------------------------------------
 ;; ;; Orderable List
 ;; ;; -------------------------------------------------------------------------
