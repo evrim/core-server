@@ -72,7 +72,9 @@
     ;;    ;; 		expand k env)
     ;;    ))
     (javascript-cps-method-body
-     `(let ((self (or self this)))
+     `(let ((self (or self this))
+	    ;; (,k (or ,k window.k))
+	    )
 	,(funcall expand
 		  (make-instance 'implicit-progn-mixin
 				 :body arguments)
