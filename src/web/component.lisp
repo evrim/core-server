@@ -1,4 +1,4 @@
-;; +----------------------------------------------------------------------------
+; +----------------------------------------------------------------------------
 ;; | Component Framework (Lisp->Browser Functor)
 ;; +----------------------------------------------------------------------------
 (in-package :core-server)
@@ -74,7 +74,9 @@
 				   (reduce0 (lambda (acc arg)
 					      (cons arg (cons (make-keyword arg) acc)))
 					    (extract-argument-names args :allow-specializers t)))))))
-	 (defmethod/cc ,name ((,self ,class-name) ,@args) ,@body)))))
+	 (defmethod/cc ,name ((,self ,class-name) ,@args)
+	   (let ((application (component.application ,self)))
+	     ,@body))))))
 
 (defmacro defmethod/local (name ((self class-name) &rest args) &body body)
   (component+.local-morphism (find-class class-name) name self args body))
@@ -102,7 +104,9 @@
 	   (declare (ignore k))
 	   ,(if call-next-method-p
 		``(method ,',args
-			  (let ((call-next-method (lambda (,',self ,@',args) ,@(cddr (call-next-method)))))		    
+			  (let ((call-next-method
+				 (lambda (,',self ,@',args)
+				   ,@(cddr (call-next-method self k)))))		    
 			    ,@',body))
 		``(method ,',args
 			  (let ((,',self self))
@@ -202,8 +206,8 @@
 		  slots)
 	 ,@rest
 	 (:metaclass ,(or metaclass1 metaclass)))
-       (defjsmacro ,name (&rest properties)
-       	 `(make-component ,',(symbol-to-js name) (jobject ,@properties) nil))
+       ;; (defjsmacro ,name (&rest properties)
+       ;; 	 `(make-component ,',(symbol-to-js name) (jobject ,@properties) nil))
        (defcomponent-accessors ,name ,(mapcar
 				       (lambda (slot)
 					 (cons (car slot)
@@ -296,8 +300,10 @@
 								   (symbol-package (car method))))))
 					    (cons (make-keyword (car method))
 						  (cons `(make-method ,(funcall proxy class+ nil)) acc))))
-					(class+.remote-methods class+))
-			 
+					(remove 'destroy
+					  (remove 'init (class+.remote-methods class+) :key #'car)
+					  :key #'car))
+			     
 			     ;; ----------------------------------------------------------------------------
 			     ;; Local Methods
 			     ;; ----------------------------------------------------------------------------
@@ -336,9 +342,13 @@
 							   ,(symbol-to-js dom-tag)))
 		       				  to-extend)
 		       			     'to-extend)))
-			 
-		       	 (when (typep (slot-value to-extend 'init) 'function)
-		       	   (init to-extend))
+			 (apply (make-method ,(funcall 'init/js class+ nil)) to-extend null)
+			 (let ((destroy (slot-value to-extend 'destroy)))
+			   (setf (slot-value to-extend 'destroy)
+				 (compose-progn1 (make-method ,(funcall 'destroy/js class+ nil))
+						 destroy)))
+		       	 ;; (when (typep (slot-value to-extend 'init) 'function)
+		       	 ;;   (init to-extend))
 		 
 		       	 to-extend)))))))))
        
@@ -392,6 +402,7 @@
   (setf (gethash 'method +javascript-cps-functions+) t))
 
 (defmethod/remote init ((self component)) self)
+(defmethod/remote destroy ((self component)) self)
 
 (defmethod/remote funkall ((self component) action args)
   (let ((retval (funcall-cc (+ (slot-value self 'url) action "$") args)))
@@ -424,16 +435,26 @@
    (lambda (stream)
      (let ((hash (uri.query (http-request.uri (context.request +context+))
 			    "__hash")))
-       (if (and (stringp hash) (> (length hash) 0))
-	   (let ((hash (intern hash)))
-	     (with-js (value hash) stream
-	       (with-call/cc
-		 (apply (slot-value window hash) window
-			(list (lambda (self) value)))))
-	     (unintern hash))
-	   (with-js () stream
-	     (with-call/cc
-	       (lambda (self) value))))))))
+       (cond
+	 ((and (stringp hash) (> (length hash) 0))
+	  (let ((hash (intern hash)))
+	    (with-js (value hash) stream
+	      (with-call/cc
+		(apply (slot-value window hash) window
+		       (list (lambda (self) value)))))
+	    (unintern hash)))
+	 ((typep value 'component)	  
+	  (with-js (value) stream
+	    (let ((c value))	      
+	      (add-on-load
+	       (lambda ()
+		 (c null (lambda (a) a)))))))
+	 (t
+	  (with-js (value) stream
+	    (with-call/cc
+	      value
+	      ;; (lambda (self) value)
+	      ))))))))
 
 (defmethod/remote answer-component ((self component) arg)
   ;; (console.debug (list "answering" arg))
