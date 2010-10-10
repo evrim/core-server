@@ -244,11 +244,17 @@
   (:or (:and #\"
 	     (:zom (:not #\")
 		   (:or (:escaped? c)
-			(:type visible-char? c))
+			(:type (or visible-char?
+				   white-space?
+				   carriage-return?
+				   linefeed?) c))
 		   (:collect c acc))
 	     (:return (octets-to-string acc :utf-8)))
        (:and (:zom (:or (:escaped? c)
-			(:type (or visible-char? space?) c))
+			(:type (or visible-char?
+				   white-space?
+				   carriage-return?
+				   linefeed?) c))
 		   (:collect c acc))
 	     (:return (octets-to-string acc :utf-8)))))
 
