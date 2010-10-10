@@ -904,6 +904,8 @@
    
    #:init
    #:init/js
+   #:destroy
+   #:destroy/js
    
    ;; [DOm Components]
    #:dom-element
@@ -925,6 +927,8 @@
    #:button-set
    #:buttons
    #:history-component
+   #:history-mixin
+   #:on-history-change
    #:register-history-observer
    #:start-history-timeout
    #:stop-history-timeout
