@@ -171,3 +171,9 @@
   `(progn
      (fmakunbound ',name)
      (defmethod ,name ,args ,@body)))
+
+(defun copy-slots (source target slots)
+  (reduce (lambda (target slot)
+	    (prog1 target
+	      (setf (slot-value target slot) (slot-value source slot))))
+	  slots :initial-value target))
