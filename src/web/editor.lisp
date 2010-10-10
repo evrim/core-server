@@ -1,6 +1,6 @@
-; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | HTML Editors
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (in-package :core-server)
 
 ;; --------------------------------------------------------------------------
@@ -13,27 +13,40 @@
 	   :initform (jobject
 		      :base-path "http://www.coretal.net/js/ckeditor/"))))
 
+(defmethod/remote get-data ((self ckeditor-component))
+  (let* ((instance (instance self))
+	 (foo (event () (.get-data instance))))
+    (foo)))
+
 (defmethod/remote call-component ((self ckeditor-component))
-  (_debug (config self))
+  (_debug (list "ckeditor-config" (config self)))
   (let* ((textarea (target self))
 	 (editor (-c-k-e-d-i-t-o-r.replace textarea (config self)))
 	 (form (slot-value textarea 'form)))
     (setf (instance self) editor)
     (setf (slot-value form 'submit)
-	  (event (e)		 
-	    (with-call/cc
-	      (make-web-thread
-	       (lambda ()
-		 (try (.destroy editor) (:catch (err) nil))
-		 (answer-component self (.get-data editor)))))
+	  (event (e)
+	    (let ((data (.get-data editor)))
+	      (try (.destroy editor) (:catch (err) nil))
+	      (with-call/cc
+		(make-web-thread
+		 (lambda ()
+		   (answer-component self data)))))
 	    (return false)))
-    
+    (call-next-method self)))
+
+(defmethod/remote destroy ((self ckeditor-component))  
+  (let ((foo (event (e) (try (.destroy e) (:catch (err) nil)))))
+    (foo (instance self))
+    (delete (slot-value self 'instance))
     (call-next-method self)))
 
 (defmethod/remote init ((self ckeditor-component))
   (load-css "http://www.coretal.net/style/ckeditor.css")
   (load-javascript "http://www.coretal.net/js/ckeditor/ckeditor.js"
-		   (lambda () (not (null -c-k-e-d-i-t-o-r)))))
+   (lambda ()
+     (and (not (null -c-k-e-d-i-t-o-r))
+	  (not (null (slot-value -c-k-e-d-i-t-o-r 'replace)))))))
 
 ;; (defvar +fck-image-extensions+ '("bmp" "gif" "jpeg" "jpg" "png" "psd" "tif" "tiff"))
 ;; (defvar +fck-flash-extensions+ '("swf" "fla"))
