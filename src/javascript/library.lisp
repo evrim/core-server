@@ -45,10 +45,10 @@
     	nil    
     	(let ((result (or (and (not (typep initial-value 'undefined)) initial-value) nil)))
     	  (if (not (null lst.length))
-    	  	  (dolist (item lst)
-    	  	    (setf result (fun result item)))
-    	  	  (doeach (item lst)
-    	  	    (setf result (fun result (aref lst item)))))
+	      (dolist (item lst)
+		(setf result (fun result item)))
+	      (doeach (item lst)
+		(setf result (fun result (aref lst item)))))
     	  result)))
 
   (defun/cc reduce0-cc (fun lst)
@@ -496,9 +496,10 @@
 		  (t
 		   (make-web-thread (lambda () (Y r)))
 		   (suspend))))))
-	(if body (append body img))
-	(append head script)
-	(Y recurse))))
+	(when (not (loaded-p window.k))
+	  (if body (append body img))
+	  (append head script)
+	  (Y recurse)))))
   
 ;; +-------------------------------------------------------------------------
 ;; | Identity Continuation
@@ -531,6 +532,22 @@
 		 (apply method self args))))))
 	method))
 
+  (defun compose-progn1 (fun1 fun2)
+    (cond
+      ((not (eq "function" (typeof fun2)))
+       fun1)
+      ((not (eq "function" (typeof fun1)))
+       fun2)
+      (t
+       (return
+	 (lambda ()	   
+	   (let* ((args (reverse (reverse arguments)))
+		  (k (car (reverse args)))
+		  (args (reverse (cdr (reverse args))))
+		  (self this))
+	     (apply fun1 self args
+		    (lambda (val) (apply fun2 self args k)))))))))
+  
   (defun random-string (len)
     (let ((len (or len 8))
 	  (alphabet (+  "0123456789" "ABCDEFGHIJKLMNOPQRSTUVWXTZ"
@@ -564,7 +581,9 @@
 	(gethash 'mapcar-cc +javascript-cps-functions+) t
 	(gethash 'reverse-cc +javascript-cps-functions+) t
 	(gethash 'reduce0-cc +javascript-cps-functions+) t
-	(gethash 'reduce-cc +javascript-cps-functions+) t))
+	(gethash 'reduce-cc +javascript-cps-functions+) t
+	(gethash 'filter-cc +javascript-cps-functions+) t
+	(gethash 'load-javascript +javascript-cps-functions+) t))
 
 
   ;; (defvar *registry* (create))  
