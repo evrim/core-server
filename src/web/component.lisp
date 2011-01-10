@@ -247,9 +247,10 @@
 					 reader (intern (symbol-name initarg)))))
 			       (class+.remote-slots class+)))
 	 (dom-tag (any #'xml+.tag
-		       (filter (lambda (class)
-				 (if (typep class 'xml+) class))
-			       (cdr (class+.superclasses class+))))))
+		       (reverse
+			(filter (lambda (class)
+				  (if (typep class 'xml+) class))
+				(cdr (class+.superclasses class+)))))))
     `(progn
        ;; ----------------------------------------------------------------------------
        ;; Component Internal Render Method 
@@ -301,8 +302,8 @@
 					    (cons (make-keyword (car method))
 						  (cons `(make-method ,(funcall proxy class+ nil)) acc))))
 					(remove 'destroy
-					  (remove 'init (class+.remote-methods class+) :key #'car)
-					  :key #'car))
+						(remove 'init (class+.remote-methods class+) :key #'car)
+						:key #'car))
 			     
 			     ;; ----------------------------------------------------------------------------
 			     ;; Local Methods
