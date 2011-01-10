@@ -133,9 +133,13 @@
 ;; Lift Javascript Event Handler with a call/cc function.
 ;; -------------------------------------------------------------------------
 (defmacro/js lifte (fun &rest args)
-  `(event (e)
-     (with-call/cc (call/cc ,fun ,@args))
-     false))
+  (if (atom fun)
+      `(event (e)
+	 (with-call/cc (call/cc ,fun ,@args))	      
+	 false)
+      `(event (e)
+	 (with-call/cc ,fun)
+	 false)))
 
 ;; -------------------------------------------------------------------------
 ;; Method Macro

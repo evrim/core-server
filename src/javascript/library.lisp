@@ -150,6 +150,12 @@
 	      (fun (nth index lst1) (nth index lst2)))
 	    (seq (*math.min (slot-value lst1 'length)
 			    (slot-value lst2 'length)))))
+
+  (defun/cc mapcar2-cc (fun lst1 lst2)
+    (mapcar-cc (lambda (index)
+		 (call/cc fun (nth index lst1) (nth index lst2)))
+	       (seq (*math.min (slot-value lst1 'length)
+			       (slot-value lst2 'length)))))
   
   (defun any (fun lst)
     (dolist (i lst)
@@ -277,6 +283,11 @@
     (reduce (lambda (acc atom)
 	      (or acc (and (goal-p atom) atom)))
 	    lst nil))
+
+  (defun/cc find-cc (goal-p lst)
+    (reduce-cc (lambda (acc atom)
+		 (or acc (and (call/cc goal-p atom) atom)))
+	       lst nil))
   
   (defun node2str (item)
     (try
@@ -429,27 +440,44 @@
 			(.substr window.location.search 1))))
       
       (if (null name)
-	  (car (.split data "$"))
-	  (car
-	   (cdr
-	    (car
-	     (filter (lambda (a) (eq (car a) name))
-		     (mapcar (lambda (a) (.split a ":"))
-			     (.split data "$")))))))))
+	  (eval (decode-u-r-i-component (car (.split data "$"))))
+	  (let ((_value (decode-u-r-i-component
+			 (car
+			  (cdr
+			   (car
+			    (filter (lambda (a) (eq (car a) name))
+			      (mapcar (lambda (a)
+					(flatten
+					 (mapcar (lambda (b) (.split b "="))
+						 (.split a ":"))))
+				      (.split data "$")))))))))
+	    (try (return (eval _value))
+		 (:catch (e) (return _value)))))))
 
   (defun set-parameter (name new-value)
-    (let ((append2 (lambda (a b)
-		     (if (null a) b (if (null b) "" (+ a b)))))
-	  (one (lambda (a) (append2 (car a) (append2 ":" (car (cdr a))))))
-	  (elements (mapcar (lambda (a)
-			      (destructuring-bind (key value) a
-				(if (eq name key)
-				    (cons name new-value)
-				    a)))
-			    (mapcar (lambda (a) (.split a ":"))
-				    (.split (.substr window.location.hash 1) "$")))))
+    (let* ((new-value (encode-u-r-i-component (serialize new-value)))
+	   (append2 (lambda (a b)
+		      (if (null a) b (if (null b) "" (+ a b)))))
+	   (one (lambda (a) (append2 (car a) (append2 ":" (car (cdr a))))))
+	   (found nil)
+	   (elements (reverse
+		      (reduce
+		       (lambda (acc a)
+			 (destructuring-bind (key value) a
+			   (cond
+			     ((eq name key)
+			      (setf found t)
+			      (if (eq new-value "null")
+				  acc
+				  (cons (cons name new-value) acc)))
+			     (t (cons a acc)))))
+		       (mapcar (lambda (a) (.split a ":"))
+			       (.split (.substr window.location.hash 1) "$"))))))
+      (if (and (null found) name)
+	  (setf elements (cons (cons name new-value) elements)))
       (setf window.location.hash
-	    (reduce (lambda (acc a) (append2 acc (append2 "$" (one a))))
+	    (reduce (lambda (acc a)
+		      (append2 acc (append2 "$" (one a))))
 		    (cdr elements)
  		    (if (and (null new-value)
 			     (null (car (cdr (car elements)))))
@@ -508,11 +536,12 @@
     value)
 
   (defun extend (source target)
-    (mapobject (lambda (k v)
-		 (try (setf (slot-value target k) v)
-		      (:catch (err) (_debug err))))
-	       source)
-    target)
+    (let ((target (or target (new (*object)))))
+      (mapobject (lambda (k v)
+		   (try (setf (slot-value target k) v)
+			(:catch (err) (_debug err))))
+		 source)
+      target))
 
   (defun apply (fun scope args kX)
     (fun.apply scope (reverse (cons kX (reverse args)))))
@@ -559,10 +588,23 @@
 	(reduce (lambda (acc atom) (+ acc (one)))
 		(seq (- len 1)) (one)))))
 
+  (defun lisp-date-to-javascript (universal-time)
+    (let ((b 3155666400)
+	  (a 946677600000))
+      (new (*date (+ a (* 1000 (- universal-time b)))))))
+  
   (defun date-to-string (date)
-    (+
-     (date.get-day) "/" (date.get-month) "/" (date.get-full-year) " - "
-     (date.get-hours) ":" (date.get-minutes) ":" (date.get-seconds)))
+    (flet ((pad-me (foo)
+	     (if (< foo 10)
+		 (+ "0" foo)
+		 foo)))
+      (+
+       (pad-me (date.get-day)) "/"
+       (pad-me (date.get-month)) "/"
+       (date.get-full-year) " - "
+       (pad-me (date.get-hours)) ":"
+       (pad-me (date.get-minutes)) ":"
+       (pad-me (date.get-seconds)))))
 
   (defun/cc Y (f)
     (f f)
