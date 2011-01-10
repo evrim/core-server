@@ -605,6 +605,7 @@
    #:database.get
    #:database.serialize
    #:database.deserialize
+   #:database.clone
    #:log-transaction
    #:database.directory
    #:database-directory

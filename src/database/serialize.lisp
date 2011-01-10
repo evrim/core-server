@@ -298,7 +298,7 @@
 ;; +-------------------------------------------------------------------------
 ;; | Pathname
 ;; +-------------------------------------------------------------------------
-(defxml <db:pathname name type)
+(defxml <db:pathname id name type)
 
 (defmethod xml-deserialize ((xml <db:pathname) &optional (k #'xml-deserialize))
   (with-slots (children name type) xml

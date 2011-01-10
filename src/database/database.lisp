@@ -80,6 +80,14 @@
   (:method ((self abstract-database) (object null) &optional k)
     (declare (ignore k)) nil))
 
+;; -------------------------------------------------------------------------
+;; Clone Interface
+;; -------------------------------------------------------------------------
+(defgeneric database.clone (db object)
+  (:method ((self abstract-database) object) object)
+  (:method ((self abstract-database) (object list))
+    (mapcar (lambda (a) (database.clone self a)) object)))
+
 ;; ----------------------------------------------------------------------------
 ;; Transaction
 ;; ----------------------------------------------------------------------------

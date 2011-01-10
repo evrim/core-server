@@ -77,5 +77,13 @@
 					    acc))
 					 (class+.ctor-lambda-list class+ t) :initial-value nil)))))
 	     (redefmethod ,delete ((,server database) (instance ,class))
-	       (delete-object ,server instance))))))))
+	       (delete-object ,server instance))
+	     (defmethod database.clone ((,server database) (instance ,class))
+	       (,add ,server ,@(reduce0
+				(lambda (acc slot)
+				  (with-slotdef (initarg reader) slot
+				    (cons initarg
+					  (cons `(database.clone ,server (,reader instance)) acc))))
+				(remove 'id (class+.local-slots class+)
+					:key #'slot-definition-name))))))))))
 
