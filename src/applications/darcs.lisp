@@ -27,7 +27,8 @@
 (defclass+ darcs-application (serializable-web-application)
   ()
   (:documentation "Darcs Application Class - A
-serializable-application that uses Darcs (http://darcs.net) as SCM"))
+serializable-application that uses Darcs (http://darcs.net) as SCM")
+  (:ctor %make-darcs-application))
 
 (defun make-darcs-application (fqdn project-name admin-email project-pathname
 			       &optional use depends-on)
@@ -66,6 +67,9 @@ serializable-application that uses Darcs (http://darcs.net) as SCM"))
   (record self)
   (put self))
 
+;; -------------------------------------------------------------------------
+;; fix this init method is already used in components/overrides this
+;; -------------------------------------------------------------------------
 (defmethod init ((self darcs-application))
   (if (zerop (with-current-directory (web-application.project-pathname self)
 	       (darcs "init")))
