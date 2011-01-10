@@ -27,7 +27,8 @@
 (defclass+ git-application (serializable-web-application)
   ()
   (:documentation "Git Application Class - A serializable-application
-that uses GIT (http://git.or.cz) as SCM"))
+that uses GIT (http://git.or.cz) as SCM")
+  (:ctor %make-git-application))
 
 (defun make-git-application (fqdn project-name admin-email project-pathname
 			     &optional use depends-on)
