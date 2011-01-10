@@ -272,7 +272,6 @@
 (defmethod class+.update-function ((self class+) &optional prefix)
   (intern (format nil "~A.UPDATE" (or prefix (class-name self)))))
 
-
 ;; ----------------------------------------------------------------------------
 ;; Indexes
 ;; ----------------------------------------------------------------------------
