@@ -15,7 +15,8 @@
 
 (defmethod/remote set-validation-message ((self <core:validating-input) msg)
   (let ((element (document.get-element-by-id (validation-span-id self))))
-    (setf (slot-value element 'inner-h-t-m-l) msg)))
+    (when element
+      (setf (slot-value element 'inner-h-t-m-l) msg))))
 
 (defmethod/remote enable-or-disable-form ((self <core:validating-input))
   (let ((valid (reduce-cc (lambda (acc input)
