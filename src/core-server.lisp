@@ -901,7 +901,10 @@
    #:prompt-dialog
    #:big-dialog
    ;; #:template
+   #:get-message
    #:buttons
+   #:get-buttons
+   #:set-buttons
    
    #:init
    #:init/js

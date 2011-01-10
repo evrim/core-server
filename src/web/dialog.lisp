@@ -217,9 +217,11 @@
 ;; -------------------------------------------------------------------------
 (defcomponent big-dialog (dialog)
   ()
-  (::default-initargs :class "coretal-big-dialog coretal-dialog" :title "Dialog"))
+  (:default-initargs
+    :class "coretal-big-dialog coretal-dialog"
+    :title "Dialog"))
 
-(defmethod/remote buttons ((self big-dialog))
+(defmethod/remote dialog-buttons ((self big-dialog))
   (<:div :class "buttons right pad10"
 	 (<:input :type "button" :value "Close"
 		  :onclick (lifte self.hide-component))))
@@ -232,4 +234,4 @@
 		(<:div :class "bg-pad-top center text-center")
 		(<:div :class "center content bg-white pad10" (message self))
 		(<:div :class "clear bg-pad-bottom center text-center")
-		(buttons self))))
+		(dialog-buttons self))))
