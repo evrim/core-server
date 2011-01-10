@@ -1,116 +1,84 @@
 (in-package :core-server)
 
-;; +----------------------------------------------------------------------------
-;; | Table Component
-;; +----------------------------------------------------------------------------
+;; -------------------------------------------------------------------------
+;; Table Component (Single Select)
+;; -------------------------------------------------------------------------
 (defcomponent <core:table (<:table)
   ((instances :host remote :initarg :instances :initform nil)
+   (primary-field :host remote :initform "name")
+   (template-class :initform nil :host remote)
    (hilight-class :initform "hilighted" :host remote)
    (selected-class :initform "selected" :host remote)
-   (selected :initform nil :host remote)
-   (primary-field :initform "name" :host remote)
-   (template-class :initform nil :host none)
-   (local-cache :initform (make-hash-table :weakness :value :test #'equal)
-		:host none)))
+   (selected :initform nil :host remote)))
 
-(defmethod/local get-instances ((self <core:table))
-  (mapcar (lambda (jobject instance)
-	    (describe jobject)
-	    (setf (slot-value jobject 'attributes)
-		  (cons :ref-id
-			(cons (let ((str (random-string 5)))
-				(setf (gethash str (local-cache self)) instance)
-				str)
-			      (slot-value jobject 'attributes))))
-	    jobject)
-	  (mapcar (rcurry #'object->jobject
-			  (or (template-class self)
-			      (class-of (car (instances self)))))
-		  (instances self))
-	  (instances self)))
+(defmethod/remote get-template-class ((self <core:table))
+  (let ((_instances (instances self)))
+    (or (slot-value self 'template-class)
+	(and _instances (slot-value (car _instances) 'class)))))
 
-(defmethod/remote add-selected ((component <core:table) selection)
-  (let ((node (slot-value (slot-value (slot-value selection 'checkbox) 'parent-node) 'parent-node)))
-    (add-class node (selected-class self))
-    (remove-class node (hilight-class self))
-    (set-selected component (cons selection
-				  (remove-selected component selection)))))
-
-
-(defmethod/remote remove-selected ((component <core:table) selection)
-  (let ((node (slot-value (slot-value (slot-value selection 'checkbox) 'parent-node) 'parent-node)))
-    (remove-class node (selected-class component))
-    (set-selected component (filter (lambda (a) (not (eq a selection)))
-				    (get-selected component)))))
-
-(defmethod/remote thead ((component <core:table))
+(defmethod/remote thead ((self <core:table))
   (<:thead
    (<:tr
-    (<:th :class "checkbox"
-	  (<:input :type "checkbox"
-		   :onchange (event (e)
-			       (let ((checked this.checked))
-				 (with-call/cc
-				   (mapcar (lambda (object)
-					     (setf (slot-value (slot-value object 'checkbox) 'checked)
-						   checked))
-					   (get-instances component))
-				   (if checked
-				       (set-selected component (get-instances component))
-				       (set-selected component nil))))
-			       false)))
-    (mapcar (lambda (slot)
-	      (with-slots (name label) slot
-		(<:th :class name (or label name))))
-	    (slot-value (car (instances self)) 'class)))))
-
-(defmethod/local _set-selected ((self <core:table) ref-id)
-  (setf (slot-value self 'selected) (gethash ref-id (local-cache self)))
-  t)
+    (<:th :class "radio" " ")
+    (reverse
+     (mapcar (lambda (slot)
+	       (with-slots (name label) slot
+		 (<:th :class name (or label name))))
+	     (template-class self))))))
 
 (defmethod/remote on-select ((self <core:table) object)
-  (_set-selected self (slot-value object 'ref-id))
-  (answer-component self object))
+  (_debug (list "selected" object)))
 
-(defmethod/remote tbody ((component <core:table))
-  (let ((instances (get-instances component)))
-    (if (null instances)
+(defmethod/remote _on-select ((self <core:table) object)
+  (flet ((parent (node) (slot-value node 'parent-node)))
+    (mapcar-cc (lambda (object)
+		 (let ((_radio (slot-value object 'radio)))
+		   (remove-class (parent (parent _radio))
+				 (selected-class self))))
+	       (instances self))
+    (add-class (parent (parent (slot-value object 'radio)))
+	       (selected-class self))
+    (on-select self object)))
+
+(defmethod/remote tbody ((self <core:table))
+  (let ((_instances (instances self)))
+    (if (null _instances)
 	(<:tbody (<:tr (<:th "Table has no elements.")))
 	(<:tbody
-	 (mapcar2
+	 (mapcar2-cc
 	  (lambda (object index)
-	    (let ((checkbox (<:input :type "checkbox"
-				     :onchange (event (e)
-						 (let ((checked this.checked))
-						   (with-call/cc
-						     (if checked
-							 (add-selected component object)
-							 (remove-selected component object))))
-						false))))
-	      (setf (slot-value object "checkbox") checkbox)
-	      (<:tr :class (if (eq 0 (mod index 2)) (get-hilight-class component))
-		    (<:td :class "checkbox" checkbox)	       
-		    (mapcar (lambda (slot)			  
-			      (let ((name (slot-value slot 'name))
-				    (value (slot-value object (slot-value slot 'name))))
-				(<:td :class name
-				      (if (equal name (primary-field self))
-					  (<:a :onclick (event (e)
-							       (with-call/cc (on-select component object))
-							       false)
-					       (or value (slot-value slot 'initform)))
-					  (or value (slot-value slot 'initform))))))
-			    (slot-value object 'class)))))
-	  (get-instances component) (seq (slot-value instances 'length)))))))
+	    (let ((radio
+		   (<:input :type "radio"
+			    :name "table-object"
+			    :onchange (lifte (_on-select self object)))))
+	      (setf (slot-value object 'radio) radio)
+	      (<:tr :class (if (eq 0 (mod index 2)) (hilight-class self))
+		    (cons
+		     (<:td :class "radio" radio)	       
+		     (reverse
+		      (mapcar
+		       (lambda (slot)
+			 (with-slots (name label initform) slot
+			   (let ((value (slot-value object name)))
+			     (<:td :class name
+				   (or value (slot-value slot 'initform))))))
+		       (template-class self)))))))
+	  _instances (seq (slot-value _instances 'length)))))))
 
-(defmethod/remote tfoot ((component <core:table))
-  (<:tfoot))
+(defmethod/remote tfoot ((self <core:table))
+  (if (instances self)
+      (<:tfoot
+       (<:tr
+	(<:td :class "text-right" :colspan (slot-value (template-class self) 'length)
+	      (slot-value (instances self) 'length) " item(s).")))
+      (<:tfoot)))
 
-(defmethod/remote init ((component <core:table))
-  (add-class component "grid")
-  (setf (slot-value component 'inner-h-t-m-l) nil)
-  (mapcar (lambda (i) (.append-child component i))
-	  (list (thead component) (tbody component) (tfoot component))))
+(defmethod/remote init ((self <core:table))
+  (add-class self "table")
+  (load-css "http://www.coretal.net/style/table.css")
+  (setf (slot-value self 'inner-h-t-m-l) nil)
+  (mapcar-cc (lambda (i) (append self i))
+	     (list (thead self) (tbody self) (tfoot self))))
 
 (defmacro deftable (name supers slots &rest rest)
   `(progn
@@ -121,9 +89,137 @@
 		 :class
 		 ,@(mapcar
 		    (lambda (slot)
-		      `(core-server::jobject :name ',(symbol-to-js (car slot)) ,@(cdr slot)))
+		      `(core-server::jobject
+			:name ',(symbol-to-js (car slot)) ,@(cdr slot)))
 		    slots))
 	 ,@(flatten1 rest)))))
+
+;; +----------------------------------------------------------------------------
+;; | Table Component
+;; +----------------------------------------------------------------------------
+;; (defcomponent <core:table (<:table)
+;;   ((instances :host remote :initarg :instances :initform nil)
+;;    (hilight-class :initform "hilighted" :host remote)
+;;    (selected-class :initform "selected" :host remote)
+;;    (selected :initform nil :host remote)
+;;    (primary-field :initform "name" :host remote)
+;;    (template-class :initform nil :host none)
+;;    (local-cache :initform (make-hash-table :weakness :value :test #'equal)
+;; 		:host none)))
+
+;; (defmethod/local get-instances ((self <core:table))
+;;   (mapcar (lambda (jobject instance)
+;; 	    (describe jobject)
+;; 	    (setf (slot-value jobject 'attributes)
+;; 		  (cons :ref-id
+;; 			(cons (let ((str (random-string 5)))
+;; 				(setf (gethash str (local-cache self)) instance)
+;; 				str)
+;; 			      (slot-value jobject 'attributes))))
+;; 	    jobject)
+;; 	  (mapcar (rcurry #'object->jobject
+;; 			  (or (template-class self)
+;; 			      (class-of (car (instances self)))))
+;; 		  (instances self))
+;; 	  (instances self)))
+
+;; (defmethod/remote add-selected ((component <core:table) selection)
+;;   (let ((node (slot-value (slot-value (slot-value selection 'checkbox) 'parent-node) 'parent-node)))
+;;     (add-class node (selected-class self))
+;;     (remove-class node (hilight-class self))
+;;     (set-selected component (cons selection
+;; 				  (remove-selected component selection)))))
+
+
+;; (defmethod/remote remove-selected ((component <core:table) selection)
+;;   (let ((node (slot-value (slot-value (slot-value selection 'checkbox) 'parent-node) 'parent-node)))
+;;     (remove-class node (selected-class component))
+;;     (set-selected component (filter (lambda (a) (not (eq a selection)))
+;; 				    (get-selected component)))))
+
+;; (defmethod/remote thead ((component <core:table))
+;;   (<:thead
+;;    (<:tr
+;;     (<:th :class "checkbox"
+;; 	  (<:input :type "checkbox"
+;; 		   :onchange (event (e)
+;; 			       (let ((checked this.checked))
+;; 				 (with-call/cc
+;; 				   (mapcar (lambda (object)
+;; 					     (setf (slot-value (slot-value object 'checkbox) 'checked)
+;; 						   checked))
+;; 					   (get-instances component))
+;; 				   (if checked
+;; 				       (set-selected component (get-instances component))
+;; 				       (set-selected component nil))))
+;; 			       false)))
+;;     (mapcar (lambda (slot)
+;; 	      (with-slots (name label) slot
+;; 		(<:th :class name (or label name))))
+;; 	    (slot-value (car (instances self)) 'class)))))
+
+;; (defmethod/local _set-selected ((self <core:table) ref-id)
+;;   (setf (slot-value self 'selected) (gethash ref-id (local-cache self)))
+;;   t)
+
+;; (defmethod/remote on-select ((self <core:table) object)
+;;   (_set-selected self (slot-value object 'ref-id))
+;;   (answer-component self object))
+
+;; (defmethod/remote tbody ((component <core:table))
+;;   (let ((instances (get-instances component)))
+;;     (if (null instances)
+;; 	(<:tbody (<:tr (<:th "Table has no elements.")))
+;; 	(<:tbody
+;; 	 (mapcar2
+;; 	  (lambda (object index)
+;; 	    (let ((checkbox
+;; 		   (<:input :type "checkbox"
+;; 			    :onchange (event (e)
+;; 				       (let ((checked this.checked))
+;; 					       (with-call/cc
+;; 						 (if checked
+;; 						     (add-selected component object)
+;; 						     (remove-selected component object))))
+;; 					     false))))
+;; 	      (setf (slot-value object "checkbox") checkbox)
+;; 	      (<:tr :class (if (eq 0 (mod index 2)) (get-hilight-class component))
+;; 		    (<:td :class "checkbox" checkbox)	       
+;; 		    (mapcar (lambda (slot)			  
+;; 			      (let ((name (slot-value slot 'name))
+;; 				    (value (slot-value object (slot-value slot 'name))))
+;; 				(<:td :class name
+;; 				      (if (equal name (primary-field self))
+;; 					  (<:a :onclick (event (e)
+;; 							       (with-call/cc (on-select component object))
+;; 							       false)
+;; 					       (or value (slot-value slot 'initform)))
+;; 					  (or value (slot-value slot 'initform))))))
+;; 			    (slot-value object 'class)))))
+;; 	  (get-instances component) (seq (slot-value instances 'length)))))))
+
+;; (defmethod/remote tfoot ((component <core:table))
+;;   (<:tfoot))
+
+;; (defmethod/remote init ((component <core:table))
+;;   (add-class component "grid")
+;;   (setf (slot-value component 'inner-h-t-m-l) nil)
+;;   (mapcar (lambda (i) (.append-child component i))
+;; 	  (list (thead component) (tbody component) (tfoot component))))
+
+;; (defmacro deftable (name supers slots &rest rest)
+;;   `(progn
+;;      (defcomponent ,name (,@supers <core:table)
+;;        ()
+;;        (:default-initargs
+;; 	 :slots (jobject
+;; 		 :class
+;; 		 ,@(mapcar
+;; 		    (lambda (slot)
+;; 		      `(core-server::jobject
+;; 			:name ',(symbol-to-js (car slot)) ,@(cdr slot)))
+;; 		    slots))
+;; 	 ,@(flatten1 rest)))))
 
 
 ;; (defmacro deftable (name class slots)
