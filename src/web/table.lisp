@@ -27,9 +27,6 @@
 	     (template-class self))))))
 
 (defmethod/remote on-select ((self <core:table) object)
-  (_debug (list "selected" object)))
-
-(defmethod/remote _on-select ((self <core:table) object)
   (flet ((parent (node) (slot-value node 'parent-node)))
     (mapcar-cc (lambda (object)
 		 (let ((_radio (slot-value object 'radio)))
@@ -38,7 +35,7 @@
 	       (instances self))
     (add-class (parent (parent (slot-value object 'radio)))
 	       (selected-class self))
-    (on-select self object)))
+    (answer-component self object)))
 
 (defmethod/remote tbody ((self <core:table))
   (let ((_instances (instances self)))
@@ -50,7 +47,7 @@
 	    (let ((radio
 		   (<:input :type "radio"
 			    :name "table-object"
-			    :onchange (lifte (_on-select self object)))))
+			    :onchange (lifte (on-select self object)))))
 	      (setf (slot-value object 'radio) radio)
 	      (<:tr :class (if (eq 0 (mod index 2)) (hilight-class self))
 		    (cons
