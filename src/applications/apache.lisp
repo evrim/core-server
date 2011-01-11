@@ -20,22 +20,30 @@
 ;; +-------------------------------------------------------------------------
 ;; | Apache Web Application
 ;; +-------------------------------------------------------------------------
-(defclass+ apache-web-application (application)
+(defclass+ apache-web-application (web-application)
   ((vhost-template-pathname
-    :accessor apache-web-application.vhost-template-pathname :initarg :vhost-template-pathname
+    :accessor apache-web-application.vhost-template-pathname
+    :initarg :vhost-template-pathname
     :initform (merge-pathnames
-	       (make-pathname :directory '(:relative "etc") :name "vhost" :type "conf")
+	       (make-pathname :directory '(:relative "etc")
+			      :name "vhost" :type "conf")
 	       (asdf:component-pathname (asdf:find-system :core-server)))
-    :documentation "Apache Virtual Host Template Configuration Pathname - see etc/vhost.conf") 
+    :documentation "Apache Virtual Host Template Configuration
+    Pathname - see etc/vhost.conf")
    (default-entry-point
-     :accessor apache-web-application.default-entry-point :initarg :default-entry-point
-     :initform "index.core"
-     :documentation "Default Entry Point for redirector creation, setq nil not to.")
+     :accessor apache-web-application.default-entry-point
+     :initarg :default-entry-point
+     :initform nil ;; "index.core"
+     :documentation "Default Entry Point for redirector creation, setq
+     nil not to.")
    (skel-pathname
-    :accessor apache-web-application.skel-pathname :initarg :skel-pathname
-    :initform (merge-pathnames (make-pathname :directory '(:relative "etc" "skel"))
-			       (asdf:component-pathname (asdf:find-system :core-server)))
-    :documentation "Skeleton Pathname which is copied to htdoc directory. setq nil no to."))
+    :accessor apache-web-application.skel-pathname
+    :initarg :skel-pathname
+    :initform (merge-pathnames
+	       (make-pathname :directory '(:relative "etc" "skel"))
+	       (asdf:component-pathname (asdf:find-system :core-server)))
+    :documentation "Skeleton Pathname which is copied to htdoc
+    directory. setq nil no to."))
   (:documentation "Apache Web Application Class - This class is used
 this to manage vhost configuration for this application. It generates
 a new vhost configuration from 'vhost-template-pathname' and wkrites it
@@ -45,10 +53,12 @@ for implementation."))
 ;; FIXmE: move two accessor to apache web application file.
 (defmethod apache-web-application.config-pathname ((self apache-web-application))
   "Returns confiugration pathname of the application 'self'"
-  (merge-pathnames (make-pathname :name (web-application.fqdn self)
-				  :type *apache-default-config-extenstion*)
-		   (apache-server.vhosts.d-pathname (application.server self))))
+  (merge-pathnames
+   (make-pathname :name (web-application.fqdn self)
+		  :type *apache-default-config-extenstion*)
+   (apache-server.vhosts.d-pathname (application.server self))))
 
 (defmethod apache-web-application.docroot-pathname ((self apache-web-application))
-  (merge-pathnames (make-pathname :directory (list :relative (web-application.fqdn self)))
-		   (apache-server.htdocs-pathname (application.server self))))
+  (merge-pathnames
+   (make-pathname :directory (list :relative (web-application.fqdn self)))
+   (apache-server.htdocs-pathname (application.server self))))

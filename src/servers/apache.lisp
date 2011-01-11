@@ -144,6 +144,7 @@ permissions accordingly"
   #-debian (eq 0 (sb-impl::process-exit-code (#+pardus comar #-pardus apachectl self '("status")))))
 
 (defmethod register ((self apache-server) (app apache-web-application))
+  (setf (application.server app) self)
   (create-docroot self app)
   (apache-server.refresh self app))
 
