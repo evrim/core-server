@@ -392,7 +392,8 @@
   (:metaclass class+))
 
 (defclass object-with-id ()
-  ((id :host both :index t :reader get-id :initform -1 :initarg :id :print t))
+  ((database-id :host both :index t :reader get-database-id :initform -1
+		:initarg :database-id :print t))
   (:metaclass class+))
 
 (defmacro defclass+ (name supers slots &rest rest)

@@ -165,37 +165,63 @@
 
 
 ;; -------------------------------------------------------------------------
-;; HashMap & Structure Serialization Override
+;; HashMap Serialization Override
 ;; -------------------------------------------------------------------------
-(defmacro %defserialization-cache (type xml-type)
-  `(progn
-     (defmethod database.serialize ((self abstract-database) (object ,type)
-				    &optional (k (curry #'database.serialize self)))
-       (with-slots (cache counter) (slot-value self 'database-cache)
-	 (multiple-value-bind (id foundp) (gethash object cache)
-	   (if foundp
-	       (<db:ref :id (format nil "~D" id))
-	       (let ((counter (incf counter)))
-		 (setf (gethash object cache) counter)
-		 (let ((xml (xml-serialize object k)))
-		   (setf (slot-value xml 'id) counter)
-		   xml))))))
-     (defmethod database.deserialize ((self abstract-database) (xml ,xml-type)
-				      &optional (k (curry #'database.deserialize self)))
-       (declare (ignore k))
-       (let ((object (call-next-method)))
-	 (setf (gethash (parse-integer (slot-value xml 'id))
-			(slot-value (database.cache self) 'cache))
-	       object)
-	 object))))
+(defmethod database.deserialize ((self abstract-database) (xml <db:hash-table) &optional k)
+  (let ((k (or k (curry #'database.deserialize self))))
+    (with-slots (test size children id) xml
+      (let ((table (make-hash-table :test (read-from-string test)))
+	    (id (read-from-string id)))
+	(with-slots (cache counter) (database.cache self)
+	  (setf (gethash id cache) table counter (max counter id))
+	  (reduce (lambda (table entry)
+		    (multiple-value-bind (key value) (funcall k entry k)
+		      (setf (gethash key table) value)
+		      table))
+		  children :initial-value table))))))
 
-(%defserialization-cache hash-table <db:hash-table)
-(%defserialization-cache structure-object <db:struct)
+(defmethod database.serialize ((self abstract-database) (object hash-table)
+			       &optional (k (curry #'database.serialize self)))
+  (with-slots (cache counter) (slot-value self 'database-cache)
+    (multiple-value-bind (id foundp) (gethash object cache)
+      (if foundp
+	  (<db:ref :id (format nil "~D" id))
+	  (let ((counter (incf counter)))
+	    (setf (gethash object cache) counter)
+	    (let ((xml (xml-serialize object k)))
+	      (setf (slot-value xml 'id) counter)
+	      xml))))))
 
-(defmethod log-transaction ((self abstract-database) (transaction transaction))
-  (checkpoint-stream (database.stream self))
-  (write-stream (database.stream self) (database.serialize self transaction))
-  (commit-stream (database.stream self)))
+;; -------------------------------------------------------------------------
+;; Structure Serialization Override
+;; -------------------------------------------------------------------------
+(defmethod database.deserialize ((self abstract-database) (xml <db:struct) &optional k)
+  (let ((k (or k (curry #'database.deserialize self))))
+    (with-slots (class id) xml
+      (let* ((class (read-from-string class))
+	     (instance (funcall (intern (format nil "MAKE-~A" (symbol-name class))
+					(symbol-package class))))
+	     
+	     (id (read-from-string id)))
+	(with-slots (cache counter) (database.cache self)
+	  (setf (gethash id cache) instance counter (max counter id))
+	  (reduce (lambda (instance slot)
+		    (multiple-value-bind (name value) (funcall k slot k)
+		      (setf (slot-value instance name) value)
+		      instance))
+		  (slot-value xml 'children) :initial-value instance))))))
+
+(defmethod database.serialize ((self abstract-database) (object structure-object)
+			       &optional (k (curry #'database.serialize self)))
+  (with-slots (cache counter) (slot-value self 'database-cache)
+    (multiple-value-bind (id foundp) (gethash object cache)
+      (if foundp
+	  (<db:ref :id (format nil "~D" id))
+	  (let ((counter (incf counter)))
+	    (setf (gethash object cache) counter)
+	    (let ((xml (xml-serialize object k)))
+	      (setf (slot-value xml 'id) counter)
+	      xml))))))
 
 (defmethod execute-on ((self abstract-database) (tx transaction))
   (etypecase (transaction.code tx)
@@ -232,8 +258,14 @@
 	 (error "Database should be running in order to execute a transaction"))
        
        (let* ((+transactionalp+ t))
+	 (checkpoint-stream (database.stream self))
+	 (write-stream (database.stream self) (database.serialize self transaction))
+;; FIXME: implement handler-bind here.
 	 (prog1 (execute)
-	   (log-transaction self transaction)))))))
+	   (commit-stream (database.stream self)))
+	 ;; (prog1 (execute)
+	 ;;   (log-transaction self transaction))
+	 )))))
 
 (defmethod restore ((self abstract-database))
   (clrhash (database.root self))
@@ -249,7 +281,7 @@
   (let ((cache (slot-value (database.cache self) 'cache)))
     (maphash (lambda (k v) (setf (gethash v cache) k))
 	     cache))
-  
+
   ;; Load Transaction Log
   (when (probe-file (database.transaction-log-pathname self))
     (let ((+transactionalp+ t))
@@ -257,7 +289,7 @@
 	(let ((s (make-xml-stream s)))	  
 	  (do* ((xml (read-stream s) (read-stream s))
 		(tx (database.deserialize self xml) (database.deserialize self xml)))
-	      ((null xml) nil)
+	       ((null xml) nil)
 	    (execute self tx)))))))
 
 (defun open-database-stream (pathname)
@@ -405,7 +437,7 @@
 
 (deftrace database '(execute execute-on snapshot restore start stop
 		     database.serialize database.deserialize
-		     xml-serialize xml-deserialize log-transaction))
+		     xml-serialize xml-deserialize))
 
 ;; TODO: implement file truncation on bad transaction log
 
@@ -442,3 +474,41 @@
 ;; 		  (transaction ',tx ,@(if setf-p
 ;; 					  (cons (car arg-names) (cddr arg-names))
 ;; 					  (cdr arg-names))))))))
+
+
+;; -------------------------------------------------------------------------
+;; HashMap & Structure Serialization Override
+;; -------------------------------------------------------------------------
+;; (defmacro %defserialization-cache (type xml-type)
+;;   `(progn
+;;      (defmethod database.deserialize ((self abstract-database) (xml ,xml-type)
+;; 				      &optional (k (curry #'database.deserialize self)))
+;;        (declare (ignore k))
+;;        (let ((object (call-next-method))
+;; 	     (id (read-from-string (slot-value xml 'id))))
+;; 	 (describe xml)
+;; 	 (with-slots (cache counter) (database.cache self)
+;; 	   (setf (gethash id cache) object counter (incf counter)
+;; 		 ;; id
+;; 		 ;; (max counter id)
+;; 		 ))
+;; 	 object))
+;;      (defmethod database.serialize ((self abstract-database) (object ,type)
+;; 				    &optional (k (curry #'database.serialize self)))
+;;        (with-slots (cache counter) (slot-value self 'database-cache)
+;; 	 (multiple-value-bind (id foundp) (gethash object cache)
+;; 	   (if foundp
+;; 	       (<db:ref :id (format nil "~D" id))
+;; 	       (let ((counter (incf counter)))
+;; 		 (setf (gethash object cache) counter)
+;; 		 (let ((xml (xml-serialize object k)))
+;; 		   (setf (slot-value xml 'id) counter)
+;; 		   xml))))))))
+
+;; (%defserialization-cache hash-table <db:hash-table)
+;; (%defserialization-cache structure-object <db:struct)
+
+;; (defmethod log-transaction ((self abstract-database) (transaction transaction))
+;;   (checkpoint-stream (database.stream self))
+;;   (write-stream (database.stream self) (database.serialize self transaction))
+;;   (commit-stream (database.stream self)))

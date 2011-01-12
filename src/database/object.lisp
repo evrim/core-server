@@ -183,24 +183,24 @@
   (car (find-objects-with-slot server class slot value)))
 
 (defmethod find-object-with-id ((server database) id)
-  (find-object-with-slot server (find-class+ 'object-with-id) 'id id))
+  (find-object-with-slot server (find-class+ 'object-with-id) 'database-id id))
 
 (deftransaction update-object ((server database) (object class+-instance) &rest slots-and-values)
   (reduce
    (lambda (object slot-val)	    
      (destructuring-bind (name . new-value) slot-val
-       (let ((old-value (and (class+.slot-boundp object name) (slot-value object name))))		
+       (let ((old-value (and (class+.slot-boundp object name) (slot-value object name))))
 	 (let ((slot (class+.find-slot (class-of object) name)))
 	   (when slot
 	     (with-slotdef (name index relation) slot
-
 	       (cond
 		 ((and relation old-value)
 		  (multiple-value-bind (relation-type relational-slot) (slot-definition-relation-type slot)
 		    (case relation-type
 		      (:n-to-one
-		       (setf (slot-value old-value (slot-definition-name relational-slot))				 
-			     (remove object (slot-value old-value (slot-definition-name relational-slot)))))
+		       (setf (slot-value old-value (slot-definition-name relational-slot))
+			     (remove object
+				     (slot-value old-value (slot-definition-name relational-slot)))))
 		      (:one-to-n
 		       (reduce (lambda (object old-value)
 				 (setf (slot-value old-value (slot-definition-name relational-slot))
@@ -210,14 +210,14 @@
 		      (:n-to-n
 		       (reduce (lambda (object target)
 				 (setf (slot-value target (slot-definition-name relational-slot))
-				       (remove object (slot-value target (slot-definition-name relational-slot))))
+				       (remove object
+					       (slot-value target
+							   (slot-definition-name relational-slot))))
 				 object)
 			       old-value :initial-value object)))))
 		 ((and (null relation) index)
 		  (delete-from-slot-index server object name)))
-		  
 	       (setf (slot-value object name) new-value)
-
 	       (cond
 		 ((and (null relation) index)
 		  (add-to-slot-index server object name))
@@ -227,7 +227,9 @@
 		      (:n-to-one
 		       (setf (slot-value new-value (slot-definition-name relational-slot))
 			     (cons object
-				   (remove object (slot-value new-value (slot-definition-name relational-slot))))))
+				   (remove object
+					   (slot-value new-value
+						       (slot-definition-name relational-slot))))))
 		      (:one-to-n
 		       (reduce (lambda (object new-value)
 				 (setf (slot-value new-value (slot-definition-name relational-slot))
@@ -237,7 +239,9 @@
 		      (:n-to-n
 		       (reduce (lambda (object target)
 				 (setf (slot-value target (slot-definition-name relational-slot))
-				       (cons object (slot-value target (slot-definition-name relational-slot))))
+				       (cons object
+					     (slot-value target
+							 (slot-definition-name relational-slot))))
 				 object)
 			       new-value :initial-value object)))))))))))
      object)
@@ -246,13 +250,14 @@
 (deftransaction add-object ((server database) (class class+) &rest slots-and-values)
   (if (member (find-class+ 'object-with-id) (class+.superclasses class))
       (setf slots-and-values
-	    (cons (cons 'id (next-id server))
-		  (remove 'id slots-and-values :key #'car))))
+	    (cons (cons 'database-id (next-id server))
+		  (remove 'database-id slots-and-values :key #'car))))
   
   (let ((object (allocate-instance class))
 	(initargs (reduce0 #'append
 		   (uniq
-		    (filter (lambda (a) (not (member (car a) slots-and-values :key #'car :test #'string=)))
+		    (filter (lambda (a)
+			      (not (member (car a) slots-and-values :key #'car :test #'string=)))
 			    (mapcar (lambda (a) (list (car a) (cadr a)))
 				    (class-default-initargs class)))
 				 :key #'car))))

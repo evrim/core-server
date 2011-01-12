@@ -84,6 +84,6 @@
 				  (with-slotdef (initarg reader) slot
 				    (cons initarg
 					  (cons `(database.clone ,server (,reader instance)) acc))))
-				(remove 'id (class+.local-slots class+)
+				(remove 'database-id (class+.local-slots class+)
 					:key #'slot-definition-name))))))))))
 

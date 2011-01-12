@@ -60,10 +60,10 @@
 	  (id))
       (let ((object (add-object db 'persistent-class)))
 	(update-object db object (cons 'slot1 "test1-slotval"))
-	(setq id (slot-value object 'id)))
+	(setq id (slot-value object 'database-id)))
       (stop db)
       (start db)
-      (let ((object (find-object-with-slot db 'persistent-class 'id id)))
+      (let ((object (find-object-with-slot db 'persistent-class 'database-id id)))
 	(prog1 (slot-value object 'slot1)
 	  (delete-object db object)
 	  (stop db))))
@@ -128,6 +128,7 @@
 
 ;; Crud
 (defcrud user)
+(defcrud blog)
 (deftest database-8
     (let* ((db (test-db))
 	   (u1 (user.add db :name "foo")))
@@ -162,6 +163,66 @@
 	(describe obj)
 	(slot-value obj 'persistent)))
   "test-persistent")
+
+(defcomponent a-component (object-with-id)
+  ((name :host local :index t)
+   (one-B :host local :type b-component :relation list-of-A)))
+
+(defcomponent b-component (object-with-id)
+  ((name :host local :index t)
+   (list-of-A :host local :type a-component* :relation one-B)))
+
+(defcrud a-component)
+(defcrud b-component)
+
+(deftest database-11
+    (let* ((db (test-db))
+	   (a1 (a-component.add db :name "a1"))
+	   (a2 (a-component.add db :name "a2"))
+	   (b1 (b-component.add db :name "b1" :list-of-a (list a1 a2))))
+      (stop db)
+      (start db)
+      (let ((a1 (a-component.find db :name "a1"))
+	    (a2 (a-component.find db :name "a2"))
+	    (b1 (b-component.find db :name "b1")))
+	(describe a1)
+	(describe a2)
+	(describe b1)
+	(and (member a1 (list-of-a b1))
+	     (member a2 (list-of-a b1))
+	     (eq b1 (one-B a1))
+	     (eq b1 (one-B a2)))))
+  t)
+
+(defclass+ a-class1 (object-with-id)
+  ((name :host local :index t)
+   (one-B :host local :type b-class1 :relation list-of-A)))
+
+(defclass+ b-class1 (object-with-id)
+  ((name :host local :index t)
+   (list-of-A :host local :type a-class1* :relation one-B)))
+
+(defcrud a-class1)
+(defcrud b-class1)
+
+(deftest database-12
+    (let* ((db (test-db))
+	   (a1 (a-class1.add db :name "a1"))
+	   (a2 (a-class1.add db :name "a2"))
+	   (b1 (b-class1.add db :name "b1" :list-of-a (list a1 a2))))
+      (stop db)
+      (start db)
+      (let ((a1 (a-class1.find db :name "a1"))
+	    (a2 (a-class1.find db :name "a2"))
+	    (b1 (b-class1.find db :name "b1")))
+	(describe a1)
+	(describe a2)
+	(describe b1)
+	(and (member a1 (slot-value b1 'list-of-a))
+	     (member a2 (slot-value b1 'list-of-a))
+	     (eq b1 (slot-value a1 'one-B))
+	     (eq b1 (slot-value a2 'one-B)))))
+  t)
 
 ;; ;; http://www.cs.vu.nl/boilerplate/
 ;; ;;
