@@ -612,7 +612,8 @@
 
    ;; Object Database
    #:object-with-id
-   #:get-id
+   #:get-database-id
+   #:database-id
    #:find-all-objects
    #:find-object-with-slot
    #:find-object-with-id
