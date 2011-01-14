@@ -40,14 +40,14 @@
 ;; HTTP Session
 ;; ----------------------------------------------------------------------------
 (defclass http-session ()
-  ((id :reader session.id :initform (random-string 8))
+  ((id :reader session.id :initarg :id :initform (random-string 8))
    (continuations :reader session.continuations :initform (make-hash-table :test #'equal)) 
    (timestamp :accessor session.timestamp :initform (get-universal-time))
    (data :accessor session.data :initform (make-hash-table :test #'equal))))
 
-(defun make-new-session ()
+(defun make-new-session (&optional (id (random-string 8)))
   "HTTP Session Constructor"
-  (make-instance 'http-session))
+  (make-instance 'http-session :id id))
 
 (defmethod find-session-id ((request http-request))
   "Returns session id string provided in request query or by cookie that has set before"
