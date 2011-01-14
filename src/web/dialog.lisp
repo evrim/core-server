@@ -8,7 +8,7 @@
    (message :host remote :initform "This is a message dialog.")
    (title :host remote :initform "message")
    (css-url :host remote :initform "http://www.coretal.net/style/dialog/dialog.css"))
-  (:default-initargs :class "coretal-dialog"))
+  (:default-initargs :class "coretal coretal-dialog"))
 
 (defmethod/remote call-component ((self dialog))
   (show-component self)
