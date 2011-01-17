@@ -102,6 +102,9 @@
   ((timeout-id :host remote :initform 0)
    (current-hash :host remote :initform nil)))
 
+(defmethod/remote destroy ((self history-mixin))
+  (stop-history-timeout self))
+
 (defmethod/remote on-history-change ((self history-mixin))
   (_debug (list "history-change" (current-hash self) window.location.hash)))
 
