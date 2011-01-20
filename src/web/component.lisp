@@ -357,14 +357,10 @@
        ;; Component Constructor Renderer
        ;; ----------------------------------------------------------------------------
        (defmethod/cc component! ((stream core-stream) (component ,class-name))
-	 (if (and +context+ (context.request +context+))
-	     (setf (slot-value component 'url)
-		   (format nil "http://~A/~A"
-			   (web-application.fqdn (context.application +context+))
-			   (apply #'concatenate 'string
-				  (flatten (uri.paths (http-request.uri (context.request +context+))))))))
-	 
-	 
+	 (setf (slot-value component 'url)
+	       (web-application.serve-url (context.application +context+)
+					  (context.request +context+))) 
+
 	 (let ,(mapcar (lambda (method k-url)
 			 (let ((method-args (extract-argument-names (cdddr method)
 								    :allow-specializers t)))

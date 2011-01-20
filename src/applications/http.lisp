@@ -207,6 +207,12 @@
 ;; +----------------------------------------------------------------------------
 ;; | HTTP Application Interface
 ;; +----------------------------------------------------------------------------
+(defmethod web-application.serve-url ((self http-application) (req http-request))
+  (format nil "/~A/~A" (web-application.fqdn self)
+	  (with-core-stream (s "")
+	    (uri! s (http-request.uri req))
+	    (return-stream s))))
+
 (defmethod find-session ((application http-application) id)
   "Returns the session associated with 'id'"
   (aif (gethash id (http-application.sessions application))
