@@ -210,7 +210,15 @@
 (defmethod web-application.serve-url ((self http-application) (req http-request))
   (format nil "/~A/~A" (web-application.fqdn self)
 	  (with-core-stream (s "")
-	    (uri! s (http-request.uri req))
+	    (mapc #'(lambda (path)
+		      (core-server::char! s core-server::+uri-path-seperator+)
+		      (core-server::string! s (car path))
+		      (mapc #'(lambda (path)
+				(core-server::char!
+				 s core-server::+uri-segment-seperator+)
+				(core-server::string! s path))
+			    (cdr path)))
+		  (core-server::uri.paths (http-request.uri req)))	    
 	    (return-stream s))))
 
 (defmethod find-session ((application http-application) id)
