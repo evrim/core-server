@@ -279,6 +279,8 @@
    #:instanceof
    #:with-field
    #:make-component
+   #:delete-slot
+   #:delete-slots
    #:lift1
    #:lift0
    #:lifte
@@ -705,6 +707,9 @@
    #:reverse-cc
    #:filter
    #:filter-cc
+   #:find-cc
+   #:flip-cc
+   #:mapcar2-cc
    #:load-css
    #:load-javascript
    

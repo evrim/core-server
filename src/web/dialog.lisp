@@ -61,26 +61,23 @@
 (defcomponent prompt-dialog (dialog)
   ())
 
-(defmethod/remote template ((self prompt-dialog))  
-  (<:div :class "center text-center"
-    (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
-    (<:div :class "right right-bg"
-	   (<:div :class "title" (title self))
-	   (<:div :class "message" (message self))
-	   (<:form :action "#"
-		   (<:input :type "text" :name "prompt" :class "text")
-		   (<:div
-		    (<:input :type "submit" :class "button" :value "OK"
-			     :onclick
-			     (event (e)
-			       (let ((button this))
-				 (with-call/cc
-				   (answer-component self button.form.prompt.value)))
-				    false))
-		    (<:input :type "button" :class "button"
-			     :value "Cancel"
-			     :onclick (lambda (e)
-					(hide-component self))))))))
+(defmethod/remote template ((self prompt-dialog))
+  (let ((_prompt (<:input :type "text" :name "prompt" :class "text")))
+    (<:div :class "center text-center"
+	   (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
+	   (<:div :class "right right-bg"
+		  (<:div :class "title" (title self))
+		  (<:div :class "message" (message self))
+		  (<:form :action "#"
+			  _prompt
+			  (<:div
+			   (<:input :type "submit" :class "button" :value "OK"
+				    :onclick (lifte
+					      (answer-component self
+						  (slot-value _prompt 'value))))
+			   (<:input :type "button" :class "button"
+				    :value "Cancel"
+				    :onclick (lifte (hide-component self)))))))))
 
 ;; +-------------------------------------------------------------------------
 ;; | Yes-No Dialog
@@ -98,16 +95,10 @@
 	   (<:form :action "#"
 		   (<:input :type "button" :class "button"
 			    :value "Yes"
-			    :onclick (event (e)
-					    (with-call/cc
-					      (answer-component self t))
-					    false))
+			    :onclick (lifte (answer-component self t)))
 		   (<:input :type "button" :class "button"
 			    :value "No"
-			    :onclick (event (e)
-					    (with-call/cc
-					      (answer-component self nil))
-					    false))))))
+			    :onclick (lifte (answer-component self nil)))))))
 
 ;; +-------------------------------------------------------------------------
 ;; | Login Dialog
@@ -117,42 +108,39 @@
    (password-input :host remote :initform (<core:password-input)))
   (:default-initargs :title "login"))
 
-(defmethod/remote template ((self login-dialog))    
-  (<:div :class "center text-center"
-    (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
-    (<:div :class "right right-bg"
-	   (<:div :class "title" (title self))
-	   (<:form :action "#"
-		   :onsubmit (event (e)			      
-				    (let ((password this.password.value))
-				      (with-call/cc
-					(setf this.password.value nil)
-					(answer-component self (cons this.email.value password))))
-				    false)
-		   (with-field
-		       (<:span :class "validation"
-			       :id "email-validation"
-			       "Enter your email address")
-		     (call/cc (email-input self)
-			      (jobject :class-name "text" :type "text"
-				       :name "email"
-				       :validation-span-id "email-validation"
-				       :default-value "Email")))
-		   (with-field
-		       (<:span :class "validation"
-			       :id "password-validation"
-			       "Enter your password")
-		       (call/cc (password-input self)
-				(jobject :class-name "text"
-					 :default-value "password"
-					 :type "password" :name "password"
-					 :validation-span-id "password-validation")))
-		   (with-field ""
-		     (<:div (<:input :type "submit" :class "button"
-				     :value "login or register" :disabled t)
-			    (<:input :type "button" :class "button"
-				     :value "cancel"
-				     :onclick (lambda (e) (hide-component self)))))))))
+(defmethod/remote template ((self login-dialog))
+  (let ((_email (call/cc (email-input self)
+			 (jobject :class-name "text" :type "text"
+				  :name "email" :validation-span-id "email-validation"
+				  :default-value "Email")))
+	(_password (call/cc (password-input self)
+			    (jobject :class-name "text" :default-value "password"
+				     :type "password" :name "password"
+				     :validation-span-id "password-validation"))))
+    (<:div :class "center text-center"
+	   (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
+	   (<:div :class "right right-bg"
+		  (<:div :class "title" (title self))
+		  (<:form :action "#"
+			  :onsubmit (event (e)			      
+				     (let ((password (slot-value _password 'value)))
+				       (with-call/cc
+					 (setf (slot-value _password 'value) nil)
+					 (answer-component self
+				          (cons (slot-value _email 'value) password))))
+				     false)
+			  (with-field (<:span :class "validation" :id "email-validation"
+					      "Enter your email address")
+			    _email)
+			  (with-field (<:span :class "validation" :id "password-validation"
+					      "Enter your password")
+			    _password)
+			  (with-field ""
+			    (<:div (<:input :type "submit" :class "button"
+					    :value "login" :disabled t)
+				   (<:input :type "button" :class "button"
+					    :value "cancel"
+					    :onclick (lifte (hide-component self))))))))))
 
 ;; +-------------------------------------------------------------------------
 ;; | Registration Dialog
@@ -161,27 +149,27 @@
   ((email-input :host remote :initform (<core:email-input)))
   (:default-initargs :title "register"))
 
-(defmethod/remote template ((self registration-dialog))    
-  (<:div :class "center text-center"
-    (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
-    (<:div :class "right right-bg"
-	   (<:div :class "title" (title self))
-	   (<:form :action "#"
-		   :onsubmit (event (e)
-				    (with-call/cc
-				      (answer-component self this.email.value))
-				    false)
-		   (with-field
-		       (<:span :class "validation" :id "email-validation"
-			       "Enter your email address")
-		       (call/cc (email-input self)
-				(jobject :class-name "text" :type "text"
-					 :name "email"
-					 :validation-span-id "email-validation"
-					 :default-value "Email")))
-		   (with-field ""
-		     (<:input :type "submit" :class "button"
-			      :value "login or register" :disabled t))))))
+(defmethod/remote template ((self registration-dialog))
+  (let ((_email (call/cc (email-input self)
+			 (jobject :class-name "text" :type "text"
+				  :name "email"
+				  :validation-span-id "email-validation"
+				  :default-value "Email"))))
+    (<:div :class "center text-center"
+	   (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
+	   (<:div :class "right right-bg"
+		  (<:div :class "title" (title self))
+		  (<:form :action "#"
+			  :onsubmit (lifte
+				     (answer-component self
+						       (slot-value _email 'value)))
+			  (with-field (<:span :class "validation"
+					      :id "email-validation"
+					      "Enter your email address")
+			    _email)
+			  (with-field ""
+			    (<:input :type "submit" :class "button"
+				     :value "login or register" :disabled t)))))))
 
 ;; -------------------------------------------------------------------------
 ;; Forgot Password
@@ -190,27 +178,27 @@
   ((email-input :host remote :initform (<core:email-input)))
   (:default-initargs :title "password"))
 
-(defmethod/remote template ((self forgot-password-dialog))    
-  (<:div :class "center text-center"
-    (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
-    (<:div :class "right right-bg"
-	   (<:div :class "title" (title self))
-	   (<:form :action "#"
-		   :onsubmit (event (e)
-			       (with-call/cc
-				 (answer-component self this.email.value))
-				    false)
-		   (with-field
-		       (<:span :class "validation" :id "email-validation"
-			       "Enter your email address")
-		     (call/cc (email-input self)
-			      (jobject :class-name "text" :type "text"
-				       :name "email"
-				       :validation-span-id "email-validation"
-				       :default-value "Email")))
-		   (with-field ""
-		     (<:input :type "submit" :class "button"
-			      :value "send my password" :disabled t))))))
+(defmethod/remote template ((self forgot-password-dialog))
+  (let ((_email (call/cc (email-input self)
+			 (jobject :class-name "text" :type "text"
+				  :name "email"
+				  :validation-span-id "email-validation"
+				  :default-value "Email"))))
+    (<:div :class "center text-center"
+	   (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
+	   (<:div :class "right right-bg"
+		  (<:div :class "title" (title self))
+		  (<:form :action "#"
+			  :onsubmit (lifte
+				     (answer-component self
+						       (slot-value _email 'value)))
+			  (with-field (<:span :class "validation"
+					      :id "email-validation"
+					      "Enter your email address")
+			    _email)
+			  (with-field ""
+			    (<:input :type "submit" :class "button"
+				     :value "send my password" :disabled t)))))))
 
 ;; -------------------------------------------------------------------------
 ;; Big Dialog

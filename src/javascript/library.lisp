@@ -224,19 +224,22 @@
   (defun replace-node (old-node new-node)
     (old-node.parent-node.replace-child new-node old-node)
     new-node)
+
+  (defun trim (str)
+    (.replace (new (*string str)) (regex "/^\s+|\s+$/g") ""))
   
   (defun show (node)
-    (when (instanceof node *h-t-m-l-element)
+    (when (slot-value node 'style);; (instanceof node *h-t-m-l-element)
       (setf node.style.display "block"))
     node)
 
   (defun hide (node)
-    (when (instanceof node *h-t-m-l-element)
+    (when (slot-value node 'style) ;; (instanceof node *h-t-m-l-element)
       (setf node.style.display "none"))
     node)
 
   (defun inline (node)
-    (when (instanceof node *h-t-m-l-element)
+    (when (slot-value node 'style);; (instanceof node *h-t-m-l-element)
       (setf node.style.display "inline"))
     node)
   
@@ -411,7 +414,7 @@
 	  (setf (slot-value window hash)
 		(event (val)
 		  (when (not (null (slot-value script 'parent-node)))
-		    (.remove-child head script)
+		    ;; (.remove-child head script)
 		    (if body (.remove-child body img)))
 		  (current-continuation val)))
 	  (if body (append body img))
@@ -419,17 +422,19 @@
 	  (suspend)))))
 
   (defun make-dom-element (tag properties children)
-    (let ((element (document.create-element tag)))
-      (doeach (i properties)
-	      (setf (aref element i) (aref properties i)))
-      (let ((children (flatten children)))
-	(mapcar (lambda (i)
-		  (cond
-		    ((not (null (slot-value i 'tag-name)))
-		     (element.append-child i))
-		    (t
-		     (element.append-child (document.create-text-node i)))))
-		children))
+    (let ((element (document.create-element tag))
+	  (children (flatten children)))
+      (when (slot-value properties 'type)
+	(setf (slot-value element 'type) (slot-value properties 'type))
+	(delete-slot properties 'type))
+      (mapcar (lambda (i)
+		(cond
+		  ((not (null (slot-value i 'tag-name)))
+		   (element.append-child i))
+		  (t
+		   (element.append-child (document.create-text-node i)))))
+	      children)
+      (extend properties element)
       element))
   
   (defun get-parameter (name href)
@@ -440,7 +445,8 @@
 			(.substr window.location.search 1))))
       
       (if (null name)
-	  (eval (decode-u-r-i-component (car (.split data "$"))))
+	  (let ((_value (decode-u-r-i-component (car (.split data "$")))))
+	    (try (return (eval _value)) (:catch (e) (return _value))))
 	  (let ((_value (decode-u-r-i-component
 			 (car
 			  (cdr
@@ -625,7 +631,10 @@
 	(gethash 'reduce0-cc +javascript-cps-functions+) t
 	(gethash 'reduce-cc +javascript-cps-functions+) t
 	(gethash 'filter-cc +javascript-cps-functions+) t
-	(gethash 'load-javascript +javascript-cps-functions+) t))
+	(gethash 'load-javascript +javascript-cps-functions+) t
+	(gethash 'find-cc +javascript-cps-functions+) t
+	(gethash 'flip-cc +javascript-cps-functions+) t
+	(gethash 'mapcar2-cc +javascript-cps-functions+) t))
 
 
   ;; (defvar *registry* (create))  

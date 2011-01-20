@@ -38,7 +38,8 @@
 (defmethod/remote destroy ((self ckeditor-component))  
   (let ((foo (event (e) (try (.destroy e) (:catch (err) nil)))))
     (foo (instance self))
-    (delete (slot-value self 'instance))
+    (delete-slot self 'instance)
+    (remove-css "http://www.coretal.net/style/ckeditor.css")
     (call-next-method self)))
 
 (defmethod/remote init ((self ckeditor-component))
