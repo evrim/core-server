@@ -64,7 +64,7 @@ for implementation."))
    (apache-server.htdocs-pathname (application.server self))))
 
 (defmethod web-application.serve-url ((self apache-web-application) (req http-request))
-  (format nil "http://~A/~A" (web-application.fqdn self)
+  (format nil "http://~A~A" (web-application.fqdn self)
 	  (with-core-stream (s "")
 	    (uri! s (http-request.uri req))
 	    (return-stream s))))
