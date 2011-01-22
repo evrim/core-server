@@ -400,19 +400,15 @@
 		   (call/cc do-parts (.substr str 1000)
 			    (cons (.slice (new (*string str)) 0 1000) acc))
 		   acc)))
-      (let* ((parts (reverse-cc (do-parts (serialize-to-uri args) nil))))
-	(mapcar-cc (lambda (a)
-		     (_debug (list (slot-value a 'length) a)))
-		   parts)
-	(let ((k1 (funcall-cc "multipart.core?" (jobject :action action))))
-	  (funcall-cc (+ "multipart.core"
-			 (reduce-cc
-			  (lambda (acc atom)
-			    (funcall-cc (+ "multipart.core" acc "$")
-					(jobject :data atom)))
-			  parts k1)
-			 "$")
-		      (jobject :commit t))))))
+      (funcall-cc (+ "multipart.core"
+		     (reduce-cc
+		      (lambda (acc atom)
+			(funcall-cc (+ "multipart.core" acc "$")
+				    (jobject :data atom)))
+		      (reverse-cc (do-parts (serialize-to-uri args) nil))
+		      (funcall-cc "multipart.core?" (jobject :action action)))
+		     "$")
+		  (jobject :commit t))))
   
   (defun/cc funcall-cc (action args)
     (_debug (list "funcall/cc" action args))
