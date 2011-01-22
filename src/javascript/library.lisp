@@ -229,22 +229,23 @@
     (.replace (new (*string str)) (regex "/^\s+|\s+$/g") ""))
   
   (defun show (node)
-    (when (slot-value node 'style);; (instanceof node *h-t-m-l-element)
+    (when (and node (slot-value node 'style))	;; (instanceof node *h-t-m-l-element)
       (setf node.style.display "block"))
     node)
 
   (defun hide (node)
-    (when (slot-value node 'style) ;; (instanceof node *h-t-m-l-element)
+    (when (and node (slot-value node 'style)) ;; (instanceof node *h-t-m-l-element)
       (setf node.style.display "none"))
     node)
 
   (defun inline (node)
-    (when (slot-value node 'style);; (instanceof node *h-t-m-l-element)
+    (when (and (slot-value node 'style))	;; (instanceof node *h-t-m-l-element)
       (setf node.style.display "inline"))
     node)
   
   (defun add-on-load (fun)
-    (if (eq "complete" document.ready-state) ;; yalan bu ya
+    (if (or (eq "complete" document.ready-state)
+	    (eq "interactive" document.ready-state)) ;; yalan bu ya
 	(fun)
 	(if (typep window.onload 'function)
 	    (let ((current window.onload))
@@ -387,11 +388,31 @@
 
   (defun _debug (what k)
     (if (and (not (null console))
-	     (not (null console.debug)))
-	(console.debug what))
+    	     (not (null console.debug)))
+    	(console.debug what))
     (if (typep k '*function)
-	(k what)
-	what))
+    	(k what)
+    	what))
+  
+  (defun/cc funcall-long-cc (action args)
+    (labels ((do-parts (str acc)
+	       (if (and str (> (slot-value str 'length) 0))
+		   (call/cc do-parts (.substr str 1000)
+			    (cons (.slice (new (*string str)) 0 1000) acc))
+		   acc)))
+      (let* ((parts (reverse-cc (do-parts (serialize-to-uri args) nil))))
+	(mapcar-cc (lambda (a)
+		     (_debug (list (slot-value a 'length) a)))
+		   parts)
+	(let ((k1 (funcall-cc "multipart.core?" (jobject :action action))))
+	  (funcall-cc (+ "multipart.core"
+			 (reduce-cc
+			  (lambda (acc atom)
+			    (funcall-cc (+ "multipart.core" acc "$")
+					(jobject :data atom)))
+			  parts k1)
+			 "$")
+		      (jobject :commit t))))))
   
   (defun/cc funcall-cc (action args)
     (_debug (list "funcall/cc" action args))
@@ -400,26 +421,30 @@
 		     (.get-time (new (*date)))
 		     (.substr (.concat "" (*math.random 10)) 3 5)))
 	    (img (make-dom-element "IMG"
-		     (jobject :class-name "coretal-loading"
-			      :src "http://www.coretal.net/style/login/loading.gif")
+				   (jobject :class-name "coretal-loading"
+					    :src (+ "http://www.coretal.net/style/"
+						    "login/loading.gif"))
 				   nil))
 	    (args (if (null args) (jobject) args)))
 	(setf (slot-value args "__hash") hash)
-	(let ((script (make-dom-element "script"
-					(jobject :src
-						 (+ "" action (serialize-to-uri args)))
-					nil))
+	(let* ((a (serialize-to-uri args))
+	       (script (make-dom-element "script" (jobject :src (+ "" action a))
+					 nil))
 	      (head (aref (.get-elements-by-tag-name document "HEAD") 0))
 	      (body (slot-value document 'body)))
-	  (setf (slot-value window hash)
-		(event (val)
-		  (when (not (null (slot-value script 'parent-node)))
-		    ;; (.remove-child head script)
-		    (if body (.remove-child body img)))
-		  (current-continuation val)))
-	  (if body (append body img))
-	  (append head script)
-	  (suspend)))))
+	  (cond
+	    ((and a (slot-value a 'length) (> (slot-value a 'length) 2000))
+	     (funcall-long-cc action args))
+	    (t	     
+	     (setf (slot-value window hash)
+		   (event (val)
+			  (when (not (null (slot-value script 'parent-node)))
+			    (.remove-child head script)
+			    (if body (.remove-child body img)))
+			  (current-continuation val)))
+	     (if body (append body img))
+	     (append head script)
+	     (suspend)))))))
 
   (defun make-dom-element (tag properties children)
     (let ((element (document.create-element tag))

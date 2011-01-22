@@ -585,6 +585,35 @@ provide query parameters inside URL as key=value"
    (lambda (s)
      (core-server::core-library! s))))
 
+(defhandler "multipart.core" ((self http-application) (action "action") (hash "__hash"))
+  (let* ((uri (uri? (make-core-stream (json-deserialize action))))
+	 (action-s (uri.query uri +session-query-name+))
+	 (action-k (uri.query uri +continuation-query-name+))
+	 (paths (uri.paths uri))
+	 (stream (make-core-stream "")))
+    (write-stream stream (json-deserialize action))
+    (labels ((commit (hash)
+	       (let* ((uri-full (uri? (make-core-stream (return-stream stream))))
+		      (req (context.request +context+))
+		      (rep (context.response +context+))
+		      (current-uri (http-request.uri req)))
+		 (setf (uri.paths current-uri) (uri.paths uri))
+		 (setf (uri.queries current-uri)
+		       (cons (list "__hash" hash) (uri.queries uri-full)))
+		 (escape (dispatch self req rep))))
+	     (multipart-action (hash)
+	       (javascript/suspend
+		(lambda (s)
+		  (let ((k-url (action/url ((data "data") (commit "commit")
+					    (hash "__hash"))
+				 (cond
+				   (commit (commit hash))
+				   (t
+				    (write-stream stream (json-deserialize data))
+				    (multipart-action (json-deserialize hash)))))))
+		    (with-js (k-url hash) s
+		      (apply (slot-value window hash) this (list k-url))))))))
+      (multipart-action (json-deserialize hash)))))
 
 
 ;; (defapplication test1 (http-application)
