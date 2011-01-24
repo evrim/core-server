@@ -84,7 +84,8 @@
   (if (null (slot-value self 'default-value))
       (setf (slot-value self 'default-value) (slot-value self 'value)))
 
-  (if (null (slot-value self 'value))
+  (if (or (null (slot-value self 'value))
+	  (eq "" (slot-value self 'value)))
       (setf (slot-value self 'value) (slot-value self 'default-value))))
 
 ;; +----------------------------------------------------------------------------
