@@ -104,14 +104,17 @@
 ;; | Login Dialog
 ;; +-------------------------------------------------------------------------
 (defcomponent login-dialog (dialog)
-  ((email-input :host remote :initform (<core:email-input))
+  ((default-email :host remote)
+   (email-input :host remote :initform (<core:email-input))
    (password-input :host remote :initform (<core:password-input)))
   (:default-initargs :title "login"))
 
-(defmethod/remote template ((self login-dialog))
+(defmethod/remote template ((self login-dialog))  
   (let ((_email (call/cc (email-input self)
 			 (jobject :class-name "text" :type "text"
-				  :name "email" :validation-span-id "email-validation"
+				  :value (default-email self) 
+				  :name "email"
+				  :validation-span-id "email-validation"
 				  :default-value "Email")))
 	(_password (call/cc (password-input self)
 			    (jobject :class-name "text" :default-value "password"
