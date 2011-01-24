@@ -77,9 +77,8 @@
 			 (lambda (_class)		      
 			   (let ((a 1))
 			     (mapobject (lambda (k v) (setq a (+ 1 a))) _class)
-			     (c a))))
-			)))
-	      " item(s).")))
+			     (c a)))))))
+	      (+ (slot-value (instances self) 'length ) " item(s)."))))
       (<:tfoot)))
 
 (defmethod/remote init ((self <core:table))
