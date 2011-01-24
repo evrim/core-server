@@ -174,7 +174,7 @@
 
 (defun object->jobject (object &optional (template-class nil))
   (apply #'jobject
-	 (append (list :class
+	 (append (list :core-class
 		       (class->jobject (if template-class
 					   (if (symbolp template-class)
 					       (class+.find template-class)

@@ -14,7 +14,7 @@
 (defmethod/remote get-template-class ((self <core:table))
   (let ((_instances (instances self)))
     (or (slot-value self 'template-class)
-	(and _instances (slot-value (car _instances) 'class)))))
+	(and _instances (slot-value (car _instances) 'core-class)))))
 
 (defmethod/remote thead ((self <core:table))
   (<:thead
@@ -47,7 +47,9 @@
 	    (let ((radio
 		   (<:input :type "radio"
 			    :name "table-object"
-			    :onchange (lifte (on-select self object)))))
+			    :onclick (event (e)
+				      (with-call/cc (on-select self object))
+				      true))))
 	      (setf (slot-value object 'radio) radio)
 	      (<:tr :class (if (eq 0 (mod index 2)) (hilight-class self))
 		    (cons
@@ -66,14 +68,25 @@
   (if (instances self)
       (<:tfoot
        (<:tr
-	(<:td :class "text-right" :colspan (slot-value (template-class self) 'length)
-	      (slot-value (instances self) 'length) " item(s).")))
+	(<:td :class "text-right"
+	      :colspan 
+	      (call/cc
+	       (event (c)
+		 (apply self.get-template-class self
+			(list
+			 (lambda (_class)		      
+			   (let ((a 1))
+			     (mapobject (lambda (k v) (setq a (+ 1 a))) _class)
+			     (c a))))
+			)))
+	      " item(s).")))
       (<:tfoot)))
 
 (defmethod/remote init ((self <core:table))
   (add-class self "table")
   (load-css "http://www.coretal.net/style/table.css")
-  (setf (slot-value self 'inner-h-t-m-l) nil)
+  (mapcar-cc (lambda (a) (.remove-child self a))
+	     (slot-value self 'child-nodes))
   (mapcar-cc (lambda (i) (append self i))
 	     (list (thead self) (tbody self) (tfoot self))))
 
