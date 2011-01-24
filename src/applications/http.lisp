@@ -207,6 +207,9 @@
 ;; +----------------------------------------------------------------------------
 ;; | HTTP Application Interface
 ;; +----------------------------------------------------------------------------
+(defmethod web-application.serve-url ((self http-application) (req t))
+  (format nil "/~A/TESTREQUEST" (web-application.fqdn self)))
+
 (defmethod web-application.serve-url ((self http-application) (req http-request))
   (format nil "/~A/~A" (web-application.fqdn self)
 	  (with-core-stream (s "")
