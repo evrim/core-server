@@ -242,6 +242,12 @@
     (when (and (slot-value node 'style))	;; (instanceof node *h-t-m-l-element)
       (setf node.style.display "inline"))
     node)
+
+  (defun coretal-on-load (fun)
+    (if (and (not (null (slot-value window 'coretal)))
+	     (not (null (slot-value coretal 'loaded-p))))
+	(make-web-thread fun)
+	(make-web-thread (lambda () (coretal-on-load fun)))))
   
   (defun add-on-load (fun)
     (if (or (eq "complete" document.ready-state)
