@@ -60,7 +60,8 @@
 				  ((eq (car attr) 'class)
 				   `(:class-name ,(cdr attr)))
 				  ((eq (car attr) 'colspan)
-				   `(:col-span ,(cdr attr)))
+				   `(:col-span ,(cdr attr)
+				     :colspan ,(cdr attr)))
 				  (t
 				   `(,(make-keyword (car attr)) ,(cdr attr))))
 				acc)
