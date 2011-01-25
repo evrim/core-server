@@ -104,7 +104,7 @@
 ;; | Login Dialog
 ;; +-------------------------------------------------------------------------
 (defcomponent login-dialog (dialog)
-  ((default-email :host remote)
+  ((default-email :host remote :initform "Email")
    (email-input :host remote :initform (<core:email-input))
    (password-input :host remote :initform (<core:password-input)))
   (:default-initargs :title "login"))
