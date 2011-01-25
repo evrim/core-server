@@ -250,8 +250,10 @@
 	(make-web-thread (lambda () (coretal-on-load fun)))))
   
   (defun add-on-load (fun)
-    (if (or (eq "complete" document.ready-state)
-	    (eq "interactive" document.ready-state)) ;; yalan bu ya
+    (if (eq "complete" document.ready-state)
+	;; (or (eq "complete" document.ready-state)
+	;;     (eq "interactive" document.ready-state))
+	;; yalan bu ya
 	(fun)
 	(if (typep window.onload 'function)
 	    (let ((current window.onload))
