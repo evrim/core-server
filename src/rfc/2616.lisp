@@ -890,6 +890,7 @@
   (:or (:ie-user-agent? agent)
        (:gecko-user-agent? agent)
        (:opera-user-agent? agent))
+  (:zom (:not (:crlf?)) (:type octet?))
   (:return agent))
 
 ;; RFC 2109 Cookie - rfc/2109.lisp

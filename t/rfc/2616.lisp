@@ -183,6 +183,12 @@ cam=\"foo\"")
       (http-user-agent? s))
   ((BROWSER . IE) (MOZ-VER (4 0)) (VERSION (6 0)) (OS . "Windows NT 5.1")))
 
+(deftest http-user-agent-ie7?
+    (with-core-stream (s "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1) ; .NET CLR 2.0.50727; .NET CLR 3.0.04506.648; .NET CLR 3.5.21022; .NET CLR 1.1.4322; OfficeLiveConnector.1.3; OfficeLivePatch.0.0)
+Host")
+      (http-user-agent? s))
+  ((BROWSER . IE) (MOZ-VER (4 0)) (VERSION (7 0)) (OS . "Windows NT 5.1")))
+
 ;;;
 ;;; test response headers
 ;;;
@@ -742,6 +748,39 @@ Connection: Keep-Alive
 
 ")
 
+(defvar *ie7-http-mod-lisp* "server-protocol
+HTTP/1.1
+method
+GET
+url
+/coretal.core
+server-ip-addr
+213.232.33.242
+server-ip-port
+80
+remote-ip-addr
+94.54.32.65
+script-filename
+/var/www/www.coretal.net/coretal.core
+remote-ip-port
+3467
+Accept
+application/x-silverlight, application/x-shockwave-flash, image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/xaml+xml, application/vnd.ms-xpsdocument, application/x-ms-xbap, application/x-ms-application, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, */*
+Accept-Language
+tr-TR
+UA-CPU
+x86
+Accept-Encoding
+gzip, deflate
+User-Agent
+Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1) ; .NET CLR 2.0.50727; .NET CLR 3.0.04506.648; .NET CLR 3.5.21022; .NET CLR 1.1.4322; OfficeLiveConnector.1.3; OfficeLivePatch.0.0)
+Host
+www.coretal.net
+Connection
+Keep-Alive
+end
+
+")
 (defparameter *ie-http-form* "POST /ee.gee HTTP/1.1
 Accept: image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*
 Referer: http://10.0.0.10/a.html
