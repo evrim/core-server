@@ -634,8 +634,8 @@
 		 (+ "0" foo)
 		 foo)))
       (+
-       (pad-me (date.get-day)) "/"
-       (pad-me (date.get-month)) "/"
+       (pad-me (date.get-date)) "/"
+       (pad-me (+ 1 (date.get-month))) "/"
        (date.get-full-year) " - "
        (pad-me (date.get-hours)) ":"
        (pad-me (date.get-minutes)) ":"
