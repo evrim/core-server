@@ -140,7 +140,7 @@ permissions accordingly"
       (eq 0 (sb-impl::process-exit-code (#+pardus comar #-pardus apachectl self '("reload")))))))
 
 (defmethod status ((self apache-server))
-  #+debian (> (length (cl-fad:list-directory #P"/var/run/apache2/")) 0)
+  #+debian (and (probe-file #P"/var/run/apache2.pid") t)
   #-debian (eq 0 (sb-impl::process-exit-code (#+pardus comar #-pardus apachectl self '("status")))))
 
 (defmethod register ((self apache-server) (app apache-web-application))
