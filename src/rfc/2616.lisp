@@ -1232,6 +1232,10 @@
 (defmethod http-request.header ((request http-request) key)
   (cadr (assoc key (http-request.headers request))))
 
+(defmethod http-request.referrer ((request http-request))
+  (aif (http-request.header request 'referer)
+       (uri.server it)))
+
 (defmethod http-request.cookies ((request http-request))
   (http-request.header request 'cookie))
 
