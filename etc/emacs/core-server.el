@@ -28,6 +28,9 @@
 (global-set-key (kbd "C-x C-b") 'ibuffer)
 ;;(column-number-mode)
 
+;; Transient Mark mode
+(transient-mark-mode t)
+
 ;; PAREDIT
 ;;(load-el "paredit-beta.el")
 (load-el "paredit-7.0b4.el")
