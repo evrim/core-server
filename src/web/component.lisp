@@ -357,9 +357,10 @@
        ;; Component Constructor Renderer
        ;; ----------------------------------------------------------------------------
        (defmethod/cc component! ((stream core-stream) (component ,class-name))
-	 (setf (slot-value component 'url)
-	       (web-application.serve-url (context.application +context+)
-					  (context.request +context+))) 
+	 (when +context+
+	   (setf (slot-value component 'url)
+		 (web-application.serve-url (context.application +context+)
+					    (context.request +context+)))) 
 
 	 (let ,(mapcar (lambda (method k-url)
 			 (let ((method-args (extract-argument-names (cdddr method)
