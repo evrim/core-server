@@ -60,13 +60,13 @@
   (aif (gethash id (session.continuations session))
        (return-from find-continuation (values it session))))
 
-(defmacro update-session (key val)
+(defmacro update-session (key val &optional (session '(context.session +context+)))
   "Update a session variable."
-  `(setf (gethash ,key (session.data (context.session +context+))) ,val))
+  `(setf (gethash ,key (session.data ,session)) ,val))
 
-(defmacro query-session (key)
+(defmacro query-session (key &optional (session '(context.session +context+)))
   "Query a session variable."
-  `(gethash ,key (session.data (context.session +context+))))
+  `(gethash ,key (session.data ,session)))
 
 ;; ----------------------------------------------------------------------------
 ;; HTTP Context
