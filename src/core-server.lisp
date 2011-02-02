@@ -377,6 +377,7 @@
    #:http-request.method
    #:http-request.uri
    #:http-request.headers
+   #:http-request.referrer
    #:http-request.entity-headers
    #:http-request.stream
    #:http-request.header
@@ -723,6 +724,7 @@
    #:+day-names+
    #:+month-names+
    #:take
+   #:any
    #:drop
    #:flatten
    #:flatten1
