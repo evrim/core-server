@@ -455,7 +455,12 @@
 	  (children (flatten children)))
       (when (slot-value properties 'type)
 	(setf (slot-value element 'type) (slot-value properties 'type))
-	(delete-slot properties 'type))
+	(delete-slot properties 'type)
+
+	(when (eq "checkbox" (slot-value element 'type))
+	  (let ((fr (document.create-document-fragment)))
+	    (fr.append-child element))))
+      
       (mapcar (lambda (i)
 		(cond
 		  ((not (null (slot-value i 'tag-name)))
