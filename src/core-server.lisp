@@ -1054,6 +1054,7 @@
   (:export #:input #:redirect #:table
 	   #:validating-input #:default-value-input
 	   #:domain-input #:email-input #:password-input
+	   #:required-value-input
 	   #:username-input #:tab #:crud
 	   #:auth #:core))
 

@@ -14,9 +14,10 @@
    (valid :host remote :initform nil)))
 
 (defmethod/remote set-validation-message ((self <core:validating-input) msg)
-  (let ((element (document.get-element-by-id (validation-span-id self))))
-    (when element
-      (setf (slot-value element 'inner-h-t-m-l) msg))))
+  (when (not (null (validation-span-id self)))
+    (let ((element (document.get-element-by-id (validation-span-id self))))
+      (when element
+	(setf (slot-value element 'inner-h-t-m-l) msg)))))
 
 (defmethod/remote enable-or-disable-form ((self <core:validating-input))
   (let ((valid (reduce-cc (lambda (acc input)
@@ -36,7 +37,7 @@
 (defmethod/remote validate ((self <core:validating-input))
   t)
 
-(defmethod/remote run-validator ((self <core:validating-input))
+(defmethod/remote run-validator ((self <core:validating-input))  
   (let ((result (validate self)))
     (cond
       ((typep result 'string)
@@ -119,3 +120,16 @@
 
 (defmethod/remote validate ((self <core:password-input))
   (validate-password self))
+
+;; +-------------------------------------------------------------------------
+;; | Required Input
+;; +-------------------------------------------------------------------------
+(defcomponent <core:required-value-input (<core:default-value-input
+					  <core:validating-input)
+  ())
+
+(defmethod/remote validate ((self <core:required-value-input))
+  (let ((_val (slot-value self 'value)))
+    (if (or (null _val) (eq _val ""))
+	"This field is required."
+	t)))
