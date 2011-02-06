@@ -9,12 +9,45 @@
    (template-class :initform nil :host remote)
    (hilight-class :initform "hilighted" :host remote)
    (selected-class :initform "selected" :host remote)
-   (selected :initform nil :host remote)))
+   (selected :initform nil :host remote)
+   (_sorted-slot :host remote)))
 
 (defmethod/remote get-template-class ((self <core:table))
   (let ((_instances (instances self)))
     (or (slot-value self 'template-class)
 	(and _instances (slot-value (car _instances) 'core-class)))))
+
+(defmethod/remote column-span ((self <core:table))
+  (call/cc
+   (event (c)
+     (apply self.get-template-class self
+	    (list
+	     (lambda (_class)		      
+	       (let ((a 1))
+		 (mapobject (lambda (k v) (setq a (+ 1 a))) _class)
+		 (c a))))))))
+
+(defmethod/remote sort-table ((self <core:table) slot)
+  (with-slots (name) slot
+    (cond
+      ((and (_sorted-slot self) (eq slot (_sorted-slot self)))
+       (setf (instances self)
+	     (sort (lambda (a b) (> (slot-value a name) (slot-value b name)))
+		   (instances self)))
+       (setf (_sorted-slot self) nil))
+      (t
+       (setf (instances self)
+	     (sort (lambda (a b) (< (slot-value a name) (slot-value b name)))
+		   (instances self)))
+       (setf (_sorted-slot self) slot)))
+
+    (replace-node (aref (self.get-elements-by-tag-name "TBODY") 0)
+		  (tbody self))
+    
+    ;; Give emphasis on selected again
+    (awhen (selected self)
+      (awhen (find (lambda (a) (eq a it)) (instances self))
+	(_on-select self it)))))
 
 (defmethod/remote thead ((self <core:table))
   (<:thead
@@ -23,10 +56,12 @@
     (reverse
      (mapcar (lambda (slot)
 	       (with-slots (name label) slot
-		 (<:th :class name (or label name))))
+		 (<:th :class name
+		       (<:a :onclick (lifte (sort-table self slot))
+			    (or label name)))))
 	     (template-class self))))))
 
-(defmethod/remote on-select ((self <core:table) object)
+(defmethod/remote _on-select ((self <core:table) object)
   (flet ((parent (node) (slot-value node 'parent-node)))
     (mapcar-cc (lambda (object)
 		 (let ((_radio (slot-value object 'radio)))
@@ -35,12 +70,18 @@
 	       (instances self))
     (add-class (parent (parent (slot-value object 'radio)))
 	       (selected-class self))
-    (answer-component self object)))
+    (setf (slot-value (slot-value object 'radio) 'checked) t
+	  (selected self) object)))
+
+(defmethod/remote on-select ((self <core:table) object)
+  (_on-select self object)
+  (answer-component self object))
 
 (defmethod/remote tbody ((self <core:table))
   (let ((_instances (instances self)))
     (if (null _instances)
-	(<:tbody (<:tr (<:th "Table has no elements.")))
+	(<:tbody (<:tr (<:td :colspan (column-span self)
+			     "Table has no elements.")))
 	(<:tbody
 	 (mapcar2-cc
 	  (lambda (object index)
@@ -57,8 +98,10 @@
 		     (reverse
 		      (mapcar
 		       (lambda (slot)
-			 (with-slots (name label initform) slot
-			   (let ((value (slot-value object name)))
+			 (with-slots (name label initform reader) slot
+			   (let ((value (if reader
+					    (reader object)
+					    (slot-value object name))))
 			     (<:td :class name
 				   (or value (slot-value slot 'initform))))))
 		       (template-class self)))))))
@@ -69,15 +112,7 @@
       (<:tfoot
        (<:tr
 	(<:td :class "text-right"
-	      :colspan 
-	      (call/cc
-	       (event (c)
-		 (apply self.get-template-class self
-			(list
-			 (lambda (_class)		      
-			   (let ((a 1))
-			     (mapobject (lambda (k v) (setq a (+ 1 a))) _class)
-			     (c a)))))))
+	      :colspan (column-span self)
 	      (+ (slot-value (instances self) 'length ) " item(s)."))))
       (<:tfoot)))
 
@@ -94,14 +129,16 @@
      (defcomponent ,name (,@supers <core:table)
        ()
        (:default-initargs
-	 :slots (jobject
-		 :class
-		 ,@(mapcar
-		    (lambda (slot)
-		      `(core-server::jobject
-			:name ',(symbol-to-js (car slot)) ,@(cdr slot)))
-		    slots))
-	 ,@(flatten1 rest)))))
+	 :template-class
+	   (jobject
+	    ,@(reduce
+	       (lambda (acc slot)			
+		 (append acc
+			 `(,(make-keyword (car slot))
+			    (core-server::jobject
+			     :name ',(symbol-to-js (car slot)) ,@(cdr slot)))))
+	       (reverse slots) :initial-value nil))
+	 ,@(cdr (flatten1 rest))))))
 
 ;; +----------------------------------------------------------------------------
 ;; | Table Component
