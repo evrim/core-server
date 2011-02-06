@@ -37,8 +37,8 @@
       (with-unique-names (server)
 	(let ((server (intern (symbol-name server))))
 	  `(progn
-	     (redefmethod ,all ((,server database)) (find-all-objects ,server ',class))
-	     (redefmethod ,query ((,server database) &key ,@(class+.ctor-lambda-list class+ t))
+	     (redefmethod ,all ((,server abstract-database)) (find-all-objects ,server ',class))
+	     (redefmethod ,query ((,server abstract-database) &key ,@(class+.ctor-lambda-list class+ t))
 	       (flet ((find-object (slot value)
 			(core-server::find-objects-with-slot ,server ',class slot value)))
 		 (let ((set (filter (compose #'not #'null)
@@ -52,7 +52,7 @@
 			      (intersection (ensure-list set2) (ensure-list set1)))
 			    (cdr set)
 			    :initial-value (car set))))))
-	     (redefmethod ,find ((,server database) &key ,@(class+.ctor-lambda-list class+ t))
+	     (redefmethod ,find ((,server abstract-database) &key ,@(class+.ctor-lambda-list class+ t))
 	       (flet ((find-object (slot value)
 			(find-object-with-slot ,server ',class slot value)))
 		 (or
@@ -60,12 +60,12 @@
 			      `(if ,(caddr slot)
 				   (find-object ',(car slot) ,(car slot))))
 			    (class+.ctor-lambda-list class+ t)))))
-	     (redefmethod ,add ((,server database) &key ,@(class+.ctor-lambda-list class+))
+	     (redefmethod ,add ((,server abstract-database) &key ,@(class+.ctor-lambda-list class+))
 	       (add-object ,server ',class
 			   ,@(mapcar (lambda (slot)
 				       `(cons ',(car slot) ,(car slot)))
 				     (class+.ctor-lambda-list class+))))
-	     (redefmethod ,update ((,server database) (instance ,class)
+	     (redefmethod ,update ((,server abstract-database) (instance ,class)
 				   &key ,@(class+.ctor-lambda-list class+ t))
 	       (apply #'update-object ,server instance
 		      (filter (lambda (a) (not (null a)))
@@ -76,9 +76,9 @@
 						 (cons ',(car slot) ,(car slot)))
 					    acc))
 					 (class+.ctor-lambda-list class+ t) :initial-value nil)))))
-	     (redefmethod ,delete ((,server database) (instance ,class))
+	     (redefmethod ,delete ((,server abstract-database) (instance ,class))
 	       (delete-object ,server instance))
-	     (defmethod database.clone ((,server database) (instance ,class))
+	     (defmethod database.clone ((,server abstract-database) (instance ,class))
 	       (,add ,server ,@(reduce0
 				(lambda (acc slot)
 				  (with-slotdef (initarg reader) slot
