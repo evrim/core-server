@@ -5,7 +5,8 @@
 
 ;; JSon Protocol Data Types
 (defrule json-string? (q c acc)
-  (:or (:and (:seq "\"\"") (:return 'null)) ;; -hek.
+  (:or (:and (:or (:seq "\"\"")
+		  (:seq "''")) (:return 'null)) ;; -hek.
        (:and (:quoted? q) (:return (if (> (length q) 0) q nil)))
        (:or (:and (:escaped-string? acc) (:return acc))
 	    (:and (:do (setq acc (make-accumulator :byte)))
@@ -102,10 +103,20 @@
 (defrule json-object? (key value (object (make-hash-table)))
   (:lwsp?) #\{ (:lwsp?)
   (:zom (:not #\})
-	(:lwsp?) (:json-key? key) (:lwsp?) (:json? value) (:lwsp?)
+	(:lwsp?) (:json-key? key) (:lwsp?)
+	(:or (:and (:seq "null") (:do (setq value nil))) ;;fixme -evrim
+	     (:json? value)) (:lwsp?)
 	(:checkpoint #\, (:commit)) (:lwsp?)
 	(:do (setf (gethash key object) value)))
-  (:return object))
+  (:return (let ((result))
+	     (maphash (lambda (k v)
+			(setf result
+			      (append result
+				      (list (make-keyword k)
+					    v)))
+			nil)
+		      object)
+	     result)))
 
 (defmethod json! ((stream core-stream) (hash-table hash-table))
   (prog1 stream
