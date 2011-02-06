@@ -42,6 +42,10 @@
 (defjsmacro when (a &body b)
   `(if ,a (progn ,@b)))
 
+(defmacro/js awhen (a &body b)
+  `(let ((it ,a))
+     (when it ,@b)))
+
 (defjsmacro unless (a &body b)
   `(if (not ,a) (progn ,@b)))
 
