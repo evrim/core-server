@@ -241,8 +241,8 @@
 ;; 	       (:collect c value))
 ;; 	 (:return (octets-to-string value :utf-8)))))
 (defparser quoted? (c (acc (make-accumulator :byte)))
-  (:or (:and #\"
-	     (:zom (:not #\")
+  (:or (:and (:or #\" #\')
+	     (:zom (:not (:or #\" #\'))
 		   (:or (:escaped? c)
 			(:type (or visible-char?
 				   white-space?
