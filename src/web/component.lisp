@@ -38,7 +38,8 @@
       object)))
 
 (defmethod component.deserialize ((self component) object)
-  (json-deserialize object))
+  ;; Fixme: This should be into html-stream reader. -evrim.
+  (json-deserialize (escaped-string? (make-core-stream object))))
 
 (eval-when (:compile-toplevel :load-toplevel)
   (defmethod component+.morphism-function-name ((self component+) name)
