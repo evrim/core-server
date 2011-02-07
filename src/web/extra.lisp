@@ -110,6 +110,12 @@
 
 (defmethod/remote start-history-timeout ((self history-mixin))
   (setf (current-hash self) window.location.hash)
+  (setf (slot-value window 'onblur)
+	(lambda (e)
+	  (setf (slot-value window 'onblur) nil
+		(slot-value window 'onfocus)
+		(lambda (e) (start-history-timeout self)))
+	  (stop-history-timeout self)))
   (setf (timeout-id self)
 	(window.set-interval
 	 (event ()
