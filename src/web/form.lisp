@@ -62,6 +62,13 @@
 (defmethod/remote onkeyup ((self <core:validating-input) e)
   (run-validator self) t)
 
+(defmethod/remote get-input-value ((self <core:validating-input))
+  (cond
+    ((eq "string" (typeof (validate self)))
+     (throw (new (*error "get-input-value called although input is invalid."))))
+    (t
+     (slot-value self 'value))))
+
 ;; +----------------------------------------------------------------------------
 ;; | Default Value HTML Input
 ;; +----------------------------------------------------------------------------
