@@ -948,6 +948,7 @@
    #:start-history-timeout
    #:stop-history-timeout
    #:sortable-list-component
+   #:get-input-value
 
    ;; [Presentation]
    ;; #:defpresentation
@@ -1060,7 +1061,7 @@
   (:export #:input #:redirect #:table
 	   #:validating-input #:default-value-input
 	   #:domain-input #:email-input #:password-input
-	   #:required-value-input
+	   #:required-value-input #:number-value-input
 	   #:username-input #:tab #:crud
 	   #:auth #:core))
 

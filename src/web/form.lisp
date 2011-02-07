@@ -133,3 +133,27 @@
     (if (or (null _val) (eq _val ""))
 	"This field is required."
 	t)))
+
+;; +-------------------------------------------------------------------------
+;; | Number Input
+;; +-------------------------------------------------------------------------
+(defcomponent <core:number-value-input (<core:default-value-input
+					<core:validating-input)
+  ()
+  (:default-initargs :default-value "Enter a number"))
+
+(defmethod/remote get-input-value ((self <core:number-value-input))
+  (cond
+    ((eq "string" (typeof (validate self)))
+     nil)
+    (t
+     (eval (+ (slot-value self 'value) " ")))))
+
+(defmethod/remote validate ((self <core:number-value-input))
+  (let ((_val (slot-value self 'value)))
+    (try
+     (if (eq (typeof (eval _val)) "number")
+	 t
+	 (+ _val " is not a number."))
+     (:catch (e)
+       (+ _val " is not a number.")))))
