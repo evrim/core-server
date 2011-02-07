@@ -388,7 +388,7 @@
     (let ((result ""))
       (mapobject (lambda (k v)
 		   (setf result
-			 (+ result k ":"
+			 (+ result k "="
 			    (encode-u-r-i-component (serialize v))
 			    "$")))
 		 arg)
@@ -417,8 +417,8 @@
 		      (funcall-cc "multipart.core?" (jobject :action action)))
 		     "$")
 		  (jobject :commit t))))
-  
-  (defun/cc funcall-cc (action args)
+
+  (defun/cc funcall2-cc (action args callback-name)
     (_debug (list "funcall/cc" action args))
     (let/cc current-continuation
       (let ((hash (+ "__result"
@@ -430,7 +430,7 @@
 						    "login/loading.gif"))
 				   nil))
 	    (args (if (null args) (jobject) args)))
-	(setf (slot-value args "__hash") hash)
+	(setf (slot-value args (or callback-name "__hash")) hash)
 	(let* ((a (serialize-to-uri args))
 	       (script (make-dom-element "script" (jobject :src (+ "" action a))
 					 nil))
@@ -442,13 +442,16 @@
 	    (t	     
 	     (setf (slot-value window hash)
 		   (event (val)
-			  (when (not (null (slot-value script 'parent-node)))
-			    (.remove-child head script)
-			    (if body (.remove-child body img)))
-			  (current-continuation val)))
+		     (when (not (null (slot-value script 'parent-node)))
+		       (.remove-child head script)
+		       (if body (.remove-child body img)))
+		     (current-continuation val)))
 	     (if body (append body img))
 	     (append head script)
 	     (suspend)))))))
+
+  (defun/cc funcall-cc (action args)
+    (funcall2-cc action args nil))
 
   (defun make-dom-element (tag properties children)
     (let ((element (document.create-element tag))
@@ -480,7 +483,12 @@
       
       (if (null name)
 	  (let ((_value (decode-u-r-i-component (car (.split data "$")))))
-	    (try (return (eval _value)) (:catch (e) (return _value))))
+	    (try
+	     (let ((val (eval _value)))
+	       (if (eq (typeof val) "function")
+		   (throw (new (*error)))
+		   (return val)))
+	     (:catch (e) (return _value))))
 	  (let ((_value (decode-u-r-i-component
 			 (car
 			  (cdr
@@ -491,8 +499,12 @@
 					 (mapcar (lambda (b) (.split b "="))
 						 (.split a ":"))))
 				      (.split data "$")))))))))
-	    (try (return (eval _value))
-		 (:catch (e) (return _value)))))))
+	    (try
+	     (let ((val (eval _value)))
+	       (if (eq (typeof val) "function")
+		   (throw (new (*error)))
+		   (return val)))
+	     (:catch (e) (return _value)))))))
 
   (defun set-parameter (name new-value)
     (let* ((new-value (encode-u-r-i-component (serialize new-value)))
@@ -679,6 +691,7 @@
 	(gethash 'make-service +javascript-cps-functions+) t
 	(gethash 'apply +javascript-cps-functions+) t
 	(gethash 'funcall-cc +javascript-cps-functions+) t
+	(gethash 'funcall2-cc +javascript-cps-functions+) t
 	(gethash 'make-web-thread +javascript-cps-functions+) t
 	(gethash 'mapcar-cc +javascript-cps-functions+) t
 	(gethash 'reverse-cc +javascript-cps-functions+) t

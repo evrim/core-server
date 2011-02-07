@@ -294,6 +294,7 @@
    #:continue-component
    #:continue/js
    #:funcall-cc
+   #:funcall2-cc
    
    ;; [RFC 2109]
    #:cookie
