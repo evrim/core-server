@@ -133,7 +133,7 @@
 	 ";" (:deindent) #\Newline "}"))
 
 (defjssyntax regex (expression)
-  (format nil "~A" (unwalk-form expression)))
+  (unwalk-form expression))
 
 (defjssyntax new (expression)
   `(:and "new " ,(funcall expander expression expander)))
