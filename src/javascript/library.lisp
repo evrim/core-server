@@ -524,20 +524,40 @@
 			name
 			(one (car elements)))))))
 
+  (defvar *css-refcount-table* (jobject))
   (defun load-css (url)
-    (let ((link (document.create-element "link")))
-      (setf link.href url
-	    link.rel "stylesheet"
-	    link.type "text/css")
-      (.append-child (aref (document.get-elements-by-tag-name "head") 0)
-		     link)
-      (return link)))
+    (flet ((_load-css ()
+	     (let ((link (document.create-element "link")))
+	       (setf link.href url
+		     link.rel "stylesheet"
+		     link.type "text/css")
+	       (.append-child (aref (document.get-elements-by-tag-name "head") 0)
+			      link)
+	       (return link))))
+      (cond
+	((slot-value *css-refcount-table* url)
+	 (setf (slot-value *css-refcount-table* url)
+	       (+ 1 (slot-value *css-refcount-table* url))))
+	(t
+	 (setf (slot-value *css-refcount-table* url) 1)
+	 (_load-css)))
+      url))
 
   (defun remove-css (url)
-    (mapcar (lambda (link)
-	      (when (eq link.href url)
-		(link.parent-node.remove-child link)))
-	    (document.get-elements-by-tag-name "LINK")))
+    (flet ((_unload-css ()
+	     (mapcar (lambda (link)
+		       (when (eq link.href url)
+			 (link.parent-node.remove-child link)))
+		     (document.get-elements-by-tag-name "LINK"))))
+      (cond
+	((and (slot-value *css-refcount-table* url)
+	      (eq (slot-value *css-refcount-table* url) 1))
+	 (setf (slot-value *css-refcount-table* url) 0)
+	 (_unload-css))
+	((slot-value *css-refcount-table* url)
+	 (setf (slot-value *css-refcount-table* url)
+	       (- (slot-value *css-refcount-table* url) 1))))
+      url))
   
   (defun/cc load-javascript (url loaded-p)
     (_debug (list "load-javascript" url loaded-p))
