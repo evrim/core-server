@@ -41,6 +41,11 @@
   ;; Fixme: This should be into html-stream reader. -evrim.
   (json-deserialize (escaped-string? (make-core-stream object))))
 
+(defmethod component.serialize-slot ((self component) slot-name)
+  (let ((slot (class+.find-slot (class-of self) slot-name)))
+    (with-slotdef (reader) slot
+      (funcall reader self))))
+
 (eval-when (:compile-toplevel :load-toplevel)
   (defmethod component+.morphism-function-name ((self component+) name)
     (if (eq (find-package :common-lisp) (symbol-package name))
@@ -256,103 +261,102 @@
        ;; ----------------------------------------------------------------------------
        ;; Component Internal Render Method 
        ;; ----------------------------------------------------------------------------
-       (defmethod %component! ((stream core-stream) (component ,class-name) &rest k-urls)
-	 (with-accessors (,@(mapcar (lambda (slot) (list (cadr slot) (caddr slot)))
-				    remote-slots)) component
-	   (let (,@(mapcar (lambda (slot) `(,(cadr slot) (component.serialize component ,(cadr slot))))
-			   remote-slots))
-	     (destructuring-bind (,@k-urls) k-urls
-	       (with-js (,@k-urls ,@(mapcar #'cadr remote-slots)) stream
-		 ;; ----------------------------------------------------------------------------
-		 ;; Constructor
-		 ;; ----------------------------------------------------------------------------
-		 (with-call/cc
-		   (lambda (to-extend)
-		     (let ((to-extend (or to-extend (new (*object))))
-			   (slots
-			    (jobject
-			     ;; ----------------------------------------------------------------------------
-			     ;; Remote Slot Initial Values
-			     ;; ----------------------------------------------------------------------------
-			     ,@(reduce0 (lambda (acc slot)
-					  (cond
-					    ((eq (car slot) 'class)
-					     (cons :class-name (cons (cadr slot) acc)))
-					    ((member (car slot)
-						     '(style onmouseup onmousemove
-						       onclick className ondblclick
-						       onmousedown onkeypress onkeydown
-						       onkeyup dir lang dojoType open
-						       onmouseover onmouseout))
-					     acc)
-					    (t
-					     (cons (make-keyword (car slot)) (cons (cadr slot) acc)))))
-					remote-slots)))
-			   (methods
-			    (jobject
+       (defmethod %component! ((stream core-stream) (component ,class-name) &rest k-urls)	 
+	 (let (,@(mapcar (lambda (slot)
+			   `(,(cadr slot) (component.serialize-slot component ',(car slot))))
+			 remote-slots))
+	   (destructuring-bind (,@k-urls) k-urls
+	     (with-js (,@k-urls ,@(mapcar #'cadr remote-slots)) stream
+	       ;; ----------------------------------------------------------------------------
+	       ;; Constructor
+	       ;; ----------------------------------------------------------------------------
+	       (with-call/cc
+		 (lambda (to-extend)
+		   (let ((to-extend (or to-extend (new (*object))))
+			 (slots
+			  (jobject
+			   ;; ----------------------------------------------------------------------------
+			   ;; Remote Slot Initial Values
+			   ;; ----------------------------------------------------------------------------
+			   ,@(reduce0 (lambda (acc slot)
+					(cond
+					  ((eq (car slot) 'class)
+					   (cons :class-name (cons (cadr slot) acc)))
+					  ((member (car slot)
+						   '(style onmouseup onmousemove
+						     onclick className ondblclick
+						     onmousedown onkeypress onkeydown
+						     onkeyup dir lang dojoType open
+						     onmouseover onmouseout))
+					   acc)
+					  (t
+					   (cons (make-keyword (car slot)) (cons (cadr slot) acc)))))
+				      remote-slots)))
+			 (methods
+			  (jobject
 	       
-			     ;; ----------------------------------------------------------------------------
-			     ;; Remote Methods
-			     ;; ----------------------------------------------------------------------------
-			     ,@(reduce0 (lambda (acc method)
+			   ;; ----------------------------------------------------------------------------
+			   ;; Remote Methods
+			   ;; ----------------------------------------------------------------------------
+			   ,@(reduce0 (lambda (acc method)
+					(let ((proxy (intern (format nil "~A/JS" (car method))
+							     (if (eq (symbol-package (car method))
+								     (find-package :common-lisp))
+								 (find-package :core-server)
+								 (symbol-package (car method))))))
+					  (cons (make-keyword (car method))
+						(cons `(make-method ,(funcall proxy class+ nil)) acc))))
+				      (remove 'destroy
+					      (remove 'init (class+.remote-methods class+) :key #'car)
+					      :key #'car))
+			     
+			   ;; ----------------------------------------------------------------------------
+			   ;; Local Methods
+			   ;; ----------------------------------------------------------------------------
+			   ,@(reduce0 (lambda (acc method)
+					(destructuring-bind (method . k-url) method
 					  (let ((proxy (intern (format nil "~A/JS" (car method))
 							       (if (eq (symbol-package (car method))
 								       (find-package :common-lisp))
 								   (find-package :core-server)
 								   (symbol-package (car method))))))
 					    (cons (make-keyword (car method))
-						  (cons `(make-method ,(funcall proxy class+ nil)) acc))))
-					(remove 'destroy
-						(remove 'init (class+.remote-methods class+) :key #'car)
-						:key #'car))
-			     
-			     ;; ----------------------------------------------------------------------------
-			     ;; Local Methods
-			     ;; ----------------------------------------------------------------------------
-			     ,@(reduce0 (lambda (acc method)
-					  (destructuring-bind (method . k-url) method
-					    (let ((proxy (intern (format nil "~A/JS" (car method))
-								 (if (eq (symbol-package (car method))
-									 (find-package :common-lisp))
-								     (find-package :core-server)
-								     (symbol-package (car method))))))
-					      (cons (make-keyword (car method))
-						    (cons (funcall proxy class+ k-url) acc )))))
-					(mapcar #'cons (class+.local-methods class+) k-urls)))))
+						  (cons (funcall proxy class+ k-url) acc )))))
+				      (mapcar #'cons (class+.local-methods class+) k-urls)))))
 
 		     		     
-		       ;; -------------------------------------------------------------------------
-		       ;; Inject Methods to Instance
-		       ;; -------------------------------------------------------------------------
-		       (extend methods to-extend)
+		     ;; -------------------------------------------------------------------------
+		     ;; Inject Methods to Instance
+		     ;; -------------------------------------------------------------------------
+		     (extend methods to-extend)
 
-		       ;; -------------------------------------------------------------------------
-		       ;; Inject Default Values Differentially
-		       ;; -------------------------------------------------------------------------
-		       (mapobject (lambda (k v)
-				    (if (or (and (not (null v))
-						 (or (eq "" (slot-value to-extend k))
-						     (null (slot-value to-extend k))))
-					    (eq "undefined" (typeof (slot-value to-extend k))))
-					(setf (slot-value to-extend k) v)))
-				  slots)
+		     ;; -------------------------------------------------------------------------
+		     ;; Inject Default Values Differentially
+		     ;; -------------------------------------------------------------------------
+		     (mapobject (lambda (k v)
+				  (if (or (and (not (null v))
+					       (or (eq "" (slot-value to-extend k))
+						   (null (slot-value to-extend k))))
+					  (eq "undefined" (typeof (slot-value to-extend k))))
+				      (setf (slot-value to-extend k) v)))
+				slots)
 
-		       (let ((to-extend ,(if dom-tag
-		       			     `(if (null (slot-value to-extend 'node-name))
-						  (extend to-extend
-							  (document.create-element
-							   ,(symbol-to-js dom-tag)))
-		       				  to-extend)
-		       			     'to-extend)))
-			 (apply (make-method ,(funcall 'init/js class+ nil)) to-extend null)
-			 (let ((destroy (slot-value to-extend 'destroy)))
-			   (setf (slot-value to-extend 'destroy)
-				 (compose-progn1 (make-method ,(funcall 'destroy/js class+ nil))
-						 destroy)))
-		       	 ;; (when (typep (slot-value to-extend 'init) 'function)
-		       	 ;;   (init to-extend))
+		     (let ((to-extend ,(if dom-tag
+					   `(if (null (slot-value to-extend 'node-name))
+						(extend to-extend
+							(document.create-element
+							 ,(symbol-to-js dom-tag)))
+						to-extend)
+					   'to-extend)))
+		       (apply (make-method ,(funcall 'init/js class+ nil)) to-extend null)
+		       (let ((destroy (slot-value to-extend 'destroy)))
+			 (setf (slot-value to-extend 'destroy)
+			       (compose-progn1 (make-method ,(funcall 'destroy/js class+ nil))
+					       destroy)))
+		       ;; (when (typep (slot-value to-extend 'init) 'function)
+		       ;;   (init to-extend))
 		 
-		       	 to-extend)))))))))
+		       to-extend))))))))
        
        ;; ----------------------------------------------------------------------------
        ;; Component Constructor Renderer

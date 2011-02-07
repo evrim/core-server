@@ -833,6 +833,9 @@
    ;; [HTTP Component Framework]
    #:component
    #:component.application
+   #:component.serialize
+   #:component.deserialize
+   #:component.serialize-slot
    #:component.javascript-reader
    #:component.javascript-writer
    #:component.remote-method-proxy
@@ -945,6 +948,9 @@
    #:start-history-timeout
    #:stop-history-timeout
    #:sortable-list-component
+
+   ;; [Presentation]
+   ;; #:defpresentation
    
    ;; [Helpers]
    #:make-keyword
