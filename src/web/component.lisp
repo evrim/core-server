@@ -405,7 +405,9 @@
   (setf (gethash 'method +javascript-cps-functions+) t))
 
 (defmethod/remote init ((self component)) self)
-(defmethod/remote destroy ((self component)) self)
+(defmethod/remote destroy ((self component))
+  (delete-slot self 'destroy)
+  self)
 
 (defmethod/remote funkall ((self component) action args)
   (let ((retval (funcall-cc (+ (slot-value self 'url) action "$") args)))
