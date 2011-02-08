@@ -141,7 +141,8 @@
 	  (apply #'initialize-instance
 		 (reduce (lambda (instance slot)
 			   (multiple-value-bind (name value) (funcall k slot k)
-			     (setf (slot-value instance name) value)
+			     (if (slot-exists-p instance name)
+				 (setf (slot-value instance name) value))
 			     instance))
 			 children
 			 :initial-value instance)
