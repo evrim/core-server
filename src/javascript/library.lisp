@@ -622,14 +622,20 @@
     (window.set-timeout (lambda () (fun (lambda (a) a))) 0))
 
   ;; FIX IE stack overflow bug
+  (defvar *recursion-count* 0)
   (defun make-method (method)
     (if (> (.search navigator.user-agent "MSIE") 0)
 	(return
 	  (lambda ()
-	    (let ((args arguments)
-		  (self this))
-	      (make-web-thread
-	       (lambda ()
+	    (let ((args arguments) (self this))
+	      (cond
+		((> *recursion-count* 7)
+		 (setf *recursion-count* 0)
+		 (make-web-thread
+		  (lambda ()
+		    (apply method self args))))
+		(t
+		 (setf *recursion-count* (+ *recursion-count* 1))
 		 (apply method self args))))))
 	method))
 
