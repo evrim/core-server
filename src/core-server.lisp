@@ -228,6 +228,7 @@
    #:dom-element!
    #:dom-element?
    #:dom2string
+   #:get-elements-by-tag-name
    
    ;; [Html markup]
    #:html-element
@@ -884,7 +885,8 @@
    #:json-deserialize
    #:jobject
    #:object->jobject
-
+   #:assoc->jobject
+   
    ;; [ Tags ]
    #:input
 

@@ -201,6 +201,14 @@
 					      (slot-value object name)) acc))))
 			  (class+.remote-slots (or template-class (class-of object)))))))
 
+(defun assoc->jobject (lst)
+  (apply #'jobject
+	 (mapcar (lambda (a)
+		   (if (listp a)
+		       (assoc->jobject a)
+		       a))
+		 lst)))
+
 (defmethod json! ((stream core-stream) (jobject jobject))
   (prog1 stream
     (let ((attributes (slot-value jobject 'attributes)))

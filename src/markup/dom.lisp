@@ -80,6 +80,19 @@
 	(setf (dom.attributes element)
 	      (cons (cons name value) (dom.attributes element))))))
 
+(defmethod get-elements-by-tag-name ((element dom-element) tag-name)
+  (let ((result)
+	(tag-name (string-downcase tag-name)))
+    (core-search (list element)
+		 (lambda (a)
+		   (if (and (typep a 'dom-element)
+			    (equal tag-name (string-downcase (dom.tag a))))
+		       (pushnew a result))
+		   nil)
+		 #'dom-successor
+		 #'append)
+    result))
+
 ;;-----------------------------------------------------------------------------
 ;; DOM Parser
 ;;-----------------------------------------------------------------------------
