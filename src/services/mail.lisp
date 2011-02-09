@@ -58,6 +58,9 @@
 	   :documentation "mail server hostname")
    (mail-port :accessor mail-sender.port :initarg :mail-port :initform 25
 	      :documentation "mail server port")
+#+ssl
+   (ssl :accessor mail-sender.ssl :initarg :mail-ssl :initform nil
+	:documentation "enabled ssl/tls")
    (queue :accessor mail-sender.queue :initarg :queue :initform (make-instance 'queue)
 	  :documentation "mail queue which will be processed with intervals")
    (timer :accessor mail-sender.timer :initarg :timer :initform nil
@@ -78,26 +81,58 @@
 (defmethod/unit %process :async-no-return ((self mail-sender))
   (when (< 0 (queue-count (mail-sender.queue self)))
     (smsg self (format nil "Connecting ~A:~D." (mail-sender.server self) (mail-sender.port self)))
-    (aif (connect (mail-sender.server self) (mail-sender.port self)) 
-	 (progn
-	   (smsg self "Connected to SMTP Server.")
-	   ;; 220 node2.core.gen.tr ESMTP
-	   (smtp? it) ;; should be < 400
-	   (smsg self "Service ready.")
-	   ;; Say hello
-	   (smtp-ehlo :stream it) ;; should be < 400
-	   (smsg self (format nil "Got HELO from ~A." (mail-sender.server self)))
-	   ;; 235 2.0.0 OK Authenticated
-	   (if (mail-sender.password self)
-	       (smtp-auth-plain :username (mail-sender.username self)
-				:password (mail-sender.password self)
-				:stream it)) ;; shoudl be < 400
-	   (%process-queue self it)
-	   (smtp-quit :stream it)
-	   ;; close conn
-	   (close-stream it)
-	   (smsg self "Connection closed."))
-	 (close-stream it))))
+    (flet (#+ssl
+	   (do-ssl ()
+	     (aif (connect (mail-sender.server self) (mail-sender.port self)) 
+		  (progn
+		    (smsg self "Connected to SMTP Server.")
+		    ;; 220 node2.core.gen.tr ESMTP
+		    (smtp? it) ;; should be < 400
+		    (smsg self "Service ready. Starting TLS")
+		    (smtp! it "STARTTLS")
+		    (smtp? it)
+		    (let ((it (make-core-stream
+			       (cl+ssl:make-ssl-client-stream (slot-value it '%stream)))))
+		      (smsg self "TLS started.")
+		      ;; Say hello
+		      (smtp-ehlo :stream it) ;; should be < 400
+		      (smsg self (format nil "Got HELO from ~A." (mail-sender.server self)))
+		      ;; 235 2.0.0 OK Authenticated
+		      (if (mail-sender.password self)
+			  (smtp-auth-plain :username (mail-sender.username self)
+					   :password (mail-sender.password self)
+					   :stream it)) ;; shoudl be < 400
+		      (%process-queue self it)
+		      (smtp-quit :stream it)
+		      ;; close conn
+		      (close-stream it)
+		      (smsg self "Connection closed.")
+		      (close-stream it)))))
+	   (do-plain ()
+	     (aif (connect (mail-sender.server self) (mail-sender.port self)) 
+		  (progn
+		    (smsg self "Connected to SMTP Server.")
+		    ;; 220 node2.core.gen.tr ESMTP
+		    (smtp? it) ;; should be < 400
+		    (smsg self "Service ready.")
+		    ;; Say hello
+		    (smtp-ehlo :stream it) ;; should be < 400
+		    (smsg self (format nil "Got HELO from ~A." (mail-sender.server self)))
+		    ;; 235 2.0.0 OK Authenticated
+		    (if (mail-sender.password self)
+			(smtp-auth-plain :username (mail-sender.username self)
+					 :password (mail-sender.password self)
+					 :stream it)) ;; shoudl be < 400
+		    (%process-queue self it)
+		    (smtp-quit :stream it)
+		    ;; close conn
+		    (close-stream it)
+		    (smsg self "Connection closed."))
+		  (close-stream it))))
+      #+ssl (if (mail-sender.ssl self)
+		(do-ssl)
+		(do-plain))
+      #-ssl (do-plain))))
 
 ;; write an envelope to the wire
 (defmethod %sendmail ((self mail-sender) (e envelope) (s core-stream))
@@ -176,3 +211,21 @@
 ;;; .
 ;;; 250 2.0.0 Ok: queued as 62E6818ABA
 
+;; (let ((c (connect "mail.core.gen.tr" 25)))
+;;   (smtp? c)
+;;   (smtp! c "STARTTLS")
+;;   (describe (smtp? c))
+;;   (let ((c (make-core-stream
+;; 	     (cl+ssl:make-ssl-client-stream (slot-value c '%stream)))))
+;; ;;     (describe (smtp? c))
+;;     (smtp-ehlo :stream c)
+;;     (smtp-auth-plain :username ""
+;; 		     :password ""
+;; 		     :stream c)
+;;     (smtp-send :envelope (make-instance
+;; 			  'envelope
+;; 			  :from "evrimulu@gmail.com" 
+;; 			  :to (list "evrim@core.gen.tr")
+;; 			  :subject "subject" :text "text")
+;; 	       :stream c)
+;;     (smtp? c)))

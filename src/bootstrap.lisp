@@ -100,3 +100,6 @@
 	       (unless (equal #\_ (elt name 0))
 		 (pushnew dir-candidate asdf:*central-registry* :test 'equal))))))
     (push-all (in-home path))))
+
+;; Add ssl to *features*
+(if (find-package :cl+ssl) (pushnew :ssl *features*))
