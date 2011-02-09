@@ -6,7 +6,7 @@
 ;; JSon Protocol Data Types
 (defrule json-string? (q c acc)
   (:or (:and (:or (:seq "\"\"")
-		  (:seq "''")) (:return 'null)) ;; -hek.
+		  (:seq "''")) (:return "")) ;; -hek.
        (:and (:quoted? q) (:return (if (> (length q) 0) q nil)))
        (:or (:and (:escaped-string? acc) (:return acc))
 	    (:and (:do (setq acc (make-accumulator :byte)))
@@ -140,6 +140,9 @@
 
 (defun jobject (&rest attributes)
   (make-instance 'jobject :attributes attributes))
+
+(defmethod get-attribute ((self jobject) attribute)
+  (getf (slot-value self 'attributes) attribute))
 
 (defun convert-label-to-javascript (label)
   (let ((pos 1)

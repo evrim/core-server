@@ -233,10 +233,18 @@
 	     (:return (list tag namespace (nreverse attrs))))
        (:and #\>
 	     (:zom (:lwsp?)
-		   (:or (:xml-lexer? child)
-			(:xml-comment? child)
-			(:xml-text-node? child)
-			(:xml-cdata? child))
+		   (:or
+		    (:checkpoint
+		     (:seq "</")
+		     (:if namespace
+			  (:not (:and (:sci namespace) #\: (:sci tag)))
+			  (:not (:sci tag)))
+		     (:rewind-return (list* tag namespace (nreverse attrs)
+					    (nreverse children))))
+		    (:xml-lexer? child)
+		    (:xml-comment? child)
+		    (:xml-text-node? child)
+		    (:xml-cdata? child))
 		   (:do (push child children)))
 	     (:seq "</")
 	     (:if namespace
@@ -245,6 +253,8 @@
 	     #\>
 	     (:return (list* tag namespace (nreverse attrs) (nreverse children))))))
 
+
+;; FIXME: clean this mess up -evrim.
 (defun parse-xml (xml)
   (if (atom xml)
       xml
@@ -255,12 +265,19 @@
 	     (if package
 		 (let ((symbol (intern (string-upcase tag) package)))
 		   (if (fboundp symbol)
-		       (apply symbol (append
-				      (reduce0 (lambda (acc attr)
-						 (cons (make-keyword (car attr))
-						       (cons (cdr attr) acc)))
-					       attributes)
-				      (mapcar #'parse-xml children)))
+		       (let ((instance (apply symbol 
+					      (append
+					       (reduce0 (lambda (acc attr)
+							  (cons (make-keyword (car attr))
+								(cons (cdr attr) acc)))
+							attributes)
+					       (mapcar #'parse-xml children)))))
+			 (if (slot-exists-p instance 'tag)
+			     (setf (slot-value instance 'tag) tag))
+			 (if (slot-exists-p instance 'namespace)
+			     (setf (slot-value instance 'namespace) namespace))
+			 instance)
+		       
 		       (apply #'xml tag namespace
 			      (cons attributes (mapcar #'parse-xml children)))))
 		 (apply #'xml tag namespace
@@ -268,12 +285,18 @@
 	  (t
 	   (let ((symbol (intern (string-upcase tag) (find-package :<))))
 	     (if (fboundp symbol)
-		 (apply symbol (append
-				(reduce0 (lambda (acc attr)
-					   (cons (make-keyword (car attr))
-						 (cons (cdr attr) acc)))
-					 attributes)
-				(mapcar #'parse-xml children)))
+		 (let ((instance (apply symbol 
+					(append
+					 (reduce0 (lambda (acc attr)
+						    (cons (make-keyword (car attr))
+							  (cons (cdr attr) acc)))
+						  attributes)
+					 (mapcar #'parse-xml children)))))
+		   (if (slot-exists-p instance 'tag)
+		       (setf (slot-value instance 'tag) tag))
+		   (if (slot-exists-p instance 'namespace)
+		       (setf (slot-value instance 'namespace) namespace))
+		   instance)
 		 (apply #'xml tag namespace
 			(cons attributes (mapcar #'parse-xml children))))))))))
 
