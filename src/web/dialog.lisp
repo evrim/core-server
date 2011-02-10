@@ -7,15 +7,21 @@
   ((overlay :host remote :initform nil)
    (message :host remote :initform "This is a message dialog.")
    (title :host remote :initform "message")
-   (css-url :host remote :initform "http://www.coretal.net/style/dialog/dialog.css"))
+   (css-url :host remote :initform "http://www.coretal.net/style/dialog/dialog.css")
+   (_scroll :host remote :initform (list 0 0)))
   (:default-initargs :class "coretal coretal-dialog"))
+
+(defmethod/remote destroy ((self dialog))
+  (hide-component self)
+  (delete-slots self 'overlay 'message 'title 'css-url '_scroll)
+  (call-next-method self))
 
 (defmethod/remote call-component ((self dialog))
   (show-component self)
   (call-next-method self))
 
 (defmethod/remote answer-component ((self dialog) arg)  
-  (hide-component self)
+  (destroy self)
   (call-next-method self arg))
 
 (defmethod/cc call-component ((self dialog))
@@ -26,6 +32,7 @@
 
 (defmethod/remote show-component ((self dialog))
   (load-css (css-url self))
+  (setf (_scroll self) (list window.page-x-offset window.page-y-offset))
   (window.scroll 0 0)
   (prepend document.body (overlay self))
   (prepend document.body self)
@@ -33,9 +40,11 @@
 
 (defmethod/remote hide-component ((self dialog))
   (remove-css (css-url self))
-  (setf document.body.style.overflow "visible")
+  (setf document.body.style.overflow "visible")  
   (.remove-child document.body self)
-  (.remove-child document.body (overlay self)))
+  (.remove-child document.body (overlay self))
+  (let ((scroll (_scroll self)))
+    (window.scroll (car scroll) (car (cdr scroll)))))
 
 (defmethod/remote template ((self dialog))    
   (<:div :class "center text-center"
