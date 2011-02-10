@@ -618,8 +618,9 @@
   (defun apply (fun scope args kX)
     (fun.apply scope (reverse (cons kX (reverse args)))))
   
-  (defun make-web-thread (fun)
-    (window.set-timeout (lambda () (fun (lambda (a) a))) 0))
+  (defun make-web-thread (fun k)
+    (let ((k (or k (lambda (a) a))))
+      (k (window.set-timeout (lambda () (fun (lambda (a) a))) 0))))
 
   ;; FIX IE stack overflow bug
   (defvar *recursion-count* 0)
