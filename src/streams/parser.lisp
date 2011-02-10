@@ -216,8 +216,7 @@
 	(read s)))))
 
 (defparser escaped-string? (c (acc (make-accumulator)))
-  (:oom (:or (:escaped? c)
-	     (:type visible-char? c))
+  (:oom (:or (:escaped? c) (:type octet? c))
 	(:collect c acc))
   (:return acc))
 
@@ -241,13 +240,24 @@
 ;; 	       (:collect c value))
 ;; 	 (:return (octets-to-string value :utf-8)))))
 (defparser quoted? (c (acc (make-accumulator :byte)))
-  (:or (:and (:or #\" #\')
-	     (:zom (:not (:or #\" #\'))
-		   (:or (:escaped? c)
-			(:type (or visible-char?
-				   white-space?
-				   carriage-return?
-				   linefeed?) c))
+  (:or (:and #\'
+	     (:zom (:or (:and (:seq "\\\'") (:do (setq c #.(char-code #\'))))
+			(:and (:not #\')
+			      (:or (:escaped? c)
+				   (:type (or visible-char?
+					      white-space?
+					      carriage-return?
+					      linefeed?) c))))
+		   (:collect c acc))
+	     (:return (octets-to-string acc :utf-8)))
+       (:and #\"
+	     (:zom (:or (:and (:seq "\\\"") (:do (setq c #.(char-code #\"))))
+			(:and (:not #\")
+			      (:or (:escaped? c)
+				   (:type (or visible-char?
+					      white-space?
+					      carriage-return?
+					      linefeed?) c))))
 		   (:collect c acc))
 	     (:return (octets-to-string acc :utf-8)))
        (:and (:zom (:or (:escaped? c)

@@ -38,8 +38,7 @@
       object)))
 
 (defmethod component.deserialize ((self component) object)
-  ;; Fixme: This should be into html-stream reader. -evrim.
-  (json-deserialize (escaped-string? (make-core-stream object))))
+  (json-deserialize object))
 
 (defmethod component.serialize-slot ((self component) slot-name)
   (let ((slot (class+.find-slot (class-of self) slot-name)))

@@ -30,8 +30,6 @@
 (defmethod/cc answer-component ((self dialog) arg)
   (call-next-method self arg))
 
-document.documentElement.scrollLeft
-
 (defmethod/remote show-component ((self dialog))
   (load-css (css-url self))
   (setf (_scroll self)

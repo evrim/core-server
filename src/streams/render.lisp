@@ -169,7 +169,8 @@ zee\")"
 		(cond
 		  ((or (char= quote atom) (char= #\\ atom))
 		   (char! stream #\\) (char! stream atom))
-		  ((or (char= #\Newline atom) (char= #\Linefeed atom))
+		  ((or (char= #\Return atom) (char= #\Newline atom)
+		       (char= #\Linefeed atom))
 		   )
 		  (t (char! stream atom)))))
 	  string

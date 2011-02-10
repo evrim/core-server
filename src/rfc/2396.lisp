@@ -55,8 +55,7 @@
   (:return key))
 
 (defrule query-value? (c (val (make-accumulator :byte)))
-  (:oom (:or (:escaped? c)
-	     (:type unreserved? c)	     
+  (:oom (:or (:escaped? c) (:type unreserved? c)	     
 	     (:and #\+ (:do (setq c #.(char-code #\Space)))))
 	(:collect c val))
   (:return (octets-to-string val :utf-8)))
@@ -65,7 +64,7 @@
   (defrule query? (key val c (queries '()))
     (:oom (:query-key? key)
 	  (:type reserved? c)
-	  (:checkpoint (:query-value? val) (:commit))
+	  (:query-value? val)
 	  (:do (push (cons key val) queries))
 	  (:checkpoint (:type reserved?) (:commit)))
     (:return (nreverse queries))))
