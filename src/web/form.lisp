@@ -11,7 +11,8 @@
   ((validation-span-id :host remote :initform nil)
    (valid-class :host remote :initform "valid")
    (invalid-class :host remote :initform "invalid")
-   (valid :host remote :initform nil)))
+   (valid :host remote :initform nil))
+  (:default-initargs :value ""))
 
 (defmethod/remote set-validation-message ((self <core:validating-input) msg)
   (when (not (null (validation-span-id self)))
@@ -73,7 +74,8 @@
 ;; | Default Value HTML Input
 ;; +----------------------------------------------------------------------------
 (defcomponent <core:default-value-input (<:input)
-  ((default-value :host remote :initform nil)))
+  ((default-value :host remote :initform nil))
+  (:default-initargs :value ""))
 
 (defmethod/remote adjust-default-value ((self <core:default-value-input))
   (cond
