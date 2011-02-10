@@ -63,7 +63,7 @@
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defrule query? (key val c (queries '()))
     (:oom (:query-key? key)
-	  (:type reserved? c)
+	  (:type reserved?)
 	  (:query-value? val)
 	  (:do (push (cons key val) queries))
 	  (:checkpoint (:type reserved?) (:commit)))

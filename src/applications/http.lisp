@@ -600,9 +600,15 @@ provide query parameters inside URL as key=value"
 		      (req (context.request +context+))
 		      (rep (context.response +context+))
 		      (current-uri (http-request.uri req)))
-		 (setf (uri.paths current-uri) (uri.paths uri))
+
+		 (setf (uri.paths current-uri)
+		       (if (equal (web-application.fqdn self) (car (uri.paths uri)))
+			   (cdr (uri.paths uri))
+			   (uri.paths uri)))
+		 
 		 (setf (uri.queries current-uri)
 		       (cons (list "__hash" hash) (uri.queries uri-full)))
+
 		 (escape (dispatch self req rep))))
 	     (multipart-action (hash)
 	       (javascript/suspend
@@ -612,7 +618,8 @@ provide query parameters inside URL as key=value"
 				 (cond
 				   (commit (commit hash))
 				   (t
-				    (write-stream stream (json-deserialize data))
+				    (write-stream stream
+						  (subseq data 1 (- (length data) 1)))
 				    (multipart-action (json-deserialize hash)))))))
 		    (with-js (k-url hash) s
 		      (apply (slot-value window hash) this (list k-url))))))))
