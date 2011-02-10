@@ -114,7 +114,7 @@
   (labels ((timeout-loop ()
 	     (when (not (= (current-hash self) window.location.hash))
 	       (setf (current-hash self) window.location.hash)
-	       (make-web-thread (lambda () (on-history-change self))))
+	       (on-history-change self))
 
 	     (when (slot-value self 'running-p)
 	       (window.set-timeout
