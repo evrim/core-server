@@ -99,8 +99,9 @@
 ;; History Change Mixin
 ;; -------------------------------------------------------------------------
 (defcomponent history-mixin ()
-  ((timeout-id :host remote :initform 0)
-   (current-hash :host remote :initform nil)))
+  ((running-p :host remote :initform nil)
+   (current-hash :host remote :initform nil)
+   (interval :host remote :initform 1000)))
 
 (defmethod/remote destroy ((self history-mixin))
   (stop-history-timeout self))
@@ -108,27 +109,22 @@
 (defmethod/remote on-history-change ((self history-mixin))
   (_debug (list "history-change" (current-hash self) window.location.hash)))
 
-(defmethod/remote start-history-timeout ((self history-mixin))
+(defmethod/remote start-history-timeout ((self history-mixin))  
   (setf (current-hash self) window.location.hash)
-  (setf (slot-value window 'onblur)
-	(lambda (e)
-	  (setf (slot-value window 'onblur) nil
-		(slot-value window 'onfocus)
-		(lambda (e) (start-history-timeout self)))
-	  (stop-history-timeout self)))
-  (setf (timeout-id self)
-	(window.set-interval
-	 (event ()
-	   (with-call/cc
-	     (when (not (eq (current-hash self) window.location.hash))
+  (labels ((timeout-loop ()
+	     (when (not (= (current-hash self) window.location.hash))
 	       (setf (current-hash self) window.location.hash)
-	       (stop-history-timeout self)
-	       (on-history-change self)
-	       (start-history-timeout self))))
-	 400)))
+	       (make-web-thread (lambda () (on-history-change self))))
+
+	     (when (slot-value self 'running-p)
+	       (window.set-timeout
+		(event () (with-call/cc (call/cc timeout-loop)))
+		(interval self)))))
+    (setf (running-p self) t)
+    (call/cc timeout-loop)))
 
 (defmethod/remote stop-history-timeout ((self history-mixin))
-  (window.clear-interval (timeout-id self)))
+  (setf (running-p self) nil))
 
 ;; ;; -------------------------------------------------------------------------
 ;; ;; Orderable List
