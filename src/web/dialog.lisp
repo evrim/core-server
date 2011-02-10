@@ -30,9 +30,13 @@
 (defmethod/cc answer-component ((self dialog) arg)
   (call-next-method self arg))
 
+document.documentElement.scrollLeft
+
 (defmethod/remote show-component ((self dialog))
   (load-css (css-url self))
-  (setf (_scroll self) (list window.page-x-offset window.page-y-offset))
+  (setf (_scroll self)
+	(list (or document.document-element.scroll-left window.page-x-offset)
+	      (or document.document-element.scroll-top window.page-y-offset)))
   (window.scroll 0 0)
   (prepend document.body (overlay self))
   (prepend document.body self)
