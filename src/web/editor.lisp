@@ -3,6 +3,23 @@
 ;; +-------------------------------------------------------------------------
 (in-package :core-server)
 
+(defparameter *ck-toolbar*
+    (list (list "Source" "-" "Save" "NewPage" "Preview" "-" "Templates" )
+	  (list "Cut" "Copy" "Paste" "PasteText" "PasteFromWord" "-" "Print" "SpellChecker" "Scayt")
+	  (list "Undo" "Redo" "-" "Find" "Replace" "-" "SelectAll" "RemoveFormat")
+	  (list "Form" "Checkbox" "Radio" "TextField" "Textarea" "Select" "Button" "ImageButton" "HiddenField")
+	  "/"
+	  (list "Bold" "Italic" "Underline" "Strike" "-" "Subscript" "Superscript")
+	  (list "NumberedList" "BulletedList" "-" "Outdent" "Indent" "Blockquote" "CreateDiv")
+	  (list "JustifyLeft" "JustifyCenter" "JustifyRight" "JustifyBlock")
+	  (list "BidiLtr" "BidiRtl")
+	  (list "Link" "Unlink" "Anchor")
+	  (list "Image" "Flash" "MediaEmbed" "Table" "HorizontalRule" "Smiley" "SpecialChar" "PageBreak" "Iframe")
+	  "/"
+	  (list "Styles" "Format" "Font" "FontSize")
+	  (list "TextColor" "BGColor")
+	  (list "Maximize" "ShowBlocks" "-" "About")))
+
 ;; --------------------------------------------------------------------------
 ;; Ck Editor
 ;; --------------------------------------------------------------------------
@@ -11,7 +28,9 @@
    (target :host remote)
    (config :host remote
 	   :initform (jobject
-		      :base-path "http://www.coretal.net/js/ckeditor/"))))
+		      :base-path "http://www.coretal.net/js/ckeditor/"
+		      :extra-plugins "autogrow,mediaembed"
+		      :toolbar *ck-toolbar*))))
 
 (defmethod/remote get-data ((self ckeditor-component))
   (let* ((instance (instance self))
@@ -48,6 +67,7 @@
    (lambda ()
      (and (not (null -c-k-e-d-i-t-o-r))
 	  (not (null (slot-value -c-k-e-d-i-t-o-r 'replace)))))))
+
 
 ;; (defvar +fck-image-extensions+ '("bmp" "gif" "jpeg" "jpg" "png" "psd" "tif" "tiff"))
 ;; (defvar +fck-flash-extensions+ '("swf" "fla"))
