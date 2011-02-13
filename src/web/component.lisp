@@ -351,8 +351,8 @@
 		       (apply (make-method ,(funcall 'init/js class+ nil)) to-extend null)
 		       (let ((destroy (slot-value to-extend 'destroy)))
 			 (setf (slot-value to-extend 'destroy)
-			       (compose-progn1 (make-method ,(funcall 'destroy/js class+ nil))
-					       destroy)))
+			       (compose-prog1-cc (make-method ,(funcall 'destroy/js class+ nil))
+						 destroy)))
 		       ;; (when (typep (slot-value to-extend 'init) 'function)
 		       ;;   (init to-extend))
 		 

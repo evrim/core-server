@@ -658,7 +658,22 @@
 		 (apply method self args))))))
 	method))
 
-  (defun compose-progn1 (fun1 fun2)
+  (defun compose-prog1 (fun1 fun2)
+    (cond
+      ((not (eq "function" (typeof fun2)))
+       fun1)
+      ((not (eq "function" (typeof fun1)))
+       fun2)
+      (t
+       (return
+	 (lambda ()
+	   (let* ((args (reverse (reverse arguments)))
+		  (self this)
+		  (result (apply fun1 self args window.k)))
+	     (apply fun2 self args window.k)
+	     result))))))
+
+  (defun compose-prog1-cc (fun1 fun2)
     (cond
       ((not (eq "function" (typeof fun2)))
        fun1)
