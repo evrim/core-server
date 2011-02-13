@@ -20,17 +20,20 @@
 	  (list "TextColor" "BGColor")
 	  (list "Maximize" "ShowBlocks" "-" "About")))
 
+(defparameter *ck-config*
+  (jobject
+   :base-path "http://www.coretal.net/js/ckeditor/"
+   :extra-plugins "autogrow,mediaembed"
+   :remove-plugins "maximize,resize"
+   :toolbar *ck-toolbar*))
+
 ;; --------------------------------------------------------------------------
 ;; Ck Editor
 ;; --------------------------------------------------------------------------
 (defcomponent ckeditor-component ()
   ((instance :host remote)
    (target :host remote)
-   (config :host remote
-	   :initform (jobject
-		      :base-path "http://www.coretal.net/js/ckeditor/"
-		      :extra-plugins "autogrow,mediaembed"
-		      :toolbar *ck-toolbar*))))
+   (config :host remote :initform *ck-config*)))
 
 (defmethod/remote get-data ((self ckeditor-component))
   (let* ((instance (instance self))
@@ -63,6 +66,10 @@
 
 (defmethod/remote init ((self ckeditor-component))
   (load-css "http://www.coretal.net/style/ckeditor.css")
+;;   (load-javascript "http://www.coretal.net/js/ckeditor/ckeditor_source.js"
+;;    (lambda ()
+;;      (and (not (null -c-k-e-d-i-t-o-r))
+;; 	  (not (null (slot-value -c-k-e-d-i-t-o-r 'replace))))))
   (load-javascript "http://www.coretal.net/js/ckeditor/ckeditor.js"
    (lambda ()
      (and (not (null -c-k-e-d-i-t-o-r))
