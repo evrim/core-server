@@ -226,7 +226,7 @@
     new-node)
 
   (defun trim (str)
-    (.replace (new (*string str)) (regex "/^\s+|\s+$/g") ""))
+    (.replace (new (*string str)) (regex "/^\\s+|\\s+$/g") ""))
   
   (defun show (node)
     (when (and node (slot-value node 'style))	;; (instanceof node *h-t-m-l-element)
@@ -475,7 +475,8 @@
 	(setf (slot-value element 'type) (slot-value properties 'type))
 	(delete-slot properties 'type)
 
-	(when (eq "checkbox" (slot-value element 'type))
+	(when (or (eq "checkbox" (slot-value element 'type))
+		  (eq "radio" (slot-value element 'type)))
 	  (let ((fr (document.create-document-fragment)))
 	    (fr.append-child element))))
       
