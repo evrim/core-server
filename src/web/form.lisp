@@ -21,25 +21,29 @@
 	(setf (slot-value element 'inner-h-t-m-l) msg)))))
 
 (defmethod/remote enable-or-disable-form ((self <core:validating-input))
-  (let ((valid (reduce-cc (lambda (acc input)
-			    (if (eq "undefined" (typeof (slot-value input 'valid)))
-				acc
-				(and acc input.valid)))
-			  (self.form.get-elements-by-tag-name "INPUT")
-			  t)))
-    (mapcar (lambda (input)
-	      (when (and input.type (eq "SUBMIT" (input.type.to-upper-case)))
-		(if valid
-		    (setf input.disabled false)
-		    (setf input.disabled true)))
-	      nil)
-	    (self.form.get-elements-by-tag-name "INPUT"))))
+  (when (slot-value self 'form) ;; not avail at first run-validate
+    (let ((valid (reduce-cc (lambda (acc input)
+			      (if (eq "undefined" (typeof (slot-value input 'valid)))
+				  acc
+				  (and acc input.valid)))
+			    (self.form.get-elements-by-tag-name "INPUT")
+			    t)))    
+      (mapcar (lambda (input)
+		(when (and input.type (eq "SUBMIT" (input.type.to-upper-case)))
+		  (if valid
+		      (setf input.disabled false)
+		      (setf input.disabled true)))
+		nil)
+	      (self.form.get-elements-by-tag-name "INPUT")))))
 
 (defmethod/remote validate ((self <core:validating-input))
   t)
 
+(defmethod/remote _validate ((self <core:validating-input))
+  (validate self))
+
 (defmethod/remote run-validator ((self <core:validating-input))  
-  (let ((result (validate self)))
+  (let ((result (_validate self)))
     (cond
       ((typep result 'string)
        (setf (valid self) nil)
@@ -70,10 +74,13 @@
     (t
      (slot-value self 'value))))
 
+(defmethod/remote init ((self <core:validating-input))
+  (run-validator self))
+
 ;; +----------------------------------------------------------------------------
 ;; | Default Value HTML Input
 ;; +----------------------------------------------------------------------------
-(defcomponent <core:default-value-input (<:input)
+(defcomponent <core:default-value-input (<core:validating-input)
   ((default-value :host remote :initform nil))
   (:default-initargs :value ""))
 
@@ -90,18 +97,25 @@
 (defmethod/remote onblur ((self <core:default-value-input) e)
   (adjust-default-value self))
 
+(defmethod/remote _validate ((self <core:default-value-input))
+  (if (equal (slot-value self 'default-value) (slot-value self 'value))
+      ""
+      (call-next-method self)))
+
 (defmethod/remote init ((self <core:default-value-input))
   (if (null (slot-value self 'default-value))
       (setf (slot-value self 'default-value) (slot-value self 'value)))
 
   (if (or (null (slot-value self 'value))
 	  (eq "" (slot-value self 'value)))
-      (setf (slot-value self 'value) (slot-value self 'default-value))))
+      (setf (slot-value self 'value) (slot-value self 'default-value)))
+
+  (call-next-method self))
 
 ;; +----------------------------------------------------------------------------
 ;; | Email HTML Component
 ;; +----------------------------------------------------------------------------
-(defcomponent <core:email-input (<core:default-value-input <core:validating-input)
+(defcomponent <core:email-input (<core:default-value-input)
   ())
 
 (defmethod/remote validate-email ((self <core:email-input))
@@ -116,7 +130,7 @@
 ;; +----------------------------------------------------------------------------
 ;; | Password HTML Component
 ;; +----------------------------------------------------------------------------
-(defcomponent <core:password-input (<core:default-value-input <core:validating-input)
+(defcomponent <core:password-input (<core:default-value-input)
   ((min-length :initform 6 :host remote))
   (:default-initargs :type "password"))
 
@@ -133,8 +147,7 @@
 ;; +-------------------------------------------------------------------------
 ;; | Required Input
 ;; +-------------------------------------------------------------------------
-(defcomponent <core:required-value-input (<core:default-value-input
-					  <core:validating-input)
+(defcomponent <core:required-value-input (<core:default-value-input)
   ())
 
 (defmethod/remote validate ((self <core:required-value-input))
@@ -146,8 +159,7 @@
 ;; +-------------------------------------------------------------------------
 ;; | Number Input
 ;; +-------------------------------------------------------------------------
-(defcomponent <core:number-value-input (<core:default-value-input
-					<core:validating-input)
+(defcomponent <core:number-value-input (<core:default-value-input)
   ()
   (:default-initargs :default-value "Enter a number"))
 
