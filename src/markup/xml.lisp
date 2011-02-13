@@ -163,15 +163,19 @@
   (:or (:and
 	#\"
 	(:zom (:checkpoint #\" (:return val))
-	(:checkpoint #\> (:rewind-return val))
-	(:type (or visible-char? space?) c)
-	(:collect c val)))
+	      (:checkpoint #\> (:rewind-return val))
+	      (:type (or visible-char? space?) c)
+	      (:collect c val)))
        (:and
 	#\'
 	(:zom (:checkpoint #\' (:return val))
 	(:checkpoint #\> (:rewind-return val))
 	(:type (or visible-char? space?) c)
-	(:collect c val))))
+	(:collect c val)))
+       (:zom (:checkpoint (:or #\> #\/)
+			  (:rewind-return val))
+	     (:type visible-char? c)
+	     (:collect c val)))
   (:return val))
 
 (defrule xml-attribute? (name value)
