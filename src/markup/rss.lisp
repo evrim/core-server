@@ -79,7 +79,7 @@
 
 ;; CHANNEL
 (defrss-tag channel)
-(defrss-tag title)
+;; (defrss-tag title)
 (defrss-tag link)
 (defrss-tag description)
 (defrss-tag language)

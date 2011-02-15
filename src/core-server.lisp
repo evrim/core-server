@@ -918,7 +918,6 @@
    #:forgot-password-dialog
    #:prompt-dialog
    #:big-dialog
-   #:title
    ;; #:template
    #:get-message
    #:buttons
@@ -1057,13 +1056,11 @@
 	   #:map #:meta #:noframes #:noscript #:object #:ol #:optgroup #:option
 	   #:p #:param #:pre #:q #:samp #:script #:select #:small #:span #:strong
 	   #:style #:sub #:sup #:table #:tbody #:td #:textarea #:tfoot #:th #:thead
-	   #:title #:tr #:tt #:ul #:var #:embed #:foo #:bar)
-  (:shadowing-import-from #:core-server #:title))
+	   #:title #:tr #:tt #:ul #:var #:embed #:foo #:bar))
 
 (defpackage :tr.gen.core.server.rss
   (:nicknames :<rss :core-server.rss)
-  (:use :core-server)
-  (:shadowing-import-from #:core-server #:title))
+  (:use :core-server))
 
 (defpackage :tr.gen.core.server.tags
   (:nicknames :<core)
