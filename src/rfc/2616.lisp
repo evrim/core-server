@@ -304,11 +304,13 @@
   (:return pragma))
 
 (defun http-pragma! (stream pragma-cons)
-  (typecase (car pragma-cons)
-    (symbol (symbol! stream (car pragma-cons)))
-    (string (string! stream (car pragma-cons))
-	    (char! stream #\=)
-	    (string! stream (cdr pragma-cons)))))
+  (if (atom pragma-cons)
+      (symbol! stream pragma-cons)
+      (typecase (car pragma-cons)
+	(symbol (symbol! stream (car pragma-cons)))
+	(string (string! stream (car pragma-cons))
+		(char! stream #\=)
+		(string! stream (cdr pragma-cons))))))
 
 ;; 14.40 Trailer
 ;;
@@ -1360,6 +1362,17 @@
 	(cons (cons key val)
 	      (remove-if #'(lambda (a) (eq a key))
 			 (slot-value self 'response-headers) :key #'car))))
+
+(defmethod http-response.add-general-header ((self http-response) key val)
+  (setf (slot-value self 'general-headers)
+	(cons (cons key val)
+	      (remove-if #'(lambda (a) (eq a key))
+			 (slot-value self 'general-headers) :key #'car))))
+
+(defmethod http-response.disable-cache ((self http-response))
+  (http-response.add-general-header self 'cache-control 'no-cache)
+  (http-response.add-general-header self 'pragma 'no-cache)
+  (http-response.add-entity-header self 'expires 0))
 
 (defmethod http-response.set-content-type ((self http-response) content-type)
   (http-response.add-entity-header self 'content-type content-type))
