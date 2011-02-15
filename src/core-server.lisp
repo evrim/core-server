@@ -872,6 +872,9 @@
    #:make-component
    #:deftable
    #:instances
+   #:remove-instance
+   #:add-instance
+   #:on-select
    #:defwebcrud
 
    ;; [ Web Component Stacks ]

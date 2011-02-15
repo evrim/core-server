@@ -49,6 +49,85 @@
       (awhen (find (lambda (a) (eq a it)) (instances self))
 	(_on-select self it)))))
 
+(defmethod/remote _on-select ((self <core:table) object)
+  (flet ((parent (node) (slot-value node 'parent-node)))
+    (mapcar-cc (lambda (object)
+		 (let* ((_radio (slot-value object 'radio))
+			(_parent (call/cc parent (call/cc parent _radio))))
+		   (remove-class _parent (selected-class self))))
+	       (instances self))
+    (add-class (call/cc parent (call/cc parent (slot-value object 'radio)))
+	       (selected-class self))
+    (setf (slot-value (slot-value object 'radio) 'checked) t
+	  (selected self) object)))
+
+(defmethod/remote on-select ((self <core:table) object)
+  (_on-select self object)
+  (answer-component self object))
+
+(defmethod/remote add-instance ((self <core:table) instance)
+  (let ((tbody (aref (.get-elements-by-tag-name self "TBODY") 0))
+	(radio (<:input :type "radio"
+			:name "table-object"
+			:onclick (event (e)
+				   (with-call/cc
+				     (on-select self instance))
+				   true))))
+    (setf (slot-value instance 'radio) radio)
+
+    (if (null _instances)
+	(let ((tbody (aref (.get-elements-by-tag-name self "TBODY") 0)))
+	  (.remove-child tbody (slot-value tbody 'first-child))))
+    
+    (setf (instances self) (cons instance (instances self)))
+    (replace-node (aref (.get-elements-by-tag-name self "TFOOT") 0)
+		  (tfoot self))
+
+    (append tbody
+	    (<:tr :class (if (eq 1 (mod (slot-value (instances self) 'length)
+					2))
+			     (hilight-class self)
+			     "")
+	     (cons
+	      (<:td :class "radio" radio)	       
+	      (reverse
+	       (mapcar
+		(lambda (slot)
+		  (with-slots (name label initform reader) slot
+		    (let ((value (if reader
+				     (reader instance)
+				     (slot-value instance name))))
+		      (<:td :class name
+			    (or value (slot-value slot 'initform))))))
+		(template-class self))))))))
+
+(defmethod/remote remove-instance ((self <core:table) instance)
+  (let ((_instances (instances self)))    
+    (setf (instances self)
+	  (filter-cc (lambda (a) (not (eq instance a))) _instances)))
+
+  (awhen (slot-value instance 'radio)
+    (labels ((find-parent-tr (node)
+	       (cond
+		 ((null node)
+		  nil)
+		 ((eq "tr" (.to-lower-case (slot-value node 'tag-name)))
+		  node)
+		 (t
+		  (call/cc find-parent-tr (slot-value node 'parent-node))))))
+      (awhen (find-parent-tr it)
+	(.remove-child (slot-value it 'parent-node) it))))
+
+  (delete-slot instance 'radio)
+  (if (eq (selected self) instance) (setf (selected self) nil))
+  (replace-node (aref (.get-elements-by-tag-name self "TFOOT") 0)
+		(tfoot self))
+
+  (if (null (instances self))
+      (replace-node (aref (.get-elements-by-tag-name self "TBODY") 0)
+		    (tbody self)))
+  instance)
+
 (defmethod/remote thead ((self <core:table))
   (<:thead
    (<:tr
@@ -60,22 +139,6 @@
 		       (<:a :onclick (lifte (sort-table self slot))
 			    (or label name)))))
 	     (template-class self))))))
-
-(defmethod/remote _on-select ((self <core:table) object)
-  (flet ((parent (node) (slot-value node 'parent-node)))
-    (mapcar-cc (lambda (object)
-		 (let ((_radio (slot-value object 'radio)))
-		   (remove-class (parent (parent _radio))
-				 (selected-class self))))
-	       (instances self))
-    (add-class (parent (parent (slot-value object 'radio)))
-	       (selected-class self))
-    (setf (slot-value (slot-value object 'radio) 'checked) t
-	  (selected self) object)))
-
-(defmethod/remote on-select ((self <core:table) object)
-  (_on-select self object)
-  (answer-component self object))
 
 (defmethod/remote tbody ((self <core:table))
   (let ((_instances (instances self)))
@@ -113,7 +176,7 @@
        (<:tr
 	(<:td :class "text-right"
 	      :colspan (column-span self)
-	      (+ (slot-value (instances self) 'length ) " item(s)."))))
+	      (+ (slot-value (instances self) 'length) " item(s)."))))
       (<:tfoot)))
 
 (defmethod/remote init ((self <core:table))
