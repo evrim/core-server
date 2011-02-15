@@ -75,7 +75,7 @@
 (defmacro defrender/js (name args &body body)
   (with-unique-names (stream)
     `(eval-when (:load-toplevel :compile-toplevel :execute)
-       (defun ,name (,stream ,@args)
+       (defmethod ,name ((,stream core-stream) ,@args)
 	 (with-js ,(extract-argument-names args) ,stream
 	   ,@body)
 	 (char! ,stream #\Newline)
