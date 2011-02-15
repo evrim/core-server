@@ -282,6 +282,7 @@
    #:make-component
    #:delete-slot
    #:delete-slots
+   #:bookmarklet-script
    #:lift1
    #:lift0
    #:lifte
