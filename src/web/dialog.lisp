@@ -20,7 +20,7 @@
   (show-component self)
   (call-next-method self))
 
-(defmethod/remote answer-component ((self dialog) arg)  
+(defmethod/remote answer-component ((self dialog) arg)
   (destroy self)
   (call-next-method self arg))
 
@@ -200,7 +200,7 @@
 				  :default-value "Email"))))
     (<:div :class "center text-center"
 	   (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
-	   (<:div :class "right right-bg"
+ 	   (<:div :class "right right-bg"
 		  (<:div :class "title" (title self))
 		  (<:form :action "#"
 			  :onsubmit (lifte
