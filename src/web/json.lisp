@@ -90,8 +90,9 @@
 (defrule json-key? (c (acc (make-accumulator)))
   (:checkpoint (:quoted? c) (:lwsp?) #\: (:return c))
   (:not #\:)
-  (:type visible-char? c) (:collect c acc)
-  (:zom (:not #\:) (:type visible-char? c) (:collect c acc))
+  (:oom (:not #\:)
+	(:type visible-char? c)
+	(:collect c acc))
   (:return acc))
 
 (defmethod json-key! ((stream core-stream) (key string))
@@ -99,6 +100,15 @@
 
 (defmethod json-key! ((stream core-stream) (key symbol))
   (json-key! stream (symbol-to-js key)))
+
+(defun js-to-keyword (string)
+  (make-keyword
+   (reduce (lambda (acc atom)
+	     (if (typep atom 'upper-case?)
+		 (format nil "~A-~A" acc (char-downcase atom))
+		 (format nil "~A~A" acc atom)))
+	   string
+	   :initial-value "")))
 
 (defrule json-object? (key value (object (make-hash-table)))
   (:lwsp?) #\{ (:lwsp?)
@@ -112,7 +122,7 @@
 	     (maphash (lambda (k v)
 			(setf result
 			      (append result
-				      (list (make-keyword k)
+				      (list (js-to-keyword k)
 					    v)))
 			nil)
 		      object)
