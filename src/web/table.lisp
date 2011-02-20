@@ -72,7 +72,9 @@
 			:onclick (event (e)
 				   (with-call/cc
 				     (on-select self instance))
-				   true))))
+				   true)))
+	(_instances (instances self)))
+    
     (setf (slot-value instance 'radio) radio)
 
     (if (null _instances)
