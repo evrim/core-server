@@ -152,7 +152,8 @@
 (defhtml-empty-tag <:hr :core :event width align onmouseover onmouseout)
 (defhtml-tag <:html dir lang)
 (defhtml-tag <:i :core :event :i18n onmouseover onmouseout)
-(defhtml-tag <:iframe :core frameborder longdesc marginheight marginwidth name scrolling src)
+(defhtml-tag <:iframe :core frameborder longdesc marginheight
+	     marginwidth name scrolling src allowtransparency)
 (defhtml-empty-tag <:img :core :event :i18n alt src height ismap longdesc usemap width onmouseover onmouseout)
 (defhtml-empty-tag <:input :core :event :i18n accept accesskey alt checked
 		   disabled maxlength name onblur onchange onfocus
