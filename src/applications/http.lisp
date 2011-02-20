@@ -574,14 +574,12 @@ executing 'body'"
   "Conventional macro to test urls wihout using a browser. One may
 provide query parameters inside URL as key=value"
   (assert (stringp url))
-  (dispatch application
-	    (make-instance 'http-request
-			   :uri (uri?
-				 (make-core-stream
-				  (let ((paths (uri.paths (uri? (make-core-stream url)))))
-				    (or (caadr paths) (caar paths)))))
-			   :stream *core-output*)
-	    (make-response *core-output*)))
+  (let ((uri (uri? (make-core-stream url))))    
+    (dispatch application
+	      (make-instance 'http-request
+			     :uri uri
+			     :stream *core-output*)
+	      (make-response *core-output*))))
 
 (defhandler "library.core" ((self http-application))
   (javascript/suspend
