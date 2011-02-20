@@ -550,7 +550,8 @@
    #:server.name
    #:server.mutex
    #:web-application.fqdn
-   #:web-application.admin-email   
+   #:web-application.admin-email
+   #:web-application.serve-url
    ;; API
    #:start
    #:stop
@@ -621,7 +622,8 @@
    #:get-database-id
    #:database-id
    #:find-all-objects
-   #:find-object-with-slot
+   #:find-objects-with-slot
+   #:find-object-with-slot   
    #:find-object-with-id
    #:update-object
    #:add-object
@@ -919,6 +921,7 @@
    #:prompt-dialog
    #:big-dialog
    ;; #:template
+   #:template/js
    #:get-message
    #:buttons
    #:get-buttons
