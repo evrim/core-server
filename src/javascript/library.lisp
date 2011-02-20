@@ -389,6 +389,10 @@
 	     (t
 	      div)))))))
 
+  (defun local-url-exists-p (url)
+    (try (progn (funcall url nil) (return t))
+	 (:catch (e) (return nil))))
+  
   (defun serialize-to-uri (arg)
     (let ((result ""))
       (mapobject (lambda (k v)
@@ -501,7 +505,8 @@
 	  (let ((_value (decode-u-r-i-component (car (.split data "$")))))
 	    (try
 	     (let ((val (eval _value)))
-	       (if (eq (typeof val) "function")
+	       (if (or (eq (typeof val) "function")
+		       (eq (typeof val) "object"))
 		   (throw (new (*error)))
 		   (return val)))
 	     (:catch (e) (return _value))))
@@ -517,7 +522,8 @@
 				      (.split data "$")))))))))
 	    (try
 	     (let ((val (eval _value)))
-	       (if (eq (typeof val) "function")
+	       (if (or (eq (typeof val) "function")
+		       (eq (typeof val) "object"))
 		   (throw (new (*error)))
 		   (return val)))
 	     (:catch (e) (return _value)))))))
