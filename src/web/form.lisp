@@ -70,7 +70,8 @@
 (defmethod/remote get-input-value ((self <core:validating-input))
   (cond
     ((eq "string" (typeof (validate self)))
-     (throw (new (*error "get-input-value called although input is invalid."))))
+     (throw (new (*error (+ "get-input-value called although input is invalid. Value:"
+			    (slot-value self 'value))))))
     (t
      (slot-value self 'value))))
 
