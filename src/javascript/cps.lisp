@@ -248,8 +248,9 @@
 						 (ast-search-type operator 'variable-reference)))
 				 (mapcar (lambda (ref)
 					   (change-class ref 'lambda-application-form)
-					   (setf (slot-value ref 'operator) value
-						 (slot-value value 'parent) ref)
+					   (let ((new-form (walk-js-form (unwalk-form value))))
+					     (setf (slot-value ref 'operator) new-form
+						   (slot-value new-form 'parent) ref))
 					   (fix-excessive-recursion ref))
 					 (filter (lambda (ref) (eq arg (slot-value ref 'operator)))
 						 (ast-search-type operator 'application-form))))
@@ -292,7 +293,7 @@
 		    (setf (slot-value application 'body)
 		    	  (slot-value operator 'body))))
 		applications)))
-    ;; (describe (list 'end (unwalk-form form)))
+;;     (describe (list 'end (unwalk-form form)))
     form)
 
 ;; +----------------------------------------------------------------------------
