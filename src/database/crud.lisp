@@ -40,7 +40,7 @@
 	     (redefmethod ,all ((,server abstract-database)) (find-all-objects ,server ',class))
 	     (redefmethod ,query ((,server abstract-database) &key ,@(class+.ctor-lambda-list class+ t))
 	       (flet ((find-object (slot value)
-			(core-server::find-objects-with-slot ,server ',class slot value)))
+			(find-objects-with-slot ,server ',class slot value)))
 		 (let ((set (filter (compose #'not #'null)
 				    (list
 				     ,@(mapcar (lambda (slot)
@@ -53,13 +53,17 @@
 			    (cdr set)
 			    :initial-value (car set))))))
 	     (redefmethod ,find ((,server abstract-database) &key ,@(class+.ctor-lambda-list class+ t))
-	       (flet ((find-object (slot value)
-			(find-object-with-slot ,server ',class slot value)))
-		 (or
-		  ,@(mapcar (lambda (slot)
-			      `(if ,(caddr slot)
-				   (find-object ',(car slot) ,(car slot))))
-			    (class+.ctor-lambda-list class+ t)))))
+	       (let ((args (reduce (lambda (acc slot)
+				     (if (caddr slot)
+					 (cons (make-keyword (car slot))
+					       (cons (cadr slot) acc))
+					 acc))
+				   (list
+				    ,@(mapcar (lambda (a)
+						`(list ',(car a) ,(car a) ,(caddr a)))
+					      (class+.ctor-lambda-list class+ t)))
+				   :initial-value nil)))
+		 (car (apply #',query ,server args))))
 	     (redefmethod ,add ((,server abstract-database) &key ,@(class+.ctor-lambda-list class+))
 	       (add-object ,server ',class
 			   ,@(mapcar (lambda (slot)
