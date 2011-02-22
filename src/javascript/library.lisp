@@ -495,38 +495,41 @@
       element))
   
   (defun get-parameter (name href)
-    (let ((data nil))
-      (if (not (null href))
-	  (setf data (.substr (.substr href (.search href "#")) 1))
-	  (setf data (+ (.substr window.location.hash 1) "$"
-			(.substr window.location.search 1))))
+    (flet ((eval-item (_value)
+	     (try
+	      (let ((val (eval _value)))
+		(_debug (list name val _value))
+		(cond
+		  ((eq val nil)
+		   (return nil))
+		  ((or (eq (typeof val) "function")
+		       (eq (typeof val) "object")
+		       (eq (typeof val) "undefined"))
+		   (throw (new (*error))))
+		  (t (return val))))
+	      (:catch (e)
+		(return _value)))))      
+      (let ((data nil))
+	(if (not (null href))
+	    (setf data (.substr (.substr href (.search href "#")) 1))
+	    (setf data (+ (.substr window.location.hash 1) "$"
+			  (.substr window.location.search 1))))
       
-      (if (null name)
-	  (let ((_value (decode-u-r-i-component (car (.split data "$")))))
-	    (try
-	     (let ((val (eval _value)))
-	       (if (or (eq (typeof val) "function")
-		       (eq (typeof val) "object"))
-		   (throw (new (*error)))
-		   (return val)))
-	     (:catch (e) (return _value))))
-	  (let ((_value (decode-u-r-i-component
-			 (car
-			  (cdr
-			   (car
-			    (filter (lambda (a) (eq (car a) name))
-			      (mapcar (lambda (a)
-					(flatten
-					 (mapcar (lambda (b) (.split b "="))
-						 (.split a ":"))))
-				      (.split data "$")))))))))
-	    (try
-	     (let ((val (eval _value)))
-	       (if (or (eq (typeof val) "function")
-		       (eq (typeof val) "object"))
-		   (throw (new (*error)))
-		   (return val)))
-	     (:catch (e) (return _value)))))))
+	(if (null name)
+	    (let ((_value (decode-u-r-i-component (car (.split data "$")))))
+	      (eval-item _value))
+	    (let ((_value
+		   (decode-u-r-i-component
+		    (car
+		     (cdr
+		      (car
+		       (filter (lambda (a) (eq (car a) name))
+			       (mapcar (lambda (a)
+					 (flatten
+					  (mapcar (lambda (b) (.split b "="))
+						  (.split a ":"))))
+				       (.split data "$")))))))))
+	      (eval-item _value))))))
 
   (defun set-parameter (name new-value)
     (let* ((new-value (serialize new-value)
