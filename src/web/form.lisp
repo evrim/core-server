@@ -99,7 +99,9 @@
   (adjust-default-value self))
 
 (defmethod/remote _validate ((self <core:default-value-input))
-  (if (equal (slot-value self 'default-value) (slot-value self 'value))
+  (if (and (or (equal "text" (slot-value self 'type))
+	       (equal "password" (slot-value self 'type)))
+	   (equal (slot-value self 'default-value) (slot-value self 'value)))
       ""
       (call-next-method self)))
 
@@ -152,10 +154,17 @@
   ())
 
 (defmethod/remote validate ((self <core:required-value-input))
-  (let ((_val (slot-value self 'value)))
-    (if (or (null _val) (eq _val ""))
-	"This field is required."
-	t)))
+  (cond
+    ((or (equal (slot-value self 'type) "checkbox")
+	 (equal (slot-value self 'type) "radio"))
+     (if (slot-value self 'checked)
+	 t
+	 "This box must be checked."))
+    (t
+     (let ((_val (slot-value self 'value)))
+       (if (or (null _val) (eq _val ""))
+	   "This field is required."
+	   t)))))
 
 ;; +-------------------------------------------------------------------------
 ;; | Number Input
