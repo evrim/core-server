@@ -149,14 +149,12 @@
 	   (list ,@(mapcar (lambda (a) (symbol-to-js (cadr a))) slots))))
 
 (defmacro/js bookmarklet-script (url)
-  `(decode-u-r-i-component
-    (+
-     "javascript:void((function(){"
-     "var%20a=document.createElement(\"SCRIPT\");"
-     "a.type=\"text/javascript\";"
-     "a.src=\"" ,url "\";"
-     "document.getElementsByTagName(\"HEAD\")[0].appendChild(a);"
-     "})())")))
+  `(+ "javascript:void((function(){"
+      (decode-u-r-i-component "var%20a=document.createElement(\"SCRIPT\");")
+      "a.type=\"text/javascript\";"
+      "a.src=\"" ,url "\";"      
+      "document.getElementsByTagName(\"HEAD\")[0].appendChild(a);"
+      "})())"))
 
 (defmacro/js lift1 (fun)
   `(lambda (arg) (call/cc ,fun arg)))
