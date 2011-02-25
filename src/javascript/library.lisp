@@ -493,6 +493,17 @@
 	      children)
       (extend properties element)
       element))
+
+  (defun get-cookie (name)
+    (let* ((cookies (mapcar (lambda (a) (.split a "="))
+			    (.split document.cookie ";")))
+	   (found (find (lambda (a) (eq (.trim (car a)) name)) cookies)))
+      (if found
+	  (return (car (cdr found)))
+	  (return nil))))
+
+  (defun set-cookie (name value)
+    (setf document.cookie (+ name "=" value)))
   
   (defun get-parameter (name href)
     (flet ((eval-item (_value)
@@ -508,7 +519,10 @@
 		   (throw (new (*error))))
 		  (t (return val))))
 	      (:catch (e)
-		(return _value)))))      
+		(return _value))))
+	   (_get-value (_value)
+	     (decode-u-r-i-component
+	      (reduce (lambda (acc atom) (+ acc ":" atom)) (cdr _value) (car _value)))))
       (let ((data nil))
 	(if (not (null href))
 	    (setf data (.substr (.substr href (.search href "#")) 1))
@@ -518,18 +532,14 @@
 	(if (null name)
 	    (let ((_value (decode-u-r-i-component (car (.split data "$")))))
 	      (eval-item _value))
-	    (let ((_value
-		   (decode-u-r-i-component
-		    (car
-		     (cdr
-		      (car
-		       (filter (lambda (a) (eq (car a) name))
-			       (mapcar (lambda (a)
-					 (flatten
-					  (mapcar (lambda (b) (.split b "="))
-						  (.split a ":"))))
-				       (.split data "$")))))))))
-	      (eval-item _value))))))
+	    (let ((_value (car
+			   (filter (lambda (a) (eq (car a) name))
+				   (mapcar (lambda (a)
+					     (flatten
+					      (mapcar (lambda (b) (.split b "="))
+						      (.split a ":"))))
+					   (.split data "$"))))))
+	      (eval-item (_get-value (cdr _value))))))))
 
   (defun set-parameter (name new-value)
     (let* ((new-value (serialize new-value)
