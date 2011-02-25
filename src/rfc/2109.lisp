@@ -34,6 +34,9 @@
    (secure :accessor cookie.secure :initarg :secure :initform nil
 	   :type boolean)))
 
+(defprint-object (self cookie)
+  (format t "~A:~A" (slot-value self 'name) (slot-value self 'value)))
+
 (defgeneric cookiep (cookie)
   (:method ((cookie cookie)) t)
   (:method ((cookie t)) nil))
@@ -59,19 +62,19 @@
       (quoted! stream value)
       (when version
 	(string! stream "; Version=")
-	(quoted-fixnum! stream version))
+	(fixnum! stream version))
       (when comment
 	(string! stream "; Comment=")
 	(quoted! stream comment))
       (when domain
 	(string! stream "; Domain=")
-	(quoted! stream domain))
+	(string! stream domain))
       (when max-age
 	(string! stream "; Max-age=")
-	(quoted-fixnum! stream max-age))
+	(fixnum! stream max-age))
       (when path
 	(string! stream "; Path=")
-	(quoted! stream path))
+	(string! stream path))
       (when secure
 	(string! stream "; Secure")))))
 
