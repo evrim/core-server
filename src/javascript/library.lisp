@@ -562,16 +562,23 @@
 			     (t (cons a acc)))))
 		       (mapcar (lambda (a) (.split a ":"))
 			       (.split (.substr window.location.hash 1) "$"))))))
-      (if (and (null found) name)
-	  (setf elements (cons (cons name new-value) elements)))
-      (setf window.location.hash
-	    (reduce (lambda (acc a)
-		      (append2 acc (append2 "$" (one a))))
-		    (cdr elements)
- 		    (if (and (null new-value)
-			     (null (car (cdr (car elements)))))
-			name
-			(one (car elements)))))))
+      (cond
+	((and (null value) (null found))
+	 (setf elements (reduce0 (lambda (acc atom)
+				   (if (eq (car a) name)
+				       acc
+				       (cons atom acc))))))
+	((and (null found) name)
+	 (setf elements (cons (cons name new-value) elements))))
+
+      (let ((value (reduce (lambda (acc a)
+			     (append2 acc (append2 "$" (one a))))
+			   (cdr elements)
+			   (if (and (null new-value)
+				    (null (car (cdr (car elements)))))
+			       name
+			       (one (car elements))))))
+	(setf window.location.hash (or value "")))))
 
   (defvar *css-refcount-table* (jobject))
   (defun load-css (url)
