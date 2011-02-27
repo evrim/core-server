@@ -542,9 +542,7 @@
 	      (eval-item (_get-value (cdr _value))))))))
 
   (defun set-parameter (name new-value)
-    (let* ((new-value (serialize new-value)
-	     ;; (encode-u-r-i-component (serialize new-value))
-	     )
+    (let* ((new-value (serialize new-value))
 	   (append2 (lambda (a b)
 		      (if (null a) b (if (null b) "" (+ a b)))))
 	   (one (lambda (a) (append2 (car a) (append2 ":" (car (cdr a))))))
@@ -562,14 +560,9 @@
 			     (t (cons a acc)))))
 		       (mapcar (lambda (a) (.split a ":"))
 			       (.split (.substr window.location.hash 1) "$"))))))
-      (cond
-	((and (null value) (null found))
-	 (setf elements (reduce0 (lambda (acc atom)
-				   (if (eq (car a) name)
-				       acc
-				       (cons atom acc))))))
-	((and (null found) name)
-	 (setf elements (cons (cons name new-value) elements))))
+
+      (if (and (null found) name (not (eq new-value "null")))
+	  (setf elements (cons (cons name new-value) elements)))
 
       (let ((value (reduce (lambda (acc a)
 			     (append2 acc (append2 "$" (one a))))
