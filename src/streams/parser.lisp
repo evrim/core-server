@@ -221,10 +221,12 @@
 					 (code-char f3) (code-char f4)))
 	(read s)))))
 
-(defparser escaped-string? (c (acc (make-accumulator)))
+(defparser escaped-string? (c (acc (make-accumulator :byte)))
   (:oom (:or (:escaped? c) (:type octet? c))
 	(:collect c acc))
-  (:return acc))
+  (:return (if (> (length acc) 0)
+	       (octets-to-string acc :utf-8)
+	       acc)))
 
 ;; (defparser quoted? ((value (make-accumulator :byte)) c b)
 ;;   (:or
@@ -250,29 +252,35 @@
 	     (:zom (:or (:and (:seq "\\\'") (:do (setq c #.(char-code #\'))))
 			(:and (:not #\')
 			      (:or (:escaped? c)
-				   (:type (or visible-char?
-					      white-space?
-					      carriage-return?
-					      linefeed?) c))))
+				   (:type octet?
+					  ;; (or visible-char?
+;; 					      white-space?
+;; 					      carriage-return?
+;; 					      linefeed?)
+					  c))))
 		   (:collect c acc))
 	     (:return (octets-to-string acc :utf-8)))
        (:and #\"
 	     (:zom (:or (:and (:seq "\\\"") (:do (setq c #.(char-code #\"))))
 			(:and (:not #\")
 			      (:or (:escaped? c)
-				   (:type (or visible-char?
-					      white-space?
-					      carriage-return?
-					      linefeed?) c))))
+				   (:type octet? ;; (or visible-char?
+;; 					      white-space?
+;; 					      carriage-return?
+;; 					      linefeed?)
+					  c))))
 		   (:collect c acc))
 	     (:return (octets-to-string acc :utf-8)))
-       (:and (:zom (:or (:escaped? c)
-			(:type (or visible-char?
-				   white-space?
-				   carriage-return?
-				   linefeed?) c))
-		   (:collect c acc))
-	     (:return (octets-to-string acc :utf-8)))))
+       ;; (:and (:zom (:or (:escaped? c)
+;; 			(:type ;; (or visible-char?
+;; ;; 				   white-space?
+;; ;; 				   carriage-return?
+;; ;; 				   linefeed?)
+;; 			 octet?
+;; 			       c))
+;; 		   (:collect c acc))
+;; 	     (:return (octets-to-string acc :utf-8)))
+       ))
 
 (defparser parse-line? (c (acc (make-accumulator)))
   (:zom (:or (:and #\Newline (:return acc))
