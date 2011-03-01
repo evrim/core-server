@@ -21,9 +21,9 @@
 	(setf (slot-value element 'inner-h-t-m-l) msg)))))
 
 (defmethod/remote enable-or-disable-form ((self <core:validating-input))
-  (when (slot-value self 'form) ;; not avail at first run-validate
+  (when (not (null (slot-value self 'form))) ;; not avail at first run-validate
     (let ((valid (reduce-cc (lambda (acc input)
-			      (if (eq "undefined" (typeof (slot-value input 'valid)))
+			      (if (or (null input) (null (slot-value input 'valid)))
 				  acc
 				  (and acc input.valid)))
 			    (self.form.get-elements-by-tag-name "INPUT")
