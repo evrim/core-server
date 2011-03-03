@@ -86,8 +86,11 @@
   (:return scheme))
 
 ;;       pchar         = unreserved | escaped | ":" | "@" | "&" | "=" | "+" | "$" | ","
+;; FIX: added #\Space in order to parse
+;; file://bla bla/Document and Settings/ although
+;; it should be Document%20and%20Settings
 (defatom pchar-special? ()
-  (if (member c '#.(mapcar #'char-code '(#\: #\@ #\& #\= #\+ #\$ #\,)))
+  (if (member c '#.(mapcar #'char-code '(#\: #\@ #\& #\= #\+ #\$ #\, #\Space)))
       t))
 
 (defrule pchar? (c)
@@ -121,12 +124,8 @@
   (and (member c '#.(mapcar #'char-code '(#\$ #\, #\; #\: #\@ #\& #\= #\+)))
        t))
 
-(defrule reg_name? ((acc (make-accumulator)) c)  
-  (:or (:and (:type (or unreserved? reg_name-specials?) c)
-	     (:collect c acc))
-       (:and (:escaped? c)
-	     (:collect c acc)))
-  (:zom (:or (:and (:type (or unreserved? reg_name-specials?) c)
+(defrule reg_name? ((acc (make-accumulator)) c)
+  (:oom (:or (:and (:type (or unreserved? reg_name-specials?) c)
 		   (:collect c acc))
 	     (:and (:escaped? c)
 		   (:collect c acc))))
@@ -220,14 +219,12 @@
 (defatom userinfo-specials? ()
   (and (member c '#.(mapcar #'char-code '(#\; #\: #\& #\= #\+ #\$ #\,))) t))
 
-(defrule userinfo? (c (q (make-accumulator))		      
-		      (userinfo '()))
-  (:zom (:and (:zom (:or (:type unreserved? c)
-			 (:escaped? c))
-		    (:collect c q))
-	      (:do (push q userinfo)
-		   (setq q (make-accumulator)))
-	      (:type userinfo-specials?)))
+(defrule userinfo? (c (q (make-accumulator)) (userinfo '()))
+  (:oom (:oom (:or (:type unreserved? c) (:escaped? c))
+	      (:collect c q))
+	(:do (push q userinfo)
+	     (setq q (make-accumulator)))
+	(:type userinfo-specials?))
   (:return (nreverse userinfo)))
 
 ;;       server        = [ [ userinfo "@" ] hostport ]
@@ -246,8 +243,9 @@
 
 ;;       abs_path      = "/"  path_segments
 (defrule abs_path? (abs-path)
-  #\/ (:or (:and (:path-segments? abs-path) (:return abs-path))
-	   (:return (cons '("") nil))))
+  #\/
+  (:or (:and (:path-segments? abs-path) (:return abs-path))
+       (:return (cons '("") nil))))
 
 ;;       rel_path      = rel_segment [ abs_path ]
 (defrule rel_path? (segment path)
@@ -260,11 +258,11 @@
 ;;       net_path      = "//" authority [ abs_path ]
 (defrule net_path? (authority path)  
   #\/ #\/
-  (:authority? authority)
-  (:checkpoint
-   (:abs_path? path)
-   (:commit))
-  (:return (values path authority)))
+  (:or (:and (:authority? authority)
+	     (:abs_path? path)
+	     (:return (values path authority)))
+       (:and (:abs_path? path)
+	     (:return (values path nil)))))
 
 ;;       uric_no_slash = unreserved | escaped | ";" | "?" | ":" | "@" |
 ;;                       "&" | "=" | "+" | "$" | ","
@@ -279,8 +277,7 @@
 
 ;;       opaque_part   = uric_no_slash *uric
 (defrule opaque_part? (c (part (make-accumulator)))
-  (:uric_no_slash? c)
-  (:collect c part)
+  (:uric_no_slash? c) (:collect c part)
   (:zom (:and (:uric? c) (:collect c part)))
   (:return part))
 
@@ -295,8 +292,10 @@
 ;; http://www.core.gen.tr/#index
 ;; http://www.core.gen.tr/?#index
 ;; http://www.core.gen.tr/?eben#index
+;; file:///C:/Documents and Settings/evr'm/Desktop/perplex/index2.html
 (defrule hier_part? (val path authority query fragment)
-  (:or (:net_path? path authority) (:abs_path? path))  
+  (:or (:net_path? path authority)
+       (:abs_path? path))  
   (:zom (:or (:and #\? (:query? val) (:do (setq query val)))
 	     (:and #\# 
 		   (:or (:query? val) (:query-key? val))
@@ -306,8 +305,8 @@
 ;;       relativeURI   = ( net_path | abs_path | rel_path ) [ "?" query ]
 (defrule relative-uri? (path query authority)
   (:or (:net_path? path authority) (:abs_path? path) (:rel_path? path))
-  (:or  (:and #\? (:query? query) (:return (values path query authority)))
-	(:return (values path nil authority))))
+  (:or (:and #\? (:query? query) (:return (values path query authority)))
+       (:return (values path nil authority))))
 
 ;;       absoluteURI   = scheme ":" ( hier_part | opaque_part )
 (defrule absolute-uri? (scheme path query authority fragment)
@@ -417,6 +416,11 @@
 		    (char! stream +uri-query-seperator+)
 		    (query! stream fragment))
 		(cdr fragments))))))
+
+(defun uri->string (uri)
+  (with-core-stream (s "")
+    (uri! s uri)
+    (return-stream s)))
 
 (defparameter +uri-parsers+
   '(query-key? query-value? query? uric? fragment? scheme-specials? scheme?

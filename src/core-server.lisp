@@ -364,6 +364,7 @@
    #:uri?
    #:query!
    #:uri!
+   #:uri->string
    ;; [RFC 822]
    #:mailbox?
    #:comment?
