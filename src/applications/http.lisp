@@ -429,12 +429,15 @@
      (clrhash (session.continuations (context.session +context+)))
      ,@body))
 
+(defvar +action-hash-override+ nil)
+
 (defmacro action/hash (parameters &body body)
   "Registers a continuation at run time and binds 'parameters' while
 executing 'body'"
   (with-unique-names (name context)
     `(if +context+
-	 (let* ((,name (format nil "act-~A" (make-unique-random-string 8)))
+	 (let* ((,name (or +action-hash-override+
+			   (format nil "act-~A" (make-unique-random-string 8))))
 		(,context (copy-context +context+))
 		(kont (lambda (req rep &optional ,@(mapcar #'car parameters))
 			(assert (not (null req)))
