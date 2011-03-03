@@ -14,7 +14,7 @@
 ;; +----------------------------------------------------------------------------
 (defclass+ component ()
   ((url :host remote :documentation "The url that this component is served.")
-   (object-cache :host none :initform (make-hash-table :weakness :value)))
+   (instance-id :host none :initform (make-unique-random-string 8)))
   (:metaclass component+)
   (:documentation "Base component class"))
 
@@ -44,6 +44,9 @@
   (let ((slot (class+.find-slot (class-of self) slot-name)))
     (with-slotdef (reader) slot
       (funcall reader self))))
+
+(defmethod component.action-hash ((self component) method)
+  (format nil "~A-act~A" method (component.instance-id self)))
 
 (eval-when (:compile-toplevel :load-toplevel)
   (defmethod component+.morphism-function-name ((self component+) name)
@@ -370,30 +373,31 @@
 	 (let ,(mapcar (lambda (method k-url)
 			 (let ((method-args (extract-argument-names (cdddr method)
 								    :allow-specializers t)))
-			   `(,k-url (action/url (,@(reduce0
-						    (lambda (acc arg)
-						      (cons (list arg (symbol-to-js arg))
-							    acc))
-						    method-args))
-				      (let ((result (,(car method) component
-						      ,@(mapcar (lambda (arg)
-								  `(component.deserialize component ,arg))
-								method-args))))
-					(with-query ((hash "__hash")) (context.request +context+)
-					  (let ((stream (http-response.stream (context.response +context+)))
-						(hash (json-deserialize (if (listp hash) (car hash) hash))))
-					    (answer
-					     (javascript/suspend
-					      (lambda (stream)
-						(if hash
-						    (with-js (result hash) stream
-						      (with-call/cc
-							(apply (slot-value window hash) window
-							       (list (lambda (self) result)))))
-						    (with-js (result) stream
-						      (with-call/cc
-							(lambda (self) result)))))))
-					    nil)))))))
+			   `(,k-url (let ((+action-hash-override+ (component.action-hash component ',(car method))))
+				      (action/url (,@(reduce0
+						      (lambda (acc arg)
+							(cons (list arg (symbol-to-js arg))
+							      acc))
+						      method-args))
+					(let ((result (,(car method) component
+							,@(mapcar (lambda (arg)
+								    `(component.deserialize component ,arg))
+								  method-args))))
+					  (with-query ((hash "__hash")) (context.request +context+)
+					    (let ((stream (http-response.stream (context.response +context+)))
+						  (hash (json-deserialize (if (listp hash) (car hash) hash))))
+					      (answer
+					       (javascript/suspend
+						(lambda (stream)
+						  (if hash
+						      (with-js (result hash) stream
+							(with-call/cc
+							  (apply (slot-value window hash) window
+								 (list (lambda (self) result)))))
+						      (with-js (result) stream
+							(with-call/cc
+							  (lambda (self) result)))))))
+					      nil))))))))
 		       (class+.local-methods class+) k-urls)
 	   (%component! stream component ,@k-urls))))))
 
