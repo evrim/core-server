@@ -1,4 +1,4 @@
-; +----------------------------------------------------------------------------
+;; +----------------------------------------------------------------------------
 ;; | Component Framework (Lisp->Browser Functor)
 ;; +----------------------------------------------------------------------------
 (in-package :core-server)
@@ -549,6 +549,23 @@
 			 (class-subclasses (find-class 'component))))
 	 :test #'string=
 	 :key #'cdr)))
+
+
+;; -------------------------------------------------------------------------
+;; Singleton Component Mixin
+;; -------------------------------------------------------------------------
+(defcomponent singleton-component-mixin ()
+  ())
+
+(defmethod/local destroy-component-actions ((self singleton-component-mixin))
+  (mapcar (lambda (method)
+	    (remhash (component.action-hash self method)
+		     (session.continuations (context.session +context+))))
+	  (class+.local-methods (class-of self))))
+
+(defmethod/remote destroy ((self singleton-component-mixin))
+  (make-web-thread (lambda () (destroy-component-actions self)))
+  (call-next-method self))
 
 ;; (defmethod/cc continue-component ((self component) &optional value)
 ;;   (prog1 nil

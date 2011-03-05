@@ -297,6 +297,7 @@
    #:continue/js
    #:funcall-cc
    #:funcall2-cc
+   #:singleton-component-mixin
    
    ;; [RFC 2109]
    #:cookie
