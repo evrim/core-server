@@ -252,23 +252,26 @@
 	     (:zom (:or (:and (:seq "\\\'") (:do (setq c #.(char-code #\'))))
 			(:and (:not #\')
 			      (:or (:escaped? c)
-				   (:type octet?
-					  ;; (or visible-char?
+				   (:type octet? c)
+;;  				   (:type (or visible-char?
 ;; 					      white-space?
 ;; 					      carriage-return?
 ;; 					      linefeed?)
-					  c))))
+;; 					  c)
+				   )))
 		   (:collect c acc))
 	     (:return (octets-to-string acc :utf-8)))
        (:and #\"
 	     (:zom (:or (:and (:seq "\\\"") (:do (setq c #.(char-code #\"))))
 			(:and (:not #\")
 			      (:or (:escaped? c)
-				   (:type octet? ;; (or visible-char?
+				   (:type octet? c)
+;; 				   (:type (or visible-char?
 ;; 					      white-space?
 ;; 					      carriage-return?
 ;; 					      linefeed?)
-					  c))))
+;; 					  c)
+				   )))
 		   (:collect c acc))
 	     (:return (octets-to-string acc :utf-8)))
        ;; (:and (:zom (:or (:escaped? c)
