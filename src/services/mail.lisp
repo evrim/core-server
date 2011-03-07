@@ -136,6 +136,7 @@
 
 ;; write an envelope to the wire
 (defmethod %sendmail ((self mail-sender) (e envelope) (s core-stream))
+  (smsg self (format nil "Sending message: ~A" e))
   (smtp-send :envelope e :stream s))
 
 ;; Use user supplied timer, otherwise make a new timer and schedule
