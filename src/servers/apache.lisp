@@ -137,7 +137,7 @@ permissions accordingly"
 (defmethod graceful ((self apache-server))
   (when (validate-configuration self)
     (with-server-mutex (self)
-      (eq 0 (sb-impl::process-exit-code (#+pardus comar #-pardus apachectl self '("reload")))))))
+      (eq 0 (sb-impl::process-exit-code (#+pardus comar #-pardus apachectl self '("graceful")))))))
 
 (defmethod status ((self apache-server))
   #+debian (and (probe-file #P"/var/run/apache2.pid") t)
