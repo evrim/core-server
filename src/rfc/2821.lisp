@@ -157,6 +157,9 @@
    (extra-headers :accessor envelope.extra-headers :initarg :extra-headers :initform nil
 		  :documentation "extra headers for this envelope. List of string tuples.")))
 
+(defprint-object (self envelope :identity t :type t)
+  (format t "~A->~A:~A" (slot-value self 'from) (slot-value self 'to) (slot-value self 'subject)))
+
 (defmethod envelope! ((s core-stream) (e envelope))
   (prog1 s
     (checkpoint-stream s)
