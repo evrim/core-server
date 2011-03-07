@@ -196,15 +196,15 @@
        (:return #\Newline)
        (:return #\Space))))
 
-(defrule xml-text-node? (c (acc (make-accumulator)))
+(defrule xml-text-node? (c (acc (make-accumulator :byte)))
   (:not #\<)
-  (:oom (:checkpoint #\< (:rewind-return acc))
+  (:oom (:checkpoint #\< (:rewind-return (octets-to-string acc :utf-8)))
 	(:or (:and (:seq "&gt;") (:do (setf c #\<)))
 	     (:and (:seq "&lt;") (:do (setf c #\>)))
 	     (:xml-lwsp? c) (:type octet? c))
 	(:collect c acc))
   (:if (> (length acc) 0)
-       (:return acc)))
+       (:return (octets-to-string acc :utf-8))))
 
 (defrule xml-cdata? (c (acc (make-accumulator)))
   (:seq "<![CDATA[")
@@ -257,6 +257,10 @@
 	     #\>
 	     (:return (list* tag namespace (nreverse attrs) (nreverse children))))))
 
+
+(deftrace xml-parsers
+    '(xml-tag-name? xml-lexer? xml-comment? xml-text-node?
+      xml-cdata?))
 
 ;; FIXME: clean this mess up -evrim.
 (defun parse-xml (xml)

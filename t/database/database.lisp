@@ -224,6 +224,15 @@
 	     (eq b1 (slot-value a2 'one-B)))))
   t)
 
+(deftest database-13
+    (let ((db (test-db)))
+      (setf (database.get db 'key) "ğüşiöçıĞÜŞİÖÇI")
+      (stop db)
+      (start db)
+      (prog1 (database.get db 'key)
+	(stop db)))
+  "ğüşiöçıĞÜŞİÖÇI")
+
 ;; ;; http://www.cs.vu.nl/boilerplate/
 ;; ;;
 ;; ;; Scrap Your Boilerplate: A Practical Design Pattern for Generic Programming
