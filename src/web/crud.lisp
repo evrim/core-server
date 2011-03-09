@@ -9,102 +9,140 @@
   ((instance :host remote)
    (template-class :host remote)
    (title :host remote :initform "Please set crud title")
-   (crud-css :host remote :initform "http://www.coretal.net/style/crud.css")))
+   (crud-css :host remote :initform "http://www.coretal.net/style/crud.css")
+   (on-delete :host remote :initform nil)
+   (_template :host remote)
+   (_result :host remote :initform (jobject))))
 
 (defmethod/remote get-template-class ((self <core:crud))
   (or (slot-value self 'template-class)
       (and (instance self) (slot-value (instance self) 'core-class))))
 
-(defmethod/remote get-type ((self <core:crud) slot)  
-  (slot-value slot 'type))
-
 (defmethod/remote get-value ((self <core:crud) slot)
-  (let ((_instance (instance self))
-	(_reader (slot-value slot 'reader)))
-    (if (eq "password" (get-type self slot))
-	"*****************"
-	(if _reader
-	    (_reader _instance)
-	    (slot-value _instance (slot-value slot 'name))))))
-
-(defmethod/remote set-value ((self <core:crud) field value)
-  (answer-component self (list field value)))
-
-(defmethod/remote edit-me ((self <core:crud) slot)  
-  (with-slots (name type options) slot
-    (let ((value (slot-value (instance self) name)))
+  (with-slots (name type options size reader) slot
+    (let* ((_instance (instance self))
+	   (_value (if reader
+		       (reader _instance)
+		       (slot-value _instance name))))
       (cond
-	((eq type "select")
-	 (<:select
-	  (mapcar-cc (lambda (option)
-		       (if (eq option value)
-			   (<:option :selected t option)
-			   (<:option option)))
-		     options)))
-	((eq type "password")
-	 (<:input :type "password" :name name :value value))
+	((eq "password" type)
+	 "*****************")
+	((eq "multiple-select" type)
+	 (reduce-cc (lambda (acc atom)
+		      (+ acc ", " atom))
+		    (cdr _value) (car _value)))
 	(t
-	 (<:input :type "text" :name name :value value))))))
+	 _value)))))
+
+(defmethod/remote edit-me ((self <core:crud) slot)
+  (flet ((default-onchange (name)
+	   (event (e)
+	     (with-slots (_result) self
+	       (setf (slot-value _result name) this.value))))
+	 (multi-checkbox-onchange (name)
+	   (event (e)
+	     (let ((value this.value))
+	       (with-slots (_result) self
+		 (if this.checked
+		     (setf (slot-value _result name)
+			   (cons value
+				 (filter (lambda (a) (not (eq a value)))
+					 (slot-value _result name))))
+		     (setf (slot-value _result name)
+			   (filter (lambda (a) (not (eq a value)))
+				   (slot-value _result name)))))))))
+    (with-slots (name type options size) slot
+      (let ((value (slot-value (instance self) name)))
+	(cond
+	  ((eq type "select")
+	   (<:select :onchange (default-onchange name)
+	    (mapcar-cc (lambda (option)
+			 (if (eq option value)
+			     (<:option :selected t option)
+			     (<:option option)))
+		       options)))
+	  ((eq type "multiple-select")
+	   (setf (slot-value (_result self) name) value)
+	   (<:div
+	    (mapcar
+	     (lambda (option)
+	       (<:div
+		(<:div :class "left pad5"
+		       (if (member option value)
+			   (<:input :type "checkbox" :value option
+				    :checked t :name option
+				    :onchange (multi-checkbox-onchange name))
+			   (<:input :type "checkbox" :value option
+				    :name option
+				    :onchange (multi-checkbox-onchange name))))
+		(<:div :class "pad5" option)))
+	     options)))
+	  ((eq type "password")
+	   (<:input :type "password" :name name :value value
+		    :onchange (default-onchange name)))
+	  (t
+	   (<:input :type "text" :name name :value value
+		    :onchange (default-onchange name))))))))
 
 (defmethod/remote view-me ((self <core:crud) slot)
   (let ((value (get-value self slot)))
-    (if (slot-value slot 'read-only)
-	(<:span value)
-	(<:a (if (null value)
-		 (+ "Click to set " (slot-value slot 'name))
-		 value)))))
+    (<:span (or value "Undefined"))))
 
-(defmethod/remote template ((self <core:crud))
+(defmethod/remote do-edit ((self <core:crud))
+  (let ((_template (_template self)))
+    (setf (_template self) (replace-node _template (edit-template self)))))
+
+(defmethod/remote view-template ((self <core:crud))
   (<:div :class "crud"
 	 (<:form
 	  (mapcar-cc
 	   (lambda (slot)
 	     (with-slots (name label) slot
-	       (let ((view (view-me self slot))
-		     (edit (edit-me self slot)))
-		 (labels ((edit-it ()
-			    (show edit)
-			    (hide view)
-			    (let ((focus (slot-value edit 'focus)))
-			      (focus)))
-			  (save-it ()
-			    ;;                    (setf (slot-value view 'inner-h-t-m-l) (slot-value edit 'value))
-			    ;; 		      (show view)
-			    ;; 		      (hide edit)
-			    ;; 		      (set-value self name (slot-value edit 'value))
-			    (let ((obj (jobject)))
-			      (setf (slot-value obj name) (slot-value edit 'value))
-			      (answer-component self obj)))
-			  (cancel-it ()
-			    (setf (slot-value edit 'value) (get-value self name))
-			    (show view)
-			    (hide edit)))
-		   (hide edit)
-		   (if (not (slot-value slot 'read-only))
-		       (setf (slot-value view 'onclick)
-			     (lifte (call/cc edit-it))
-			     (slot-value edit 'onkeydown)
-			     (event (e)
-				    (let ((keycode (slot-value e 'key-code)))
-				      (cond
-					((eq 27 keycode) ;; escape
-					 (make-web-thread cancel-it)
-					 false)
-					((eq 13 keycode) ;; enter
-					 (make-web-thread save-it)
-					 false)
-					(t t)))
-				    ;; (setf edit.onblur (lambda (e) false))
-				    )))
-		   (with-field (+ label ":") (list view edit))))))
-	   (reverse (get-template-class self))))
-	 (<:p (<:b "Note: ") "Click on the field to modify, press enter to save or escape to cancel.")))
+	       (with-field (+ label ":") (view-me self slot))))
+	   (reverse (reverse (get-template-class self))))
+	  (<:p (<:input :type "button" :value "Edit"
+			:onclick (lifte (do-edit self)))
+	       (if (slot-value self 'on-delete)
+		   (<:input :type "button" :value "Delete"
+			    :onclick (lifte (do-delete self))))))))
+
+(defmethod/remote do-cancel ((self <core:crud))
+  (let ((_template (_template self)))
+    (setf (_template self)
+	  (replace-node _template (view-template self)))))
+
+(defmethod/remote do-save1 ((self <core:crud))
+;;   (_debug (list "result" (_result self)))
+  (answer-component self (_result self)))
+
+(defmethod/remote edit-template ((self <core:crud))
+  (<:div :class "crud"
+	 (<:form
+	  (mapcar-cc
+	   (lambda (slot)
+	     (with-slots (name label read-only) slot	       
+	       (with-field (+ label ":")
+		 (cond
+		   (read-only
+		    (view-me self slot))
+		   (t
+		    (let ((edit (edit-me self slot)))
+		      edit))))))
+	   (reverse (reverse (get-template-class self))))
+	  (<:p (<:input :type "submit" :value "Save"
+;; 			:disabled t
+			:onclick (lifte (do-save1 self)))
+	       (<:input :type "button" :value "Cancel"
+			:onclick (lifte (do-cancel self)))))))
+
+(defmethod/remote remove-child-nodes ((self <core:crud))
+  (mapcar-cc (lambda (a) (.remove-child self a))
+	     (reverse (slot-value self 'child-nodes))))
 
 (defmethod/remote destroy ((self <core:crud))
   (remove-css (crud-css self))
   (remove-class self "crud")
-  (mapcar-cc (lambda (a) (.remove-child self a))
-	     (reverse (slot-value self 'child-nodes)))
+  (remove-child-nodes self)
   (delete-slots self 'instance 'template-class 'crud-css 'title)
   (call-next-method self))
 
@@ -112,7 +150,7 @@
   (load-css (crud-css self))
   (add-class self "crud")
   (append self (<:h2 (title self)))
-  (append self (template self)))
+  (append self (setf (_template self) (view-template self))))
 
 (defmacro defwebcrud (name supers slots &rest rest)
   `(progn
