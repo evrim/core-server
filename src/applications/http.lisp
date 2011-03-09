@@ -45,6 +45,9 @@
    (timestamp :accessor session.timestamp :initform (get-universal-time))
    (data :accessor session.data :initform (make-hash-table :test #'equal))))
 
+(defprint-object (self http-session :identity t :type t)
+  (format t "~A" (session.id self)))
+
 (defun make-new-session (&optional (id (random-string 8)))
   "HTTP Session Constructor"
   (make-instance 'http-session :id id))
