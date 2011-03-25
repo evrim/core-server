@@ -386,17 +386,16 @@
 					  (with-query ((hash "__hash")) (context.request +context+)
 					    (let ((stream (http-response.stream (context.response +context+)))
 						  (hash (json-deserialize (if (listp hash) (car hash) hash))))
-					      (answer
-					       (javascript/suspend
-						(lambda (stream)
-						  (if hash
-						      (with-js (result hash) stream
-							(with-call/cc
-							  (apply (slot-value window hash) window
-								 (list (lambda (self) result)))))
-						      (with-js (result) stream
-							(with-call/cc
-							  (lambda (self) result)))))))
+					      (javascript/suspend
+					       (lambda (stream)
+						 (if hash
+						     (with-js (result hash) stream
+						       (with-call/cc
+							 (apply (slot-value window hash) window
+								(list (lambda (self) result)))))
+						     (with-js (result) stream
+						       (with-call/cc
+							 (lambda (self) result))))))
 					      nil))))))))
 		       (class+.local-methods class+) k-urls)
 	   (%component! stream component ,@k-urls))))))
