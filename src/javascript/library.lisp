@@ -392,6 +392,46 @@
   (defun local-url-exists-p (url)
     (try (progn (funcall url nil) (return t))
 	 (:catch (e) (return nil))))
+
+  (defun local-serialize-to-uri (arg)
+    (let ((result ""))
+      (mapobject (lambda (k v)
+		   (setf result
+			 (+ result k "=" (encode-u-r-i-component v)
+			    "&")))
+		 arg)
+      result))
+  
+  (defun local-funcall (action arguments)
+    (if window.*active-x-object
+	(setf xhr (new (*active-x-object "Microsoft.XMLHTTP")))
+	(setf xhr (new (*x-m-l-http-request))))
+    (xhr.open "POST" action false)
+    (xhr.set-request-header "Content-Type" "application/x-www-form-urlencoded")    
+    (xhr.send (local-serialize-to-uri arguments))
+
+    (if (not (= 200 xhr.status))
+	(throw (new (*error (+ "Server error occured: " xhr.status)))))
+            
+    (let ((content-type (xhr.get-response-header "Content-Type")))
+      (if (null content-type)
+	  (throw (new (*error "Content-Type of the response is not defined"))))
+
+      (setf content-type (aref (content-type.split ";") 0))
+      
+      (cond
+	((or (eq content-type "text/json") (eq content-type "text/javascript"))
+	 (eval (+ "("  xhr.response-text ")")))
+	((eq content-type "text/html")
+	 (let ((div (document.create-element "div")))
+	   (setf div.inner-h-t-m-l xhr.response-text)
+	   (cond
+	     ((eq 0 div.child-nodes.length)
+	      nil)
+	     ((eq 1 div.child-nodes.length)
+	      (aref div.child-nodes 0))
+	     (t
+	      div)))))))
   
   (defun serialize-to-uri (arg)
     (let ((result ""))
@@ -399,7 +439,7 @@
 		   (setf result
 			 (+ result k "="
 			    (encode-u-r-i-component (serialize v))
-			    "$")))
+			    "&")))
 		 arg)
       result))
 
