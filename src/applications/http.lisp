@@ -334,9 +334,7 @@
   (ensure-directories-exist
    (merge-pathnames
     (make-pathname :directory (list :relative "var"
-				    (string-replace-all "/" "%2F"
-				      (escape-as-uri (web-application.fqdn application)))
-				    "db"))
+				    (web-application.fqdn application) "db"))
     (bootstrap::home))))
 
 ;; +----------------------------------------------------------------------------
