@@ -133,7 +133,7 @@
 (defhtml-tag <:dd :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:del :core :event :i18n cite datetime)
 (defhtml-tag <:dfn :core :event :i18n onmouseover onmouseout)
-(defhtml-tag <:div :core :event :i18n dojo-type open onmouseover onmouseout)
+(defhtml-tag <:div :core :event :i18n open onmouseover onmouseout)
 (defhtml-tag <:dl :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:dt :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:em :core :event :i18n onmouseover onmouseout)
