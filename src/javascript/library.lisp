@@ -291,6 +291,15 @@
     (let ((context (or context document)))
       (filter goal-p (.get-elements-by-tag-name context "*"))))
 
+  (defun parent-search (goal-p context)
+    (cond
+      ((null context)
+       nil)
+      ((goal-p context)
+       context)
+      (t
+       (parent-search goal-p (slot-value context 'parent-node)))))
+  
   (defun find (goal-p lst)
     (reduce (lambda (acc atom)
 	      (or acc (and (goal-p atom) atom)))
