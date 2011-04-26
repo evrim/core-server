@@ -924,6 +924,8 @@
    #:big-dialog
    ;; #:template
    #:template/js
+   #:dialog-buttons
+   #:dialog-buttons/js
    #:get-message
    #:buttons
    #:get-buttons
