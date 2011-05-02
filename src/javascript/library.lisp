@@ -438,14 +438,28 @@
 	 (eval (+ "("  xhr.response-text ")")))
 	((eq content-type "text/html")
 	 (let ((div (document.create-element "div")))
-	   (setf div.inner-h-t-m-l xhr.response-text)
-	   (cond
-	     ((eq 0 div.child-nodes.length)
-	      nil)
-	     ((eq 1 div.child-nodes.length)
-	      (aref div.child-nodes 0))
-	     (t
-	      div)))))))
+	   xhr.response-text
+	   ;; (setf div.inner-h-t-m-l xhr.response-text)
+;; 	   (cond
+;; 	     ((eq 0 div.child-nodes.length)
+;; 	      nil)
+;; 	     ((eq 1 div.child-nodes.length)
+;; 	      (aref div.child-nodes 0))
+;; 	     (t
+;; 	      div))
+	   )))))
+
+  (defun local-funcall-head (action arguments)
+    (if window.*active-x-object
+	(setf xhr (new (*active-x-object "Microsoft.XMLHTTP")))
+	(setf xhr (new (*x-m-l-http-request))))
+    
+    (xhr.open "HEAD" action false)
+    (xhr.set-request-header "Content-Type"
+			    "application/x-www-form-urlencoded")    
+    (xhr.send (local-serialize-to-uri arguments))
+
+    (return xhr))
   
   (defun serialize-to-uri (arg)
     (let ((result ""))
@@ -561,18 +575,25 @@
   
   (defun get-parameter (name href)
     (flet ((eval-item (_value)
-	     (try
-	      (let ((val (eval _value)))
-		(_debug (list name val _value))
-		(cond
-		  ((eq val nil)
-		   (return nil))
-		  ((or (eq (typeof val) "function")
-		       (eq (typeof val) "object")
-		       (eq (typeof val) "undefined"))
-		   (throw (new (*error))))
-		  (t (return val))))
-	      (:catch (e)
+	     (cond
+	       ((eq _value "null")
+		(return nil))
+	       ((and (eq "string" (typeof _value))
+		     (.match _value (regex "/^\".*\"$/gi")))
+		(try
+		 (let ((val (eval _value)))
+		   ;; 		(_debug (list name val _value))
+		   (cond
+		     ((eq val nil)
+		      (return nil))
+		     ((or (eq (typeof val) "function")
+			  (eq (typeof val) "object")
+			  (eq (typeof val) "undefined"))
+		      (throw (new (*error))))
+		     (t (return val))))
+		 (:catch (e)
+		   (return _value))))
+	       (t
 		(return _value))))
 	   (_get-value (_value)
 	     (decode-u-r-i-component
