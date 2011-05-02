@@ -86,6 +86,11 @@
 		    acc))
 	      lst)))
 
+  (defun take (n lst)
+    (if (> n 0)
+	(take (cdr lst) (- n 1))
+	(car lst)))
+  
   (defun/cc filter-cc (fun lst)
     (reverse-cc
      (reduce0-cc (lambda (acc a)
