@@ -191,6 +191,13 @@
 		(if (status self) "" "*not*"))
 	(format stream "FQDN:\"~A\"" (web-application.fqdn self)))))
 
+(defmethod start ((self http-application))
+  (clrhash (slot-value self 'core-server::sessions)))
+
+(defmethod snapshot ((self http-application))
+  (clrhash (slot-value self 'core-server::sessions))
+  (call-next-method self))
+
 ;; ----------------------------------------------------------------------------
 ;; defapplication Macro: Just adds http-application+ metaclass
 ;; ----------------------------------------------------------------------------
