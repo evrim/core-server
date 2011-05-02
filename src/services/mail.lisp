@@ -60,28 +60,49 @@
 	      :documentation "mail server port")
 #+ssl
    (ssl :accessor mail-sender.ssl :initarg :mail-ssl :initform nil
-	:documentation "enabled ssl/tls")
-   (queue :accessor mail-sender.queue :initarg :queue :initform (make-instance 'queue)
-	  :documentation "mail queue which will be processed with intervals")
-   (timer :accessor mail-sender.timer :initarg :timer :initform nil
-	  :documentation "A timer is an object holding a scheduled function")
-   (interval :accessor mail-sender.interval :initarg :interval :initform 8
-	     :documentation "Scheduling interval"))
+	:documentation "enabled ssl/tls"))
   (:default-initargs :name "mail sender"))
 
-;; recursively dequeue an envelope and send it to the wire
-(defmethod/unit %process-queue ((self mail-sender) socket)
-  (aif (dequeue (mail-sender.queue self))
-       (progn 
-	 (%sendmail self it socket)
-	 (%process-queue self socket))
-       nil))
+
+;; we're also inheriting logger-server. So here we define a logging
+;; function with a default tag 'smtp.
+(defun smsg (msender text)
+  (log-me msender 'smtp (format nil "~A: ~A" (unit.name msender) text)))
+
+;; write an envelope to the wire
+(defmethod %sendmail ((self mail-sender) (e envelope) (s core-stream))
+  )
+
+;; Use user supplied timer, otherwise make a new timer and schedule
+;; it.
+(defmethod start ((self mail-sender))
+  
+  ;; (unless (mail-sender.timer self)
+;;     (setf (mail-sender.timer self)
+;; 	  (make-timer (lambda ()
+;; 			(%process self))
+;; 		      :name "mail-sender"
+;; 		      :thread (s-v '%thread))))
+;;   (schedule-timer (mail-sender.timer self)
+;; 		  (mail-sender.interval self)
+;; 		  :repeat-interval (mail-sender.interval self))
+  )
+
+;; remove the scheduled timer and stop.
+(defmethod stop ((self mail-sender))
+  (when (mail-sender.timer self)
+    (unschedule-timer (mail-sender.timer self))
+    (setf (mail-sender.timer self) nil)))
+
+
 
 ;; when queue has envelopes, process the queue
-(defmethod/unit %process :async-no-return ((self mail-sender))
-  (when (< 0 (queue-count (mail-sender.queue self)))
-    (smsg self (format nil "Connecting ~A:~D." (mail-sender.server self) (mail-sender.port self)))
-    (flet (#+ssl
+(defmethod/unit sendmail! ((self mail-sender) envelope)
+  (smsg self (format nil "Connecting ~A:~D." (mail-sender.server self) (mail-sender.port self)))
+  (labels ((envelope! (stream envelope)
+	     (smsg self (format nil "Sending message: ~A" envelope))
+	     (smtp-send :envelope envelope :stream stream))
+	   #+ssl
 	   (do-ssl ()
 	     (aif (connect (mail-sender.server self) (mail-sender.port self)) 
 		  (progn
@@ -102,7 +123,7 @@
 			  (smtp-auth-plain :username (mail-sender.username self)
 					   :password (mail-sender.password self)
 					   :stream it)) ;; shoudl be < 400
-		      (%process-queue self it)
+		      (envelope! it envelope)
 		      (smtp-quit :stream it)
 		      ;; close conn
 		      (close-stream it)
@@ -123,53 +144,24 @@
 			(smtp-auth-plain :username (mail-sender.username self)
 					 :password (mail-sender.password self)
 					 :stream it)) ;; shoudl be < 400
-		    (%process-queue self it)
+		    (envelope! it envelope)
 		    (smtp-quit :stream it)
 		    ;; close conn
 		    (close-stream it)
 		    (smsg self "Connection closed."))
 		  (close-stream it))))
-      #+ssl (if (mail-sender.ssl self)
-		(do-ssl)
-		(do-plain))
-      #-ssl (do-plain))))
-
-;; write an envelope to the wire
-(defmethod %sendmail ((self mail-sender) (e envelope) (s core-stream))
-  (smsg self (format nil "Sending message: ~A" e))
-  (smtp-send :envelope e :stream s))
-
-;; Use user supplied timer, otherwise make a new timer and schedule
-;; it.
-(defmethod start ((self mail-sender))
-  (unless (mail-sender.timer self)
-    (setf (mail-sender.timer self)
-	  (make-timer (lambda ()
-			(%process self))
-		      :name "mail-sender"
-		      :thread (s-v '%thread))))
-  (schedule-timer (mail-sender.timer self)
-		  (mail-sender.interval self)
-		  :repeat-interval (mail-sender.interval self)))
-
-;; remove the scheduled timer and stop.
-(defmethod stop ((self mail-sender))
-  (when (mail-sender.timer self)
-    (unschedule-timer (mail-sender.timer self))
-    (setf (mail-sender.timer self) nil)))
-
-;; we're also inheriting logger-server. So here we define a logging
-;; function with a default tag 'smtp.
-(defun smsg (msender text)
-  (log-me msender 'smtp (format nil "~A: ~A" (unit.name msender) text)))
+    #+ssl (if (mail-sender.ssl self)
+	      (do-ssl)
+	      (do-plain))
+    #-ssl (do-plain)))
 
 ;; main interface to other programs
 (defmethod/unit sendmail :async-no-return ((self mail-sender) from to subject text
 					   &optional cc reply-to display-name)
-  (enqueue (mail-sender.queue self)
-	   (apply #'make-instance 'envelope
-		  (list :from from :to (ensure-list to) :subject subject :text text
-			:cc (ensure-list cc) :reply-to reply-to :display-name display-name))))
+  (sendmail! self
+	     (apply #'make-instance 'envelope
+		    (list :from from :to (ensure-list to) :subject subject :text text
+			  :cc (ensure-list cc) :reply-to reply-to :display-name display-name))))
 
 ;; (defparameter *test-mails*
 ;;   (list
