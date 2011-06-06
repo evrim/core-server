@@ -97,9 +97,9 @@
 		initialize-internal-slot-functions
 		COMPUTE-EFFECTIVE-SLOT-DEFINITION
 		compute-effective-slot-definition-initargs
-		slot-definition-reader-function
-		slot-definition-writer-function
-		slot-definition-boundp-function
+;; 		slot-definition-reader-function
+;; 		slot-definition-writer-function
+;; 		slot-definition-boundp-function
 		slot-definition-allocation-class
 		class-slot-cells
 		plist-value
