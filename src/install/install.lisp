@@ -563,7 +563,7 @@ cd ~~
 case \"$1\" in
     start)
         echo -n \"[ Core-serveR ] starting \"        
-        export LANG=tr_TR.UTF-8 LC_ALL=tr_TR.UTF-8
+        export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
         export CORESERVER_HOME=\"$CORESERVER_HOME\"
         sleep 1
         echo \"now!\"
@@ -753,7 +753,7 @@ cd ~~
 case \"$1\" in
     start)
         echo -n \"[ Core-serveR ] starting \"        
-        export LANG=tr_TR.UTF-8 LC_ALL=tr_TR.UTF-8
+        export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
         export CORESERVER_HOME=\"$CORESERVER_HOME\"
         sleep 1
         echo \"now!\"
