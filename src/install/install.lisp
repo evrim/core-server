@@ -463,7 +463,7 @@ this 'layout' to '(layout.systems self)'"))
      (bootstrap:register-libs ,(merge-pathnames (s-v 'systems) (s-v 'lib)))
      (bootstrap:register-projects ,(s-v 'projects))
 
-     (require :asdf-binary-locations)
+;;      (require :asdf-binary-locations)
      (require :core-server)
      ;;     (setf asdf:*source-to-target-mappings* '((#p"/opt/sbcl/lib/sbcl/" nil)))
      ;;     /usr/share/sbcl-source/-> debian
@@ -797,7 +797,7 @@ exit 0
      (bootstrap:register-libs ,(merge-pathnames (s-v 'systems) (s-v 'lib)))
      (bootstrap:register-projects ,(s-v 'projects))
 
-     (require :asdf-binary-locations)
+;;      (require :asdf-binary-locations)
      (require :core-server)
      ;;     (setf asdf:*source-to-target-mappings* '((#p"/opt/sbcl/lib/sbcl/" nil)))
      ;;     /usr/share/sbcl-source/-> debian
