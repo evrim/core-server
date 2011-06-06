@@ -74,7 +74,7 @@
 ;;-----------------------------------------------------------------------------
 ;; Postfix Specific Variables
 ;;-----------------------------------------------------------------------------
-(defvar +postmap+ (sudo (whichm :name "postmap" :errorp nil)))
+(defvar +postmap+ (which :name "postmap" :errorp nil))
 
 ;;-----------------------------------------------------------------------------
 ;; DNS Specific Variables
