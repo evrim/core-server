@@ -15,17 +15,15 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-;;+----------------------------------------------------------------------------
+;;+-------------------------------------------------------------------------
+;;| [Core-serveR] Project
+;;| http://labs.core.gen.tr
 ;;|
-;;| [Core-serveR] Project - http://labs.core.gen.tr
-;;|
-;;+----------------------------------------------------------------------------
 ;;| Author: Evrim Ulu <evrim@core.gen.tr>
 ;;| Co-Author: Aycan Irican <aycan@core.gen.tr>
 ;;|
 ;;| Project launch date: Dec 2006
-;;+----------------------------------------------------------------------------
-
+;;+-------------------------------------------------------------------------
 (in-package :cl-user)
 (defpackage :tr.gen.core.install)
 
@@ -97,9 +95,6 @@
 		initialize-internal-slot-functions
 		COMPUTE-EFFECTIVE-SLOT-DEFINITION
 		compute-effective-slot-definition-initargs
-;; 		slot-definition-reader-function
-;; 		slot-definition-writer-function
-;; 		slot-definition-boundp-function
 		slot-definition-allocation-class
 		class-slot-cells
 		plist-value
@@ -1058,11 +1053,12 @@
   (:export #:a #:abbr #:acronym #:address #:area #:b #:base #:bdo #:big
 	   #:blockquote #:body #:br #:button #:caption #:cite #:code #:col
 	   #:colgroup #:dd #:del #:dfn #:div #:dl #:dt #:em #:fieldset #:form
-	   #:frame #:frameset #:h1 #:h2 #:h3 #:h4 #:h5 #:h6 #:head #:hr #:html
-	   #:i #:iframe #:img #:input #:ins #:kbd #:label #:legend #:li #:link
-	   #:map #:meta #:noframes #:noscript #:object #:ol #:optgroup #:option
-	   #:p #:param #:pre #:q #:samp #:script #:select #:small #:span #:strong
-	   #:style #:sub #:sup #:table #:tbody #:td #:textarea #:tfoot #:th #:thead
+	   #:frame #:frameset #:h1 #:h2 #:h3 #:h4 #:h5 #:h6 #:head #:hr
+	   #:html #:i #:iframe #:img #:input #:ins #:kbd #:label #:legend
+	   #:li #:link #:map #:meta #:noframes #:noscript #:object #:ol
+	   #:optgroup #:option #:p #:param #:pre #:q #:samp #:script
+	   #:select #:small #:span #:strong #:style #:sub #:sup #:table
+	   #:tbody #:td #:textarea #:tfoot #:th #:thead
 	   #:title #:tr #:tt #:ul #:var #:embed #:foo #:bar))
 
 (defpackage :tr.gen.core.server.rss
