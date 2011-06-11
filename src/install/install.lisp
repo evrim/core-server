@@ -567,9 +567,14 @@ case \"$1\" in
         export CORESERVER_HOME=\"$CORESERVER_HOME\"
         sleep 1
         echo \"now!\"
-        $(lookup screen) -c /dev/null -dmS core-server \\
-        $(lookup sbcl) --dynamic-space-size $MEMSIZE \\
-        --load $CONFIGFILE
+	if ![ ${STY+1} ]; then
+            $(lookup screen) -c /dev/null -dmS core-server \
+		$(lookup sbcl) --dynamic-space-size $MEMSIZE \
+		--load $CONFIGFILE
+	    else
+	    $(lookup sbcl) --dynamic-space-size $MEMSIZE \
+		--load $CONFIGFILE
+	fi
         ;;
     stop)
         echo \"[ Core-serveR ] stopping \"
@@ -757,9 +762,14 @@ case \"$1\" in
         export CORESERVER_HOME=\"$CORESERVER_HOME\"
         sleep 1
         echo \"now!\"
-        $(lookup screen) -c /dev/null -dmS core-server \\
-        $(lookup sbcl) --dynamic-space-size $MEMSIZE \\
-        --load $CONFIGFILE
+	if ![ ${STY+1} ]; then
+            $(lookup screen) -c /dev/null -dmS core-server \
+		$(lookup sbcl) --dynamic-space-size $MEMSIZE \
+		--load $CONFIGFILE
+	    else
+	    $(lookup sbcl) --dynamic-space-size $MEMSIZE \
+		--load $CONFIGFILE
+	fi
         ;;
     stop)
         echo \"[ Core-serveR ] stopping \"
