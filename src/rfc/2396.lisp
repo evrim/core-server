@@ -86,11 +86,15 @@
   (:return scheme))
 
 ;;       pchar         = unreserved | escaped | ":" | "@" | "&" | "=" | "+" | "$" | ","
+
 ;; FIX: added #\Space in order to parse
 ;; file://bla bla/Document and Settings/ although
 ;; it should be Document%20and%20Settings
+;; - This is plain bullshit -evrim.
 (defatom pchar-special? ()
-  (if (member c '#.(mapcar #'char-code '(#\: #\@ #\& #\= #\+ #\$ #\, #\Space)))
+  (if (member c '#.(mapcar #'char-code '(#\: #\@ #\& #\= #\+ #\$ #\,
+					 ;; #\Space
+					 )))
       t))
 
 (defrule pchar? (c)
@@ -394,6 +398,32 @@
 	(when port
 	  (char! stream #\:)
 	  (fixnum! stream port)))
+      (mapc #'(lambda (path)
+		(char! stream +uri-path-seperator+)
+		(string! stream (car path))
+		(mapc #'(lambda (path)
+			  (char! stream +uri-segment-seperator+)
+			  (string! stream path))
+		      (cdr path)))
+	    paths)
+      (when (car queries)
+	(char! stream #\?)
+	(query! stream (car queries))
+	(mapc #'(lambda (query)
+		  (char! stream +uri-query-seperator+)
+		  (query! stream query))
+	      (cdr queries)))
+      (when (car fragments)
+	(char! stream #\#)
+	(query! stream (car fragments))
+	(mapcar #'(lambda (fragment)
+		    (char! stream +uri-query-seperator+)
+		    (query! stream fragment))
+		(cdr fragments))))))
+
+(defmethod relative-uri! ((stream core-stream) (uri uri))
+  (prog1 stream
+    (with-slots (paths queries fragments) uri
       (mapc #'(lambda (path)
 		(char! stream +uri-path-seperator+)
 		(string! stream (car path))

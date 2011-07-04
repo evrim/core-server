@@ -117,7 +117,8 @@
 				   (:file "admin")
 				   (:file "scm")
                                    ;; (:file "hxpath")
-				   (:file "image")))
+				   (:file "image")
+				   (:file "http")))
 			 (:module :install
 				  :serial t
 				  :components

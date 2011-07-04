@@ -92,3 +92,10 @@
   (:lwsp?)
   (:http-auth-param? param)
   (:return (cons scheme param)))
+
+(defmethod http-credentials! ((stream core-stream) credentials)
+  (http-auth-scheme! stream (car credentials))
+  (char! stream #\ )
+  (if (cdr credentials)
+      (http-auth-param! stream (cdr credentials)))
+  stream)

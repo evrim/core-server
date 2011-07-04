@@ -561,6 +561,22 @@
 	(:zom (:type space?)))
   (:return accept))
 
+(defmethod http-media-range! ((stream core-stream) media)
+  (string! stream (car media))
+  (char! stream #\/)
+  (string! stream (cdr media)))
+
+(defmethod http-accept! ((stream core-stream) http-accept)
+  (reduce (lambda (stream media)
+	    (char! stream #\,)
+	    (http-media-range! stream media))
+	  (cddr http-accept)
+	  :initial-value
+	  (prog1 stream
+	    (string! stream (car http-accept))
+	    (char! stream #\/)
+	    (string! stream (cadr http-accept)))))
+
 ;; Http Language
 (defatom http-language-type? ()
   (and (not (eq c #.(char-code #\,)))
@@ -575,6 +591,12 @@
 	     (:return (cons lang (cdr quality))))
        (:return (cons lang 1.0))))
 
+(defmethod http-language! ((stream core-stream) http-language)
+  (string! stream (car http-language))
+  (when (not (null (cdr http-language)))
+    (string! stream ";q=")
+    (string! stream (format nil "~A" (cdr http-language)))))
+
 ;; 14.2 Accept Charset
 ;; Accept-Charset = "Accept-Charset" ":" 1#( ( charset | "*" )[ ";" "q" "=" qvalue ] )
 ;; Accept-Charset: iso-8859-5, unicode-1-1;q=0.8
@@ -585,6 +607,13 @@
 	(:zom (:type space?)))
   (:return (nreverse e*)))
 
+(defmethod http-accept-charset! ((stream core-stream) accept-charset)
+  (reduce (lambda (stream encoding)
+	    (char! stream #\,)
+	    (http-language! stream encoding))
+	  (cdr accept-charset)
+	  :initial-value (http-language! stream (car accept-charset))))
+
 ;; 14.3 Accept Encoding
 ;; Accept-Encoding  = "Accept-Encoding" ":" 1#( codings [ ";" "q" "=" qvalue ])
 ;; codings          = ( content-coding | "*" )
@@ -594,6 +623,9 @@
 	      (:zom (:not #\,) (:type http-header-name?)))
 	(:zom (:type space?)))
   (:return (nreverse e*)))
+
+(defmethod http-accept-encoding! ((stream core-stream) accept-encoding)
+  (http-accept-charset! stream accept-encoding))
 
 ;; 14.4 Accept Language
 ;; Accept-Language = "Accept-Language" ":" 1#( language-range [ ";" "q" "=" qvalue ])
@@ -606,12 +638,22 @@
 	(:zom (:type space?)))
   (:return (nreverse langs)))
 
+(defmethod http-accept-language! ((stream core-stream) accept-language)
+  (http-accept-charset! stream accept-language))
+
 ;; 14.8 Authorization
 ;; Authorization  = "Authorization" ":" credentials
 (defrule http-authorization? (challenge)
   (:http-challenge? challenge)
   (:return challenge))
 
+(defmethod http-authorization! ((stream core-stream) challenge)
+  (http-challenge! stream challenge))
+
+;; 14.20 Expect
+;; expectation-extension =  token [ "=" ( token | quoted-string )
+;;                         *expect-params ]
+;; expect-params =  ";" token [ "=" ( token | quoted-string ) ]
 (defrule expectation-extension? ((attr (make-accumulator))
 				 (val (make-accumulator)) c)
   (:and (:lwsp?)
@@ -621,12 +663,8 @@
 	      (:collect c val)))
   (:return (cons attr val)))
 
-;; 14.20 Expect
 ;; Expect       =  "Expect" ":" 1#expectation
 ;; expectation  =  "100-continue" | expectation-extension
-;; expectation-extension =  token [ "=" ( token | quoted-string )
-;;                         *expect-params ]
-;; expect-params =  ";" token [ "=" ( token | quoted-string ) ]
 ;; FIXmE: implement extensions.
 (defrule http-expect? (expectation param params)
   (:or (:and (:seq "100-continue")
@@ -636,16 +674,35 @@
 			 (:do (push param params))))))
   (:return (cons expectation params)))
 
+(defmethod http-expect! ((stream core-stream) http-expect)
+  (cond
+    ((eq http-expect '100-continue)
+     (string! stream "100-continue"))
+    (t
+     (string! stream (caar http-expect))
+     (char! stream #\=)
+     (string! stream (cdar http-expect))
+     (string! stream ";q=")
+     (string! stream (cdadr http-expect)))))
+
 ;; 14.22 From
 ;; From   = "From" ":" mailbox
 (defrule http-from? (mbox)
   (:mailbox? mbox)
   (:return mbox))
 
+(defmethod http-from! ((stream core-stream) mbox)
+  (char! stream #\<)
+  (string! stream mbox)
+  (char! stream #\>))
+
 ;; 14.23 Host
 ;; Host = "Host" ":" host [ ":" port ] ; Section 3.2.2
 (defrule http-host? (hp)
   (:hostport? hp) (:return hp))
+
+(defmethod http-host! ((stream core-stream) hostport)
+  (hostport! stream hostport))
 
 ;; 14.19 Etag
 ;; ETag = "ETag" ":" entity-tag
@@ -655,7 +712,6 @@
 ;; opaque-tag = quoted-string
 ;;
 ;; http-etag? :: stream -> (tagstr . weak?)
-
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defrule http-etag? (tagstr weak?)
     (:checkpoint
@@ -676,12 +732,22 @@
 		   (:do (push tag etags)))))
   (:return (nreverse etags)))
 
+(defmethod http-if-match! ((stream core-stream) if-match)
+  (reduce (lambda (stream if-match)
+	    (char! stream #\,)
+	    (http-etag! stream if-match))
+	  (cdr if-match)
+	  :initial-value (http-etag! stream if-match)))
+
 ;; 14.25 If-Modified-Since
 ;; If-Modified-Since = "If-Modified-Since" ":" HTTP-date
 ;; If-Modified-Since: Sat, 29 Oct 1994 19:43:31 GMT
 (defrule http-if-modified-since? (date)
   (:http-date? date)
   (:return date))
+
+(defmethod http-if-modified-since! ((stream core-stream) date)
+  (http-date! stream date))
 
 ;; 14.26 If-None-Match
 ;; If-None-Match = "If-None-Match" ":" ( "*" | 1#entity-tag )
@@ -694,6 +760,9 @@
   (:http-if-match? res)
   (:return res))
 
+(defmethod http-if-none-match! ((stream core-stream) if-none-match)
+  (http-if-match! stream if-none-match))
+
 ;; 14.27 If-Range
 ;; If-Range = "If-Range" ":" ( entity-tag | HTTP-date )
 ;; FIXmE: Implement me.
@@ -702,6 +771,11 @@
        (:http-etag? range))
   (:return range))
 
+(defmethod http-if-range! ((stream core-stream) if-range)
+  (if (numberp if-range)
+      (http-date! stream if-range)
+      (http-etag! stream if-range)))
+
 ;; 14.28 If-Unmodified-Since
 ;; If-Unmodified-Since = "If-Unmodified-Since" ":" HTTP-date
 ;; If-Unmodified-Since: Sat, 29 Oct 1994 19:43:31 GMT
@@ -709,16 +783,26 @@
   (:http-date? date)
   (:return date))
 
+(defmethod http-if-unmodified-since! ((stream core-stream) date)
+  (http-date! stream date))
+
 ;; 14.31 Max-Forwards
 ;; Max-Forwards   = "Max-Forwards" ":" 1*DIGIT
 (defrule http-max-forwards? (num)
   (:fixnum? num) (:return num))
+
+(defmethod http-max-forwards! ((stream core-stream) max-forwards)
+  (fixnum! stream max-forwards))
 
 ;; 14.34 Proxy-Authorization
 ;; Proxy-Authorization     = "Proxy-Authorization" ":" credentials
 (defrule http-proxy-authorization? (creds)
   (:http-credentials? creds)
   (:return creds))
+
+;; FIXME -evrim.
+(defmethod http-proxy-authorization! ((self core-stream) credentials)
+  (http-credentials! self credentials))
 
 ;; 14.35 Range
 ;; 14.35.1 Byte Ranges
@@ -730,7 +814,6 @@
 ;; last-byte-pos   = 1*DIGIT
 ;; suffix-byte-range-spec = \"-\" suffix-length
 ;; suffix-length = 1*DIGIT
-
 (defrule http-bytes-unit? (c (unit (make-accumulator)))
   (:zom (:type alpha? c)
 	(:collect c unit))
@@ -778,11 +861,30 @@
   (:http-ranges-specifier? c)
   (:return c))
 
+(defmethod http-byte-range-specifier! ((stream core-stream) range)
+  (if (car range)
+      (fixnum! stream (car range)))
+  (char! stream #\-)
+  (if (cdr range)
+      (fixnum! stream (cdr range)))
+  stream)
+
+(defmethod http-range! ((stream core-stream) range)
+  (string! stream "bytes=")
+  (reduce (lambda (stream range)
+	    (char! stream #\,)
+	    (http-byte-range-specifier! stream range))
+	  (cddr range)
+	  :initial-value (http-byte-range-specifier! stream (cadr range))))
+
 ;; 14.36 Referer
 ;; Referer        = "Referer" ":" ( absoluteURI | relativeURI )
 ;; Referer: http://www.w3.org/hypertext/DataSources/Overview.html
 (defrule http-referer? (uri)
   (:uri? uri) (:return uri))
+
+(defmethod http-referer! ((stream core-stream) referer)
+  (uri! stream referer))
 
 ;; 14.39 TE
 ;; TE        = "TE" ":" #( t-codings )
@@ -797,6 +899,13 @@
 	(:http-transfer-extension? te)
 	(:do (push te acc)))
   (:return (nreverse acc)))
+
+(defmethod http-te! ((stream core-stream) te)
+  (reduce (lambda (stream te)
+	    (char! stream #\,)
+	    (http-transfer-extension! stream te))
+	  (cdr te)
+	  :initial-value (http-transfer-extension! stream (car te))))
 
 ;; 14.43 User-Agent
 ;; User-Agent     = "User-Agent" ":" 1*( product | comment )
@@ -895,10 +1004,16 @@
   (:zom (:not (:crlf?)) (:type octet?))
   (:return agent))
 
+(defmethod http-user-agent! ((self core-stream) agent)
+  (string! self (format nil "~A" agent)))
+
 ;; RFC 2109 Cookie - rfc/2109.lisp
 (defrule http-cookie? (cookie)
   (:cookie? cookie)
   (:return cookie))
+
+(defmethod http-cookie! ((stream core-stream) cookie)
+  (cookie! stream cookie))
 
 ;;;-----------------------------------------------------------------------------
 ;;; 5.3 HTTP RESPONSE HEADERS
@@ -1224,12 +1339,16 @@
 ;;; HTTP REQUEST
 ;;;-----------------------------------------------------------------------------
 (defclass http-request (http-message)
-  ((method :accessor http-request.method)
+  ((method :accessor http-request.method :initarg :method)
    (uri :accessor http-request.uri :initarg :uri)
-   (headers :accessor http-request.headers :initform '())
-   (entity-headers :accessor http-request.entity-headers :initform '())
+   (headers :accessor http-request.headers :initform '() :initarg :headers)
+   (entity-headers :accessor http-request.entity-headers :initform '()
+		   :initarg :entity-headers)
    (peer-type :accessor http-request.peer-type :initform 'http)
    (stream :accessor http-request.stream :initform nil :initarg :stream)))
+
+(defun make-http-request (&rest args)
+  (apply #'make-instance 'http-request args))
 
 (defmethod http-request.header ((request http-request) key)
   (cadr (assoc key (http-request.headers request))))
@@ -1243,6 +1362,28 @@
 
 (defmethod http-request.cookie ((request http-request) name)
   (find name (http-request.cookies request) :key #'cookie.name :test #'string=))
+
+(defmethod http-request-first-line! ((stream core-stream) method uri proto)
+  (string! stream (symbol-name method))
+  (char! stream #\Space)
+  (relative-uri! stream uri)
+  (string! stream " HTTP/")
+  (string! stream (format nil "~A.~A" (car proto) (cadr proto)))
+  (char! stream #\Newline))
+
+(defmethod http-request! ((stream core-stream) (request http-request))
+  (with-slots (method uri proto) request
+    (http-request-first-line! stream method uri '(1 1))    
+    (reduce (lambda (stream header)
+	      (http-request-header! stream header))
+	    (http-request.headers request)
+	    :initial-value stream)
+    (reduce (lambda (stream header)
+	      (http-entity-header! stream header))
+	    (http-request.entity-headers request)
+	    :initial-value stream)
+    (char! stream #\Newline)
+    (char! stream #\Newline)))
 
 (defrule http-request-first-line? (method uri proto)
   (:http-method? method) (:lwsp?) (:uri? uri) (:lwsp?)
@@ -1344,12 +1485,15 @@
 (defclass http-response (http-message)
   ((response-headers :accessor http-response.response-headers
 		     :initarg :response-headers :initform '())
-   (status-code :accessor http-response.status-code :initform (make-status-code 200))
+   (status-code :accessor http-response.status-code
+		:initform (make-status-code 200) :initarg :status-code)
    (entity-headers :accessor http-response.entity-headers :initform '()
 		   :initarg :entity-headers)
    (peer-type :accessor http-response.peer-type :initform 'http
 	      :initarg :peer-type)
-   (stream :accessor http-response.stream :initform nil :initarg :stream)))
+   (stream :accessor http-response.stream :initform nil :initarg :stream)
+   (entities :accessor http-response.entities :initform nil
+	     :initarg :entities)))
 
 (defmethod http-response.add-entity-header ((self http-response) key val)
   (setf (slot-value self 'entity-headers)
@@ -1377,6 +1521,15 @@
 (defmethod http-response.set-content-type ((self http-response) content-type)
   (http-response.add-entity-header self 'content-type content-type))
 
+(defmethod http-response.get-entity-header ((self http-response) key)
+  (cadr (assoc key (http-response.entity-headers self))))
+
+(defmethod http-response.get-content-type ((self http-response))
+  (http-response.get-entity-header self 'content-type))
+
+(defmethod http-response.get-content-length ((self http-response))
+  (http-response.get-entity-header self 'content-length))
+
 (defmethod http-response.add-cookie ((self http-response) (cookie cookie))
   (setf (slot-value self 'response-headers)
 	(cons (cons 'set-cookie cookie)
@@ -1403,6 +1556,7 @@
 
 (defhttp-header-render http-general-header! "HTTP-~A!" +http-general-headers+)
 (defhttp-header-render http-response-header! "HTTP-~A!" +http-response-headers+)
+(defhttp-header-render http-request-header! "HTTP-~A!" +http-request-headers+)
 (defhttp-header-render http-entity-header! "HTTP-~A!" +http-entity-headers+)
 ;; (defhttp-header-render mod-lisp-header! "MOD-LISP-HTTP-~A!" +mod-lisp-response-headers+)
 
@@ -1475,6 +1629,19 @@
 	(cons num description)
 	(assoc num *status-codes*))))
 
+;; HTTP/1.1 404 Not Found
+(defparser status-code? (version status c message)
+  (:sci "HTTP/")
+  (:version? version) (:lwsp?)
+  (:fixnum? status) (:lwsp?)
+  (:type octet? c)
+  (:do (setq message (make-accumulator)))
+  (:collect c message)
+  (:zom (:or (:type visible-char? c)
+	     (:type space? c))
+	(:collect c message))
+  (:return (values version status message)))
+
 ;; status-code! :: stream -> [Int] -> (Int, String)
 (defun/cc2 status-code! (stream version status-code)
   (string! stream  "HTTP/")
@@ -1535,17 +1702,60 @@
 	      (mod-lisp-entity-header! stream item))
 	  (http-response.entity-headers response) :initial-value nil))
 
-;; ;;;-----------------------------------------------------------------------------
-;; ;;; MOD-LISP REQUEST
-;; ;;;-----------------------------------------------------------------------------
-;; (defclass mod-lisp-request (http-request)
-;;   ())
 
-;; ;;;-----------------------------------------------------------------------------
-;; ;;; MOD-LISP RESPONSE
-;; ;;;-----------------------------------------------------------------------------
-;; (defclass mod-lisp-response (http-response)
-;;   ())
+;; HTTP/1.1 404 Not Found
+;; Date: Sat, 02 Jul 2011 16:06:29 GMT
+;; Server: Apache/2.2.16 (Debian)
+
+;; Vary: Accept-Encoding
+;; Content-Length: 205
+;; Content-Type: text/html; charset=iso-8859-1
+
+;; <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+;; <html><head>
+;; <title>404 Not Found</title>
+;; </head><body>
+;; <h1>Not Found</h1>
+;; <p>The requested URL /foo.bar was not found on this server.</p>
+;; </body></html>
+
+(defparameter *response* "HTTP/1.1 404 Not Found
+Server: Apache/2.2.16 (Debian)
+Vary: Accept-Encoding
+Date: Sat, 02 Jul 2011 16:06:29 GMT
+Content-Length: 205
+Content-Type: text/html; charset=iso-8859-1
+
+<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">
+<html><head>
+<title>404 Not Found</title>
+</head><body>
+<h1>Not Found</h1>
+<p>The requested URL /foo.bar was not found on this server.</p>
+</body></html>")
+
+(defparser http-response-headers? (header gh eh uh key value c)
+  (:zom (:or (:and (:http-general-header? header) (:do (push header gh)))
+	     (:and (:http-entity-header? header) (:do (push header eh)))
+	     (:and (:type http-header-name? c)
+		   (:do (setq key (make-accumulator))) (:collect c key)
+		   (:zom (:type http-header-name? c) (:collect c key))
+		   (:or (:and #\: (:zom (:type space?)))
+			(:and (:zom (:type space?)) (:crlf?)))
+		   (:do (setq value (make-accumulator :byte)))
+		   (:zom (:type http-header-value? c) (:collect c value)) 
+		   (:do (push (cons key value) uh))))
+	(:optional (:crlf?)))
+  (:return (values (nreverse gh) (nreverse eh) (nreverse uh))))
+
+(defparser http-response? (version status-code status-message gh eh uh)
+  (:status-code? version status-code status-message) (:lwsp?)
+  (:http-response-headers? gh eh uh) (:crlf?)
+  (:return (make-instance 'http-response
+			  :status-code status-code
+			  :entity-headers eh
+			  :response-headers (append gh uh))))
+
 ;; Core Server: Web Application Server
 
 ;; Copyright (C) 2006-2008  Metin Evrim Ulu, Aycan iRiCAN
