@@ -144,8 +144,12 @@
 ;;-----------------------------------------------------------------------------
 ;; XML Parser
 ;;-----------------------------------------------------------------------------
-(defrule xml-attribute-name? (c (attribute (make-accumulator)) namespace)
-  (:oom (:or (:type alphanum? c)
+(defrule xml-attribute-name? (c attribute namespace)
+  (:or (:type alphanum? c)
+	     (:and #\- (:do (setq c #\-))))
+  (:and (:do (setq attribute (make-accumulator)))
+	(:collect c attribute))
+  (:zom (:or (:type alphanum? c)
 	     (:and #\- (:do (setq c #\-))))
 	(:collect c attribute))  
   (:optional
@@ -159,19 +163,21 @@
 	       (values attribute namespace);;  (format nil "~A:~A" namespace attribute)
 	       attribute)))
 
-(defrule xml-attribute-value? (c (val (make-accumulator)))
+(defrule xml-attribute-value? (c val)
   (:or (:and
 	#\"
+	(:do (setq val (make-accumulator)))
 	(:zom (:checkpoint #\" (:return val))
 	      (:checkpoint #\> (:rewind-return val))
 	      (:type (or visible-char? space?) c)
 	      (:collect c val)))
        (:and
 	#\'
+	(:do (setq val (make-accumulator)))
 	(:zom (:checkpoint #\' (:return val))
-	(:checkpoint #\> (:rewind-return val))
-	(:type (or visible-char? space?) c)
-	(:collect c val)))
+	      (:checkpoint #\> (:rewind-return val))
+	      (:type (or visible-char? space?) c)
+	      (:collect c val)))
        (:zom (:checkpoint (:or #\> #\/)
 			  (:rewind-return val))
 	     (:type visible-char? c)
@@ -196,9 +202,15 @@
        (:return #\Newline)
        (:return #\Space))))
 
-(defrule xml-text-node? (c (acc (make-accumulator :byte)))
+(defrule xml-text-node? (c acc)
   (:not #\<)
-  (:oom (:checkpoint #\< (:rewind-return (octets-to-string acc :utf-8)))
+  (:checkpoint #\< (:rewind-return (octets-to-string acc :utf-8)))
+  (:or (:and (:seq "&gt;") (:do (setf c #\<)))
+       (:and (:seq "&lt;") (:do (setf c #\>)))
+       (:xml-lwsp? c) (:type octet? c))
+  (:do (setq acc (make-accumulator :byte)))
+  (:collect c acc)
+  (:zom (:checkpoint #\< (:rewind-return (octets-to-string acc :utf-8)))
 	(:or (:and (:seq "&gt;") (:do (setf c #\<)))
 	     (:and (:seq "&lt;") (:do (setf c #\>)))
 	     (:xml-lwsp? c) (:type octet? c))
@@ -206,15 +218,17 @@
   (:if (> (length acc) 0)
        (:return (octets-to-string acc :utf-8))))
 
-(defrule xml-cdata? (c (acc (make-accumulator)))
+(defrule xml-cdata? (c acc)
   (:seq "<![CDATA[")
+  (:do (setq acc (make-accumulator)))
   (:zom (:not (:seq "]]>"))
 	(:type octet? c)
 	(:collect c acc))
   (:return acc))
 
-(defrule xml-comment? (c (acc (make-accumulator)))
+(defrule xml-comment? (c acc)
   (:seq "<!--")
+  (:do (setq acc (make-accumulator)))
   (:collect #\< acc) (:collect #\! acc)
   (:collect #\- acc) (:collect #\- acc)
   (:zom (:not (:seq "-->")) (:type octet? c) (:collect c acc))
@@ -276,7 +290,17 @@
 		       (let ((instance (apply symbol 
 					      (append
 					       (reduce0 (lambda (acc attr)
-							  (cons (make-keyword (car attr))
+							  (cons (make-keyword
+								 (reduce (lambda (acc a)
+									   (cond
+									     ((eq #\- a)
+									      (push-atom #\- acc)
+									      (push-atom #\- acc))
+									     (t
+									      (push-atom a acc)))
+									   acc)
+									 (car attr)
+									 :initial-value (make-accumulator)))
 								(cons (cdr attr) acc)))
 							attributes)
 					       (mapcar #'parse-xml children)))))
@@ -296,7 +320,17 @@
 		 (let ((instance (apply symbol 
 					(append
 					 (reduce0 (lambda (acc attr)
-						    (cons (make-keyword (car attr))
+						    (cons (make-keyword
+							   (reduce (lambda (acc a)
+								     (cond
+								       ((eq #\- a)
+									(push-atom #\- acc)
+									(push-atom #\- acc))
+								       (t
+									(push-atom a acc)))
+								     acc)
+								   (car attr)
+								   :initial-value (make-accumulator)))
 							  (cons (cdr attr) acc)))
 						  attributes)
 					 (mapcar #'parse-xml children)))))
