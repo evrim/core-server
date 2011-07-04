@@ -90,9 +90,10 @@
 
 ;; remove the scheduled timer and stop.
 (defmethod stop ((self mail-sender))
-  (when (mail-sender.timer self)
-    (unschedule-timer (mail-sender.timer self))
-    (setf (mail-sender.timer self) nil)))
+  ;; (when (mail-sender.timer self)
+;;     (unschedule-timer (mail-sender.timer self))
+;;     (setf (mail-sender.timer self) nil))
+  )
 
 
 
