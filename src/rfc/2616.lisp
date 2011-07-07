@@ -1383,7 +1383,8 @@
 	    (http-request.entity-headers request)
 	    :initial-value stream)
     (char! stream #\Newline)
-    (char! stream #\Newline)))
+    ;; (char! stream #\Newline)
+    ))
 
 (defrule http-request-first-line? (method uri proto)
   (:http-method? method) (:lwsp?) (:uri? uri) (:lwsp?)

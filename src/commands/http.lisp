@@ -3,7 +3,7 @@
 (defcommand http ()
   ((method :host local :initform 'get)
    (url :host local :initform (error "Please provide :url"))
-   (parameters :host local :initform nil)
+   (post-data :host local :initform nil)
    (%stream :host none :initform nil)))
 
 (defmethod http.ssl-p ((self http))
@@ -32,12 +32,15 @@
     (setf (s-v '%stream) nil)))
 
 
-;; (defparameter *http-request*
-;;   "GET / HTTP/1.1
-;; User-Agent: curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.15 libssh2/1.2.5
-;; Host: 127.0.0.1:3000
-;; Accept: */*
-;; ")
+(defparameter *http-request*
+  "GET / HTTP/1.1
+User-Agent: curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.15 libssh2/1.2.5
+Host: 127.0.0.1:3000
+Accept: */*
+Content-type: application/x-www-form-urlencoded
+
+
+")
 
 (defparser read-everything? (c (acc (make-accumulator :byte)))
   (:oom (:type octet? c) (:collect c acc))
@@ -52,9 +55,19 @@
 					 "Core-serveR/(labs.core.gen.tr)")
 				   (cons 'host (cons (uri.server url)
 						     (uri.port url)))
-				   (cons 'accept (list "*" "*"))))))
+				   (cons 'accept (list "*" "*")))
+		    :entity-headers (if (s-v 'post-data)
+					(list (cons 'content-length
+						    (length (s-v 'post-data)))
+					      (cons 'content-type
+						    (list "application"
+							  "x-www-form-urlencoded")))))))
+
       (http-request! (s-v '%stream) request)
 
+      (awhen (s-v 'post-data)
+	(string! (s-v '%stream) it))
+      
       ;; Flush buffered stream
       #+ssl
       (if (not (http.ssl-p self))
