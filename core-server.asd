@@ -118,7 +118,8 @@
 				   (:file "scm")
                                    ;; (:file "hxpath")
 				   (:file "image")
-				   (:file "http")))
+				   (:file "http")
+				   (:file "paypal")))
 			 (:module :install
 				  :serial t
 				  :components
