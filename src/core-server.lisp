@@ -1048,7 +1048,7 @@
   (:use :cl :core-server :cffi))
 
 (defpackage :tr.gen.core.server.html
-  (:nicknames :< :core-server.html)
+  (:nicknames :< :<html :core-server.html)
   (:use :core-server)
   (:export #:a #:abbr #:acronym #:address #:area #:b #:base #:bdo #:big
 	   #:blockquote #:body #:br #:button #:caption #:cite #:code #:col
@@ -1074,6 +1074,44 @@
 	   #:required-value-input #:number-value-input
 	   #:username-input #:tab #:crud
 	   #:auth #:core))
+
+(defpackage :tr.gen.core.server.atom
+  (:nicknames :<atom)
+  (:use :cl)
+  (:export #:feed #:author #:category #:contributor
+	   #:generator #:icon #:id #:link #:logo #:rights
+	   #:subtitle #:title #:updated #:name #:email #:entry
+	   #:summary #:uri #:published))
+
+(defpackage :tr.gen.core.server.gphoto
+  (:nicknames :<gphoto)
+  (:use :cl)
+  (:export #:albumid #:id #:max-photos-per-album #:nickname
+	   #:quotacurrent #:quotalimit #:thumbnail #:user
+	   #:access #:bytes-used #:location #:numphotos
+	   #:numphotosremaining #:checksum #:comment-count
+	   #:commenting-enabled #:name
+	   #:height #:rotation #:size #:timestamp
+	   #:videostatus #:width #:albumtitle #:albumdesc
+	   #:album-type
+	   #:snippet #:snippettype #:truncated #:photoid
+	   #:weight))
+
+(defpackage :tr.gen.core.server.media
+  (:nicknames :<media)
+  (:use :cl)
+  (:export #:group #:content #:rating #:title #:description
+	   #:keywords #:thumbnail #:category #:hash #:player
+	   #:credit #:copyright #:text #:restriction #:community
+	   #:comments #:comment #:embed #:responses #:response
+	   #:back-links #:back-link #:status #:price
+	   #:license #:sub-title #:peer-link #:location #:rights #:scenes
+	   #:scene))
+
+(defpackage :tr.gen.core.server.open-search
+  (:nicknames :<open-search)
+  (:use :cl)
+  (:export #:total-results :start-index :items-per-page))
 
 ;; (defpackage :tr.gen.core.server.html.dojo
 ;;   (:nicknames :<dojo :core-server.html.dojo)

@@ -1,11 +1,11 @@
-;; +----------------------------------------------------------------------------
+;; +------------------------------------------------------------------------
 ;; | XML Base
-;; +----------------------------------------------------------------------------
+;; +------------------------------------------------------------------------
 (in-package :core-server)
 
-;; ----------------------------------------------------------------------------
+;; -------------------------------------------------------------------------
 ;; Protocol
-;; ----------------------------------------------------------------------------
+;; -------------------------------------------------------------------------
 (defgeneric xml.tag (xml)
   (:documentation "Returns tag"))
 
@@ -26,12 +26,13 @@
   (:method ((a t) (b t)) (eq a b))
   (:method ((a string) (b string)) (equal a b)))
 
-;; ----------------------------------------------------------------------------
+;; -------------------------------------------------------------------------
 ;; XML Metaclass
-;; ----------------------------------------------------------------------------
+;; -------------------------------------------------------------------------
 (defclass xml+ (class+)
   ((tag :initform nil :initarg :tag)
    (namespace :initform nil :initarg :namespace)
+   (schema :initform nil :initarg :schema)
    (attributes :initarg :attributes :initform nil)))
 
 (defmethod xml+.attributes ((self xml+))
@@ -55,11 +56,12 @@
 	   (apply #'make-instance ',name
 		  (list* :children (flatten children) attributes)))))))
 
-;; ----------------------------------------------------------------------------
+;; -------------------------------------------------------------------------
 ;; XML Base Class
-;; ----------------------------------------------------------------------------
+;; -------------------------------------------------------------------------
 (defclass xml ()
-  ((children :initform nil :initarg :children :accessor xml.children)))
+  ((xmlns :initarg :xmlns :accessor xml.xmlns)
+   (children :initform nil :initarg :children :accessor xml.children)))
 
 (defmethod xml.tag ((xml xml))
   (xml+.tag
@@ -96,9 +98,9 @@
 	   (mapcar #'cons (xml.children a) (xml.children b))
 	   :initial-value t)))
 
-;; ----------------------------------------------------------------------------
+;; -------------------------------------------------------------------------
 ;; XML defining macro: defmxl
-;; ----------------------------------------------------------------------------
+;; -------------------------------------------------------------------------
 (defmacro defxml (name &rest attributes)
   `(defclass+ ,name (xml)
      (,@(mapcar (lambda (attr)
@@ -109,9 +111,9 @@
      (:namespace ,(string-downcase (subseq (car (package-nicknames (symbol-package name))) 1)))
      (:attributes ,attributes)))
 
-;; ----------------------------------------------------------------------------
+;; -------------------------------------------------------------------------
 ;; XML Generic Class
-;; ----------------------------------------------------------------------------
+;; -------------------------------------------------------------------------
 (defclass generic-xml (xml)
   ((tag :initarg :tag :initform nil :accessor xml.tag)
    (namespace :initarg :namespace :initform nil :accessor xml.namespace)
@@ -123,9 +125,9 @@
 (defmethod xml.attribute ((xml generic-xml) attribute)
   (cdr (assoc attribute (slot-value xml 'attributes))))
 
-;; ----------------------------------------------------------------------------
+;; -------------------------------------------------------------------------
 ;; Generic XML Constructor
-;; ----------------------------------------------------------------------------
+;; -------------------------------------------------------------------------
 (defun xml (tag namespace attributes &rest children)
   (make-instance 'generic-xml
 		 :tag tag
@@ -141,9 +143,9 @@
 	(format *standard-output* "<~A(~D)~{ ~A~}>"
 		tag (length children) attributes))))
 
-;;-----------------------------------------------------------------------------
+;;---------------------------------------------------------------------------
 ;; XML Parser
-;;-----------------------------------------------------------------------------
+;;---------------------------------------------------------------------------
 (defrule xml-attribute-name? (c attribute namespace)
   (:or (:type alphanum? c)
 	     (:and #\- (:do (setq c #\-))))
@@ -276,75 +278,79 @@
     '(xml-tag-name? xml-lexer? xml-comment? xml-text-node?
       xml-cdata?))
 
-;; FIXME: clean this mess up -evrim.
-(defun parse-xml (xml)
-  (if (atom xml)
-      xml
-      (destructuring-bind (tag namespace attributes &rest children) xml
-	(cond
-	  (namespace
-	   (let ((package (find-package (make-keyword (format nil "<~A" namespace)))))
-	     (if package
-		 (let ((symbol (intern (string-upcase tag) package)))
-		   (if (fboundp symbol)
-		       (let ((instance (apply symbol 
-					      (append
-					       (reduce0 (lambda (acc attr)
-							  (cons (make-keyword
-								 (reduce (lambda (acc a)
-									   (cond
-									     ((eq #\- a)
-									      (push-atom #\- acc)
-									      (push-atom #\- acc))
-									     (t
-									      (push-atom a acc)))
-									   acc)
-									 (car attr)
-									 :initial-value (make-accumulator)))
-								(cons (cdr attr) acc)))
-							attributes)
-					       (mapcar #'parse-xml children)))))
-			 (if (slot-exists-p instance 'tag)
-			     (setf (slot-value instance 'tag) tag))
-			 (if (slot-exists-p instance 'namespace)
-			     (setf (slot-value instance 'namespace) namespace))
-			 instance)
-		       
-		       (apply #'xml tag namespace
-			      (cons attributes (mapcar #'parse-xml children)))))
-		 (apply #'xml tag namespace
-			(cons attributes (mapcar #'parse-xml children))))))
-	  (t
-	   (let ((symbol (intern (string-upcase tag) (find-package :<))))
-	     (if (fboundp symbol)
-		 (let ((instance (apply symbol 
-					(append
-					 (reduce0 (lambda (acc attr)
-						    (cons (make-keyword
-							   (reduce (lambda (acc a)
-								     (cond
-								       ((eq #\- a)
-									(push-atom #\- acc)
-									(push-atom #\- acc))
-								       (t
-									(push-atom a acc)))
-								     acc)
-								   (car attr)
-								   :initial-value (make-accumulator)))
-							  (cons (cdr attr) acc)))
-						  attributes)
-					 (mapcar #'parse-xml children)))))
-		   (if (slot-exists-p instance 'tag)
-		       (setf (slot-value instance 'tag) tag))
-		   (if (slot-exists-p instance 'namespace)
-		       (setf (slot-value instance 'namespace) namespace))
-		   instance)
-		 (apply #'xml tag namespace
-			(cons attributes (mapcar #'parse-xml children))))))))))
+(defvar +xml-namespace+ (find-package :<))
+(defvar +xml-namespaces-table+
+  (list (cons "http://www.w3.org/2005/Atom" (find-package :<atom))
+	(cons "http://schemas.google.com/photos/2007"
+	      (find-package :<gphoto))
+	(cons "http://search.yahoo.com/mrss/" (find-package :<media))
+	(cons "http://www.opensearch.org/Specifications/OpenSearch/1.1"
+	      (find-package :<open-search))))
 
-;; +----------------------------------------------------------------------------
+(declaim (inline xml->symbol))
+(defun xml->symbol (name &optional package)
+  (let ((a (reduce (lambda (acc a)
+		     (cond
+		       ((and (> (char-code a) 64)
+			     (< (char-code a) 91))
+			(push-atom #\- acc)
+			(push-atom (code-char (+ (char-code a)
+						 32))
+				   acc))
+		       ((eq #\- a)
+			(push-atom #\- acc)
+			(push-atom #\- acc))
+		       (t (push-atom a acc)))
+		     acc)
+		   name :initial-value (make-accumulator))))
+    (if package
+	(intern (string-upcase a) package)
+	(intern (string-upcase a) (find-package :<)))))
+
+(defun parse-xml (xml)
+  (labels ((make-generic-element (tag namespace attributes children)
+	     (warn "<~A:~A> tag not found, using generic xml element."
+		   namespace tag)
+	     (apply #'xml tag namespace
+		    (cons attributes (mapcar #'parse-xml children))))
+	   (make-element (symbol attributes children)
+	     (apply symbol 
+		    (append
+		     (reduce0 (lambda (acc attr)
+				(cons (xml->symbol (car attr))
+				      (cons (cdr attr) acc)))
+			      attributes)
+		     (mapcar #'parse-xml children)))))
+    (if (atom xml)
+	xml
+	(destructuring-bind (tag namespace attributes &rest children) xml
+	  (let* ((+xml-namespace+
+		  (acond
+		   ((and namespace (find-package
+				    (make-keyword
+				     (format nil "<~A" 
+					     (symbol-name
+					      (xml->symbol namespace))))))
+		     it)
+		   ((cdr (assoc (cdr
+				 (assoc "xmlns" attributes :test #'string=))
+				+xml-namespaces-table+ :test #'string=))
+		    it)
+		   (t
+		    +xml-namespace+)))
+		 (symbol (xml->symbol tag +xml-namespace+)))
+	    (if (fboundp symbol)
+		(let ((instance (make-element symbol attributes children)))
+		  (if (slot-exists-p instance 'tag)
+		      (setf (slot-value instance 'tag) tag))
+		  (if (slot-exists-p instance 'namespace)
+		      (setf (slot-value instance 'namespace) namespace))
+		  instance)
+		(make-generic-element tag namespace attributes children)))))))
+
+;; +------------------------------------------------------------------------
 ;; | XML Stream
-;; +----------------------------------------------------------------------------
+;; +------------------------------------------------------------------------
 (defclass xml-stream (wrapping-stream)
   ())
 
@@ -474,274 +480,3 @@
 	      #\>)))
     xml-stream))
 
-
-;; (defxml <db:moo a b c)
-
-;; (defmethod serialize ((self abstract-database) (object null))
-;;   (<db:null))
-
-;; (defmethod %deserialize ((self abstract-database) (tag <db:null))
-;;   nil)
-
-;; (defmethod deserialize ((self abstract-database))
-;;   (let ((tag (xml? (database.stream self))))
-;;     (%deserialize self tag)))
-
-;; (defclass core-pseudo-stream (core-stream)
-;;   ((%stream :initarg :stream :reader %stream)))
-
-;; (defmethod return-stream ((stream core-pseudo-stream))
-;;   (return-stream (%stream stream)))
-
-;; (defmethod checkpoint-stream ((stream core-pseudo-stream))
-;;   (checkpoint-stream (%stream stream)))
-
-;; (defmethod commit-stream ((stream core-pseudo-stream))
-;;   (commit-stream (%stream stream)))
-
-;; (defmethod rewind-stream ((stream core-pseudo-stream))
-;;   (rewind-stream (%stream stream)))
-
-;; (defmethod close-stream ((stream core-pseudo-stream))
-;;   (close-stream (%stream stream)))
-
-;; (defmethod transacitonalp ((stream core-pseudo-stream))
-;;   (transactionalp (%stream stream)))
-
-;; (defclass core-xml-stream (core-pseudo-stream)
-;;   ())
-
-;; (defun make-xml-stream (stream)
-;;   (make-instance 'core-xml-stream :stream stream))
-
-;; (defmethod write-stream ((stream core-xml-stream) (object t))
-;;   (write-stream stream (to-markup object)))
-
-;; (defmethod write-stream ((stream core-xml-stream) (markup markup))
-;;   (prog1 stream
-;;     (flet ((write-tag ()
-;; 	     (write-stream (%stream stream) (slot-value markup 'namespace))
-;; 	     (write-stream (%stream stream) #\:)
-;; 	     (write-stream (%stream stream) (slot-value markup 'tag))))
-;;       (write-stream (%stream stream) #\<)
-;;       (write-tag)
-
-;;       (mapc (lambda (attribute)
-;; 	      (write-stream (%stream stream) #\Space)
-;; 	      (write-stream (%stream stream) (car attribute))
-;; 	      (write-stream (%stream stream) "=\"")
-;; 	      (write-stream (%stream stream) (cdr attribute))
-;; 	      (write-stream (%stream stream) #\"))
-;; 	    (slot-value markup 'attributes))
-
-;;       (let ((children (slot-value markup 'children)))
-;; 	(cond
-;; 	  ((null children)
-;; 	   (write-stream (%stream stream) "/>"))
-;; 	  ((= 1 (length children))
-;; 	   (write-stream stream (car children))
-;; 	   (write-stream (%stream stream) "</")
-;; 	   (write-tag)
-;; 	   (write-stream (%stream stream) #\>))
-;; 	  (t
-;; 	   (mapcar (lambda (child)
-;; 		     (write-stream stream child))
-;; 		   children)
-;; 	   (write-stream (%stream stream) "</")
-;; 	   (write-tag)
-;; 	   (write-stream (%stream stream) #\>)))))))
-
-;; ;;-----------------------------------------------------------------------------
-;; ;; XML Parser
-;; ;;-----------------------------------------------------------------------------
-;; (defrule xml-attribute-name? (c (attribute (make-accumulator)) namespace)
-;;   (:oom (:or (:type alphanum? c)
-;; 	     (:and #\- (:do (setq c #\-))))
-;; 	(:collect c attribute))  
-;;   (:optional
-;;    #\:
-;;    (:do (setq namespace attribute)
-;; 	(setq attribute (make-accumulator)))
-;;    (:oom (:or (:type alphanum? c)
-;; 	      (:and #\- (:do (setq c #\-))))
-;; 	 (:collect c attribute)))
-;;   (:return (if namespace
-;; 	       (format nil "~A:~A" namespace attribute)
-;; 	       attribute)))
-
-;; (defrule xml-attribute-value? (c (val (make-accumulator)))
-;;   (:or (:and
-;; 	#\"
-;; 	(:zom (:checkpoint #\" (:return val))
-;; 	(:checkpoint #\> (:rewind-return val))
-;; 	(:type (or visible-char? space?) c)
-;; 	(:collect c val)))
-;;        (:and
-;; 	#\'
-;; 	(:zom (:checkpoint #\' (:return val))
-;; 	(:checkpoint #\> (:rewind-return val))
-;; 	(:type (or visible-char? space?) c)
-;; 	(:collect c val))))
-;;   (:return val))
-
-;; (defrule xml-attribute? (name value)
-;;   (:dom-attribute-name? name)
-;;   #\=
-;;   (:dom-attribute-value? value)
-;;   (:return (cons name value)))
-
-;; (defrule xml-tag-name? (name)
-;;   (:dom-attribute-name? name)
-;;   (:return name))
-
-;; (defrule xml-lwsp? (c)
-;;   (:oom (:or (:and (:type (or space? tab?)))
-;; 	     (:and (:type (or carriage-return? linefeed?))
-;; 		   (:do (setf c t))))
-;;   (:if c
-;;        (:return #\Newline)
-;;        (:return #\Space))))
-
-;; (defrule xml-text-node? (c (acc (make-accumulator)))
-;;   (:not #\<)
-;;   (:oom (:checkpoint #\< (:rewind-return acc))
-;; 	(:or (:dom-lwsp? c)
-;; 	     (:type octet? c))
-;; 	(:collect c acc))
-;;   (:if (> (length acc) 0)
-;;        (:return acc)))
-
-;; (defrule xml-cdata? (c (acc (make-accumulator)))
-;;   (:seq "<![CDATA[")
-;;   (:zom (:not (:seq "]]>"))
-;; 	(:type octet? c)
-;; 	(:collect c acc))
-;;   (:return acc))
-
-;; (defrule xml-comment? (c (acc (make-accumulator)))
-;;   (:seq "<!--")
-;;   (:collect #\< acc) (:collect #\! acc)
-;;   (:collect #\- acc) (:collect #\- acc)
-;;   (:zom (:not (:seq "-->"))
-;; 	(:type octet? c)
-;; 	(:collect c acc))
-;;   (:collect #\- acc) (:collect #\- acc) (:collect #\> acc)
-;;   (:return acc))
-
-;; ;;-----------------------------------------------------------------------------
-;; ;; Generic Document Parser
-;; ;;-----------------------------------------------------------------------------
-;; (defparser xml-element? (tag namespace attr attrs child children)
-;;   (:lwsp?)
-;;   (:checkpoint (:seq "<?xml")
-;; 	       (:zom (:not #\>) (:type octet?)) (:lwsp?) (:commit))
-;;   (:checkpoint (:seq "<!DOCTYPE")
-;; 	       (:zom (:not #\>) (:type octet?)) (:lwsp?) (:commit))  
-;;   #\<
-;;   (:xml-tag-name? tag namespace)
-;;   (:zom (:lwsp?)
-;; 	(:xml-attribute? attr)
-;; 	(:do (push attr attrs)))
-;;   (:or (:and (:lwsp?)
-;; 	     (:seq "/>")
-;; 	     (:return (make-markup namespace tag (nreverse attrs))))
-;;        (:and #\>
-;; 	     (:zom (:lwsp?)
-;; 		   (:or (:xml-element? child)
-;; 			(:xml-comment? child)
-;; 			(:xml-text-node? child)
-;; 			(:xml-cdata? child))
-;; 		   (:do (push child children)))
-;; 	     (:seq "</")
-;; 	     (:if namespace
-;; 		  (:and (:sci namespace) #\: (:sci tag))
-;; 		  (:sci tag))
-;; 	     #\>
-;; 	     (:return (make-markup namespace tag (nreverse attrs) (nreverse children))))))
-
-;; (defmethod read-stream ((stream core-xml-stream))
-;;   (let ((markup (xml-element? (%stream stream))))
-;;     (if markup
-;; 	(from-markup markup))))
-
-;; ;; ----------------------------------------------------------------------------
-;; ;; Default Write Method for XML Stream
-;; ;; ----------------------------------------------------------------------------
-;; (defmethod write-stream ((stream xml-stream-mixin) (object dom-element))
-;;   (dom-element! stream object))
-
-;; (defmethod write-stream ((stream xml-stream-mixin) (object null))
-;;   (write-stream stream (make-dom-element "null" "cl" (list))))
-
-;; (defmethod write-stream ((stream xml-stream-mixin) (object (eql 't)))
-;;   (call-next-method stream "<true/>"))
-
-;; (defmethod write-stream ((stream xml-stream-mixin) (object symbol))
-;;   (call-next-method stream "<symbol>")
-;;   (symbol-with-package! stream object)
-;;   (call-next-method stream "</symbol>"))
-
-;; (defmethod write-stream ((stream xml-stream-mixin) (object character))
-;;   (call-next-method stream "<char>")
-;;   (char! stream object)
-;;   (call-next-method stream "</char>"))
-
-;; (defparser xml? (c (acc (make-accumulator)))
-;;   (:or (:and (:seq "<null/>") (:return 'null))
-;;        (:and (:seq "<true/>") (:return t))
-;;        (:and (:seq "<symbol>")
-;; 	     (:oom (:not (:seq "</symbol>"))
-;; 		   (:type octet? c)
-;; 		   (:collect c acc))
-;; 	     (:return (read-from-string acc)))
-;;        (:and (:seq "<char>")
-;; 	     (:oom (:not (:seq "</char>"))
-;; 		   (:type octet? c))
-;; 	     (:return (code-char c)))))
-
-;; (defmethod read-object ((stream xml-stream-mixin) (tag t) object)
-;;   'default)
-
-;; (defmethod read-object ((stream xml-stream-mixin) (tag (eql 'null)) object)
-;;   'moo)
-
-;; (defvar +in-parser+ nil)
-;; (defmethod read-stream ((stream xml-stream-mixin))
-;;   (if +in-parser+
-;;       (call-next-method stream)
-;;       (let* ((+in-parser+ t)
-;; 	     (element (dom-element? stream)))
-;; 	(describe element)
-;; 	(read-object stream (intern (string-upcase (dom.tag element))) element))))
-
-;; (defclass+ xml-element ()
-;;   ((tag :accessor xml.tag :initarg :tag :initform nil)
-;;    (namespace :accessor xml.namespace :initarg :namespace :initform nil)
-;;    (attributes :accessor xml.attributes :initarg :attributes :initform nil)
-;;    (children :accessor xml.children :initarg :children :initform nil)))
-
-;; (defmethod print-object ((self xml-element) stream)
-;;   (print-unreadable-object (self stream :type t :identity t)
-;;     (if (xml.namespace self)
-;; 	(format stream "~A:~A(~D)"
-;; 		(xml.tag self) (xml.namespace self) (length (xml.children self)))
-;; 	(format stream "~A(~D)"
-;; 		(xml.tag self) (length (xml.children self))))))
-
-;; (defmethod get-attribute ((element xml-element) name)
-;;   (cdr (assoc name (xml.attributes element) :test #'string=)))
-
-;; (defmethod (setf get-attribute) (value (element xml-element) name)
-;;   (if (assoc name (xml.attributes element))
-;;       (setf (cdr (assoc name (xml.attributes element) :test #'string=)) value)
-;;       (setf (xml.attributes element)
-;; 	    (cons (cons name value) (xml.attributes element)))))
-
-;; (defmethod set-attribute ((element xml-element) name value)
-;;   (setf (get-attribute element name) value))
-
-;; (defmacro defxml (name &rest attributes)
-;;   `(defclass+ ,name ()
-;;      (,attributes)))
-
-;; (defxml )

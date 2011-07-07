@@ -158,7 +158,11 @@
 				   (:file "dom")
 				   (:file "html")
 				   (:file "css")
-				   (:file "rss")))
+				   ;; (:file "rss")
+				   (:file "atom")
+				   (:file "gphoto")
+				   (:file "media")
+				   (:file "open-search")))
 			 (:module :database
 				  :serial t
 				  :components
