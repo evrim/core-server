@@ -1081,7 +1081,7 @@
   (:export #:feed #:author #:category #:contributor
 	   #:generator #:icon #:id #:link #:logo #:rights
 	   #:subtitle #:title #:updated #:name #:email #:entry
-	   #:summary #:uri #:published))
+	   #:summary #:uri #:published #:content))
 
 (defpackage :tr.gen.core.server.gphoto
   (:nicknames :<gphoto)
