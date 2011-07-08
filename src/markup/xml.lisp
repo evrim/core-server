@@ -297,9 +297,6 @@
 			(push-atom (code-char (+ (char-code a)
 						 32))
 				   acc))
-		       ((eq #\- a)
-			(push-atom #\- acc)
-			(push-atom #\- acc))
 		       (t (push-atom a acc)))
 		     acc)
 		   name :initial-value (make-accumulator))))
@@ -308,7 +305,19 @@
 	(intern (string-upcase a) (find-package :<)))))
 
 (defun parse-xml (xml)
-  (labels ((make-generic-element (tag namespace attributes children)
+  (labels ((property->keyword (property)
+	     (if (position #\- property)
+		 (make-keyword
+		  (reduce (lambda (acc a)
+			    (cond
+			      ((eq #\- a)
+			       (push-atom #\- acc)
+			       (push-atom #\- acc))
+			      (t (push-atom a acc)))
+			    acc)
+			  property :initial-value (make-accumulator)))
+		 (make-keyword property)))
+	   (make-generic-element (tag namespace attributes children)
 	     (warn "<~A:~A> tag not found, using generic xml element."
 		   namespace tag)
 	     (apply #'xml tag namespace
@@ -317,7 +326,7 @@
 	     (apply symbol 
 		    (append
 		     (reduce0 (lambda (acc attr)
-				(cons (xml->symbol (car attr))
+				(cons (property->keyword (car attr))
 				      (cons (cdr attr) acc)))
 			      attributes)
 		     (mapcar #'parse-xml children)))))
