@@ -42,55 +42,50 @@ nil if stream data is invalid"
       (http-request-headers? stream)
     (setf (http-peer.peer-type self) peer-type)
     (if method
-	(let ((request (make-instance 'http-request :stream stream)))
-	  (let ((content-type (cadr (assoc 'content-type entity-headers)))
-		(content-length (cadr (assoc 'content-length entity-headers))))
-	    (if (null content-length)
-		(setf content-length 0))
-	    (cond
-	      ;; content-type = '("multipart" "form-data")
-	      ((and (string-equal "multipart" (car content-type))
-		    (string-equal "form-data" (cadr content-type))
-		    (> content-length 0))
-	       ;; eat lineer whayt spaces.
-	       (lwsp? stream)
-	       ;; set max-read to content-length for termination
-	       (setf (slot-value stream '%max-read) (1- content-length))
-	       (setf (http-message.entities request)
-		     (rfc2388-mimes?
-		      stream
-		      (cdr
-		       (assoc "boundary" (caddr content-type) :test #'string=))))
-	       (setf (uri.queries uri)
-		     (append (uri.queries uri)
-			     (reduce0 (lambda (acc media)						     
-					(cond
-					  ((mime.filename media)
-					   (cons (cons (mime.name media) media)
-						 acc))
-					  ((mime.name media)
-					   (cons (cons (mime.name media)
-						       (octets-to-string (mime.data media)
-									 +default-encoding-for-remote-mimes+))
-						 acc))
-					  (t
-					   (warn "Unkown media received:~A" media)
-					   acc)))
-				      (filter (lambda (a)
-						(typep a 'top-level-media))
-					      (http-message.entities request))))))
-	      ;; content-type = '("application" "x-www-form-urlencoded")
-	      ((and (string-equal "application" (car content-type))
-		    (string-equal "x-www-form-urlencoded" (string-upcase (cadr content-type)))
-		    (>  content-length 0))
-	       ;; eat lineer whayt spaces.
-	       (lwsp? stream)
-	       ;; set max-read to content-length for termination	       
-	       (setf (slot-value stream '%max-read) (1- content-length)
-		     (uri.queries uri) (append (uri.queries uri)
-					       (aif (json? stream)
-						    (hash-to-alist it)
-						    (x-www-form-urlencoded? stream)))))))
+	(let* ((request (make-instance 'http-request :stream stream))
+	       (content-type (cadr (assoc 'content-type entity-headers)))
+	       (content-length (cadr (assoc 'content-length entity-headers)))
+	       (stream (if (and content-length (> content-length 0))
+			   (make-bounded-stream stream content-length))))
+	  (cond
+	    ;; content-type = '("multipart" "form-data")
+	    ((and (string-equal "multipart" (car content-type))
+		  (string-equal "form-data" (cadr content-type)))
+	     ;; eat lineer whayt spaces.
+	     (lwsp? stream)
+	     (setf (http-message.entities request)
+		   (rfc2388-mimes?
+		    stream
+		    (cdr
+		     (assoc "boundary" (caddr content-type) :test #'string=))))
+	     (setf (uri.queries uri)
+		   (append (uri.queries uri)
+			   (reduce0 (lambda (acc media)						     
+				      (cond
+					((mime.filename media)
+					 (cons (cons (mime.name media) media)
+					       acc))
+					((mime.name media)
+					 (cons (cons (mime.name media)
+						     (octets-to-string (mime.data media)
+								       +default-encoding-for-remote-mimes+))
+					       acc))
+					(t
+					 (warn "Unkown media received:~A" media)
+					 acc)))
+				    (filter (lambda (a)
+					      (typep a 'top-level-media))
+					    (http-message.entities request))))))
+	    ;; content-type = '("application" "x-www-form-urlencoded")
+	    ((and (string-equal "application" (car content-type))
+		  (string-equal "x-www-form-urlencoded" (string-upcase (cadr content-type))))
+	     ;; eat lineer whayt spaces.
+	     (lwsp? stream)
+	     (setf (uri.queries uri)
+		   (append (uri.queries uri)
+			   (aif (json? stream)
+				(hash-to-alist it)
+				(x-www-form-urlencoded? stream))))))
 	  (setf (http-message.general-headers request) general-headers
 		(http-message.unknown-headers request) unknown-headers
 		(http-request.headers request) request-headers

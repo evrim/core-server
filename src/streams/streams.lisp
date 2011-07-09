@@ -18,13 +18,13 @@
 (in-package :tr.gen.core.server)
 ;;(declaim (optimize (speed 3) (space 2) (safety 0) (debug 0) (compilation-speed 0)))
 
-;;;-----------------------------------------------------------------------------
+;;;-------------------------------------------------------------------------
 ;;; IMPLEMENTATION OF SEVERAL BOGUS TURING MACHINES (Left is broken)
-;;;-----------------------------------------------------------------------------
+;;;-------------------------------------------------------------------------
 
-;;;-----------------------------------------------------------------------------
+;;;-------------------------------------------------------------------------
 ;;; Simple Accumulator
-;;;-----------------------------------------------------------------------------
+;;;--------------------------------------------------------------------------
 (defun make-accumulator (&optional (type :character) (size 0))  
   "Creates an adjustable string with a fill pointer."
   (declare (type fixnum size))
@@ -40,16 +40,17 @@
 	      :fill-pointer 0))
 
 (declaim (inline push-atom))
-
 (defun push-atom (atom accumulator)  
   (cond
-    ((and (characterp atom) (not (eq 'character (array-element-type accumulator))))
+    ((and (characterp atom)
+	  (not (eq 'character (array-element-type accumulator))))
      (reduce #'(lambda (acc atom)
 		 (declare (ignore acc))
 		 (vector-push-extend atom accumulator)
 		 nil)
 	     (string-to-octets (string atom) :utf8) :initial-value nil))
-    ((and (typep atom '(unsigned-byte 8)) (eq 'character (array-element-type accumulator)))
+    ((and (typep atom '(unsigned-byte 8))
+	  (eq 'character (array-element-type accumulator)))
      (vector-push-extend (code-char atom) accumulator))
     (t
      (vector-push-extend atom accumulator))))
@@ -57,14 +58,13 @@
 (defun pop-atom (accumulator)
   (vector-pop accumulator))
 
-;;;-----------------------------------------------------------------------------
+;;;-------------------------------------------------------------------------
 ;;; Stream Definitions
-;;;-----------------------------------------------------------------------------
+;;;-------------------------------------------------------------------------
 (eval-when (:compile-toplevel :execute :load-toplevel)
   (defclass core-stream ()
     ((%checkpoints :initform '()) ;; checkpoints list as (index #(buffer))
-     (%current :initform -1 :type fixnum) ;; current checkpoint
-     (%max-read :initform nil))))
+     (%current :initform -1 :type fixnum)))) ;; current checkpoint
 
 (defgeneric read-stream (core-stream)
   (:documentation "read byte"))
@@ -90,6 +90,12 @@
 (defgeneric return-stream (core-stream)
   (:documentation "stagnate data out of the stream"))
 
+(defgeneric transactionalp (core-stream)
+  (:documentation "transactional predicate"))
+
+(defgeneric current-checkpoint (core-stream)
+  (:documentation "id for current checkpoint"))
+
 (defgeneric core-streamp (core-stream)
   (:method ((stream core-stream)) t)
   (:method ((stream t)) nil))
@@ -105,10 +111,12 @@
 (defmethod rewind-stream :around ((self core-stream))
   (if (not (transactionalp self))
       -1
-      (call-next-method)))
+      (call-next-method self)))
 
 (defmethod commit-stream :around ((self core-stream))
-  (call-next-method))
+  (if (not (transactionalp self))
+      -1
+      (call-next-method self)))
 
 (defmethod close-stream :around ((self core-stream))
   (when (transactionalp self)
@@ -264,9 +272,11 @@
 
 (defclass core-fd-io-stream (%core-fd-stream)
   ((%peek :initform -1 :type fixnum)
-   (%read-buffer :initform (make-accumulator :byte) :type (vector (unsigned-byte 8)))
+   (%read-buffer :initform (make-accumulator :byte)
+		 :type (vector (unsigned-byte 8)))
    (%read-index :initform 0 :type fixnum)
-   (%write-buffer :initform (make-accumulator :byte) :type (vector (unsigned-byte 8)))))
+   (%write-buffer :initform (make-accumulator :byte)
+		  :type (vector (unsigned-byte 8)))))
 
 (declaim (inline stream-using-cache?))
 (defun stream-using-cache? (self)
@@ -279,11 +289,7 @@
 	     (setf (s-v '%peek) (or peeked -1))
 	     peeked)))
     (if (< (the fixnum (s-v '%peek)) 0)
-	(cond
-	  ((and (s-v '%max-read) (> (the fixnum (s-v '%max-read)) 0))
-	   (prog1 (peek) (decf (s-v '%max-read))))
-	  ((s-v '%max-read) nil)	
-	  (t (peek)))      
+	(peek)
 	(s-v '%peek))))
 
 (defmethod %read-stream ((self core-fd-io-stream))
@@ -294,18 +300,17 @@
 
 (defmethod peek-stream ((self core-fd-io-stream))
   (if (stream-using-cache? self)
-      (aref (s-v '%read-buffer)
-	    (the fixnum (s-v '%read-index)))
+      (aref (s-v '%read-buffer) (the fixnum (s-v '%read-index)))
       (%peek-stream self)))
 
 (defmethod read-stream ((self core-fd-io-stream))
-  (if (stream-using-cache? self)
+  (if (stream-using-cache? self)    
       (prog1 (aref (s-v '%read-buffer) (s-v '%read-index))
 	(incf (the fixnum (s-v '%read-index)))
 	(when (not (transactionalp self))
 	  (if (= (s-v '%read-index) (length (s-v '%read-buffer)))
 	      (setf (s-v '%read-index) 0
-		    (s-v '%read-buffer) (make-accumulator :byte)))))
+		    (s-v '%read-buffer) (make-accumulator :byte)))))  
       (let ((read (%read-stream self)))
 	(when read
 	  (when (transactionalp self)	      
@@ -349,7 +354,7 @@
     (let ((previous-checkpoint (pop (s-v '%checkpoints))))
       (if previous-checkpoint
 	  (setf (s-v '%current) (car previous-checkpoint)
-		(s-v '%write-buffer) (cadr previous-checkpoint))	  
+		(s-v '%write-buffer) (cadr previous-checkpoint))
 	  (setf (s-v '%current) -1
 		(s-v '%write-buffer) (make-accumulator :byte))))))
 
@@ -359,14 +364,14 @@
 
 (defmethod commit-stream ((self core-fd-io-stream))
   (let ((buffer (s-v '%write-buffer)))
-    (prog1 (%rewind-checkpoint self)
+    (prog1 (%rewind-checkpoint self) 
       (write-stream self buffer)
       (if (not (transactionalp self))
 	  (finish-output (s-v '%stream))))))
 
-;;;-----------------------------------------------------------------------------
+;;;-------------------------------------------------------------------------
 ;;; File Stream
-;;;-----------------------------------------------------------------------------
+;;;-------------------------------------------------------------------------
 (defclass core-file-io-stream (core-fd-io-stream)
   ())
 
@@ -541,14 +546,13 @@
 (defmethod return-stream ((self core-object-io-stream))
   (list-to-object (s-v '%list) (s-v '%clazz)))
 
-
 (defun make-core-stream (target)
   (etypecase target
     (string (make-instance 'core-string-io-stream :string target))
     (pathname (make-instance 'core-file-input-stream :file target))
     (array (make-instance 'core-vector-io-stream :octets target))
     (sb-sys::fd-stream (make-instance 'core-fd-io-stream :stream target))
-#+ssl (cl+ssl::ssl-stream (make-instance 'core-fd-io-stream :stream target))    
+#+ssl (cl+ssl::ssl-stream (make-instance 'core-fd-io-stream :stream target)) 
     (list (make-instance 'core-list-io-stream :list target))
     (standard-object (make-instance 'core-object-io-stream :object target))))
 
@@ -567,11 +571,17 @@
      (prog1 (progn ,@body)
        (close-stream ,var))))
 
-;; +----------------------------------------------------------------------------
+;; +------------------------------------------------------------------------
 ;; | Semi Stream
-;; +----------------------------------------------------------------------------
+;; +------------------------------------------------------------------------
 (defclass wrapping-stream (core-stream)
-  ((%stream :initform (error "Please specify unlerying :stream") :initarg :stream)))
+  ((%stream :initform (error "Provide :stream") :initarg :stream)))
+
+(defmethod transactionalp ((self wrapping-stream))
+  (transactionalp (s-v '%stream)))
+
+(defmethod current-checkpoint ((self wrapping-stream))
+  (current-checkpoint (s-v '%stream)))
 
 (defmethod close-stream ((stream wrapping-stream))
   (close-stream (slot-value stream '%stream)))
@@ -600,16 +610,56 @@
 (defmethod return-stream ((stream wrapping-stream))
   (return-stream (slot-value stream '%stream)))
 
-;;;-----------------------------------------------------------------------------
+;; -------------------------------------------------------------------------
+;; Bounded Stream - A Maximum Read Length Bounded Stream
+;; -------------------------------------------------------------------------
+(defclass bounded-stream (wrapping-stream)
+  ((%max-read :initarg :max-read :initform 0)
+   (%max-read-checkpoints :initform '())))
+
+(defmethod read-allowed-p ((self bounded-stream))
+  (and (> (s-v '%max-read) 0) t))
+
+(defmethod peek-stream ((self bounded-stream))
+  (if (read-allowed-p self)
+      (peek-stream (s-v '%stream))))
+
+(defmethod read-stream ((self bounded-stream))
+  (if (read-allowed-p self)
+      (prog1 (read-stream (s-v '%stream))
+	(decf (s-v '%max-read)))))
+
+(defmethod checkpoint-stream ((self bounded-stream))
+  (push (s-v '%max-read) (s-v '%max-read-checkpoints))
+  (call-next-method self))
+
+(defmethod rewind-stream ((self bounded-stream))
+  (if (transactionalp self)
+      (setf (s-v '%max-read) (pop (S-v '%max-read-checkpoints))))
+  (call-next-method self))
+
+(defmethod commit-stream ((self bounded-stream))
+  (if (transactionalp self)
+      (pop (s-v '%max-read-checkpoints)))
+  (call-next-method self))
+
+(defun make-bounded-stream (stream max-read)
+  (make-instance 'bounded-stream :stream stream :max-read max-read))
+
+;;;-------------------------------------------------------------------------
 ;;; Core Pipe Stream
-;;; -----------------------------------------------------------------------------
+;;; ------------------------------------------------------------------------
 (defclass pipe-stream (core-stream)
-  ((%input :accessor pipe-stream.input
-	   :initform (error "Please specify \":input\" stream")
-	   :initarg :input :type core-stream)
-   (%output :accessor pipe-stream.output
-	    :initform (error "Please specify \":output\" stream ")
-	    :initarg :output :type core-stream)))
+  ((%input :accessor pipe-stream.input :initarg :input :type core-stream
+	   :initform (error "Provide :input stream"))
+   (%output :accessor pipe-stream.output :initarg :output :type core-stream
+	    :initform (error "Provide :output stream "))))
+
+(defmethod transactionalp ((self pipe-stream))
+  (transactionalp (s-v '%input)))
+
+(defmethod current-checkpoint ((self wrapping-stream))
+  (current-checkpoint (s-v '%input)))
 
 (defmethod peek-stream ((self pipe-stream))
   (peek-stream (s-v '%input)))
@@ -660,15 +710,17 @@
 (defun make-pipe-stream (input output)
   (make-instance 'pipe-stream :input input :output output))
 
-;;;-----------------------------------------------------------------------------
+;;;------------------------------------------------------------------------
 ;;; Core Transformer Stream
-;;; -----------------------------------------------------------------------------
+;;; -----------------------------------------------------------------------
 ;;;
 ;;; Only output transforming is tested.
 ;;;
 (defclass core-transformer-stream (core-stream)
-  ((%output :initform (error "Please specify output stream") :initarg :output)
-   (%encoder :initarg :encoder :initform (error "Please specify encoder lambda"))))
+  ((%output :initform (error "Please specify output stream")
+	    :initarg :output :type (or null core-stream))
+   (%encoder :initarg :encoder :initform
+	     (error "Please specify encoder lambda"))))
 
 ;; (defmethod peek-stream ((self core-transformer-stream))
 ;;   (peek-stream (s-v '%input)))
@@ -722,9 +774,49 @@
 (defun make-output-transformer (output encoder)
   (make-instance 'core-transformer-stream :output output :encoder encoder))
 
-;;;----------------------------------------------------------------------------
+
+;; +-------------------------------------------------------------------------
+;; | Http Chunck Dencoding Stream (Transfer-Encoding: chunked)
+;; +-------------------------------------------------------------------------
+(defclass core-chunked-stream (bounded-stream)
+  ()
+  (:default-initargs :max-read 0))
+
+(defmethod chunk-readable-p ((self core-chunked-stream))
+  (let ((max-read (s-v '%max-read)))
+    (and max-read (> max-read 0) t)))
+
+(defmethod chunk-setup ((self core-chunked-stream))
+  (let* ((s (s-v '%stream))
+	 (max-read (s-v '%max-read)))
+    (setf (s-v '%max-read) nil)
+    (crlf? s)
+    (let ((num (hex-value*? s)))
+      (if (and num (> num 0))
+	  (prog1 t
+	    (crlf? s)
+	    (setf (s-v '%max-read) num))
+	  (prog1 nil
+	    (setf (s-v '%max-read) max-read))))))
+
+(defmethod peek-stream ((self core-chunked-stream))
+  (if (chunk-readable-p self)
+      (call-next-method self)
+      (if (chunk-setup self)
+  	  (peek-stream self))))
+
+(defmethod read-stream ((self core-chunked-stream))
+  (if (chunk-readable-p self)
+      (call-next-method self)
+      (if (chunk-setup self)
+  	  (read-stream self))))
+
+(defun make-chunked-stream (input)
+  (make-instance 'core-chunked-stream :stream input))
+
+;;;-------------------------------------------------------------------------
 ;;; Core Indented Stream
-;;; ---------------------------------------------------------------------------
+;;; ------------------------------------------------------------------------
 ;;; This is used to indent outputs like javascript render. Writes
 ;;; %indent spaces after a #\Newline is written.
 ;;;
@@ -771,9 +863,9 @@
 				  (dotimes (i indent)
 				    (write-stream stream #.(char-code #\Space)))))))
 
-;;;-----------------------------------------------------------------------------
+;;;-------------------------------------------------------------------------
 ;;; Core Compressed Stream
-;;;-----------------------------------------------------------------------------
+;;;-------------------------------------------------------------------------
 ;;; This is used to compressed outputs like javascript render. Eats all #\Newline
 ;;;
 (defclass core-compressed-stream (core-transformer-stream)
@@ -783,7 +875,8 @@
   (make-instance 'core-compressed-stream
 		 :output output
 		 :encoder #'(lambda (stream atom)
-			      (if (or (eq #.(char-code #\Newline) atom) (eq #\Newline atom))
+			      (if (or (eq #.(char-code #\Newline) atom)
+				      (eq #\Newline atom))
 				  stream
 				  (write-stream stream atom)))))
 

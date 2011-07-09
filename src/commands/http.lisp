@@ -77,20 +77,25 @@ Content-type: application/x-www-form-urlencoded
 
       (let* ((response (http-response? (s-v '%stream)))
 	     (content-type (http-response.get-content-type response))
-	     (content-length (http-response.get-content-length response)))
-
-	;; Set max-read to content length.
-	(if (and (numberp content-length) (> content-length 0))
-	    (setf (slot-value (s-v '%stream) '%max-read)
-		  content-length))
+	     (content-length (http-response.get-content-length response))
+	     (stream (cond
+		       ((string= "chunked"
+				 (caar (http-response.get-response-header
+					response 'transfer-encoding)))
+			(core-server::make-chunked-stream (s-v '%stream)))
+		       ((and content-length (> content-length 0))
+			(make-bounded-stream (s-v '%stream) content-length))
+		       (t (s-v '%stream)))))
 	(cond
-	  ((and (string= "text" (car content-type))
-		(string= "html" (cadr content-type)))
+	  ((or (and (string= "text" (car content-type))
+		    (string= "html" (cadr content-type)))
+	       (and (string= "application" (car content-type))
+		    (string= "atom+xml" (cadr content-type))))
 	   (setf (http-response.entities response)
-		 (list (read-stream (make-xml-stream (s-v '%stream))))))
+		 (list (read-stream (make-xml-stream stream))))) 
 	  (t
 	   (setf (http-response.entities response)
-		 (list (read-everything? (s-v '%stream))))))
+		 (list (read-everything? stream)))))
 	(setf (http-response.stream response) (s-v '%stream))
 	response))))
 

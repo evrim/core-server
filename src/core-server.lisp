@@ -1010,6 +1010,7 @@
    #:render-arguments
    #:whereis
    #:thumbnail
+   #:http
    ;; [ Core Parser ]
    #:defrule
    #:defparser
