@@ -35,7 +35,8 @@
        (:attributes ,@attributes))
      (find-class+ ',name)))
 
-(defatom-tag <atom:feed gphoto media opensearch)
+(defatom-tag <atom:feed gphoto media opensearch exif geo gml georss
+	     batch gd)
 (defatom-tag <atom:content src)
 (defatom-tag <atom:author)
 (defatom-tag <atom:category term scheme label)

@@ -242,7 +242,7 @@
   (:checkpoint (:seq "<?xml")
 	       (:zom (:not #\>) (:type octet?)) (:lwsp?) (:commit))
   (:checkpoint (:seq "<!DOCTYPE")
-	       (:zom (:not #\>) (:type octet?)) (:lwsp?) (:commit))  
+	       (:zom (:not #\>) (:type octet?)) (:lwsp?) (:commit))
   #\<
   (:xml-tag-name? tag namespace)
   (:zom (:lwsp?)
