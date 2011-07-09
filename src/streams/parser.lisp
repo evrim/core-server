@@ -176,6 +176,19 @@
 	     (:do (setq b (+ 10 (- (the (unsigned-byte 8) b) 97))))))
   (:return (+ (* (the (unsigned-byte 8) a) 16) (the (unsigned-byte 8) b))))
 
+(defparser hex-value*? (a acc)
+  (:zom (:or (:and (:type digit? a)
+		   (:do (setq a (- (the (unsigned-byte 8) a) 48))))
+	     (:and (:type hex-upchar? a)
+		   (:do (setq a (+ 10 (- (the (unsigned-byte 8) a) 65)))))
+	     (:and (:type hex-lochar? a)
+		   (:do (setq a (+ 10 (- (the (unsigned-byte 8) a) 97))))))
+	(:do (push a acc)))
+  (:return (reduce (lambda (acc a)
+		     (+ (ash acc 4) a))
+		   (reverse acc) :initial-value 0)))
+
+
 ;;       escaped       = "%" hex hex
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defparser escaped? (hex)  
