@@ -1471,8 +1471,9 @@
 (deftrace http-headers
     (append (list 'http-request-first-line? 'rfc2616-request-headers?
 		  'http-unknown-header? 'mod-lisp-request-headers?
-		  'http-general-header? 'http-request-header? 'http-entity-header?
-		  'mod-lisp-header?)
+		  'http-general-header? 'http-request-header?
+		  'http-entity-header?
+		  'mod-lisp-header? 'http-request! 'http-response?)
 	    (append
 	     (mapcar (lambda (header) (intern (format nil "HTTP-~A?" header)))
 		     (append +http-general-headers+ +http-request-headers+
@@ -1524,6 +1525,9 @@
 
 (defmethod http-response.get-entity-header ((self http-response) key)
   (cadr (assoc key (http-response.entity-headers self))))
+
+(defmethod http-response.get-response-header ((self http-response) key)
+  (cadr (assoc key (http-response.response-headers self))))
 
 (defmethod http-response.get-content-type ((self http-response))
   (http-response.get-entity-header self 'content-type))
