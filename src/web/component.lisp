@@ -203,8 +203,10 @@
        ,(when (null metaclass1)
 	 `(defclass+ ,metaclass ,metasupers
 	    ()
-	    (:default-initargs :tag (list ,tag) :namespace (list ,namespace)
-			       :attributes (list ',attributes))))
+	    (:default-initargs
+	      :tag ,@(ensure-list tag)
+	      :namespace ,@(if namespace namespace '(nil))
+	      :attributes ',attributes)))
        (defclass+ ,name (,@supers)
 	 ,(mapcar (lambda (a) ;; fixing accessors we do not use abc.def.
 		    (let ((gee (copy-list a)))

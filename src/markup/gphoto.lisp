@@ -29,7 +29,7 @@
   `(progn
      (defclass+ ,name (gphoto-element)
        (,@(mapcar (lambda (attr) (list attr :print nil :host 'remote))
-		  (remove 'id attributes)))
+		  attributes))
        (:metaclass gphoto+)
        (:tag ,@(string-downcase (symbol-name name)))
        (:attributes ,@attributes))
@@ -67,3 +67,10 @@
 (defgphoto-tag <gphoto:truncated)
 (defgphoto-tag <gphoto:photoid)
 (defgphoto-tag <gphoto:weight)
+(defgphoto-tag <gphoto:allow-prints)
+(defgphoto-tag <gphoto:allow-downloads)
+(defgphoto-tag <gphoto:version)
+(defgphoto-tag <gphoto:client)
+(defgphoto-tag <gphoto:license id name url)
+(defgphoto-tag <gphoto:image-version)
+;; (defgphoto-tag <gphoto:position) ;; FIXME -evrim.

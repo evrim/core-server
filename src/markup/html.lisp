@@ -78,9 +78,9 @@
      (defclass+ ,name (,@supers xml)
        (,@(mapcar (lambda (attr) (list attr :print nil :host 'remote)) (remove 'id attributes)))
        (:metaclass html+)
-       (:tag ,(string-downcase (symbol-name name)))
-       (:namespace nil)
-       (:attributes ,attributes))
+       (:tag ,@(string-downcase (symbol-name name)))
+       (:namespace ,@nil)
+       (:attributes ,@attributes))
      (defhtml-javascript-tag ,name ,@attributes)
      (find-class+ ',name)))
 
@@ -250,12 +250,12 @@
 		      (slot-value element 'children))
 	      :initial-value stream))))
 
-;;-----------------------------------------------------------------------------
+;;--------------------------------------------------------------------------
 ;; HTML 4 Extra Tags a.k.a. Bonuses
-;;-----------------------------------------------------------------------------
+;;--------------------------------------------------------------------------
 
 ;; Inline Images having src as a rfc 2046 toplevel media
-;;----------------------------------------------------------------------------
+;;--------------------------------------------------------------------------
 ;; (<:img :media *a-toplevel-media-from-rfc2046*)
 (defmethod write-stream ((stream core-string-io-stream) (media top-level-media))
   (prog1 stream

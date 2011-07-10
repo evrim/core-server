@@ -29,7 +29,7 @@
   `(progn
      (defclass+ ,name (open-search-element)
        (,@(mapcar (lambda (attr) (list attr :print nil :host 'remote))
-		  (remove 'id attributes)))
+		  attributes))
        (:metaclass open-search+)
        (:tag ,@(string-downcase (symbol-name name)))
        (:attributes ,@attributes))

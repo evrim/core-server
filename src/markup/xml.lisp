@@ -30,19 +30,10 @@
 ;; XML Metaclass
 ;; -------------------------------------------------------------------------
 (defclass xml+ (class+)
-  ((tag :initform nil :initarg :tag)
-   (namespace :initform nil :initarg :namespace)
-   (schema :initform nil :initarg :schema)
-   (attributes :initarg :attributes :initform nil)))
-
-(defmethod xml+.attributes ((self xml+))
-  (car (slot-value self 'attributes)))
-
-(defmethod xml+.tag ((self xml+))
-  (car (slot-value self 'tag)))
-
-(defmethod xml+.namespace ((self xml+))
-  (car (slot-value self 'namespace)))
+  ((tag :initform nil :initarg :tag :reader xml+.tag)
+   (namespace :initform nil :initarg :namespace :reader xml+.namespace)
+   (schema :initform nil :initarg :schema :reader xml+.schema)
+   (attributes :initarg :attributes :initform nil :reader xml+.attributes)))
 
 (defmethod class+.ctor-name ((self xml+))
   (class+.name self))
@@ -98,6 +89,25 @@
 	   (mapcar #'cons (xml.children a) (xml.children b))
 	   :initial-value t)))
 
+(defmethod xml.children ((self t)) nil)
+
+(defun make-xml-type-matcher (type)
+  (lambda (a) (typep a type)))
+
+(defun xml-search (elements goal-p &optional (successor #'xml.children))
+  (let ((result))
+    (core-search (if (listp elements)
+		     elements
+		     (list elements))
+		 (lambda (a)
+		   (if (typep a 'xml)
+		       (if (funcall goal-p a)
+			   (pushnew a result)))
+		   nil)
+		 successor
+		 #'append)
+    result))
+
 ;; -------------------------------------------------------------------------
 ;; XML defining macro: defmxl
 ;; -------------------------------------------------------------------------
@@ -107,9 +117,10 @@
 		  (list attr :print t))
 		attributes))
      (:metaclass xml+)
-     (:tag ,(string-downcase (symbol-name name)))
-     (:namespace ,(string-downcase (subseq (car (package-nicknames (symbol-package name))) 1)))
-     (:attributes ,attributes)))
+     (:tag ,@(string-downcase (symbol-name name)))
+     (:namespace ,@(string-downcase
+		    (subseq (car (package-nicknames (symbol-package name))) 1)))
+     (:attributes ,@attributes)))
 
 ;; -------------------------------------------------------------------------
 ;; XML Generic Class
@@ -348,7 +359,8 @@
 		   (t
 		    +xml-namespace+)))
 		 (symbol (xml->symbol tag +xml-namespace+)))
-	    (if (fboundp symbol)
+	    (if (and (fboundp symbol)
+		     (not (eq (symbol-package symbol) #.(find-package :cl))))
 		(let ((instance (make-element symbol attributes children)))
 		  (if (slot-exists-p instance 'tag)
 		      (setf (slot-value instance 'tag) tag))

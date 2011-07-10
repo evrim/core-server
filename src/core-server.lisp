@@ -200,6 +200,8 @@
    #:xml.attributes
    #:xml.children
    #:xml.equal
+   #:xml-search
+   #:make-xml-type-matcher
    #:generic-xml
 
    ;; [XML Stream]
@@ -1098,7 +1100,8 @@
 	   #:videostatus #:width #:albumtitle #:albumdesc
 	   #:album-type
 	   #:snippet #:snippettype #:truncated #:photoid
-	   #:weight))
+	   #:weight #:allow-prints #:allow-downloads #:version
+	   #:position #:client #:license #:image-version))
 
 (defpackage :tr.gen.core.server.media
   (:nicknames :<media)

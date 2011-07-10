@@ -29,7 +29,7 @@
   `(progn
      (defclass+ ,name (atom-element)
        (,@(mapcar (lambda (attr) (list attr :print nil :host 'remote))
-		  (remove 'id attributes)))
+		  attributes))
        (:metaclass atom+)
        (:tag ,@(string-downcase (symbol-name name)))
        (:attributes ,@attributes))
