@@ -658,7 +658,7 @@
 (defmethod transactionalp ((self pipe-stream))
   (transactionalp (s-v '%input)))
 
-(defmethod current-checkpoint ((self wrapping-stream))
+(defmethod current-checkpoint ((self pipe-stream))
   (current-checkpoint (s-v '%input)))
 
 (defmethod peek-stream ((self pipe-stream))
