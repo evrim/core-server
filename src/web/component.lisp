@@ -204,8 +204,8 @@
 	 `(defclass+ ,metaclass ,metasupers
 	    ()
 	    (:default-initargs
-	      :tag ,@(ensure-list tag)
-	      :namespace ,@(if namespace namespace '(nil))
+	      :tag ,@(if tag (ensure-list tag) '(nil))
+	      :namespace ,@(if namespace (ensure-list namespace) '(nil))
 	      :attributes ',attributes)))
        (defclass+ ,name (,@supers)
 	 ,(mapcar (lambda (a) ;; fixing accessors we do not use abc.def.
