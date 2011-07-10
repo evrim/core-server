@@ -90,12 +90,13 @@ Content-type: application/x-www-form-urlencoded
 	  ((or (and (string= "text" (car content-type))
 		    (string= "html" (cadr content-type)))
 	       (and (string= "application" (car content-type))
-		    (string= "atom+xml" (cadr content-type))))
-	   (setf (http-response.entities response)
-		 (list (read-stream (make-xml-stream stream))))) 
+	       	    (string= "atom+xml" (cadr content-type))))
+	   (let ((entity (read-stream (make-xml-stream stream))))
+	     (if entity
+		 (setf (http-response.entities response) (list entity))))) 
 	  (t
-	   (setf (http-response.entities response)
-		 (list (read-everything? stream)))))
+	   (let ((entity (read-everything? stream)))
+	     (setf (http-response.entities response) (list entity)))))
 	(setf (http-response.stream response) (s-v '%stream))
 	response))))
 

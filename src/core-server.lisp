@@ -395,6 +395,7 @@
    #:http-response.set-content-type
    #:http-response.get-entity-header
    #:http-response.get-response-header
+   #:http-response.entities
 ;;; helpers
    #:escape-parenscript
    ;; Http Request
