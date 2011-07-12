@@ -159,40 +159,55 @@
 ;;---------------------------------------------------------------------------
 (defrule xml-attribute-name? (c attribute namespace)
   (:or (:type alphanum? c)
-	     (:and #\- (:do (setq c #\-))))
+       (:and #\- (:do (setq c #\-))))
   (:and (:do (setq attribute (make-accumulator)))
 	(:collect c attribute))
   (:zom (:or (:type alphanum? c)
 	     (:and #\- (:do (setq c #\-))))
 	(:collect c attribute))  
-  (:optional
-   #\:
-   (:do (setq namespace attribute)
-	(setq attribute (make-accumulator)))
-   (:oom (:or (:type alphanum? c)
-	      (:and #\- (:do (setq c #\-))))
-	 (:collect c attribute)))
-  (:return (if namespace
-	       (values attribute namespace);;  (format nil "~A:~A" namespace attribute)
-	       attribute)))
+  (:or (:and #\:
+	     (:do (setq namespace attribute)
+		  (setq attribute (make-accumulator)))
+	     (:oom (:or (:type alphanum? c)
+			(:and #\- (:do (setq c #\-))))
+		   (:collect c attribute))
+	     (:return (if namespace
+			  (values attribute namespace)
+			  ;;  (format nil "~A:~A" namespace attribute)
+			  attribute)))
+       (:return (if namespace
+		    (values attribute namespace)
+		    ;;  (format nil "~A:~A" namespace attribute)
+		    attribute))))
 
 (defrule xml-attribute-value? (c val)
   (:or (:and
 	#\"
 	(:do (setq val (make-accumulator)))
-	(:zom (:checkpoint #\" (:return val))
-	      (:checkpoint #\> (:rewind-return val))
+	(:zom (:not #\")
 	      (:type (or visible-char? space?) c)
-	      (:collect c val)))
+	      (:collect c val))
+	;; (:zom (:checkpoint #\" (:return val))
+	;;       (:checkpoint #\> (:rewind-return val))
+	;;       (:type (or visible-char? space?) c)
+	;;       (:collect c val))
+	)
        (:and
 	#\'
 	(:do (setq val (make-accumulator)))
-	(:zom (:checkpoint #\' (:return val))
-	      (:checkpoint #\> (:rewind-return val))
+	(:zom (:not #\')
 	      (:type (or visible-char? space?) c)
-	      (:collect c val)))
-       (:zom (:checkpoint (:or #\> #\/)
-			  (:rewind-return val))
+	      (:collect c val))
+	;; (:zom (:checkpoint #\' (:return val))
+	;;       (:checkpoint #\> (:rewind-return val))
+	;;       (:type (or visible-char? space?) c)
+	;;       (:collect c val))
+	)
+       (:zom ;; (:checkpoint (:or #\> #\/)
+	     ;; 		  (:rewind-return val))
+	     (:and (:not #\Space)
+		   (:not #\>)
+		   (:not #\/))
 	     (:type visible-char? c)
 	     (:collect c val)))
   (:return val))
@@ -216,7 +231,8 @@
        (:return #\Space))))
 
 (defrule xml-text-node? (c acc)
-  (:not #\<)
+  (:not #\/)
+  ;; (:not #\<)
   ;; (:checkpoint #\< (:rewind-return (octets-to-string acc :utf-8)))
   (:or (:and #\& (:or (:and (:seq "gt;") (:do (setf c #\<)))
 		      (:and (:seq "lt;") (:do (setf c #\>)))))       
@@ -224,8 +240,8 @@
        (:type octet? c))
   (:do (setq acc (make-accumulator :byte)))
   (:collect c acc)
-  (:zom ;; (:not #\<)
-	(:checkpoint #\< (:rewind-return (octets-to-string acc :utf-8)))
+  (:zom (:not #\<)
+	;; (:checkpoint #\< (:rewind-return (octets-to-string acc :utf-8)))
 	(:or (:and #\& (:or (:and (:seq "gt;") (:do (setf c #\<)))
 			    (:and (:seq "lt;") (:do (setf c #\>)))))
 	     (:xml-lwsp? c)
@@ -235,7 +251,8 @@
        (:return (octets-to-string acc :utf-8))))
 
 (defrule xml-cdata? (c acc)
-  #\< #\! #\[ (:seq "CDATA[")
+  ;; #\< #\!
+  #\[ #\C #\D #\A #\T #\A #\[ ;; (:seq "CDATA[")
   (:do (setq acc (make-accumulator)))
   (:zom (:not (:seq "]]>"))
 	(:type octet? c)
@@ -243,7 +260,9 @@
   (:return acc))
 
 (defrule xml-comment? (c acc)
-  #\< #\! #\- #\- ;; (:seq "<!--")
+  ;; #\<
+  ;; #\! 
+  #\- #\- ;; (:seq "<!--")
   (:do (setq acc (make-accumulator)))
   (:collect #\< acc) (:collect #\! acc)
   (:collect #\- acc) (:collect #\- acc)
@@ -255,8 +274,11 @@
   (:collect #\> acc)
   (:return acc))
 
-(defparser %xml-lexer? (tag namespace attr attrs child children)
-  #\<
+(defun foob (xml)
+  (write-stream (make-xml-stream *core-output*) xml))
+
+(defparser %xml-lexer? (tag namespace attr attrs child children
+			    a b c d)
   (:xml-tag-name? tag namespace)
   (:zom (:lwsp?) (:xml-attribute? attr)
 	(:do (push attr attrs)))
@@ -264,20 +286,25 @@
 	     (:return (values tag namespace (nreverse attrs))))
        (:and #\>
 	     (:zom (:lwsp?)
-		   (:or		    
-		    (:%xml-lexer? child)		    
-		    (:xml-text-node? child)
-		    (:checkpoint
-		     (:seq "</")
-		     (:if namespace
-			  (:not (:and (:sci namespace) #\: (:sci tag)))
-			  (:not (:sci tag)))
-		     (:rewind-return (values tag namespace (nreverse attrs)
-					     (nreverse children))))
-		    (:xml-cdata? child)
-		    (:xml-comment? child))
-		   (:do (push child children)))
-	     (:seq "</")
+		   ;; (:debug)
+		   (:or
+		    (:and #\<
+			  (:or (:and #\!
+				     (:or (:xml-cdata? child)
+					  (:xml-comment? child))
+				     (:do (push child children)))
+			       (:and (:%xml-lexer? a b c d)
+				     (:do (push (list* a b c d) children)))))
+		    (:and (:xml-text-node? child)
+			  (:do (push child children))
+			  #\/
+			  (:if namespace
+			       (:and (:sci namespace) #\: (:sci tag))
+			       (:sci tag))
+			  #\>
+			  (:return (values tag namespace (nreverse attrs)
+					   (nreverse children))))))
+	     #\/
 	     (:if namespace
 		  (:and (:sci namespace) #\: (:sci tag))
 		  (:sci tag))
@@ -291,12 +318,14 @@
 	       (:zom (:not #\>) (:type octet?)) (:lwsp?) (:commit))
   (:checkpoint (:seq "<!DOCTYPE")
 	       (:zom (:not #\>) (:type octet?)) (:lwsp?) (:commit))
+  #\<
   (:%xml-lexer? tag namespace attrs children)
   (:return (list* tag namespace attrs children)))
 
 (deftrace xml-parsers
     '(xml-tag-name? xml-lexer? xml-comment? xml-text-node?
-      xml-cdata?))
+      xml-cdata? %xml-lexer? xml-lwsp? xml-tag-name? xml-attribute?
+      xml-attribute-name? xml-attribute-value?))
 
 (defvar +xml-namespace+ (find-package :<))
 (defvar +xml-namespaces-table+
