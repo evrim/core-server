@@ -26,7 +26,8 @@
 ;; ----------------------------------------------------------------------------
 (defvar +continuation-query-name+ "k" "Query key for continuations")
 (defvar +session-query-name+ "s" "Query key for sessions")
-(defvar +session-timeout+ 3600 "Session timeout in milisecons, 1 day")
+(defvar +session-timeout+ (* 12 3600)
+  "Session timeout in milisecons, half day")
 (defvar +invalid-session+ "invalid-session-id")
 (defvar +invalid-continuation-id "invalid-continuation-id")
 
