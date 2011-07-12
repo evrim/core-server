@@ -277,7 +277,8 @@
    (%read-index :initform 0 :type fixnum)
    (%write-buffer :initform (make-accumulator :byte)
 		  :type (vector (unsigned-byte 8)))
-   (%transactional :initform nil :reader transactionalp)))
+   (%transactional :initform nil :reader transactionalp)
+   (%current-checkpoint :initform -1 :reader current-checkpoint)))
 
 ;; (defmethod transactionalp ((self core-fd-io-stream))
 ;;   (s-v '%transactional))
@@ -349,23 +350,30 @@
 
 (defmethod checkpoint-stream ((self core-fd-io-stream))
   (if (transactionalp self)
-      (push (cons (s-v '%current) (s-v '%write-buffer))
-	    (s-v '%checkpoints)))
+      (progn
+	(push (cons (s-v '%current) (s-v '%write-buffer))
+	      (s-v '%checkpoints))
+	(incf (slot-value self '%current-checkpoint)))
+      (setf (slot-value self '%current-checkpoint) 0))
 
   (setf (s-v '%current) (s-v '%read-index)
 	(s-v '%write-buffer) nil ;; (make-accumulator :byte)
 	(s-v '%transactional) t)
-  (length (s-v '%checkpoints)))
+  ;; (length (s-v '%checkpoints))
+  (slot-value self '%current-checkpoint))
 
 (defmethod %rewind-checkpoint ((self core-fd-io-stream))
   (prog1 (length (s-v '%checkpoints))
     (let ((previous-checkpoint (pop (s-v '%checkpoints))))
       (if previous-checkpoint
-	  (setf (s-v '%current) (car previous-checkpoint)
-		(s-v '%write-buffer) (cdr previous-checkpoint))
+	  (progn
+	    (setf (s-v '%current) (car previous-checkpoint)
+		  (s-v '%write-buffer) (cdr previous-checkpoint))
+	    (decf (slot-value self '%current-checkpoint)))
 	  (setf (s-v '%current) -1
 		(s-v '%write-buffer) nil ;; (make-accumulator :byte)
-		(s-v '%transactional) nil)))))
+		(s-v '%transactional) nil
+		(slot-value self '%current-checkpoint) -1)))))
 
 (defmethod rewind-stream ((self core-fd-io-stream))
   (setf (s-v '%read-index) (s-v '%current))
