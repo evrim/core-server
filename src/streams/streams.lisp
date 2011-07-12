@@ -330,7 +330,10 @@
 (defmethod write-stream ((self core-fd-io-stream) atom)
   (prog1 self
     (if (transactionalp self)
-	(push-atom atom (s-v '%write-buffer))
+	(progn
+	  (if (null (s-v '%write-buffer))
+	      (setf (s-v '%write-buffer) (make-accumulator :byte)))
+	  (push-atom atom (s-v '%write-buffer)))
 	(write-byte atom (s-v '%stream))	
 	;;	(sb-impl::flush-output-buffer (s-v '%stream))
 	))
@@ -346,7 +349,8 @@
 	    (s-v '%checkpoints)))
 
   (setf (s-v '%current) (s-v '%read-index)
-	(s-v '%write-buffer) (make-accumulator :byte))
+	(s-v '%write-buffer) nil ;; (make-accumulator :byte)
+	)
   (length (s-v '%checkpoints)))
 
 (defmethod %rewind-checkpoint ((self core-fd-io-stream))
@@ -356,7 +360,8 @@
 	  (setf (s-v '%current) (car previous-checkpoint)
 		(s-v '%write-buffer) (cadr previous-checkpoint))
 	  (setf (s-v '%current) -1
-		(s-v '%write-buffer) (make-accumulator :byte))))))
+		(s-v '%write-buffer) nil ;; (make-accumulator :byte)
+		)))))
 
 (defmethod rewind-stream ((self core-fd-io-stream))
   (setf (s-v '%read-index) (s-v '%current))
