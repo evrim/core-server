@@ -276,7 +276,11 @@
 		 :type (vector (unsigned-byte 8)))
    (%read-index :initform 0 :type fixnum)
    (%write-buffer :initform (make-accumulator :byte)
-		  :type (vector (unsigned-byte 8)))))
+		  :type (vector (unsigned-byte 8)))
+   (%transactional :initform nil :reader transactionalp)))
+
+;; (defmethod transactionalp ((self core-fd-io-stream))
+;;   (s-v '%transactional))
 
 (declaim (inline stream-using-cache?))
 (defun stream-using-cache? (self)
@@ -345,12 +349,12 @@
 
 (defmethod checkpoint-stream ((self core-fd-io-stream))
   (if (transactionalp self)
-      (push (list (s-v '%current) (s-v '%write-buffer))
+      (push (cons (s-v '%current) (s-v '%write-buffer))
 	    (s-v '%checkpoints)))
 
   (setf (s-v '%current) (s-v '%read-index)
 	(s-v '%write-buffer) nil ;; (make-accumulator :byte)
-	)
+	(s-v '%transactional) t)
   (length (s-v '%checkpoints)))
 
 (defmethod %rewind-checkpoint ((self core-fd-io-stream))
@@ -358,10 +362,10 @@
     (let ((previous-checkpoint (pop (s-v '%checkpoints))))
       (if previous-checkpoint
 	  (setf (s-v '%current) (car previous-checkpoint)
-		(s-v '%write-buffer) (cadr previous-checkpoint))
+		(s-v '%write-buffer) (cdr previous-checkpoint))
 	  (setf (s-v '%current) -1
 		(s-v '%write-buffer) nil ;; (make-accumulator :byte)
-		)))))
+		(s-v '%transactional) nil)))))
 
 (defmethod rewind-stream ((self core-fd-io-stream))
   (setf (s-v '%read-index) (s-v '%current))
