@@ -142,8 +142,11 @@
 
 (defmethod slot-index-name ((server database) (class standard-class) slot)
   (any (lambda (class)
-	 (if (member slot (mapcar #'slot-definition-name (mopp::class-direct-slots class)))
-	     (intern (concat (symbol-name (class-name class)) "-" (symbol-name slot)))))
+	 (aif (member slot (mapcar #'slot-definition-name
+				   (mopp::class-direct-slots class)))
+	      (intern (concat (symbol-name (class-name class)) "-"
+			      (symbol-name slot))
+		      (symbol-package (class-name class)))))
        (reverse (class-superclasses class))))
 
 (defmethod slot-index-name ((server database) (object standard-object) slot)
