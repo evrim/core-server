@@ -47,7 +47,7 @@
 (defun accept (socket &key (element-type '(unsigned-byte 8)))
   "Returns a new client core-stream that is just connected to 'socket'"
   (multiple-value-bind (s peer) (socket-accept socket)
-    (values (make-instance 'core-fd-io-stream-v2
+    (values (make-instance 'core-fd-io-stream
 			   :stream (socket-make-stream s
 						       :input t :output t
 						       ;; :element-type ;; element-type
