@@ -17,13 +17,13 @@
 
 (in-package :core-server)
 
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | Http Application
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 ;; HTTP Constants
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 (defvar +continuation-query-name+ "k" "Query key for continuations")
 (defvar +session-query-name+ "s" "Query key for sessions")
 (defvar +session-timeout+ (* 12 3600)
@@ -31,15 +31,15 @@
 (defvar +invalid-session+ "invalid-session-id")
 (defvar +invalid-continuation-id "invalid-continuation-id")
 
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 ;; HTTP Special Variables
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 (defvar +context+ nil "A special variable that holds HTTP context")
 (defvar +k+ nil "A special variable that holds current continuation")
 
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 ;; HTTP Session
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 (defclass http-session ()
   ((id :reader session.id :initarg :id :initform (random-string 8))
    (continuations :reader session.continuations :initform (make-hash-table :test #'equal)) 
@@ -72,9 +72,9 @@
   "Query a session variable."
   `(gethash ,key (session.data ,session)))
 
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 ;; HTTP Context
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 (defclass http-context ();;    (core-cps-stream)
   ((request :accessor context.request :initarg :request :initform nil)
    (response :accessor context.response :initarg :response :initform nil)
@@ -109,9 +109,9 @@
 	    session)
       session))))
 
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 ;; Methods that add "Session" Cookie to Response
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 (defmethod (setf context.session) :after ((session t) (self http-context))
   (prog1 session
     (http-response.add-cookie (context.response self)
@@ -126,9 +126,9 @@
 					   :comment "Core Server Session Cookie"))))
 
 
-;;+----------------------------------------------------------------------------
+;;+--------------------------------------------------------------------------
 ;;| HTTP Application Metaclass
-;;+----------------------------------------------------------------------------
+;;+--------------------------------------------------------------------------
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defclass http-application+ (class+)
     ((handlers :initarg :handlers :accessor http-application+.handlers
@@ -174,9 +174,9 @@
   (defmethod class+.ctor ((application+ http-application+))
     nil))
 
-;;+----------------------------------------------------------------------------
+;;+--------------------------------------------------------------------------
 ;;| HTTP Application
-;;+----------------------------------------------------------------------------
+;;+--------------------------------------------------------------------------
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defclass http-application (web-application)
     ((sessions :accessor http-application.sessions :initform (make-hash-table :test #'equal)
@@ -199,9 +199,9 @@
   (clrhash (slot-value self 'core-server::sessions))
   (call-next-method self))
 
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 ;; defapplication Macro: Just adds http-application+ metaclass
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 (defmacro defapplication (name supers slots &rest rest)
   (let ((dispatchers (reduce #'append
                              (mapcar (rcurry #'slot-value 'handlers)
@@ -215,9 +215,9 @@
        ;; (:handlers ,@dispatchers)
        )))
 
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | HTTP Application Interface
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (defmethod web-application.serve-url ((self http-application) (req t))
   (format nil "/~A/TESTREQUEST" (web-application.fqdn self)))
 
@@ -290,27 +290,38 @@
 
 (defmethod dispatch ((self http-application) (request http-request) (response http-response))
   "Dispatch 'request' to 'self' application with empty 'response'"
-  (let ((session (gethash (find-session-id request) (http-application.sessions self))))
+  (let ((session (gethash (find-session-id request) (http-application.sessions self)))
+	(k-arg (uri.query (http-request.uri request) +continuation-query-name+)))
     (acond
-     ((and session (gethash (uri.query (http-request.uri request) +continuation-query-name+)
-			    (session.continuations session)))      
-      (log-me (application.server self) 'http-application		
+     ((and session (gethash k-arg (session.continuations session)))
+      (log-me (application.server self) 'http-application	
 	      (format nil "fqdn: ~A, k-url: ~A"
 		      (web-application.fqdn self)
-		      (uri.query (http-request.uri request) +continuation-query-name+)))
+		      (uri.query (http-request.uri request)
+				 +continuation-query-name+)))
       (or (funcall it request response) t))
+     ((and session k-arg)
+      (log-me (application.server self) 'http-application
+	      (format nil "fqdn: ~A, invalid k-url: ~A"
+		      (web-application.fqdn self)
+		      (http-request.uri request)))
+      (render-404 self request response))
      ((any #'(lambda (handler)
 	       (aif (caar (uri.paths (http-request.uri request)))
-		    (and (cl-ppcre:scan-to-strings (cl-ppcre:create-scanner (cdr handler)) it)
+		    (and (cl-ppcre:scan-to-strings
+			  (cl-ppcre:create-scanner (cdr handler)) it)
 			 (car handler))))
 	   (http-application+.handlers (class-of self)))
       (log-me (application.server self) 'http-application
-	      (format nil "fqdn: ~A, static-handler:: ~A" (web-application.fqdn self)
+	      (format nil "fqdn: ~A, static-handler:: ~A"
+		      (web-application.fqdn self)
 		      (http-request.uri request)))
-      (or (funcall it self (make-new-context self request response session)) t))
+      (or (funcall it self (make-new-context self request response session))
+	  t))
      ((render-file self request response)
       (log-me (application.server self) 'http-application
-	      (format nil "fqdn: ~A, static-url: ~A" (web-application.fqdn self)
+	      (format nil "fqdn: ~A, static-url: ~A"
+		      (web-application.fqdn self)
 		      (http-request.uri request)))
       t)
      (t
@@ -334,10 +345,10 @@
   
   (call-next-method))
 
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 ;; Overriden get-directory method: This allows us to use default
 ;; database directory for database driven http applications.
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 (defmethod database.directory ((application http-application))
   (ensure-directories-exist
    (merge-pathnames
@@ -345,9 +356,9 @@
 				    (web-application.fqdn application) "db"))
     (bootstrap::home))))
 
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | HTTP Macros
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (defmacro with-query (queries request &body body)
   "Executes 'body' while binding 'queries' from 'request'"
   `(let ,(mapcar #'(lambda (p)
@@ -364,9 +375,9 @@
        (declare (special +context+))
        ,@body)))
 
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 ;; defhandler Macro: Defines a static url handler
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 (defmacro defhandler (url ((application application-class) &rest queries) &body body)
   "Defines an entry point/url handler to the application-class"
   (let ((handler-symbol (intern (string-upcase url))))
@@ -401,9 +412,9 @@
 			    (context http-context) ,@queries)
      ,@body))
 
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | CPS Style Web Framework
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (defun escape (&rest values)
    (funcall (apply (arnesi::toplevel-k) values))
    (break "You should not see this, call/cc must be escaped already."))
@@ -567,9 +578,9 @@ executing 'body'"
 				     '("text" "css" ("charset" "UTF-8")))
      (send/suspend ,@body)))
 
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | HTTP Application Testing Utilities
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (defmacro with-test-context ((context-var uri application) &body body)
   "Executes 'body' with context bound to 'context-var'"
   `(let ((,context-var (make-new-context ,application
