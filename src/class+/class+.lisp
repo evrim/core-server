@@ -1,8 +1,8 @@
 (in-package :core-server)
 
-;; +----------------------------------------------------------------------------
+;; +------------------------------------------------------------------------
 ;; | Class+ Implementation
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (defclass class+ (standard-class)
   ((rest :initarg :rest :initform nil :accessor class+.rest)
    (ctor :initarg :ctor :initform nil :accessor class+.%ctor)
@@ -183,7 +183,7 @@
 (defmethod slot-definition-singular-type ((slot class+-slot-definition))
   (with-slotdef (type) slot
     (intern (subseq (symbol-name type) 0 (1- (length (symbol-name type))))
-	    (symbol-package type))))
+	    (symbol-package (slot-definition-name slot)))))
 
 (defmethod slot-definition-singular-typep ((slot class+-slot-definition))
   (let ((type (sb-pcl::slot-definition-type slot)))
@@ -198,7 +198,9 @@
     (and (symbolp type)
 	 (not (null (slot-definition-relation slot)))
 	 (ends-with name "*")
-	 (not (null (find-class+ (intern (subseq name 0 (1- (length name))))))))))
+	 (not (null (find-class+ (intern (subseq name 0 (1- (length name)))
+					 (symbol-package
+					  (slot-definition-name slot)))))))))
 
 (defmethod slot-definition-relational-slot ((slot class+-slot-definition))
   (let* ((type (if (slot-definition-singular-typep slot)
@@ -272,18 +274,28 @@
 (defmethod class+.update-function ((self class+) &optional prefix)
   (intern (format nil "~A.UPDATE" (or prefix (class-name self)))))
 
-;; ----------------------------------------------------------------------------
+;; -------------------------------------------------------------------------
+;; Traces
+;; -------------------------------------------------------------------------
+(deftrace class+-relations
+    '(slot-definition-singular-type slot-definition-singular-typep
+      slot-definition-typep slot-definition-plural-typep
+      slot-definition-relational-slot slot-definition-relation-type
+      class+.n-to-n-relations class+.n-to-1-relations class+.relations
+      class+.1-to-n-relations))
+
+;; --------------------------------------------------------------------------
 ;; Indexes
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 (defmethod class+.indexes ((class class+))
   (filter (lambda (slot)
 	    (with-slotdef (index) slot
 	      index))
 	  (class+.slots class)))
 
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 ;; Constructor Generation Methods
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 (defmethod class+.ctor-lambda-list ((self class+) &optional (include-supplied-p nil))
   (reduce0 (lambda (acc slot)
 	     (with-slotdef (initarg initform supplied-p) slot
@@ -349,9 +361,9 @@
 						       acc))
 					       slots)))))))
 
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 ;; defclass+ Macro
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun %fix-slot-definition (class-name slot-definition)
     (if (not (member :initform slot-definition))
