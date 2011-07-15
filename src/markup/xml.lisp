@@ -278,9 +278,6 @@
   (:collect #\> acc)
   (:return acc))
 
-(defun foob (xml)
-  (write-stream (make-xml-stream *core-output*) xml))
-
 (defparser %xml-lexer? (tag namespace attr attrs child children
 			    a b c d)
   (:xml-tag-name? tag namespace)
@@ -424,125 +421,121 @@
   (parse-xml (xml-lexer? (slot-value stream '%stream))))
 
 (defmethod write-stream ((stream xml-stream) (string string))
-  (string! (slot-value stream '%stream)
-  	   (reduce (lambda (acc atom)
-  		     (cond
-  		       ((eq atom #\<)
-  			(push-atom #\& acc)
-  			(push-atom #\g acc)
-  			(push-atom #\t acc)
-  			(push-atom #\; acc))
-  		       ((eq atom #\>)
-  			(push-atom #\& acc)
-  			(push-atom #\l acc)
-  			(push-atom #\t acc)
-  			(push-atom #\; acc))
-  		       (t
-  			(push-atom atom acc)))
-  		     acc)
-  		   string
-  		   :initial-value (make-accumulator))))
+  (prog1 stream
+    (string! (slot-value stream '%stream)
+	     (reduce (lambda (acc atom)
+		       (cond
+			 ((eq atom #\<)
+			  (push-atom #\& acc)
+			  (push-atom #\g acc)
+			  (push-atom #\t acc)
+			  (push-atom #\; acc))
+			 ((eq atom #\>)
+			  (push-atom #\& acc)
+			  (push-atom #\l acc)
+			  (push-atom #\t acc)
+			  (push-atom #\; acc))
+			 (t
+			  (push-atom atom acc)))
+		       acc)
+		     string
+		     :initial-value (make-accumulator)))))
 
-(defmethod write-stream ((xml-stream xml-stream) (object xml))
-  (flet ((intro! (stream)
-	   (let ((tag (xml.tag object))
-		 (namespace (xml.namespace object)))
-	     (if namespace
-		 (progn
-		   (string! stream namespace)
-		   (char! stream #\:)
-		   (string! stream tag))
-		 (string! stream tag))))
-	 (attribute! (stream attribute)
-	   (char! stream #\Space)
-	   (if (symbolp (car attribute))
-	       (string! stream (symbol-to-js (car attribute)))
-	       (string! stream (car attribute)))
-	   (char! stream #\=)
-	   (quoted! stream (format nil "~A" (cdr attribute)))
-	   stream)
-	 (child! (stream child)
-	   (increase-indent stream)
-	   (char! stream #\Newline)	   
-	   (write-stream xml-stream child)
-	   (decrease-indent stream)
-	   stream)
-	 (outro! (stream)
-	   (char! stream #\Newline)
-	   (let ((tag (xml.tag object))
-		 (namespace (xml.namespace object)))
-	     (string! stream "</")
-	     (if namespace
-		 (progn
-		   (string! stream namespace)
-		   (char! stream #\:)
-		   (string! stream tag))
-		 (string! stream tag))
-	     (char! stream #\>))))
-    (outro!
-     (reduce #'child! (slot-value object 'children)
-	     :initial-value
-	     (char!
-	      (reduce
-	       #'attribute!
-	       (reduce0 (lambda (acc slot)
-			  (aif (slot-value object slot)
-			       (cons (cons slot it) acc)
-			       acc))
-			(xml.attributes object))
-	       :initial-value (intro!
-			       (char!
-				(slot-value xml-stream '%stream)
-				#\<)))
-	      #\>)))
-    xml-stream))
+(defmethod intro! ((stream xml-stream) (object xml))
+  (with-slots (%stream) stream
+    (let ((tag (xml.tag object))
+	  (namespace (xml.namespace object)))
+      (char! %stream #\<)
+      (if namespace
+	  (progn
+	    (string! %stream namespace)
+	    (char! %stream #\:)
+	    (string! %stream tag))
+	  (string! %stream tag)))
+    stream))
 
-(defmethod write-stream ((xml-stream xml-stream) (object generic-xml))
-  (flet ((intro! (stream)
-	   (let ((tag (slot-value object 'tag))
-		 (namespace (slot-value object 'namespace)))
-	     (if namespace
-		 (progn
-		   (string! stream namespace)
-		   (char! stream #\:)
-		   (string! stream tag))
-		 (string! stream tag))))
-	 (attribute! (stream attribute)
-	   (char! stream #\Space)
-	   (if (symbolp (car attribute))
-	       (symbol! stream (car attribute))
-	       (string! stream (car attribute)))
-	   (char! stream #\=)
-	   (quoted! stream (cdr attribute))
-	   stream)
-	 (child! (stream child)
-	   (if (stringp child)
-	       (string! stream child)
-	       (write-stream xml-stream child))
-	   stream)
-	 (outro! (stream)
-	   (let ((tag (slot-value object 'tag))
-		 (namespace (slot-value object 'namespace)))
-	     (string! stream "</")
-	     (if namespace
-		 (progn
-		   (string! stream namespace)
-		   (char! stream #\:)
-		   (string! stream tag))
-		 (string! stream tag))
-	     (char! stream #\>))))
-    (outro!
-     (reduce #'child! (slot-value object 'children)
-	     :initial-value
-	     (char!
-	      (reduce #'attribute! (slot-value object 'attributes)
-		      :initial-value (intro!
-				      (char!
-				       (slot-value xml-stream '%stream)
-				       #\<)))
-	      #\>)))
-    xml-stream))
+(defmethod attribute! ((stream xml-stream) attribute)
+  (with-slots (%stream) stream
+    (char! %stream #\Space)
+    (if (symbolp (car attribute))
+	(string! %stream (symbol-to-js (car attribute)))
+	(string! %stream (car attribute)))
+    (char! %stream #\=)
+    (quoted! %stream (format nil "~A" (cdr attribute)))
+    stream))
 
+(defmethod child! ((stream xml-stream) object)
+  (char! (slot-value stream '%stream) #\Newline)
+  (write-stream stream object))
+
+(defmethod outro! ((stream xml-stream) (object xml))
+  (with-slots (%stream) stream
+    (let ((tag (xml.tag object))
+	  (namespace (xml.namespace object)))
+      (string! %stream "</")
+      (if namespace
+	  (progn
+	    (string! %stream namespace)
+	    (char! %stream #\:)
+	    (string! %stream tag))
+	  (string! %stream tag))
+      (char! %stream #\>))
+    stream))
+
+(defmethod write-stream ((stream xml-stream) (object xml))
+  (with-slots (%stream) stream
+    (intro! stream object)
+    (reduce #'attribute!
+	    (reduce0 (lambda (acc slot)
+		       (aif (slot-value object slot)
+			    (cons (cons slot it) acc)
+			    acc))
+		     (xml.attributes object))
+	    :initial-value stream)
+    (cond
+      ((null (xml.children object))
+       (string! %stream "/>"))
+      ((stringp (car (xml.children object)))
+       (char! %stream #\>)
+       (write-stream stream (car (xml.children object)))
+       (outro! stream object))
+      (t
+       (char! %stream #\>)
+       (increase-indent %stream)
+       (reduce #'child!
+	       (slot-value object 'children) 
+	       :initial-value stream)
+       (decrease-indent %stream)
+       (char! %stream #\Newline)
+       (outro! stream object)))
+    stream))
+
+(defmethod write-stream ((stream xml-stream) (object generic-xml))
+  (with-slots (%stream) stream
+    (intro! stream object)
+    (reduce #'attribute!
+	    (slot-value object 'attributes)
+	    :initial-value stream)
+    (cond
+      ((null (xml.children object))
+       (string! %stream "/>"))
+      ((stringp (car (xml.children object)))
+       (char! %stream #\>)
+       (write-stream stream (car (xml.children object)))
+       (outro! stream object))
+      (t
+       (char! %stream #\>)
+       (increase-indent %stream)
+       (reduce #'child!
+	       (slot-value object 'children) 
+	       :initial-value stream)
+       (decrease-indent %stream)
+       (char! %stream #\Newline)
+       (outro! stream object)))
+    stream))
+
+(deftrace xml-render
+    '(intro! outro! child! write-stream attribute!))
 
 ;;---------------------------------------------------------------------------
 ;; Relaxed XML Parser
