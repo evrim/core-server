@@ -543,3 +543,148 @@
 	      #\>)))
     xml-stream))
 
+
+;;---------------------------------------------------------------------------
+;; Relaxed XML Parser
+;;---------------------------------------------------------------------------
+;; This is a duplicate of the xml parser that is slow but allows
+;; us to parse some of the broken xml's like HTML.
+(defrule relaxed-xml-attribute-name? (c attribute namespace)
+  (:or (:type alphanum? c)
+	     (:and #\- (:do (setq c #\-))))
+  (:and (:do (setq attribute (make-accumulator)))
+	(:collect c attribute))
+  (:zom (:or (:type alphanum? c)
+	     (:and #\- (:do (setq c #\-))))
+	(:collect c attribute))  
+  (:optional
+   #\:
+   (:do (setq namespace attribute)
+	(setq attribute (make-accumulator)))
+   (:oom (:or (:type alphanum? c)
+	      (:and #\- (:do (setq c #\-))))
+	 (:collect c attribute)))
+  (:return (if namespace
+	       (values attribute namespace)
+	       attribute)))
+
+(defrule relaxed-xml-attribute-value? (c val)
+  (:or (:and
+	#\"
+	(:do (setq val (make-accumulator)))
+	(:zom (:checkpoint #\" (:return val))
+	      (:checkpoint #\> (:rewind-return val))
+	      (:type (or visible-char? space?) c)
+	      (:collect c val)))
+       (:and
+	#\'
+	(:do (setq val (make-accumulator)))
+	(:zom (:checkpoint #\' (:return val))
+	      (:checkpoint #\> (:rewind-return val))
+	      (:type (or visible-char? space?) c)
+	      (:collect c val)))
+       (:zom (:checkpoint (:or #\> #\/)
+			  (:rewind-return val))
+	     (:type visible-char? c)
+	     (:collect c val)))
+  (:return val))
+
+(defrule relaxed-xml-attribute? (name value)
+  (:relaxed-xml-attribute-name? name)
+  #\=
+  (:relaxed-xml-attribute-value? value)
+  (:return (cons name value)))
+
+(defrule relaxed-xml-tag-name? (tag namespace)
+  (:relaxed-xml-attribute-name? tag namespace)
+  (:return (values tag namespace)))
+
+(defrule relaxed-xml-lwsp? (c)
+  (:oom (:or (:and (:type (or space? tab?)))
+	     (:and (:type (or carriage-return? linefeed?))
+		   (:do (setf c t))))
+  (:if c
+       (:return #\Newline)
+       (:return #\Space))))
+
+(defrule relaxed-xml-text-node? (c acc)
+  (:not #\<)
+  (:checkpoint #\< (:rewind-return (octets-to-string acc :utf-8)))
+  (:or (:and (:seq "&gt;") (:do (setf c #\<)))
+       (:and (:seq "&lt;") (:do (setf c #\>)))
+       (:relaxed-xml-lwsp? c) (:type octet? c))
+  (:do (setq acc (make-accumulator :byte)))
+  (:collect c acc)
+  (:zom (:checkpoint #\< (:rewind-return (octets-to-string acc :utf-8)))
+	(:or (:and (:seq "&gt;") (:do (setf c #\<)))
+	     (:and (:seq "&lt;") (:do (setf c #\>)))
+	     (:relaxed-xml-lwsp? c) (:type octet? c))
+	(:collect c acc))
+  (:if (> (length acc) 0)
+       (:return (octets-to-string acc :utf-8))))
+
+(defrule relaxed-xml-cdata? (c acc)
+  (:seq "<![CDATA[")
+  (:do (setq acc (make-accumulator)))
+  (:zom (:not (:seq "]]>"))
+	(:type octet? c)
+	(:collect c acc))
+  (:return acc))
+
+(defrule relaxed-xml-comment? (c acc)
+  (:seq "<!--")
+  (:do (setq acc (make-accumulator)))
+  (:collect #\< acc) (:collect #\! acc)
+  (:collect #\- acc) (:collect #\- acc)
+  (:zom (:not (:seq "-->")) (:type octet? c) (:collect c acc))
+  (:collect #\- acc) (:collect #\- acc) (:collect #\> acc)
+  (:return acc))
+
+(defparser relaxed-xml-lexer? (tag namespace attr attrs child children)
+  (:lwsp?)
+  (:checkpoint (:seq "<?xml")
+	       (:zom (:not #\>) (:type octet?)) (:lwsp?) (:commit))
+  (:checkpoint (:seq "<!DOCTYPE")
+	       (:zom (:not #\>) (:type octet?)) (:lwsp?) (:commit))
+  #\<
+  (:relaxed-xml-tag-name? tag namespace)
+  (:zom (:lwsp?)
+	(:relaxed-xml-attribute? attr)
+	(:do (push attr attrs)))
+  (:or (:and (:lwsp?)
+	     (:seq "/>")
+	     (:return (list tag namespace (nreverse attrs))))
+       (:and #\>
+	     (:zom (:lwsp?)
+		   (:or
+		    (:checkpoint
+		     (:seq "</")
+		     (:if namespace
+			  (:not (:and (:sci namespace) #\: (:sci tag)))
+			  (:not (:sci tag)))
+		     (:rewind-return (list* tag namespace (nreverse attrs)
+					    (nreverse children))))
+		    (:relaxed-xml-lexer? child)
+		    (:relaxed-xml-comment? child)
+		    (:relaxed-xml-text-node? child)
+		    (:relaxed-xml-cdata? child))
+		   (:do (push child children)))
+	     (:seq "</")
+	     (:if namespace
+		  (:and (:sci namespace) #\: (:sci tag))
+		  (:sci tag))
+	     #\>
+	     (:return (list* tag namespace (nreverse attrs)
+			     (nreverse children))))))
+
+;; +------------------------------------------------------------------------
+;; | Relaxed XML Stream
+;; +------------------------------------------------------------------------
+(defclass relaxed-xml-stream (xml-stream)
+  ())
+
+(defun make-relaxed-xml-stream (stream)
+  (make-instance 'relaxed-xml-stream :stream stream))
+
+(defmethod read-stream ((stream xml-stream))
+  (parse-xml (relaxed-xml-lexer? (slot-value stream '%stream))))

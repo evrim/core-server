@@ -211,7 +211,7 @@
 ;; ----------------------------------------------------------------------------
 ;; HTML Stream
 ;; ----------------------------------------------------------------------------
-(defclass html-stream (xml-stream)
+(defclass html-stream (relaxed-xml-stream)
   ())
 
 (defun make-html-stream (stream)
