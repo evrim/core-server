@@ -195,6 +195,11 @@
 (defmethod write-stream ((self core-vector-io-stream) (val null))
   self)
 
+(defmethod write-stream ((self core-vector-io-stream) (val character))
+  (if (> (char-code val) 255)
+      (write-stream self (string-to-octets (format nil "~A" val) :utf-8))
+      (write-stream self (char-code val))))
+
 (defmethod write-stream ((self core-vector-io-stream) (vector vector))  
   (prog1 self      
     (reduce #'write-stream vector :initial-value self)))
