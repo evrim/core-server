@@ -196,11 +196,13 @@
 
 (defclass+ a-class1 (object-with-id)
   ((name :host local :index t)
-   (one-B :host local :type b-class1 :relation list-of-A)))
+   (one-B :host local :type b-class1 :relation list-of-A)
+   (foo-a :host remote :initform "foo-of-a")))
 
 (defclass+ b-class1 (object-with-id)
   ((name :host local :index t)
-   (list-of-A :host local :type a-class1* :relation one-B)))
+   (list-of-A :host local :type a-class1* :relation one-B)
+   (foo-b :host remote :initform "foo-of-b")))
 
 (defcrud a-class1)
 (defcrud b-class1)
@@ -232,6 +234,34 @@
       (prog1 (database.get db 'key)
 	(stop db)))
   "ğüşiöçıĞÜŞİÖÇI")
+
+(defcomponent a-component (<:div)
+  ((foo :host remote :initform "foo-of-a")))
+
+(defcomponent b-component (a-component)
+  ((a-slot :host local))
+  (:default-initargs :foo "foo-of-b"))
+
+(defcrud a-component)
+(defcrud b-component)
+
+(deftest database-14
+    (let* ((db (test-db))
+	   (a1 (a-component.add db))
+	   (b1 (b-component.add db :a-slot a1)))
+      (describe db)
+      (snapshot db)
+      (stop db)
+      (start db)      
+      (describe a1)
+      (describe b1)
+      (let ((a2 (cadr (a-component.list db)))
+	    (b2 (car (b-component.list db))))
+	(describe a2)
+	(describe b2))
+      (stop db)
+      t)
+  t)
 
 ;; ;; http://www.cs.vu.nl/boilerplate/
 ;; ;;

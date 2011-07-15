@@ -70,11 +70,11 @@
 					      (class+.ctor-lambda-list class+ t)))
 				   :initial-value nil)))
 		 (car (apply #',query ,server args))))
-	     (redefmethod ,add ((,server abstract-database) &key ,@(class+.ctor-lambda-list class+))
+	     (redefmethod ,add ((,server abstract-database) &key ,@(class+.local-ctor-lambda-list class+))
 	       (add-object ,server ',class
 			   ,@(mapcar (lambda (slot)
 				       `(cons ',(car slot) ,(car slot)))
-				     (class+.ctor-lambda-list class+))))
+				     (class+.local-ctor-lambda-list class+))))
 	     (redefmethod ,update ((,server abstract-database) (instance ,class)
 				   &key ,@(class+.ctor-lambda-list class+ t))
 	       (apply #'update-object ,server instance
