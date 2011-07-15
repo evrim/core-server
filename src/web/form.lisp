@@ -83,9 +83,9 @@
 (defmethod/remote init ((self <core:validating-input))
   (run-validator self))
 
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | Default Value HTML Input
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (defcomponent <core:default-value-input (<core:validating-input)
   ((default-value :host remote :initform nil))
   (:default-initargs :value ""))
@@ -119,9 +119,9 @@
 
   (call-next-method self))
 
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | Email HTML Component
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (defcomponent <core:email-input (<core:default-value-input)
   ())
 
@@ -134,9 +134,9 @@
 (defmethod/remote validate ((self <core:email-input))
   (and (call-next-method self) (validate-email self)))
 
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | Password HTML Component
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (defcomponent <core:password-input (<core:default-value-input)
   ((min-length :initform 6 :host remote))
   (:default-initargs :type "password"))
@@ -178,7 +178,7 @@
 ;; +-------------------------------------------------------------------------
 (defcomponent <core:number-value-input (<core:default-value-input)
   ()
-  (:default-initargs :default-value "Enter a number"))
+  (:default-initargs :default-value "Enter a number" :type "text"))
 
 (defmethod/remote get-input-value ((self <core:number-value-input))
   (cond
