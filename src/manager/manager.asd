@@ -1,6 +1,6 @@
 (in-package :asdf)
 
-(asdf:defsystem :manager :description "core template application" :version ".1"
+(asdf:defsystem :manager :description "core template application" :version "1"
                 :author "root@localhost" :maintainer "root@localhost" :licence
                 "lgpl v2" :components
                 ((:static-file "manager.asd")
