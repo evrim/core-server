@@ -243,9 +243,9 @@
 	    (setf (s-v '%current) -1
 		  (s-v '%buffer) (make-accumulator :byte))))))
 
-;;;-----------------------------------------------------------------------------
+;;;--------------------------------------------------------------------------
 ;;; String Stream
-;;;-----------------------------------------------------------------------------
+;;;--------------------------------------------------------------------------
 (defclass core-string-io-stream (core-vector-io-stream)
   ((external-format :initarg :external-format :initform :utf-8)))
 
@@ -264,9 +264,9 @@
 (defmethod return-stream ((self core-string-io-stream))
   (octets-to-string (s-v '%octets) (s-v 'external-format)))
 
-;;;-----------------------------------------------------------------------------
+;;;--------------------------------------------------------------------------
 ;;; Socket Stream
-;;;-----------------------------------------------------------------------------
+;;;--------------------------------------------------------------------------
 (defclass %core-fd-stream (core-stream)
   ((%stream :initarg :stream :initform nil)))
 
@@ -844,10 +844,12 @@
 ;;;
 (defclass core-indented-stream (core-transformer-stream)
   ((%indent :initform 0 :initarg :indent)
+   (%indent-saved :initform 0)
    (%increment :initform 2 :initarg :increment)))
 
 (defmethod increase-indent ((self core-stream) &optional n)
   (declare (ignore n))
+  (warn "(increase-indent ~A) not implemented" self)
   self)
 
 (defmethod increase-indent ((self core-indented-stream) &optional (n nil))  
@@ -859,6 +861,7 @@
 
 (defmethod decrease-indent ((self core-stream) &optional n)
   (declare (ignore n))
+  (warn "(decrease-indent ~A) not implemented" self)
   self)
 
 (defmethod decrease-indent ((self core-indented-stream) &optional (n nil))
@@ -867,6 +870,18 @@
 	 (setf (s-v '%indent) 0)
 	 it)
     self))
+
+(defmethod current-indent ((self core-stream)) 0)
+(defmethod current-indent ((self core-indented-stream)) (s-v '%indent))
+
+(defmethod enable-indentation ((self core-stream)) 0)
+(defmethod enable-indentation ((self core-indented-stream))
+  (setf (s-v '%indent) (s-v '%indent-saved)))
+
+(defmethod disable-indentation ((self core-stream)) 0)
+(defmethod disable-indentation ((self core-stream))
+  (setf (s-v '%indent-saved) (s-v '%indent)
+	(s-v '%indent) 0))
 
 (defmethod write-stream ((self core-indented-stream) (vector vector))
   (prog1 self (reduce #'write-stream vector :initial-value self)))
@@ -902,9 +917,9 @@
 				  stream
 				  (write-stream stream atom)))))
 
-;;;-----------------------------------------------------------------------------
+;;;-------------------------------------------------------------------------
 ;;; Core CPS Stream
-;;;-----------------------------------------------------------------------------
+;;;-------------------------------------------------------------------------
 (defclass core-cps-stream (core-stream)
   ((%stack :initarg :stack :initform (error "Stack should not be nil"))))
 
@@ -977,9 +992,9 @@
   "Dummy CPS Stream")
 
 
-;;;-----------------------------------------------------------------------------
+;;;--------------------------------------------------------------------------
 ;;; Core FD NIO Stream
-;;;-----------------------------------------------------------------------------
+;;;--------------------------------------------------------------------------
 (defclass core-fd-nio-stream (core-fd-io-stream)
   ((unit :initarg :unit :initform nil :accessor unit)
    (%buffer-size :initarg :buffer-size :initform 4096)

@@ -257,7 +257,8 @@
 ;; Inline Images having src as a rfc 2046 toplevel media
 ;;--------------------------------------------------------------------------
 ;; (<:img :media *a-toplevel-media-from-rfc2046*)
-(defmethod write-stream ((stream core-string-io-stream) (media top-level-media))
+(defmethod write-stream ((stream core-string-io-stream)
+			 (media top-level-media))
   (prog1 stream
     (string! stream "data:")
     (string! stream (format nil "~{~A~^/~}" (mime.content-type media)))
@@ -273,9 +274,9 @@
        (let ((,element (progn ,@body)))
 	 (write-stream ,%stream ,element)))))
 
-;;-----------------------------------------------------------------------------
+;;---------------------------------------------------------------------------
 ;; Html to Javascript Transformation
-;;-----------------------------------------------------------------------------
+;;---------------------------------------------------------------------------
 (defgeneric dom2js (html-element)
   (:documentation "Html to Javascript transformator"))
 
@@ -296,7 +297,8 @@
 		  (xml.attributes element) :initial-value nil)
 	,@(mapcar (lambda (child)
 		    (if (stringp child)
-			`(elem.append-child (document.create-text-node ,child))
+			`(elem.append-child
+			  (document.create-text-node ,child))
 			`(elem.append-child ,(dom2js child))))
 		  (xml.children element))
 	(return elem)))))

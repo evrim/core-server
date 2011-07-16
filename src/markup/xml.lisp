@@ -422,24 +422,27 @@
 
 (defmethod write-stream ((stream xml-stream) (string string))
   (prog1 stream
-    (string! (slot-value stream '%stream)
-	     (reduce (lambda (acc atom)
-		       (cond
-			 ((eq atom #\<)
-			  (push-atom #\& acc)
-			  (push-atom #\g acc)
-			  (push-atom #\t acc)
-			  (push-atom #\; acc))
-			 ((eq atom #\>)
-			  (push-atom #\& acc)
-			  (push-atom #\l acc)
-			  (push-atom #\t acc)
-			  (push-atom #\; acc))
-			 (t
-			  (push-atom atom acc)))
-		       acc)
-		     string
-		     :initial-value (make-accumulator)))))
+    (with-slots (%stream) stream
+      (disable-indentation %stream)
+      (string! %stream
+	       (reduce (lambda (acc atom)
+			 (cond
+			   ((eq atom #\<)
+			    (push-atom #\& acc)
+			    (push-atom #\g acc)
+			    (push-atom #\t acc)
+			    (push-atom #\; acc))
+			   ((eq atom #\>)
+			    (push-atom #\& acc)
+			    (push-atom #\l acc)
+			    (push-atom #\t acc)
+			    (push-atom #\; acc))
+			   (t
+			    (push-atom atom acc)))
+			 acc)
+		       string
+		       :initial-value (make-accumulator)))
+      (enable-indentation %stream))))
 
 (defmethod intro! ((stream xml-stream) (object xml))
   (with-slots (%stream) stream
@@ -466,7 +469,8 @@
 
 (defmethod child! ((stream xml-stream) object)
   (char! (slot-value stream '%stream) #\Newline)
-  (write-stream stream object))
+  (write-stream stream object)
+  stream)
 
 (defmethod outro! ((stream xml-stream) (object xml))
   (with-slots (%stream) stream
