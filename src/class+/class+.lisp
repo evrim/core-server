@@ -310,10 +310,10 @@
 
 (defmethod class+.local-ctor-lambda-list ((self class+) &optional
 					  (include-supplied-p nil))
-  (let ((remote-slots (mapcar #'slot-definition-name
-			      (class+.remote-slots self))))
+  (let ((local-slots (mapcar #'slot-definition-name
+			     (class+.local-slots self))))
     (filter (lambda (slot)
-	      (not (member (car slot) remote-slots :test #'string=)))
+	      (member (car slot) local-slots :test #'string=))
 	    (class+.ctor-lambda-list self include-supplied-p))))
 
 (defmethod class+.ctor-arguments ((self class+) &optional lambda-list)      
