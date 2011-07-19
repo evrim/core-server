@@ -128,6 +128,11 @@
 (defmethod write-stream ((self core-stream) (c null))
   self)
 
+(defmethod write-stream ((self core-stream) (val character))
+  (if (> (char-code val) 255)
+      (write-stream self (string-to-octets (format nil "~A" val) :utf-8))
+      (write-stream self (char-code val))))
+
 ;;;-----------------------------------------------------------------------------
 ;;; Standard Output Workarounds
 ;;;-----------------------------------------------------------------------------
@@ -350,8 +355,10 @@
   ;;  (incf (s-v '%read-index)) ;; paradoxal
   )
 
-(defmethod write-stream ((self core-fd-io-stream) (atom character))
-  (write-stream self (char-code atom)))
+(defmethod write-stream ((self core-fd-io-stream) (val character))
+  (if (> (char-code val) 255)
+      (write-stream self (string-to-octets (format nil "~A" val) :utf-8))
+      (write-stream self (char-code val))))
 
 (defmethod checkpoint-stream ((self core-fd-io-stream))
   (if (transactionalp self)
@@ -879,7 +886,7 @@
   (setf (s-v '%indent) (s-v '%indent-saved)))
 
 (defmethod disable-indentation ((self core-stream)) 0)
-(defmethod disable-indentation ((self core-stream))
+(defmethod disable-indentation ((self core-indented-stream))
   (setf (s-v '%indent-saved) (s-v '%indent)
 	(s-v '%indent) 0))
 
