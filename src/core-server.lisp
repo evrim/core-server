@@ -137,6 +137,9 @@
    #:core-cps-file-io-stream
    #:make-transformer-stream
    #:make-core-stream
+   #:make-core-file-input-stream
+   #:make-core-file-io-stream
+   #:make-core-file-output-stream
    
    ;; [Special Transformers 4 Javascript]   
    #:make-indented-stream
