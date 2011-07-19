@@ -158,7 +158,8 @@
 		  :documentation "extra headers for this envelope. List of string tuples.")))
 
 (defprint-object (self envelope :identity t :type t)
-  (format t "~A->~A:~A" (slot-value self 'from) (slot-value self 'to) (slot-value self 'subject)))
+  (format t "~A->~A:~A" (slot-value self 'from) (slot-value self 'to)
+	  (slot-value self 'subject)))
 
 (defmethod envelope! ((s core-stream) (e envelope))
   (prog1 s
@@ -168,7 +169,8 @@
       (http-date! s (envelope.date e))
       (char! s #\Newline))
     (smtp! s (format nil "From: ~@[~A <~]~A~@[>~]"
-		     (envelope.display-name e) (envelope.from e) (envelope.display-name e)))
+		     (envelope.display-name e) (envelope.from e)
+		     (envelope.display-name e)))
     (smtp! s (format nil "To: ~{ ~a~^,~}" (ensure-list (envelope.to e))))
     (when (envelope.cc e)
       (smtp! s (format nil "Cc: ~{ ~a~^,~}" (ensure-list (envelope.cc e)))))
