@@ -127,26 +127,14 @@
 (defmacro/js make-component (ctor &rest args)
   `(call/cc ,ctor (jobject ,@args)))
 
-(defmacro/js delete-slot (self slot)
-  (let ((slot (if (and (consp slot) (eq 'quote (car slot)))
-		  (cadr slot)
-		  slot)))
-    `(if (and (slot-value ,self 'has-attribute)
-	      (.has-attribute ,self ',(symbol-to-js slot)))
-	 (.remove-attribute ,self ',(symbol-to-js slot))
-	 (try (delete (slot-value ,self ',slot))	  
-	      (:catch (e)
-		(setf (slot-value ,self ',slot) undefined))))))
-
 (defmacro/js delete-slots (self &rest slots)
-  `(mapcar (event (slot)
-	     (if (and (slot-value ,self 'has-attribute)
-		      (.has-attribute ,self slot))
-		 (.remove-attribute self slot)
-		 (try (delete (slot-value ,self slot))	  
-		      (:catch (e)
-			(setf (slot-value ,self slot) undefined)))))
-	   (list ,@(mapcar (lambda (a) (symbol-to-js (cadr a))) slots))))
+  `(remove-slots ,self (list ,@(mapcar (lambda (a) (symbol-to-js (cadr a)))
+				       ;; cadr is for (quote somesymbol)
+				       ;; -evrim.
+				       slots))))
+
+(defmacro/js delete-slot (self slot)
+  `(delete-slots ,self ,slot))
 
 (defmacro/js bookmarklet-script (url)
   `(+ "javascript:void((function(){"

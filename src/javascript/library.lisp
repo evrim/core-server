@@ -246,27 +246,7 @@
   (defun inline (node)
     (when (and (slot-value node 'style))	;; (instanceof node *h-t-m-l-element)
       (setf node.style.display "inline"))
-    node)
-
-  (defun coretal-on-load (fun)
-    (if (and (not (null (slot-value window 'coretal)))
-	     (not (null (slot-value coretal 'loaded-p))))
-	(make-web-thread fun)
-	(make-web-thread (lambda () (coretal-on-load fun)))))
-  
-  (defun add-on-load (fun)
-    (if (eq "complete" document.ready-state)
-	;; (or (eq "complete" document.ready-state)
-	;;     (eq "interactive" document.ready-state))
-	;; yalan bu ya
-	(fun)
-	(if (typep window.onload 'function)
-	    (let ((current window.onload))
-	      (setf window.onload
-		    (lambda ()
-		      (current)
-		      (fun))))
-	    (setf window.onload fun))))
+    node)  
 
   (defun connect (target event lambda)
     (if (typep target 'string)
@@ -728,6 +708,16 @@
 		 source)
       target))
 
+  (defun remove-slots (source slots)
+    (mapcar (lambda (slot)
+	      (if (and (slot-value source 'hash-attribute)
+		       (.has-attribute source slot))
+		  (.remove-attribute source slot)
+		  (try (delete (slot-value source slot))
+		       (:catch (e)
+			 (setf (slot-value source slot) undefined)))))
+	    slots))
+
   (defun apply (fun scope args kX)
     (fun.apply scope (reverse (cons kX (reverse args)))))
   
@@ -783,7 +773,27 @@
 		  (self this))
 	     (apply fun1 self args
 		    (lambda (val) (apply fun2 self args k)))))))))
+
+  (defun coretal-on-load (fun)
+    (if (and (not (null (slot-value window 'coretal)))
+	     (not (null (slot-value coretal 'loaded-p))))
+	(make-web-thread fun)
+	(make-web-thread (lambda () (coretal-on-load fun)))))
   
+  (defun add-on-load (fun)
+    (if (eq "complete" document.ready-state)
+	;; (or (eq "complete" document.ready-state)
+	;;     (eq "interactive" document.ready-state))
+	;; yalan bu ya
+	(fun)
+	(if (typep window.onload 'function)
+	    (let ((current window.onload))
+	      (setf window.onload
+		    (lambda ()
+		      (current)
+		      (fun))))
+	    (setf window.onload fun))))
+
   (defun random-string (len)
     (let ((len (or len 8))
 	  (alphabet (+  "0123456789" "ABCDEFGHIJKLMNOPQRSTUVWXTZ"
