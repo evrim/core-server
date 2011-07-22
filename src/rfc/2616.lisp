@@ -283,7 +283,7 @@
     (string! stream
 	     (format nil "~a, ~2,'0d ~a ~d ~2,'0d:~2,'0d:~2,'0d GMT"
 		     (nth day-of-week +rfc1123-day-names+)
-		     day (nth month +rfc1123-month-names+) year
+		     day (nth (1- month) +rfc1123-month-names+) year
 		     hour minute second))))
 
 ;; 14.32 Pragma
