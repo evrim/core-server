@@ -17,14 +17,14 @@
 
 (in-package :tr.gen.core.server)
 
-;;;-----------------------------------------------------------------------------
+;;;--------------------------------------------------------------------------
 ;;; RFC 2045 - Multipurpose Internet Mail Extensions (MIME)
 ;;; Part One: Format of Internet Message Bodies
-;;;-----------------------------------------------------------------------------
+;;;--------------------------------------------------------------------------
 
-;;;-----------------------------------------------------------------------------
+;;;--------------------------------------------------------------------------
 ;;; 6.7.  Quoted-Printable Content-Transfer-Encoding
-;;;-----------------------------------------------------------------------------
+;;;--------------------------------------------------------------------------
 
 ;; transport-padding := *LWSP-char
 ;; Composers MUST NOT generate non-zero length transport padding, but
@@ -79,7 +79,8 @@
 	(:crlf?))
   (:and (:qp-part? qs) (:do (push qs segments)))
   (:transport-padding?)
-  (:return (apply #'concatenate '(vector (unsigned-byte 8)) (nreverse segments))))
+  (:return (apply #'concatenate '(vector (unsigned-byte 8))
+		  (nreverse segments))))
 
 ;; quoted-printable := qp-line *(CRLF qp-line)
 (defrule quoted-printable? (lines line)
@@ -94,6 +95,8 @@
   (char! stream #\=)
   (hex-value! stream atom))
 
+;; This is depreciated. Use make-quoted-printable-stream
+;; instead. -evrim.
 (defun quoted-printable! (stream array &aux (line-length 0))
   (etypecase array
      (string (setq array (string-to-octets array :utf-8)))
