@@ -366,6 +366,7 @@
 	   (database.directory self)))  
   
   (when (not (database.status self))
+    (warn "Starting database ~A" self)
     (setf (database.cache self) (serialization-cache))
     (ensure-directories-exist (database.directory self))
     (restore self)
@@ -374,6 +375,7 @@
 
 (defmethod stop ((self database))
   (when (database.status self)
+    (warn "Stopping database ~A" self)
     (clrhash (database.root self))
     (clrhash (database.closure-cache self))
     (setf (database.cache self) (serialization-cache))
