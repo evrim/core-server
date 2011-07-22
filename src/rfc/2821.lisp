@@ -162,35 +162,91 @@
 	  (slot-value self 'subject)))
 
 (defmethod envelope! ((s core-stream) (e envelope))
-  (prog1 s
-    (checkpoint-stream s)
-    (when (envelope.date e)
-      (string! s "Date: ")
-      (http-date! s (envelope.date e))
-      (char! s #\Newline))
-    (smtp! s (format nil "From: ~@[~A <~]~A~@[>~]"
-		     (envelope.display-name e) (envelope.from e)
-		     (envelope.display-name e)))
-    (smtp! s (format nil "To: ~{ ~a~^,~}" (ensure-list (envelope.to e))))
-    (when (envelope.cc e)
-      (smtp! s (format nil "Cc: ~{ ~a~^,~}" (ensure-list (envelope.cc e)))))
-    (when (envelope.reply-to e)
-      (smtp! s (format nil "Reply-To: ~A" (envelope.reply-to e))))
-    (smtp! s (format nil "Subject: ~A" (envelope.subject e)))
-    (smtp! s (format nil "X-Mailer: ~A" +x-mailer+))
-    (let ((hdrs (envelope.extra-headers e)))
-      (when (and hdrs (listp hdrs))
-	(dolist (h hdrs)
-	  (smtp! s (format nil "~A: ~A" (car h) (cdr h))))))
-    (smtp! s "MIME-Version: 1.0")
-    (smtp! s "Content-Type: text/html; charset=UTF-8; format=flowed")
-    (smtp! s "Content-Transfer-Encoding: 8bit")
-    (char! s #\Newline)
-    (if (typep (envelope.text e) 'dom-element)
-	(dom-element! s (envelope.text e))
-	(string! s (envelope.text e)))
-    (char! s #\Newline)
-    (commit-stream s)))
+  (flet ((write-address (name address)
+	   (cond
+	     (name
+	      (let ((s (make-quoted-printable-stream s)))
+		(string! s name)
+		(close-stream s))
+	      (string! s " <")
+	      (string! s address)
+	      (char! s #\>))
+	     (t
+	      (string! s (envelope.from e))))))
+    (prog1 s
+      (checkpoint-stream s)
+      (when (envelope.date e)
+	(string! s "Date: ")
+	(http-date! s (envelope.date e))
+	(char! s #\Newline))
+
+      (string! s "From:")
+      (write-address (envelope.display-name e) (envelope.from e))
+      (char! s #\Newline)
+    
+      (string! s "To:")
+      (string! s (format nil "~{ ~a~^,~}" (ensure-list (envelope.to e))))
+      (char! s #\Newline)
+    
+      (when (envelope.cc e)
+	(string! s "Cc:")
+	(string! s
+		 (format nil "~{ ~a~^,~}" (ensure-list (envelope.cc e))))
+	(char! s #\Newline))
+    
+      (when (envelope.reply-to e)
+	(string! s "Reply-To: ")
+	(string! s (envelope.reply-to e))
+	(char! s #\Newline))
+    
+      (string! s "Subject:")
+      (let ((s (make-quoted-printable-stream s)))
+      	(string! s (envelope.subject e))
+      	(close-stream s))
+      (char! s #\Newline)
+    
+      (smtp! s (format nil "X-Mailer: ~A" +x-mailer+))
+      (let ((hdrs (envelope.extra-headers e)))
+	(when (and hdrs (listp hdrs))
+	  (dolist (h hdrs)
+	    (smtp! s (format nil "~A: ~A" (car h) (cdr h))))))
+      (smtp! s "MIME-Version: 1.0")
+      (smtp! s "Content-Type: text/html; charset=UTF-8; format=flowed")
+      (smtp! s "Content-Transfer-Encoding: 8bit")
+      (char! s #\Newline)
+      (cond
+	((typep (envelope.text e) 'dom-element)
+	 (write-stream (make-xml-stream s) (envelope.text e)))
+	(t
+	 (string! s (envelope.text e))))
+      (char! s #\Newline)
+      (commit-stream s))))
+
+;; SERVER> (let ((s (make-core-file-output-stream #P"/tmp/foo"))
+;; 		 (e (make-instance 'core-server::envelope 
+;; 		 		   :to (list "evrim@core.gen.tr"
+;;                                           "aycan@core.gen.tr")
+;; 				   :from "evrim@core.gen.tr"
+;; 				   :subject "[Coretal.net] ĞÜLŞÖÇİIÜĞŞİÇÇ:ÖÖMÖIOIOIğülşölöşğü"
+;; 				   :text (<:div "text123")
+;; 				   :display-name "ĞÜŞİÇÖI")))
+;; 	    (core-server::envelope! s e)
+;; 	    (close-stream s)
+;; 	    (read-string-from-file #P"/tmp/foo" :external-format :utf-8))
+
+;; "Date: Fri, 22 Aug 2011 22:14:23 GMT
+;; From: =?UTF-8?Q?=C4=9E=C3=9C=C5=9E=C4=B0=C3=87=C3=96I?= <evrim@core.gen.tr>
+;; To: evrim@core.gen.tr, aycan@core.gen.tr
+;; Subject: =?UTF-8?Q?[Coretal.net]=20=C4=9E=C3=9CL=C5=9E=C3=96=C3=87=C4=B0I=C3=9C=C4=9E?=
+;;  =?UTF-8?Q?=C5=9E=C4=B0=C3=87=C3=87:=C3=96=C3=96M=C3=96IOIOI=C4=9F=C3=BCl=C5?=
+;;  =?UTF-8?Q?=9F=C3=B6l=C3=B6=C5=9F=C4=9F=C3=BC?=
+;; X-Mailer: [Core-serveR] (http://labs.core.gen.tr)
+;; MIME-Version: 1.0
+;; Content-Type: text/html; charset=UTF-8; format=flowed
+;; Content-Transfer-Encoding: 8bit
+
+;; <div>text123</div>
+;; "
 
 (defcommand smtp-send (smtp)
   ((envelope :host local :initarg :envelope))
