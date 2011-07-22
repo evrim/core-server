@@ -201,7 +201,9 @@ doesn't exist, it is created."
    erc-insert-timestamp-function 'erc-insert-timestamp-left
    erc-timestamp-format "%H:%M "
    erc-timestamp-only-if-changed-flag nil
-   erc-hide-timestamps nil)
+   erc-hide-timestamps nil
+   erc-interpret-mirc-color t
+   erc-interpret-controls-p 'remove)
 
   ;; diğer yapılandırma değerleri
   (custom-set-variables
