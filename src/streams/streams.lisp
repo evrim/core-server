@@ -202,10 +202,10 @@
 (defmethod write-stream ((self core-vector-io-stream) (val null))
   self)
 
-;; (defmethod write-stream ((self core-vector-io-stream) (val character))
-;;   (if (> (char-code val) 255)
-;;       (write-stream self (string-to-octets (format nil "~A" val) :utf-8))
-;;       (write-stream self (char-code val))))
+(defmethod write-stream ((self core-vector-io-stream) (val character))
+  (if (> (char-code val) 127)
+      (write-stream self (string-to-octets (format nil "~A" val) :utf-8))
+      (write-stream self (char-code val))))
 
 (defmethod write-stream ((self core-vector-io-stream) (vector vector))  
   (prog1 self      
@@ -358,8 +358,10 @@
   ;;  (incf (s-v '%read-index)) ;; paradoxal
   )
 
-;; (defmethod write-stream ((self core-fd-io-stream) (val character))
-;;   (write-stream self (char-code val)))
+(defmethod write-stream ((self core-fd-io-stream) (val character))
+  (if (> (char-code val) 127)
+      (write-stream self (string-to-octets (format nil "~A" val) :utf-8))
+      (write-stream self (char-code val))))
 
 (defmethod checkpoint-stream ((self core-fd-io-stream))
   (if (transactionalp self)
@@ -715,6 +717,103 @@
 
 (defun make-chunked-stream (input)
   (make-instance 'core-chunked-stream :stream input))
+
+;; -------------------------------------------------------------------------
+;; Line Based Output Stream
+;; -------------------------------------------------------------------------
+(defclass line-based-stream (wrapping-stream)
+  ((%max-length :initform 76 :initarg :max-line-length)
+   (%cursor :initform 0)
+   (%cursor-checkpoints :initform '())))
+
+(defmethod checkpoint-stream ((self line-based-stream))
+  (push (s-v '%cursor) (s-v '%cursor-checkpoints))
+  (call-next-method self))
+
+(defmethod rewind-stream ((self line-based-stream))
+  (if (transactionalp self)
+      (setf (s-v '%cursor) (pop (s-v '%cursor-checkpoints))))
+  (call-next-method self))
+
+(defmethod commit-stream ((self line-based-stream))
+  (if (transactionalp self)
+      (pop (s-v '%cursor-checkpoints)))
+  (call-next-method self))
+
+(defmethod write-stream ((self line-based-stream) (char character))
+  (let ((code (char-code char)))
+    (if (> code 127) 
+	(reduce #'(lambda (stream atom) (write-stream stream atom))
+		(string-to-octets (string char) :utf-8) :initial-value self)
+	(write-stream self code))))
+
+(defmethod write-stream ((self line-based-stream) (vector vector))
+  (reduce #'write-stream vector :initial-value self))
+
+(defmethod %do-crlf ((self line-based-stream))
+  (write-stream (s-v '%stream) #.(char-code #\Newline))
+  (setf (s-v '%cursor) 0)
+  self)
+
+(defmethod write-stream ((self line-based-stream) atom)
+  (if (>= (s-v '%cursor) (s-v '%max-length))
+      (prog1 self
+	(%do-crlf self)
+	(write-stream self atom))
+      (prog1 self
+	(write-stream (s-v '%stream) atom)
+	(incf (s-v '%cursor)))))
+
+(defun make-line-based-stream (output &optional (max-line-length 76))
+  (make-instance 'line-based-stream
+		 :stream output
+		 :max-line-length max-line-length))
+
+;; +-------------------------------------------------------------------------
+;; | Quoted Printable Stream
+;; +-------------------------------------------------------------------------
+(defclass quoted-printable-stream (line-based-stream)
+  ())
+
+(defmethod %do-crlf ((self quoted-printable-stream))
+  (setf (s-v '%cursor) 0)
+  (string! (s-v '%stream) "?=")
+  (call-next-method self)
+  ;; (setf (s-v '%cursor) 10)
+  self)
+
+(defmethod write-stream ((self quoted-printable-stream) (vector vector))
+  (reduce #'write-stream vector :initial-value self))
+
+(defmethod write-stream ((self quoted-printable-stream) atom)
+  (flet ((do-write-quoted ()
+	   (if (safe-char? atom)
+	       (call-next-method self atom)
+	       (prog1 self
+		 (when (> (+ 3 (s-v '%cursor)) (s-v '%max-length))
+		   (%do-crlf self)
+		   (string! (s-v '%stream) " =?UTF-8?Q?")
+		   (setf (s-v '%cursor) 10))
+		 
+		 (write-stream (s-v '%stream) #.(char-code #\=))
+		 (hex-value! (s-v '%stream) atom)
+		 (incf (s-v '%cursor) 3)))))
+    (if (= (s-v '%cursor) 0)
+	(prog1 self
+	  (string! (s-v '%stream) " =?UTF-8?Q?")
+	  (setf (s-v '%cursor) 10)
+	  (do-write-quoted))
+	(do-write-quoted))))
+
+(defmethod close-stream ((self quoted-printable-stream))
+  (string! (s-v '%stream) "?=")
+  self)
+
+(defun make-quoted-printable-stream (output &optional (max-line-length 76))
+  (assert (and (> max-line-length 15) (evenp max-line-length)))
+  (make-instance 'quoted-printable-stream
+		 :stream output
+		 :max-line-length max-line-length))
 
 ;; ------------------------------------------------------------------------
 ;; Core Pipe Stream
