@@ -128,14 +128,16 @@
 (defmethod write-stream ((self core-stream) (c null))
   self)
 
-(defmethod write-stream ((self core-stream) (val character))
-  (if (> (char-code val) 255)
-      (write-stream self (string-to-octets (format nil "~A" val) :utf-8))
-      (write-stream self (char-code val))))
+(defmethod write-stream ((self core-stream) (char character))
+  (let ((code (char-code char)))
+    (if (> code 127) 
+	(reduce #'(lambda (stream atom) (write-stream stream atom))
+		(string-to-octets (string char) :utf-8) :initial-value self)
+	(write-stream self code))))
 
-;;;-----------------------------------------------------------------------------
+;;;--------------------------------------------------------------------------
 ;;; Standard Output Workarounds
-;;;-----------------------------------------------------------------------------
+;;;--------------------------------------------------------------------------
 (eval-when (:compile-toplevel :execute :load-toplevel)
   (defclass core-standard-output (core-stream)
     ())
@@ -200,10 +202,10 @@
 (defmethod write-stream ((self core-vector-io-stream) (val null))
   self)
 
-(defmethod write-stream ((self core-vector-io-stream) (val character))
-  (if (> (char-code val) 255)
-      (write-stream self (string-to-octets (format nil "~A" val) :utf-8))
-      (write-stream self (char-code val))))
+;; (defmethod write-stream ((self core-vector-io-stream) (val character))
+;;   (if (> (char-code val) 255)
+;;       (write-stream self (string-to-octets (format nil "~A" val) :utf-8))
+;;       (write-stream self (char-code val))))
 
 (defmethod write-stream ((self core-vector-io-stream) (vector vector))  
   (prog1 self      
@@ -258,7 +260,8 @@
 				     &rest initargs &key &allow-other-keys)
   (declare (ignorable initargs))
   (when (getf initargs :string)
-    (let ((octets (string-to-octets (getf initargs :string) (s-v 'external-format))))
+    (let ((octets (string-to-octets (getf initargs :string)
+				    (s-v 'external-format))))
       (setf (s-v '%octets)
 	    (make-array (length (the vector octets))
 			:fill-pointer (length (the vector octets))
@@ -355,10 +358,8 @@
   ;;  (incf (s-v '%read-index)) ;; paradoxal
   )
 
-(defmethod write-stream ((self core-fd-io-stream) (val character))
-  (if (> (char-code val) 255)
-      (write-stream self (string-to-octets (format nil "~A" val) :utf-8))
-      (write-stream self (char-code val))))
+;; (defmethod write-stream ((self core-fd-io-stream) (val character))
+;;   (write-stream self (char-code val)))
 
 (defmethod checkpoint-stream ((self core-fd-io-stream))
   (if (transactionalp self)
@@ -430,7 +431,7 @@
 		:direction :input
 		:element-type '(unsigned-byte 8)
 		:if-does-not-exist :error
-		:external-format :utf8))))
+		:external-format :utf-8))))
 
 (defun make-core-file-input-stream (pathname)
   (make-instance 'core-file-input-stream :file pathname))
@@ -451,9 +452,10 @@
 
 (defun make-core-file-output-stream (pathname)
   (make-instance 'core-file-output-stream :file pathname))
-;;;-----------------------------------------------------------------------------
+
+;;;--------------------------------------------------------------------------
 ;;; List Stream
-;;;-----------------------------------------------------------------------------
+;;;--------------------------------------------------------------------------
 (defclass core-list-io-stream (core-stream)
   ((%list :initarg :list :type list :initform nil) ;; underlying list
    (%index :initform 0 :type fixnum) ;; current index
@@ -532,9 +534,9 @@
 	  (setf (s-v '%current) -1
 		(s-v '%buffer) '())))))
 
-;;;-----------------------------------------------------------------------------
+;;;--------------------------------------------------------------------------
 ;;; Object Stream
-;;;-----------------------------------------------------------------------------
+;;;--------------------------------------------------------------------------
 (defclass core-object-io-stream (core-list-io-stream)
   ((%clazz :accessor clazz :initarg :clazz :initform nil))) ;; underlyng object clazz
 
@@ -675,9 +677,48 @@
 (defun make-bounded-stream (stream max-read)
   (make-instance 'bounded-stream :stream stream :max-read max-read))
 
-;;;-------------------------------------------------------------------------
-;;; Core Pipe Stream
-;;; ------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
+;; | Http Chunck Dencoding Stream (Transfer-Encoding: chunked)
+;; +-------------------------------------------------------------------------
+(defclass core-chunked-stream (bounded-stream)
+  ()
+  (:default-initargs :max-read 0))
+
+(defmethod chunk-readable-p ((self core-chunked-stream))
+  (let ((max-read (s-v '%max-read)))
+    (and max-read (> max-read 0) t)))
+
+(defmethod chunk-setup ((self core-chunked-stream))
+  (let* ((s (s-v '%stream))
+	 (max-read (s-v '%max-read)))
+    (setf (s-v '%max-read) nil)
+    (crlf? s)
+    (let ((num (hex-value*? s)))
+      (if (and num (> num 0))
+	  (prog1 t
+	    (crlf? s)
+	    (setf (s-v '%max-read) num))
+	  (prog1 nil
+	    (setf (s-v '%max-read) max-read))))))
+
+(defmethod peek-stream ((self core-chunked-stream))
+  (if (chunk-readable-p self)
+      (call-next-method self)
+      (if (chunk-setup self)
+  	  (peek-stream self))))
+
+(defmethod read-stream ((self core-chunked-stream))
+  (if (chunk-readable-p self)
+      (call-next-method self)
+      (if (chunk-setup self)
+  	  (read-stream self))))
+
+(defun make-chunked-stream (input)
+  (make-instance 'core-chunked-stream :stream input))
+
+;; ------------------------------------------------------------------------
+;; Core Pipe Stream
+;; ------------------------------------------------------------------------
 (defclass pipe-stream (core-stream)
   ((%input :accessor pipe-stream.input :initarg :input :type core-stream
 	   :initform (error "Provide :input stream"))
@@ -739,12 +780,12 @@
 (defun make-pipe-stream (input output)
   (make-instance 'pipe-stream :input input :output output))
 
-;;;------------------------------------------------------------------------
-;;; Core Transformer Stream
-;;; -----------------------------------------------------------------------
-;;;
-;;; Only output transforming is tested.
-;;;
+;; -----------------------------------------------------------------------
+;; Core Transformer Stream
+;; -----------------------------------------------------------------------
+;;
+;; Only output transforming is tested.
+;;
 (defclass core-transformer-stream (core-stream)
   ((%output :initform (error "Please specify output stream")
 	    :initarg :output :type (or null core-stream))
@@ -803,52 +844,12 @@
 (defun make-output-transformer (output encoder)
   (make-instance 'core-transformer-stream :output output :encoder encoder))
 
+;; ------------------------------------------------------------------------
+;; Core Indented Stream
+;; ------------------------------------------------------------------------
+;; This is used to indent outputs like javascript render. Writes
+;; %indent spaces after a #\Newline is written.
 
-;; +-------------------------------------------------------------------------
-;; | Http Chunck Dencoding Stream (Transfer-Encoding: chunked)
-;; +-------------------------------------------------------------------------
-(defclass core-chunked-stream (bounded-stream)
-  ()
-  (:default-initargs :max-read 0))
-
-(defmethod chunk-readable-p ((self core-chunked-stream))
-  (let ((max-read (s-v '%max-read)))
-    (and max-read (> max-read 0) t)))
-
-(defmethod chunk-setup ((self core-chunked-stream))
-  (let* ((s (s-v '%stream))
-	 (max-read (s-v '%max-read)))
-    (setf (s-v '%max-read) nil)
-    (crlf? s)
-    (let ((num (hex-value*? s)))
-      (if (and num (> num 0))
-	  (prog1 t
-	    (crlf? s)
-	    (setf (s-v '%max-read) num))
-	  (prog1 nil
-	    (setf (s-v '%max-read) max-read))))))
-
-(defmethod peek-stream ((self core-chunked-stream))
-  (if (chunk-readable-p self)
-      (call-next-method self)
-      (if (chunk-setup self)
-  	  (peek-stream self))))
-
-(defmethod read-stream ((self core-chunked-stream))
-  (if (chunk-readable-p self)
-      (call-next-method self)
-      (if (chunk-setup self)
-  	  (read-stream self))))
-
-(defun make-chunked-stream (input)
-  (make-instance 'core-chunked-stream :stream input))
-
-;;;-------------------------------------------------------------------------
-;;; Core Indented Stream
-;;; ------------------------------------------------------------------------
-;;; This is used to indent outputs like javascript render. Writes
-;;; %indent spaces after a #\Newline is written.
-;;;
 (defclass core-indented-stream (core-transformer-stream)
   ((%indent :initform 0 :initarg :indent)
    (%indent-saved :initform 0)
@@ -903,15 +904,18 @@
 		 :indent initial
 		 :encoder #'(lambda (stream atom indent)
 			      (write-stream stream atom)
-			      (if (or (eq #.(char-code #\Newline) atom) (eq #\Newline atom))
+			      (if (or (eq #.(char-code #\Newline) atom)
+				      (eq #\Newline atom))
 				  (dotimes (i indent)
-				    (write-stream stream #.(char-code #\Space)))))))
+				    (write-stream stream
+						  #.(char-code #\Space)))))))
 
-;;;-------------------------------------------------------------------------
-;;; Core Compressed Stream
-;;;-------------------------------------------------------------------------
-;;; This is used to compressed outputs like javascript render. Eats all #\Newline
-;;;
+;; ------------------------------------------------------------------------
+;; Core Compressed Stream
+;; ------------------------------------------------------------------------
+;; This is used to compressed outputs like javascript render. Eats
+;; all #\Newline
+
 (defclass core-compressed-stream (core-transformer-stream)
   ())
 
@@ -1098,8 +1102,8 @@
 	      (cons atom (slot-value stream '%write-buffer))))
       (call-next-method)))
 
-(defmethod/cc1 write-stream ((self core-fd-nio-stream) (atom character))
-  (write-stream self (char-code atom)))
+;; (defmethod/cc1 write-stream ((self core-fd-nio-stream) (atom character))
+;;   (write-stream self (char-code atom)))
 
 (defmethod/cc1 write-stream ((self core-fd-nio-stream) (string string))
   (write-stream self (string-to-octets string :utf-8)))

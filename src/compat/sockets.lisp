@@ -48,23 +48,25 @@
   "Returns a new client core-stream that is just connected to 'socket'"
   (multiple-value-bind (s peer) (socket-accept socket)
     (values (make-instance 'core-fd-io-stream
-			   :stream (socket-make-stream s
-						       :input t :output t
+			   :stream (socket-make-stream s :input t :output t
 						       ;; :element-type ;; element-type
-;; 						       'character
+						       ;; 'character
 						       :element-type element-type
 						       :buffering :full))
             peer)))
 
 (defun connect (server-host server-port
-		&key (element-type '(unsigned-byte 8)) (protocol :tcp))
+		&key (element-type '(unsigned-byte 8)) (protocol :tcp)
+		(external-format :utf-8))
   "Connects to the specified 'server-host' 'server-port' and returns a new
 core-stream"
-  (let ((socket (make-instance 'inet-socket :type :stream :protocol protocol)))
+  (let ((socket (make-instance 'inet-socket :type :stream
+			       :protocol protocol)))
     (socket-connect socket (resolve-hostname server-host) server-port)
     (make-core-stream (socket-make-stream socket :input t :output t
-					  :element-type element-type						 
-					  :buffering :full))))
+					  :element-type element-type
+					  :buffering :full
+					  :external-format :utf-8))))
 
 
 (defun nio-make-server (&key (host "0.0.0.0") (port 0) (reuse-address t)

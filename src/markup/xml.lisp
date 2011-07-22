@@ -424,24 +424,24 @@
   (prog1 stream
     (with-slots (%stream) stream
       (disable-indentation %stream)
-      (write-stream %stream
-		    (reduce (lambda (acc atom)
-			      (cond
-				((eq atom #\<)
-				 (push-atom #\& acc)
-				 (push-atom #\g acc)
-				 (push-atom #\t acc)
-				 (push-atom #\; acc))
-				((eq atom #\>)
-				 (push-atom #\& acc)
-				 (push-atom #\l acc)
-				 (push-atom #\t acc)
-				 (push-atom #\; acc))
-				(t
-				 (push-atom atom acc)))
-			      acc)
-			    string
-			    :initial-value (make-accumulator)))
+      (string! %stream
+	       (reduce (lambda (acc atom)
+			 (cond
+			   ((eq atom #\<)
+			    (push-atom #\& acc)
+			    (push-atom #\g acc)
+			    (push-atom #\t acc)
+			    (push-atom #\; acc))
+			   ((eq atom #\>)
+			    (push-atom #\& acc)
+			    (push-atom #\l acc)
+			    (push-atom #\t acc)
+			    (push-atom #\; acc))
+			   (t
+			    (push-atom atom acc)))
+			 acc)
+		       string
+		       :initial-value (make-accumulator)))
       (enable-indentation %stream))))
 
 (defmethod intro! ((stream xml-stream) (object xml))
@@ -683,5 +683,5 @@
 (defun make-relaxed-xml-stream (stream)
   (make-instance 'relaxed-xml-stream :stream stream))
 
-(defmethod read-stream ((stream xml-stream))
+(defmethod read-stream ((stream relaxed-xml-stream))
   (parse-xml (relaxed-xml-lexer? (slot-value stream '%stream))))
