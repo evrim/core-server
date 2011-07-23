@@ -152,14 +152,27 @@
 	    :documentation "mail subject")
    (text :accessor envelope.text :initarg :text :initform ""
 	 :documentation "mail body which is a string")
-   (date :accessor envelope.date :initarg :date :initform (get-universal-time)
+   (date :accessor envelope.date :initarg :date
+	 :initform (get-universal-time)
 	 :documentation "creation date of envelope")
+   (message-id :accessor envelope.message-id :initarg :message-id
+	       :initform (random-string 32)
+	       :documentation "message-id")
    (extra-headers :accessor envelope.extra-headers :initarg :extra-headers :initform nil
 		  :documentation "extra headers for this envelope. List of string tuples.")))
 
 (defprint-object (self envelope :identity t :type t)
   (format t "~A->~A:~A" (slot-value self 'from) (slot-value self 'to)
 	  (slot-value self 'subject)))
+
+(defparser email? (c (username (make-accumulator))
+		     (domain (make-accumulator)))
+  (:oom (:type unreserved? c)
+	(:collect c username))
+  #\@
+  (:oom (:type unreserved? c)
+	(:collect c domain))
+  (:return (cons username domain)))
 
 (defmethod envelope! ((s core-stream) (e envelope))
   (flet ((write-address (name address)
@@ -204,7 +217,14 @@
       	(string! s (envelope.subject e))
       	(close-stream s))
       (char! s #\Newline)
-    
+
+      (string! s "Message-Id: <")
+      (string! s (envelope.message-id e))
+      (char! s #\@)
+      (string! s (cdr (email? (make-core-stream (envelope.from e)))))
+      (char! s #\>)
+      (char! s #\Newline)
+      
       (smtp! s (format nil "X-Mailer: ~A" +x-mailer+))
       (let ((hdrs (envelope.extra-headers e)))
 	(when (and hdrs (listp hdrs))
