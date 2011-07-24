@@ -769,6 +769,7 @@
    #:register
    #:unregister
    #:server.applications
+   #:server.root-application
    
    ;; [HTTP Application & Web Framework]
 
@@ -804,6 +805,7 @@
    
    ;; Class
    #:http-application
+   #:root-http-application-mixin
    #:http-application.sessions
    #:defapplication
    #:find-session

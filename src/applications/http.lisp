@@ -179,7 +179,8 @@
 ;;+--------------------------------------------------------------------------
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defclass http-application (web-application)
-    ((sessions :accessor http-application.sessions :initform (make-hash-table :test #'equal)
+    ((sessions :accessor http-application.sessions
+	       :initform (make-hash-table :test #'equal)
 	       :documentation "A hash-table that holds sessions"))
     ;; (:default-initargs :directory nil)
     (:documentation "HTTP Application Class")
@@ -199,15 +200,23 @@
   (clrhash (slot-value self 'core-server::sessions))
   (call-next-method self))
 
+;; +-------------------------------------------------------------------------
+;; | Root Http Application (App to serve at /)
+;; +-------------------------------------------------------------------------
+(defclass+ root-http-application-mixin ()
+  ())
+
 ;; --------------------------------------------------------------------------
 ;; defapplication Macro: Just adds http-application+ metaclass
 ;; --------------------------------------------------------------------------
 (defmacro defapplication (name supers slots &rest rest)
   (let ((dispatchers (reduce #'append
                              (mapcar (rcurry #'slot-value 'handlers)
-                                     (filter (lambda (a) (if (typep a 'http-application+)
-                                                             a))
-                                             (mapcar #'find-class supers))))))
+                                     (filter
+				      (lambda (a)
+					(if (typep a 'http-application+)
+					    a))
+				      (mapcar #'find-class supers))))))
     `(defclass+ ,name ,supers
        ,slots
        ,@rest
@@ -221,12 +230,13 @@
 (defmethod web-application.serve-url ((self http-application) (req t))
   (format nil "/~A/TESTREQUEST" (web-application.fqdn self)))
 
-(defmethod web-application.serve-url ((self http-application) (req http-request))
+(defmethod web-application.serve-url ((self http-application)
+				      (req http-request))
   (format nil "/~A/~A" (web-application.fqdn self)
 	  (with-core-stream (s "")
 	    (mapc #'(lambda (path)
-		      (core-server::char! s core-server::+uri-path-seperator+)
-		      (core-server::string! s (car path))
+		      (char! s core-server::+uri-path-seperator+)
+		      (string! s (car path))
 		      (mapc #'(lambda (path)
 				(core-server::char!
 				 s core-server::+uri-segment-seperator+)

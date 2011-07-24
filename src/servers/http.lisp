@@ -4,7 +4,8 @@
 ;; | HTTP Server
 ;; +-------------------------------------------------------------------------
 (defclass+ http-server (web-server socket-server logger-server)
-  ((applications :accessor server.applications :initform '()))
+  ((applications :accessor server.applications :initform '())
+   (root-application :accessor server.root-application :initform nil))
   (:default-initargs :port 3001 :peer-class '(http-unit)))
 
 ;; (defclass nio-custom-http-peer (nio-http-peer-mixin custom-http-peer)
@@ -134,6 +135,10 @@ nil if stream data is invalid"
 		       (dispatch app request response)))
 		 (server.applications server)))
        response)
+      ((and (slot-value server 'root-application)
+	    (dispatch (slot-value server 'root-application)
+		      request response))
+       response)
       ;; catch-all via 404
       (t
        (progn
@@ -188,29 +193,39 @@ nil if stream data is invalid"
     ))
 
 
-;;-----------------------------------------------------------------------------
+;;--------------------------------------------------------------------------
 ;; Server Protocol Implementation
-;;-----------------------------------------------------------------------------
+;;--------------------------------------------------------------------------
 (defmethod register ((self http-server) (app http-application))
   (setf (server.applications self)
 	(sort (cons app
 		    (remove (web-application.fqdn app)
 			    (server.applications self)
-			    :test #'equal :key #'web-application.fqdn)) #'>
-	      :key (lambda (app) (length (web-application.fqdn app)))))
+			    :test #'equal :key #'web-application.fqdn))
+	      #'> :key (lambda (app) (length (web-application.fqdn app)))))
   (setf (application.server app) self))
+
+(defmethod register ((self http-server) (app root-http-application-mixin))
+  (setf (slot-value self 'root-application) app)
+  self)
 
 (defmethod unregister ((self http-server) (app http-application))
   (setf (server.applications self)
 	(remove (web-application.fqdn app)
-		(server.applications self) :test #'equal :key #'web-application.fqdn)))
+		(server.applications self)
+		:test #'equal :key #'web-application.fqdn)))
+
+(defmethod unregister ((self http-server) (app root-http-application-mixin))
+  (setf (slot-value self 'root-application) nil)
+  self)
 
 (defmethod find-application ((self http-server) fqdn)
-  (find fqdn (server.applications self) :key #'web-application.fqdn :test #'equal))
+  (find fqdn (server.applications self)
+	:key #'web-application.fqdn :test #'equal))
 
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | HTTP Unit
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (defclass http-unit (stream-peer)
   ()
   (:default-initargs :name "Http Peer Handling Unit")
