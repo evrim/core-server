@@ -7,7 +7,10 @@
    (make-pathname :directory '(:relative "var" "localhost" "db"))
    (tr.gen.core.server.bootstrap:home)))
 
-(defapplication manager-application (http-application database-server logger-server serializable-web-application)
+(defapplication manager-application (root-http-application-mixin
+				     http-application database-server
+				     logger-server
+				     serializable-web-application)
   ()
   (:default-initargs :database-directory *db-location*
     :db-auto-start t
@@ -17,9 +20,11 @@
     :project-name "manager"
     :project-pathname #p"/home/aycan/core-server/projects/manager/"
     :htdocs-pathname *wwwroot*
-    :sources '(src/packages src/model src/tx src/interfaces src/application src/security src/ui/main)
+    :sources '(src/packages src/model src/tx src/interfaces src/application
+	       src/security src/ui/main)
     :directories '(#p"src/" #p"src/ui/" #p"t/" #p"doc/" #p"wwwroot/"
-		   #p"wwwroot/style/" #p"wwwroot/images/" #p"templates/" #p"db/")
+		   #p"wwwroot/style/" #p"wwwroot/images/" #p"templates/"
+		   #p"db/")
     :use '(:common-lisp :core-server :cl-prevalence :arnesi)
     :depends-on '(:arnesi :core-server) :urls nil))
 
