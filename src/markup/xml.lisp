@@ -183,9 +183,12 @@
 (defrule xml-attribute-value? (c val)
   (:or (:and
 	#\"
-	(:do (setq val (make-accumulator)))
+	(:do (setq val (make-accumulator :byte)))
 	(:zom (:not #\")
-	      (:type (or visible-char? space?) c)
+	      (:checkpoint
+	       #\> (:rewind-return (octets-to-string val :utf-8)))
+	      ;; (:type (or visible-char? space?) c)
+	      (:type octet? c)
 	      (:collect c val))
 	;; (:zom (:checkpoint #\" (:return val))
 	;;       (:checkpoint #\> (:rewind-return val))
@@ -194,9 +197,12 @@
 	)
        (:and
 	#\'
-	(:do (setq val (make-accumulator)))
+	(:do (setq val (make-accumulator :byte)))
 	(:zom (:not #\')
-	      (:type (or visible-char? space?) c)
+	      (:checkpoint
+	       #\> (:rewind-return (octets-to-string val :utf-8)))
+	      ;; (:type (or visible-char? space?) c)
+	      (:type octet? c)
 	      (:collect c val))
 	;; (:zom (:checkpoint #\' (:return val))
 	;;       (:checkpoint #\> (:rewind-return val))
@@ -208,9 +214,9 @@
 	     (:and (:not #\Space)
 		   (:not #\>)
 		   (:not #\/))
-	     (:type visible-char? c)
+	     (:type octet? c)
 	     (:collect c val)))
-  (:return val))
+  (:return (octets-to-string val :utf-8)))
 
 (defrule xml-attribute? (name value)
   (:xml-attribute-name? name)
@@ -563,23 +569,29 @@
 (defrule relaxed-xml-attribute-value? (c val)
   (:or (:and
 	#\"
-	(:do (setq val (make-accumulator)))
-	(:zom (:checkpoint #\" (:return val))
-	      (:checkpoint #\> (:rewind-return val))
-	      (:type (or visible-char? space?) c)
+	(:do (setq val (make-accumulator :byte)))
+	(:zom (:checkpoint
+	       #\" (:return (octets-to-string val :utf-8)))
+	      (:checkpoint
+	       #\> (:rewind-return (octets-to-string val :utf-8)))
+	      ;; (:type (or visible-char? space?) c)
+	      (:type octet? c)
 	      (:collect c val)))
        (:and
 	#\'
-	(:do (setq val (make-accumulator)))
-	(:zom (:checkpoint #\' (:return val))
-	      (:checkpoint #\> (:rewind-return val))
-	      (:type (or visible-char? space?) c)
+	(:do (setq val (make-accumulator :byte)))
+	(:zom (:checkpoint #\'
+		(:return (octets-to-string val :utf-8)))
+	      (:checkpoint #\>
+		(:rewind-return (octets-to-string val :utf-8)))
+	      ;; (:type (or visible-char? space?) c)
+	      (:type octet? c)
 	      (:collect c val)))
        (:zom (:checkpoint (:or #\> #\/)
 			  (:rewind-return val))
 	     (:type visible-char? c)
 	     (:collect c val)))
-  (:return val))
+  (:return (octets-to-string val :utf-8)))
 
 (defrule relaxed-xml-attribute? (name value)
   (:relaxed-xml-attribute-name? name)
