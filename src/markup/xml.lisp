@@ -323,11 +323,6 @@
   (:%xml-lexer? tag namespace attrs children)
   (:return (list* tag namespace attrs children)))
 
-(deftrace xml-parsers
-    '(xml-tag-name? xml-lexer? xml-comment? xml-text-node?
-      xml-cdata? %xml-lexer? xml-lwsp? xml-tag-name? xml-attribute?
-      xml-attribute-name? xml-attribute-value?))
-
 (defvar +xml-namespace+ (find-package :<))
 (defvar +xml-namespaces-table+
   (list (cons "http://www.w3.org/2005/Atom" (find-package :<atom))
@@ -685,3 +680,12 @@
 
 (defmethod read-stream ((stream relaxed-xml-stream))
   (parse-xml (relaxed-xml-lexer? (slot-value stream '%stream))))
+
+(deftrace xml-parsers
+    '(xml-tag-name? xml-lexer? xml-comment? xml-text-node?
+      xml-cdata? %xml-lexer? xml-lwsp? xml-attribute?
+      xml-attribute-name? xml-attribute-value?
+      relaxed-xml-tag-name? relaxed-xml-lexer? relaxed-xml-comment?
+      relaxed-xml-text-node? relaxed-xml-cdata? relaxed-xml-lwsp?
+      relaxed-xml-attribute? relaxed-xml-attribute-name?
+      relaxed-xml-attribute-value?))
