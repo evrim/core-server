@@ -318,10 +318,14 @@
       (render-404 self request response))
      ((any #'(lambda (handler)
 	       (aif (caar (uri.paths (http-request.uri request)))
-		    (and (cl-ppcre:scan-to-strings
-			  (cl-ppcre:create-scanner (cdr handler)) it)
-			 (car handler))))
-	   (http-application+.handlers (class-of self)))
+		    (let ((uri (make-uri :paths (uri.paths (http-request.uri request)))))
+		      (and (cl-ppcre:scan-to-strings
+			    (cl-ppcre:create-scanner (cdr handler))
+			    (with-core-stream (s "")
+			      (uri! s uri)
+			      (return-stream s)))
+			   (car handler)))))
+	   (reverse (http-application+.handlers (class-of self))))
       (log-me (application.server self) 'http-application
 	      (format nil "fqdn: ~A, static-handler:: ~A"
 		      (web-application.fqdn self)
