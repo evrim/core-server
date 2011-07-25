@@ -1019,6 +1019,10 @@
    #:whereis
    #:thumbnail
    #:http
+   #:http.url
+   #:http.method
+   #:http.post-data
+   
    ;; [ Core Parser ]
    #:defrule
    #:defparser

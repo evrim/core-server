@@ -109,3 +109,4 @@
 ;; Mail Service Variables
 ;;--------------------------------------------------------------------------
 (defvar +x-mailer+ "[Core-serveR] (http://labs.core.gen.tr)")
+(defvar +x-http-client+ +x-mailer+)
