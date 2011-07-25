@@ -1022,6 +1022,7 @@
    #:http.url
    #:http.method
    #:http.post-data
+   #:http.add-query
    
    ;; [ Core Parser ]
    #:defrule

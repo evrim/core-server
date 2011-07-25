@@ -28,6 +28,13 @@
 (defmethod http.ssl-p ((self http))
   (string= "https" (uri.scheme (s-v 'url))))
 
+(defmethod http.add-query ((self http) name value)
+  (setf (uri.queries (s-v 'url))
+	(nreverse
+	 (cons (cons name value)
+	       (nreverse (uri.queries (s-v 'url))))))
+  (s-v 'url))
+
 (defmethod http.setup-uri ((self http))
   (if (stringp (s-v 'url))
       (setf (s-v 'url) (uri? (make-core-stream (s-v 'url)))))
