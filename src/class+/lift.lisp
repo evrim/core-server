@@ -9,53 +9,53 @@
 ;; +-------------------------------------------------------------------------
 ;; | Method Lifting
 ;; +-------------------------------------------------------------------------
-(defmacro defmethod/lift (method-name (&rest args))  
+(defmacro %defmethod/lift (method-name (&rest args))  
+  (let* ((class-name (if (atom method-name) (cadar args) (cadadr args)))
+	 (class (class+.find class-name))
+	 (arg-classes (mapcar (lambda (arg)
+				(or (and (atom arg) (find-class 't))
+				    (find-class (cadr arg))))
+			      args)))
+    (flet ((%find-method (class)
+	     (sb-pcl::compute-applicable-methods-using-classes
+	      (sb-pcl::find-generic-function method-name)
+	      (if (atom method-name)
+		  (cons class (cdr arg-classes))
+		  (cons (car arg-classes)
+			(cons class (cddr arg-classes)))))))
+      (let* ((method (car
+		      (reverse
+		       (any #'%find-method
+			    (remove class (class-superclasses class))))))
+	     (specializers (sb-pcl::method-specializers method))
+	     (lambda-list (sb-pcl::method-lambda-list method)))
+	(cond
+	  ((atom method-name)
+	   `(defmethod ,method-name ,(mapcar
+				      (lambda (l s)
+					(list l (class-name s)))
+				      (cons 'self (cdr lambda-list))
+				      (cons class (cdr specializers)))
+	      (,method-name
+	       (slot-value self ',(class-name (car specializers)))
+	       ,@(cdr lambda-list))))
+	  (t
+	   `(defmethod ,method-name ,(mapcar
+				      (lambda (l s)
+					(list l (class-name s)))
+				      (cons (car lambda-list)
+					    (cons 'self
+						  (cddr lambda-list)))
+				      (cons class specializers))
+	      (,(car method-name)
+		(,(cadr method-name)
+		  (slot-value self
+			      ',(class-name (cadr specializers))))
+		,(car lambda-list)))))))))
+
+(defmacro defmethod/lift (method-name (&rest args))
   `(eval-when (:load-toplevel :execute)
-     (let* ((args ',args)
-	    (method-name ',method-name)
-	    (class-name ',(if (atom method-name) (cadar args) (cadadr args)))
-	    (class (class+.find class-name))
-	    (arg-classes (mapcar (lambda (arg)
-				   (or (and (atom arg) (find-class 't))
-				       (find-class (cadr arg))))
-				 args)))
-       (flet ((%find-method (class)
-		(sb-pcl::compute-applicable-methods-using-classes
-		 (sb-pcl::find-generic-function method-name)
-		 (if (atom method-name)
-		     (cons class (cdr arg-classes))
-		     (cons (car arg-classes)
-			   (cons class (cddr arg-classes)))))))
-	 (let* ((method (car
-			 (reverse
-			  (any #'%find-method
-			       (remove class (class-superclasses class))))))
-		(specializers (sb-pcl::method-specializers method))
-		(lambda-list (sb-pcl::method-lambda-list method)))
-	   (eval
-	    (cond
-	      ((atom method-name)
-	       `(defmethod ,method-name ,(mapcar
-					  (lambda (l s)
-					    (list l (class-name s)))
-					  (cons 'self (cdr lambda-list))
-					  (cons class (cdr specializers)))
-		  (,method-name
-		   (slot-value self ',(class-name (car specializers)))
-		   ,@(cdr lambda-list))))
-	      (t
-	       `(defmethod ,method-name ,(mapcar
-					  (lambda (l s)
-					    (list l (class-name s)))
-					  (cons (car lambda-list)
-						(cons 'self
-						      (cddr lambda-list)))
-					  (cons class specializers))
-		  (,(car method-name)
-		    (,(cadr method-name)
-		      (slot-value self
-				  ',(class-name (cadr specializers))))
-		    ,(car lambda-list)))))))))))
+     (eval `(%defmethod/lift ,',method-name ,',args))))
 
 
 ;; +-------------------------------------------------------------------------
@@ -151,6 +151,7 @@
 ;; (deflift+ b (a)
 ;;   ((slot1 :host lifted)
 ;;    (slot2 :host lifted)))
+
 
 ;; (defmethod/lift hede ((self b)))
 ;; (defmethod/lift foo ((self b) c d e))
