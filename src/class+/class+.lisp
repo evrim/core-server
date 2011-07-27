@@ -363,12 +363,13 @@
   (let* ((class+ (find-class+ name))
 	 (slots (filter #'slot-definition-print (class+.slots class+))))
     `(defprint-object (self ,name)
-       (format t "~{~A~^ ~}" (list ,@(nreverse
-				      (reduce0 (lambda (acc slot)
-						 (cons `(list ',(slot-definition-name slot)
-							      (slot-value self ',(slot-definition-name slot)))
-						       acc))
-					       slots)))))))
+       (format t "~{~A~^ ~}"
+	       (list ,@(nreverse
+			(reduce0 (lambda (acc slot)
+				   (cons `(list ',(slot-definition-name slot)
+						(slot-value self ',(slot-definition-name slot)))
+					 acc))
+				 slots)))))))
 
 ;; --------------------------------------------------------------------------
 ;; defclass+ Macro
@@ -422,11 +423,9 @@
      (eval-when (:compile-toplevel :load-toplevel :execute)
        (deftype ,(intern (format nil "~A*" name)) ()
 	 '(or null cons))
-       (defclass ,name (;; ,@(remove 'class+-object (remove 'object-with-id supers))
-			;;   object-with-id class+-object
-			  ,@(remove 'class+-object supers) class+-instance)
+       (defclass ,name (,@(remove 'class+-object supers) class+-instance)
 	 ,(mapcar (lambda (slot) (%fix-slot-definition name slot)) slots)
-	 ,@(%filter-rest rest))       
+	 ,@(%filter-rest rest))
        (defclass+-ctor ,name))
      (defclass+-print-object ,name)
      (find-class ',name)))
