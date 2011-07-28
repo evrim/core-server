@@ -1,22 +1,34 @@
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | Component Framework (Lisp->Browser Functor)
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (in-package :core-server)
 
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | Component Metaclass
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (defclass+ component+ (class+)
   ((%ctor-timestamp :initform 0)))
 
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | Component Class
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (defclass+ component ()
   ((url :host remote :documentation "The url that this component is served.")
-   (instance-id :host none :initform (make-unique-random-string 8)))
+   (instance-id :host none :initform nil))
   (:metaclass component+)
   (:documentation "Base component class"))
+
+(defmethod shared-initialize :after ((self component) slots &rest initargs)
+  (declare (ignore initargs))
+  (if (null (component.instance-id self))
+      (setf (component.instance-id self)
+	    (format nil "~A-~A"
+		    (symbol-to-js
+		     (string-replace-all
+		      "/" "-"
+		      (format nil "~A" (class-name (class-of self)))))
+		    (random-string 8))))
+  self)
 
 (defmethod component.application ((self component))
   "Returns application associated with this component."
@@ -59,9 +71,9 @@
 	(intern (format nil ".~A" name) (find-package :core-server))
 	(intern (format nil ".~A" name) (symbol-package name)))))
 
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | defmethod/local macro: Defines a local method
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (eval-when (:compile-toplevel :load-toplevel)
   (defmethod component+.local-morphism ((class component+) name self args body)
     (let* ((class-name (class-name class))
@@ -123,7 +135,7 @@
 	   (let (,@(mapcar (lambda (arg) `(,arg (component.serialize ,self ,arg)))
 			   (extract-argument-names args :allow-specializers t)))
 	     (with-query ((hash "__hash")) (context.request +context+)
-	       (let ((hash (json-deserialize (if (listp hash) (car hash) hash))))
+	       (let ((hash (json-deserialize hash)))
 		 (javascript/suspend
 		  (lambda (stream)
 		    (let ((result (action/url ((result "result"))
@@ -144,50 +156,53 @@
 (defmacro defmethod/remote (name ((self class-name) &rest args) &body body)
   (component+.remote-morphism (find-class class-name) name self args body))
 
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 ;; defcomponent-accessors Macro: Defines remote and local accessors
 ;; for slots of a component
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 (defmacro defcomponent-accessors (class-name slots)
-  (flet ((reader (name) (intern (format nil "GET-~A" name) (symbol-package name)))
-	 (writer (name) (intern (format nil "SET-~A" name) (symbol-package name))))    
+  (flet ((reader (name)
+	   (intern (format nil "GET-~A" name) (symbol-package name)))
+	 (writer (name)
+	   (intern (format nil "SET-~A" name) (symbol-package name)))
+	 (method-type (host)
+	   (ecase host
+	     (local 'defmethod/local)
+	     ((or both remote) 'defmethod/remote))))    
     `(progn
-       ,@(reduce0 (lambda (acc slot)
-		    (flet ((method-type (host)
-			     (ecase host
-			       (local 'defmethod/local)
-			       ((or both remote) 'defmethod/remote))))
-		      (let ((name (car slot))
-			    (accessor (cadr slot))
-			    (host (cddr slot)))			
-			(append acc
-				`((,(method-type host) ,(reader name) ((self ,class-name))
-				    (slot-value self ',name))
-				  (,(method-type host) ,(writer name) ((self ,class-name) value)
-				    (setf (slot-value self ',name) value))
-				  (eval-when (:compile-toplevel :execute :load-toplevel)
-				    (defmacro/js ,accessor (self)
-				      `(,',(reader name) ,self))
-				    (defsetf/js ,accessor (value self)
-				      `(,',(writer name) ,self ,value))))))))
-		  (filter (lambda (slot)
-			    (or (eq (cddr slot) 'remote)
-				(eq (cddr slot) 'both)
-				(eq (cddr slot) 'local)))
-			  slots)))))
+       ,@(reduce0
+	  (lambda (acc slot)
+	    (let ((name (car slot))
+		  (accessor (cadr slot))
+		  (host (cddr slot)))			
+	      (append acc
+		      `((,(method-type host) ,(reader name) ((self ,class-name))
+			  (slot-value self ',name))
+			(,(method-type host) ,(writer name) ((self ,class-name) value)
+			  (setf (slot-value self ',name) value))
+			(eval-when (:compile-toplevel :execute :load-toplevel)
+			  (defmacro/js ,accessor (self)
+			    `(,',(reader name) ,self))
+			  (defsetf/js ,accessor (value self)
+			    `(,',(writer name) ,self ,value)))))))
+	  (filter (lambda (slot)
+		    (or (eq (cddr slot) 'remote)
+			(eq (cddr slot) 'both)
+			(eq (cddr slot) 'local)))
+		  slots)))))
 
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | defcomponent Macro: Defines a new component
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (defmacro defcomponent (name supers slots &rest rest)
   (let* ((metaclass1 (cadr (assoc :metaclass rest)))
 	 (metaclass (intern (format nil "~A+" name)))
 	 (metasupers (remove 'class+
-		       (uniq
-			(append
-			 (mapcar (compose #'class-name #'class-of #'find-class)
-				 supers)
-			 (list 'component+)))))
+			     (uniq (append
+				    (mapcar (compose #'class-name #'class-of
+						     #'find-class)
+					    supers)
+				    (list 'component+)))))
 	 (dom-classes (filter (lambda (a) (typep a 'xml+))
 			      (mapcar #'find-class supers)))
 	 (tag (any (lambda (a) (if (not (null a)) a))
@@ -218,23 +233,76 @@
 	 (:metaclass ,(or metaclass1 metaclass)))
        ;; (defjsmacro ,name (&rest properties)
        ;; 	 `(make-component ,',(symbol-to-js name) (jobject ,@properties) nil))
-       (defcomponent-accessors ,name ,(mapcar
-				       (lambda (slot)
-					 (cons (car slot)
-					       (cons (or (getf (cdr slot) :accessor)
-							 (car slot))
-						     (or (getf (cdr slot) :host)
-							 'local))))
-				       slots))
+       (defcomponent-accessors ,name
+	   ,(mapcar
+	     (lambda (slot)
+	       (cons (car slot)
+		     (cons (or (getf (cdr slot) :accessor)
+			       (car slot))
+			   (or (getf (cdr slot) :host)
+			       'local))))
+	     slots))
        (find-class+ ',name))))
 
-;; ----------------------------------------------------------------------------
+(defmethod/cc component.update-url ((self component))  
+  (when +context+
+    (setf (slot-value self 'url)
+	  (web-application.serve-url (context.application +context+)
+				     (context.request +context+)))))
+
+(defmethod/cc component! ((stream core-stream) (component component))
+  (component.update-url component)
+  (cond
+    ((null (class+.local-methods (class-of component)))
+     (%component! stream component))
+    (t
+     (let ((+action-hash-override+ (component.instance-id component)))
+       (let ((hash
+	      (action/url ((method-name "method"))
+		(let ((method (find (string-upcase method-name)
+				    (class+.local-methods
+				     (class-of component))
+				    :test #'string= :key #'car)))
+		  (cond
+		    ((null method)
+		     (warn "Method not found ~A.~A"
+			   (component.instance-id component)
+			   method-name)
+		     nil)
+		    (t
+		     (let* ((args (mapcar
+				   (lambda (arg)
+				     (json-deserialize
+				      (http-request.query
+				       (context.request +context+)
+				       (symbol-to-js arg))))
+				   (mapcar (compose #'car #'ensure-list)
+					   (cdddr method))))
+			    (result (apply (car method) component args))
+			    (hash (json-deserialize
+				   (http-request.query
+				    (context.request +context+)
+				    "__hash"))))
+		       (describe (list component method-name hash))
+		       (javascript/suspend
+			(lambda (stream)
+			  (if hash
+			      (with-js (result hash) stream
+				(with-call/cc
+				  (apply (slot-value window hash) window
+					 (list (lambda (self) result)))))
+			      (with-js (result) stream
+				(with-call/cc
+				  (lambda (self) result)))))))))))))
+	 (apply '%component! stream component
+		(mapcar (lambda (method)
+			  (format nil "~A$method:~A" hash (car method)))
+			(class+.local-methods (class-of component)))))))))
+
+;; --------------------------------------------------------------------------
 ;; This around method allows us to compile constructor evertime class
 ;; definition changed.
-;; ----------------------------------------------------------------------------
-(defmethod/cc component! ((stream core-stream) (component component))
-  (error "This component! method should not be called."))
-
+;; --------------------------------------------------------------------------
 (defmethod/cc component! :around ((stream core-stream) (component component))
   (if  (> (slot-value (class-of component) '%timestamp)
 	  (slot-value (class-of component) '%ctor-timestamp))      
@@ -261,146 +329,107 @@
 			(filter (lambda (class)
 				  (if (typep class 'xml+) class))
 				(cdr (class+.superclasses class+)))))))
-    `(progn
-       ;; ----------------------------------------------------------------------------
-       ;; Component Internal Render Method 
-       ;; ----------------------------------------------------------------------------
-       (defmethod %component! ((stream core-stream) (component ,class-name) &rest k-urls)	 
-	 (let (,@(mapcar (lambda (slot)
-			   `(,(cadr slot) (component.serialize-slot component ',(car slot))))
-			 remote-slots))
-	   (destructuring-bind (,@k-urls) k-urls
-	     (with-js (,@k-urls ,@(mapcar #'cadr remote-slots)) stream
-	       ;; ----------------------------------------------------------------------------
-	       ;; Constructor
-	       ;; ----------------------------------------------------------------------------
-	       (with-call/cc
-		 (lambda (to-extend)
-		   (let ((to-extend (or to-extend (new (*object))))
-			 (slots
-			  (jobject
-			   ;; ----------------------------------------------------------------------------
-			   ;; Remote Slot Initial Values
-			   ;; ----------------------------------------------------------------------------
-			   ,@(reduce0 (lambda (acc slot)
-					(cond
-					  ((eq (car slot) 'class)
-					   (cons :class-name (cons (cadr slot) acc)))
-					  ((member (car slot)
-						   '(style onmouseup onmousemove
-						     onclick className ondblclick
-						     onmousedown onkeypress onkeydown
-						     onkeyup dir lang dojoType open
-						     onmouseover onmouseout))
-					   acc)
-					  (t
-					   (cons (make-keyword (car slot)) (cons (cadr slot) acc)))))
-				      remote-slots)))
-			 (methods
-			  (jobject
+    
+    ;; ----------------------------------------------------------------------------
+    ;; Component Internal Render Method 
+    ;; ----------------------------------------------------------------------------
+    `(defmethod %component! ((stream core-stream) (component ,class-name) &rest k-urls)	 
+       (let (,@(mapcar (lambda (slot)
+			 `(,(cadr slot) (component.serialize-slot component ',(car slot))))
+		       remote-slots))
+	 (destructuring-bind (,@k-urls) k-urls
+	   (with-js (,@k-urls ,@(mapcar #'cadr remote-slots)) stream
+	     ;; ----------------------------------------------------------------------------
+	     ;; Constructor
+	     ;; ----------------------------------------------------------------------------
+	     (with-call/cc
+	       (lambda (to-extend)
+		 (let ((to-extend (or to-extend (new (*object))))
+		       (slots
+			(jobject
+			 ;; ----------------------------------------------------------------------------
+			 ;; Remote Slot Initial Values
+			 ;; ----------------------------------------------------------------------------
+			 ,@(reduce0 (lambda (acc slot)
+				      (cond
+					((eq (car slot) 'class)
+					 (cons :class-name (cons (cadr slot) acc)))
+					((member (car slot)
+						 '(style onmouseup onmousemove
+						   onclick className ondblclick
+						   onmousedown onkeypress onkeydown
+						   onkeyup dir lang dojoType open
+						   onmouseover onmouseout))
+					 acc)
+					(t
+					 (cons (make-keyword (car slot)) (cons (cadr slot) acc)))))
+				    remote-slots)))
+		       (methods
+			(jobject
 	       
-			   ;; ----------------------------------------------------------------------------
-			   ;; Remote Methods
-			   ;; ----------------------------------------------------------------------------
-			   ,@(reduce0 (lambda (acc method)
+			 ;; ----------------------------------------------------------------------------
+			 ;; Remote Methods
+			 ;; ----------------------------------------------------------------------------
+			 ,@(reduce0 (lambda (acc method)
+				      (let ((proxy (intern (format nil "~A/JS" (car method))
+							   (if (eq (symbol-package (car method))
+								   (find-package :common-lisp))
+							       (find-package :core-server)
+							       (symbol-package (car method))))))
+					(cons (make-keyword (car method))
+					      (cons `(make-method ,(funcall proxy class+ nil)) acc))))
+				    (remove 'destroy
+					    (remove 'init (class+.remote-methods class+) :key #'car)
+					    :key #'car))
+			     
+			 ;; ----------------------------------------------------------------------------
+			 ;; Local Methods
+			 ;; ----------------------------------------------------------------------------
+			 ,@(reduce0 (lambda (acc method)
+				      (destructuring-bind (method . k-url) method
 					(let ((proxy (intern (format nil "~A/JS" (car method))
 							     (if (eq (symbol-package (car method))
 								     (find-package :common-lisp))
 								 (find-package :core-server)
 								 (symbol-package (car method))))))
 					  (cons (make-keyword (car method))
-						(cons `(make-method ,(funcall proxy class+ nil)) acc))))
-				      (remove 'destroy
-					      (remove 'init (class+.remote-methods class+) :key #'car)
-					      :key #'car))
-			     
-			   ;; ----------------------------------------------------------------------------
-			   ;; Local Methods
-			   ;; ----------------------------------------------------------------------------
-			   ,@(reduce0 (lambda (acc method)
-					(destructuring-bind (method . k-url) method
-					  (let ((proxy (intern (format nil "~A/JS" (car method))
-							       (if (eq (symbol-package (car method))
-								       (find-package :common-lisp))
-								   (find-package :core-server)
-								   (symbol-package (car method))))))
-					    (cons (make-keyword (car method))
-						  (cons (funcall proxy class+ k-url) acc )))))
-				      (mapcar #'cons (class+.local-methods class+) k-urls)))))
+						(cons (funcall proxy class+ k-url) acc )))))
+				    (mapcar #'cons (class+.local-methods class+) k-urls)))))
 
 		     		     
-		     ;; -------------------------------------------------------------------------
-		     ;; Inject Methods to Instance
-		     ;; -------------------------------------------------------------------------
-		     (extend methods to-extend)
+		   ;; -------------------------------------------------------------------------
+		   ;; Inject Methods to Instance
+		   ;; -------------------------------------------------------------------------
+		   (extend methods to-extend)
 
-		     ;; -------------------------------------------------------------------------
-		     ;; Inject Default Values Differentially
-		     ;; -------------------------------------------------------------------------
-		     (mapobject (lambda (k v)
-				  (if (or (and (not (null v))
-					       (or (eq "" (slot-value to-extend k))
-						   (null (slot-value to-extend k))
-						   (eq "undefined" (slot-value to-extend k))))
-					  (eq "undefined" (typeof (slot-value to-extend k))))
-				      (setf (slot-value to-extend k) v)))
-				slots)
+		   ;; -------------------------------------------------------------------------
+		   ;; Inject Default Values Differentially
+		   ;; -------------------------------------------------------------------------
+		   (mapobject (lambda (k v)
+				(if (or (and (not (null v))
+					     (or (eq "" (slot-value to-extend k))
+						 (null (slot-value to-extend k))
+						 (eq "undefined" (slot-value to-extend k))))
+					(eq "undefined" (typeof (slot-value to-extend k))))
+				    (setf (slot-value to-extend k) v)))
+			      slots)
 
-		     (let ((to-extend ,(if dom-tag
-					   `(if (null (slot-value to-extend 'node-name))
-						(extend to-extend
-							(document.create-element
-							 ,(symbol-to-js dom-tag)))
-						to-extend)
-					   'to-extend)))
-		       (apply (make-method ,(funcall 'init/js class+ nil)) to-extend null)
-		       (let ((destroy (slot-value to-extend 'destroy)))
-			 (setf (slot-value to-extend 'destroy)
-			       (compose-prog1-cc (make-method ,(funcall 'destroy/js class+ nil))
-						 destroy)))
-		       ;; (when (typep (slot-value to-extend 'init) 'function)
-		       ;;   (init to-extend))
+		   (let ((to-extend ,(if dom-tag
+					 `(if (null (slot-value to-extend 'node-name))
+					      (extend to-extend
+						      (document.create-element
+						       ,(symbol-to-js dom-tag)))
+					      to-extend)
+					 'to-extend)))
+		     (apply (make-method ,(funcall 'init/js class+ nil)) to-extend null)
+		     (let ((destroy (slot-value to-extend 'destroy)))
+		       (setf (slot-value to-extend 'destroy)
+			     (compose-prog1-cc (make-method ,(funcall 'destroy/js class+ nil))
+					       destroy)))
+		     ;; (when (typep (slot-value to-extend 'init) 'function)
+		     ;;   (init to-extend))
 		 
-		       to-extend))))))))
-       
-       ;; ----------------------------------------------------------------------------
-       ;; Component Constructor Renderer
-       ;; ----------------------------------------------------------------------------
-       (defmethod/cc component! ((stream core-stream) (component ,class-name))
-	 (when +context+
-	   (setf (slot-value component 'url)
-		 (web-application.serve-url (context.application +context+)
-					    (context.request +context+)))) 
-
-	 (let ,(mapcar (lambda (method k-url)
-			 (let ((method-args (extract-argument-names (cdddr method)
-								    :allow-specializers t)))
-			   `(,k-url (let ((+action-hash-override+ (component.action-hash component ',(car method))))
-				      (action/url (,@(reduce0
-						      (lambda (acc arg)
-							(cons (list arg (symbol-to-js arg))
-							      acc))
-						      method-args))
-					(let ((result (,(car method) component
-							,@(mapcar (lambda (arg)
-								    `(component.deserialize component ,arg))
-								  method-args))))
-					  (with-query ((hash "__hash")) (context.request +context+)
-					    (let ((stream (http-response.stream (context.response +context+)))
-						  (hash (json-deserialize (if (listp hash) (car hash) hash))))
-					      (javascript/suspend
-					       (lambda (stream)
-						 (if hash
-						     (with-js (result hash) stream
-						       (with-call/cc
-							 (apply (slot-value window hash) window
-								(list (lambda (self) result)))))
-						     (with-js (result) stream
-						       (with-call/cc
-							 (lambda (self) result))))))
-					      nil))))))))
-		       (class+.local-methods class+) k-urls)
-	   (%component! stream component ,@k-urls))))))
+		     to-extend))))))))))
 
 ;; ----------------------------------------------------------------------------
 ;; Default Funkall Method for Components
@@ -428,15 +457,14 @@
 (defmethod/cc continue-component ((component component) &optional value)
   (javascript/suspend
    (lambda (stream)
-     (let ((hash (uri.query (http-request.uri (context.request +context+))
-			    "__hash")))
-       (if (and (stringp hash) (> (length hash) 0))
-	   (let ((hash (intern hash)))
-	     (with-js (value hash component) stream
-	       (with-call/cc
-		 (apply (slot-value window hash) window
-			(list (lambda (self) value)))))
-	     (unintern hash))
+     (let ((hash (json-deserialize
+		  (http-request.query (context.request +context+)
+				      "__hash"))))
+       (if hash
+	   (with-js (value hash component) stream
+	     (with-call/cc
+	       (apply (slot-value window hash) window
+		      (list (lambda (self) value)))))	   
 	   (with-js (component) stream
 	     (with-call/cc
 	       (lambda (self) value))))))))
@@ -444,16 +472,15 @@
 (defmethod/cc continue/js (value)
   (javascript/suspend
    (lambda (stream)
-     (let ((hash (uri.query (http-request.uri (context.request +context+))
-			    "__hash")))
+     (let ((hash (json-deserialize
+		  (http-request.query
+		   (context.request +context+) "__hash"))))
        (cond
-	 ((and (stringp hash) (> (length hash) 0))
-	  (let ((hash (intern hash)))
-	    (with-js (value hash) stream
-	      (with-call/cc
-		(apply (slot-value window hash) window
-		       (list (lambda (self) value)))))
-	    (unintern hash)))
+	 (hash
+	  (with-js (value hash) stream
+	    (with-call/cc
+	      (apply (slot-value window hash) window
+		     (list (lambda (self) value))))))
 	 ((typep value 'component)	  
 	  (with-js (value) stream
 	    (let ((c value))	      
@@ -486,14 +513,12 @@
 (defmethod/cc call-component ((component component))    
   (javascript/suspend
    (lambda (stream)
-     (let ((hash (uri.query (http-request.uri (context.request +context+)) "__hash")))
-       (if (and (stringp hash) (> (length hash) 0))
-	   (let ((hash (intern hash)))
-	     (with-js (hash component) stream
-	       (with-call/cc
-		 (apply (slot-value window hash) window
-			(list (lambda (self) component)))))
-	     (unintern hash))
+     (let ((hash (http-request.query (context.request +context+) "__hash")))
+       (if hash
+	   (with-js (hash component) stream
+	     (with-call/cc
+	       (apply (slot-value window hash) window
+		      (list (lambda (self) component))))) 
 	   (with-js (component) stream
 	     ((lambda ()
 		(let ((component component))
