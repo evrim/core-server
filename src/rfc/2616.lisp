@@ -1337,9 +1337,9 @@
    (unknown-headers :accessor http-message.unknown-headers :initform '())
    (entities :accessor http-message.entities :initarg :entities :initform '())))
 
-;;;-----------------------------------------------------------------------------
+;;;--------------------------------------------------------------------------
 ;;; HTTP REQUEST
-;;;-----------------------------------------------------------------------------
+;;;--------------------------------------------------------------------------
 (defclass http-request (http-message)
   ((method :accessor http-request.method :initarg :method)
    (uri :accessor http-request.uri :initarg :uri)
@@ -1363,7 +1363,11 @@
   (http-request.header request 'cookie))
 
 (defmethod http-request.cookie ((request http-request) name)
-  (find name (http-request.cookies request) :key #'cookie.name :test #'string=))
+  (find name (http-request.cookies request)
+	:key #'cookie.name :test #'string=))
+
+(defmethod http-request.query ((request http-request) query)
+  (uri.query (http-request.uri request) query))
 
 (defmethod http-request-first-line! ((stream core-stream) method uri proto)
   (string! stream (symbol-name method))
