@@ -652,8 +652,8 @@ provide query parameters inside URL as key=value"
 			   (uri.paths uri)))
 		 
 		 (setf (uri.queries current-uri)
-		       (cons (list "__hash" hash) (uri.queries uri-full)))
-
+		       (cons (cons "__hash" hash) (uri.queries uri-full)))
+		 
 		 (escape (dispatch self req rep))))
 	     (multipart-action (hash)
 	       (javascript/suspend
