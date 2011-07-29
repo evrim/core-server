@@ -42,9 +42,13 @@
 ;; --------------------------------------------------------------------------
 (defclass http-session ()
   ((id :reader session.id :initarg :id :initform (random-string 8))
-   (continuations :reader session.continuations :initform (make-hash-table :test #'equal)) 
+   (continuations :reader session.continuations
+		  :initform (make-hash-table :test #'equal
+					     :synchronized t)) 
    (timestamp :accessor session.timestamp :initform (get-universal-time))
-   (data :accessor session.data :initform (make-hash-table :test #'equal))))
+   (data :accessor session.data
+	 :initform (make-hash-table :test #'equal
+				    :synchronized t))))
 
 (defprint-object (self http-session :identity t :type t)
   (format t "~A" (session.id self)))
@@ -105,7 +109,8 @@
    (t
     (let ((session (make-new-session)))
       (setf (context.session self) session)      
-      (setf (gethash (session.id session) (http-application.sessions (context.application self)))
+      (setf (gethash (session.id session)
+		     (http-application.sessions (context.application self)))
 	    session)
       session))))
 
@@ -180,7 +185,8 @@
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defclass http-application (web-application)
     ((sessions :accessor http-application.sessions
-	       :initform (make-hash-table :test #'equal)
+	       :initform (make-hash-table :test #'equal
+					  :synchronized t)
 	       :documentation "A hash-table that holds sessions"))
     ;; (:default-initargs :directory nil)
     (:documentation "HTTP Application Class")
