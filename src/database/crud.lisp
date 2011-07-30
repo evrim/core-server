@@ -97,3 +97,11 @@
 				(remove 'database-id (class+.local-slots class+)
 					:key #'slot-definition-name))))))))))
 
+(defmacro defcrud/lift (target-class source-class &optional prefix)
+  (let ((source+ (find-class+ source-class)))
+    (let ((delete (class+.delete-function source+ prefix))
+	  (update (class+.update-function source+ prefix)))
+      `(progn
+	 (defmethod/lift ,update ((server abstract-database) (instance ,target-class)
+				  &key ,@(class+.ctor-lambda-list source+ t)))
+	 (defmethod/lift ,delete ((server abstract-database) (instance ,target-class)))))))

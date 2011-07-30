@@ -180,6 +180,8 @@
    #:both
    #:remote
    #:primitive
+
+   #:defmethod/lift
    
    ;; [Sockets]
    #:resolve-hostname
@@ -649,6 +651,7 @@
 ;;;    #:make-tx
 ;;;    #:update-slots
    #:defcrud
+   #:defcrud/lift   
    #:redefmethod
    #:copy-slots
    ;; [Nameserver]

@@ -53,7 +53,7 @@
 				       'lift))
 				 (class+.slots class)))
 			       it
-			       (list (find-class 't))))
+			       (list class)))
 			specializers))
 	 (method (car (any (lambda (specializers)
 			     (%find-method method-name specializers))
