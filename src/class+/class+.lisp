@@ -1,6 +1,6 @@
 (in-package :core-server)
 
-;; +------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | Class+ Implementation
 ;; +-------------------------------------------------------------------------
 (defclass class+ (standard-class)
@@ -13,12 +13,13 @@
 (defprint-object (self class+ :identity t :type t)
   (format t "~A" (class-name self)))
 
-(defmethod shared-initialize :after ((class class+) slot-names &key &allow-other-keys)
+(defmethod shared-initialize :after ((class class+) slot-names
+				     &key &allow-other-keys)
   (prog1 class (setf (class+.timestamp class) (get-universal-time))))
 
-;; -----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 ;; Class+ Protocol Implementation
-;; -----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 (defmethod class+.name ((self class+))
   (class-name self))
 
@@ -78,12 +79,13 @@
 			     (cons class (class+.superclasses class)))))
     methods))
 
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 ;; Extra Definitions
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 (defmethod class+.slot-search ((class class+) match-p)
   (filter match-p (reverse (class+.slots class))))
 
+(defmethod class+.find-slot ((class t) slot-name) nil)
 (defmethod class+.find-slot ((class class+) slot-name)
   (find slot-name (class+.slots class) :key #'slot-definition-name :test #'string=))
 
@@ -120,7 +122,8 @@
    (relation :initarg :relation :initform nil :accessor slot-definition-relation)
    (index :initarg :index :initform nil :accessor slot-definition-index)
    (print :initarg :print :initform nil :accessor slot-definition-print)
-   (label :initarg :label :initform nil :accessor slot-definition-label)))
+   (label :initarg :label :initform nil :accessor slot-definition-label)
+   (lift  :initarg :lift :initform nil :accessor slot-definition-lift)))
 
 (defclass class+-direct-slot-definition (class+-slot-definition standard-direct-slot-definition)
   ())
@@ -137,20 +140,24 @@
   (find-class 'class+-effective-slot-definition))
 
 (defmethod %class+-inherited-slots ((class class+))
-  '(host client-type sb-pcl::readers sb-pcl::writers relation index print label))
+  '(host client-type sb-pcl::readers sb-pcl::writers relation
+    index print label lift))
 
-(defmethod compute-effective-slot-definition ((class class+) slot-name slot-defs)
+(defmethod compute-effective-slot-definition ((class class+) slot-name
+					      slot-defs)
   (flet ((copy-slots (slots source target)
 	   (mapc (lambda (slot)
 		   (when (typep source 'class+-direct-slot-definition)
-		     (setf (slot-value target slot) (slot-value source slot))))
+		     (setf (slot-value target slot)
+			   (slot-value source slot))))
 		 slots)
 	   target))
-    (copy-slots (%class+-inherited-slots class) (car slot-defs) (call-next-method))))
+    (copy-slots (%class+-inherited-slots class) (car slot-defs)
+		(call-next-method))))
 
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 ;; Slot Definition Sugars
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 (defmethod slot-definition-supplied-p ((slot class+-slot-definition))
   (intern (format nil "~A-SUPPLIED-P" (slot-definition-name slot))))
 
@@ -161,7 +168,8 @@
 	  :initform ;; (slot-definition-initform slot)
 	  (let ((initform (assoc initarg
 				 (class-default-initargs
-				  (class-name (sb-pcl::slot-definition-class slot))))))
+				  (class-name
+				   (sb-pcl::slot-definition-class slot))))))
 	    (if initform
 		(cadr initform)		      
 		(slot-definition-initform slot)))
@@ -173,7 +181,8 @@
 	  :writer (car (reverse (sb-pcl::slot-definition-writers slot)))
 	  :reader (car (reverse (sb-pcl::slot-definition-readers slot)))
 	  :index (slot-definition-index slot)
-	  :label (slot-definition-label slot))))
+	  :label (slot-definition-label slot)
+	  :lift (slot-definition-lift slot))))
 
 (defmacro with-slotdef (arglist slot &body body)
   `(destructuring-bind (&key ,@arglist &allow-other-keys)
@@ -208,9 +217,9 @@
 		   (slot-definition-singular-type slot))))
     (class+.find-slot (find-class+ type) (slot-definition-relation slot))))
 
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 ;; Relations
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 (defmethod class+.relations ((class class+))
   (filter (lambda (slot)
 	    (not (null (slot-definition-relation slot))))
@@ -219,19 +228,22 @@
 (defmethod class+.1-to-n-relations ((class class+))  
   (filter (lambda (slot)
 	    (and (slot-definition-plural-typep slot)
-		 (slot-definition-singular-typep (slot-definition-relational-slot slot))))
+		 (slot-definition-singular-typep
+		  (slot-definition-relational-slot slot))))
 	  (class+.relations class)))
 
 (defmethod class+.n-to-1-relations ((class class+))
   (filter (lambda (slot)
 	    (and (slot-definition-singular-typep slot)
-		 (slot-definition-plural-typep (slot-definition-relational-slot slot))))
+		 (slot-definition-plural-typep
+		  (slot-definition-relational-slot slot))))
 	  (class+.relations class)))
 
 (defmethod class+.n-to-n-relations ((class class+))
   (filter (lambda (slot)
 	    (and (slot-definition-plural-typep slot)
-		 (slot-definition-plural-typep (slot-definition-relational-slot slot))))
+		 (slot-definition-plural-typep
+		  (slot-definition-relational-slot slot))))
 	  (class+.relations class)))
 
 (defmethod slot-definition-relation-type ((slot class+-slot-definition))
@@ -365,11 +377,13 @@
     `(defprint-object (self ,name)
        (format t "~{~A~^ ~}"
 	       (list ,@(nreverse
-			(reduce0 (lambda (acc slot)
-				   (cons `(list ',(slot-definition-name slot)
-						(slot-value self ',(slot-definition-name slot)))
-					 acc))
-				 slots)))))))
+			(reduce0
+			 (lambda (acc slot)
+			   (cons `(list
+				   ',(slot-definition-name slot)
+				   (slot-value self ',(slot-definition-name slot)))
+				 acc))
+			 slots)))))))
 
 ;; --------------------------------------------------------------------------
 ;; defclass+ Macro
@@ -387,27 +401,21 @@
 		 (member :reader slot-definition)
 		 (member :writer slot-definition)))
 	(setf (getf (cdr slot-definition) :accessor)
-	      (intern (format nil "~A.~A" class-name (car slot-definition)))))
+	      (intern (format nil "~A.~A" class-name
+			      (car slot-definition)))))
 
     slot-definition)
   
   (defun %filter-rest (rest)
     (reverse (append (aif (cdr (assoc :ctor rest)) (list `(:ctor ,it)))
-		     (list `(:metaclass ,(or (cadr (assoc :metaclass rest)) 'class+)))
+		     (list `(:metaclass ,(or (cadr (assoc :metaclass rest))
+					     'class+)))
 		     (list `(:rest ',rest))
 		     (filter (lambda (a)
 			       (and (not (eq :ctor (car a)))
 				    (not (eq :metaclass (car a)))
 				    (not (eq :rest (car a)))))
 			     rest)))))
-
-;; (defmethod shared-initialize :after ((self class+) slot-names &rest initargs)
-;;   (declare (ignore initargs))
-;;   (let ((initargs (assoc :default-initargs (cadar (slot-value self 'rest)))))
-;;     (mapcar (lambda (arg)
-;; 	      (setf (slot-definition-initform (class+.find-slot self (car arg))) (cdr arg)))
-;; 	    (plist-to-alist (cdr initargs))))
-;;   self)
 
 (defclass class+-instance ()
   ()
@@ -424,10 +432,12 @@
        (deftype ,(intern (format nil "~A*" name)) ()
 	 '(or null cons))
        (defclass ,name (,@(remove 'class+-object supers) class+-instance)
-	 ,(mapcar (lambda (slot) (%fix-slot-definition name slot)) slots)
+	 (,@(mapcar (lambda (slot) (%fix-slot-definition name slot)) slots)
+	  ,@(class+-lifted-slots name supers slots))
 	 ,@(%filter-rest rest))
        (defclass+-ctor ,name))
      (defclass+-print-object ,name)
+     (defclass+-slot-lifts ,name)
      (find-class ',name)))
 
 ;; (defclass+ user1 ()
@@ -438,9 +448,8 @@
 ;;   (:documentation "eben"))
 
 ;; Core Server: Web Application Server
-
+;;
 ;; Copyright (C) 2006-2008  Metin Evrim Ulu, Aycan iRiCAN
-
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation, either version 3 of the License, or
@@ -455,54 +464,3 @@
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>
 
 
-
-;; (defmethod class+.ctor-lambda-list ((self class+) &optional (include-supplied-p nil))
-;;   (reduce0 (lambda (acc slot)
-;; 	     (with-slotdef (initarg initform supplied-p) slot
-;; 	       (if initarg
-;; 		   (let ((symbol (intern (symbol-name initarg))))
-;; 		     (if include-supplied-p
-;; 			 (cons (list symbol initform supplied-p) acc)
-;; 			 (cons (list symbol initform) acc)))
-;; 		   acc)))
-;; 	   (uniq (append (reverse (class+.local-slots self))
-;; 			 (reverse (class+.remote-slots self)))
-;; 		 :test #'equal :key #'slot-definition-name)))
-  
-;; (defmethod class+.ctor-arguments ((self class+) &optional lambda-list)      
-;;   (reduce0 (lambda (acc slot)
-;; 	     (with-slotdef (initarg) slot
-;; 	       (if initarg
-;; 		   (cons initarg (cons (intern (symbol-name initarg)) acc))
-;; 		   acc)))
-;; 	   (aif (extract-argument-names lambda-list)
-;; 		(filter (lambda (slot)
-;; 			  (with-slotdef (name) slot
-;; 			    (member name it :test #'string=)))
-;; 			(class+.slots self))
-;; 		(append (reverse (class+.local-slots self))
-;; 			(reverse (class+.remote-slots self))))))
-
-;; (defmethod class+.all-ctor-lambda-list ((self class+) &optional (include-supplied-p nil))
-;;   (reduce0 (lambda (acc slot)
-;; 	     (with-slotdef (initarg initform supplied-p) slot
-;; 	       (if initarg
-;; 		   (let ((symbol (intern (symbol-name initarg))))
-;; 		     (if include-supplied-p
-;; 			 (cons (list symbol initform supplied-p) acc)
-;; 			 (cons (list symbol initform) acc)))
-;; 		   acc)))
-;; 	   (reverse (class+.slots self))))
-
-;; (defmethod class+.all-ctor-arguments ((self class+) &optional lambda-list)      
-;;   (reduce0 (lambda (acc slot)
-;; 	     (with-slotdef (initarg) slot
-;; 	       (if initarg
-;; 		   (cons initarg (cons (intern (symbol-name initarg)) acc))
-;; 		   acc)))
-;; 	   (aif (extract-argument-names lambda-list)
-;; 		(filter (lambda (slot)
-;; 			  (with-slotdef (name) slot
-;; 			    (member name it)))
-;; 			 (class+.slots self))
-;; 		(reverse (class+.slots self)))))

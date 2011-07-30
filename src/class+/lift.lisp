@@ -6,203 +6,222 @@
 ;; Author: Evrim Ulu <evrim@core.gen.tr>
 ;; Date: July 2011
 
+;; -------------------------------------------------------------------------
+;; Permute
+;; -------------------------------------------------------------------------
+;; 
+;; SERVER> (permute '((a b) (c d) (e f)))
+;; ((A C E) (A C F) (A D E) (A D F) (B C E) (B C F) (B D E) (B D F))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun permute (list)
+    (flatten1
+     (mapcar (lambda (atom)
+	       (mapcar (curry #'cons atom)
+		       (let ((a (permute (cdr list))))
+			 (if (atom a)
+			     (list a)
+			     a))))
+	     (car list)))))
+
+;; SERVER> (car (%find-method 'foo (list (find-class 'a) (find-class 'a))))
+;; #<STANDARD-METHOD FOO (A A) {100521CF71}>
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun %find-method (method-name specializers)
+    (sb-pcl::compute-applicable-methods-using-classes
+     (sb-pcl::find-generic-function method-name) specializers)))
+
 ;; +-------------------------------------------------------------------------
 ;; | Method Lifting
 ;; +-------------------------------------------------------------------------
-(defmacro %defmethod/lift (method-name (&rest args))  
-  (let* ((class-name (if (atom method-name) (cadar args) (cadadr args)))
-	 (class (class+.find class-name))
-	 (arg-classes (mapcar (lambda (arg)
-				(or (and (atom arg) (find-class 't))
-				    (find-class (cadr arg))))
-			      args)))
-    (flet ((%find-method (class)
-	     (sb-pcl::compute-applicable-methods-using-classes
-	      (sb-pcl::find-generic-function method-name)
-	      (if (atom method-name)
-		  (cons class (cdr arg-classes))
-		  (cons (car arg-classes)
-			(cons class (cddr arg-classes)))))))
-      (let* ((method (car
-		      (reverse
-		       (any #'%find-method
-			    (remove class (class-superclasses class))))))
-	     (specializers (sb-pcl::method-specializers method))
-	     (lambda-list (sb-pcl::method-lambda-list method)))
-	(cond
-	  ((atom method-name)
-	   `(defmethod ,method-name ,(mapcar
-				      (lambda (l s)
-					(list l (class-name s)))
-				      (cons 'self (cdr lambda-list))
-				      (cons class (cdr specializers)))
-	      (,method-name
-	       (slot-value self ',(class-name (car specializers)))
-	       ,@(cdr lambda-list))))
-	  (t
-	   `(defmethod ,method-name ,(mapcar
-				      (lambda (l s)
-					(list l (class-name s)))
-				      (cons (car lambda-list)
-					    (cons 'self
-						  (cddr lambda-list)))
-				      (cons class specializers))
-	      (,(car method-name)
-		(,(cadr method-name)
-		  (slot-value self
-			      ',(class-name (cadr specializers))))
-		,(car lambda-list)))))))))
+(defmacro %defmethod/lift (method-name (&rest args)
+			   &optional output-method-name)
+  (let* ((walk-args (walk-lambda-list args nil '() :allow-specializers t))
+	 (specializers (mapcar (lambda (arg)
+				 (typecase arg
+				   (specialized-function-argument-form
+				    (find-class (arnesi::specializer arg)))
+				   (t
+				    (find-class 't))))
+			       walk-args))
+	 (lifts (mapcar (lambda (class)
+			  (aif (mapcar
+				(compose #'class+.find
+					 #'sb-pcl::slot-definition-type)
+				(filter
+				 (lambda (slot)
+				   (eq (slot-definition-host slot)
+				       'lift))
+				 (class+.slots class)))
+			       it
+			       (list (find-class 't))))
+			specializers))
+	 (method (car (any (lambda (specializers)
+			     (%find-method method-name specializers))
+			   (permute lifts)))))
+    (assert (not (null method)))
+    (let* ((method-lambda-list (walk-lambda-list
+				(sb-pcl::method-lambda-list method)
+				nil nil :allow-specializers t))
+	   (method-specializers (sb-pcl::method-specializers method))
+	   (method-specializers (append
+				 method-specializers
+				 (mapcar
+				  (lambda (a)
+				    (declare (ignore a))
+				    (find-class 't))
+				  (seq (- (length specializers)
+					  (length method-specializers))))))
+	   (arguments (mapcar #'list specializers method-specializers
+			      walk-args method-lambda-list)))
+      (flet ((process-argument (acc atom)
+	       (destructuring-bind (old new arg arg-old) atom
+		 (let ((name (name arg))
+		       (name-old (name arg-old)))
+		   (typecase arg
+		     (specialized-function-argument-form
+		      (if (eq old new)
+			  (cons name acc)
+			  (cons
+			   `(slot-value ,name ',(class-name new))
+			   acc)))
+		     (keyword-function-argument-form
+		      (cons name
+			    (cons (make-keyword name-old) acc)))
+		     (t
+		      (cons name acc)))))))
+	`(defmethod ,(or output-method-name method-name) ,args
+	   ,(cond
+	     ((atom method-name)
+	      `(,method-name
+		,@(nreverse (reduce0 #'process-argument arguments))))
+	     (t
+	      `(,(car method-name)
+		 (,(cadr method-name)
+		   ,@(nreverse
+		      (reduce0 #'process-argument (cdr arguments))))
+		 ,(name (caddr (car arguments)))))))))))
 
-(defmacro defmethod/lift (method-name (&rest args))
-  `(eval-when (:load-toplevel :execute)
-     (eval `(%defmethod/lift ,',method-name ,',args))))
+;; As said, this is KLUDGE. -evrim.
+(defmacro defmethod/lift (method-name (&rest args) &optional
+			  output-method-name)
+  `(eval-when (:execute)
+     (%defmethod/lift ,method-name ,args ,output-method-name)))
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun class+-find-slot-in-classes (slot supers)
+    (any (lambda (class)
+	   (aif (class+.find-slot class slot)
+		class))
+	 supers))
+  
+  (defmethod class+-lifted-slots (name supers slots)
+    (mapcar (lambda (class)
+	      (let ((keyword (make-keyword (class-name class))))
+		`(,(class-name class) :host lift
+		   :initarg ,keyword
+		   :initform (error ,(format nil "Provide :~A" keyword))
+		   :type ,(class-name class))))
+	    (uniq
+	     (mapcar (lambda (slot)
+		       (aif (class+-find-slot-in-classes
+			     (car slot) (mapcar #'class+.find supers))
+			    it
+			    (error "Can't find slot ~A to lift in superclasses"
+				   (car slot))))
+		     (filter (lambda (slot) (getf (cdr slot) :lift))
+			     slots))))))
 
 
-;; +-------------------------------------------------------------------------
-;; | Class+ Lift Macro
-;; +-------------------------------------------------------------------------
-(defmacro deflift+ (class-name supers slots &rest args)
-  (let* ((lifted-slots (remove-if #'null
-			(mapcar (lambda (slot)
-				  (any
-				   (lambda (class)
-				     (aif (class+.find-slot class (car slot))
-					  (cons class
-						(cons it
-						      (%fix-slot-definition
-						       class-name slot)))))
-				   (mapcar #'class+.find supers)))
-				(filter (lambda (slot)
-					  (eq (getf (cdr slot) :host)
-					      'lifted))
-					slots))))
-	 (local-lifted-slots
-	  (filter (lambda (slot)
-		    (eq (slot-definition-host (cadr slot)) 'local))
-		  lifted-slots))
-	 (remote-lifted-slots
-	  (filter (lambda (slot)
-		    (eq (slot-definition-host (cadr slot)) 'remote))
-		  lifted-slots))
-	 (lifted-supers (uniq
-			 (sort
-			  (mapcar #'car lifted-slots) #'>
-			  :key (lambda (a) (slot-value a '%timestamp))))))
+(defmethod shared-initialize :after ((self class+-instance) slots
+				     &key &allow-other-keys)
+  (let ((supers (remove (class-of self)
+			(class-superclasses (class-of self)))))
+    (mapcar (lambda (slot)
+	      (let* ((name (slot-definition-name slot))
+		     (target (class+-find-slot-in-classes name supers)))
+		(copy-slots (slot-value self (class-name target))
+			    self (list name))))
+	    (filter (lambda (slot)
+		      (and (not (null (slot-definition-lift slot)))
+			   (eq (slot-definition-host slot) 'remote)))
+		    (class+.slots (class-of self)))))
+  self)
+
+(defmacro defclass+-slot-lifts (class-name)
+  (let* ((class (class+.find class-name))
+	 (supers (remove class (class-superclasses class))))
     `(progn
-       (defclass+ ,class-name ,supers
-	 (,@(filter (lambda (slot)
-		      (not (eq (getf (cdr slot) :host) 'lifted)))
-		    slots)
-	    ,@(mapcar (lambda (class)
-			`(,(class-name class) :host none
-			   :initarg ,(make-keyword (class-name class))))
-		      lifted-supers)
-	    ,@(mapcar (lambda (slot)
-			(let ((slotdef (cddr slot)))
-			  (if (getf (cdr slotdef) :host)
-			      (prog1 slotdef
-			  	(setf (getf (cdr slotdef) :host) 'remote))
-			      (list* (car slotdef)
-			  	     :host 'remote
-			  	     (cdr slotdef)))))
-		      remote-lifted-slots))
-	 ,@args)
-       ,@(mapcar
-	  (lambda (slot)
-	    (destructuring-bind (class slotdef &rest newslot) slot
-	      (with-slotdef (reader writer) slotdef
-		(let* ((reader1 (or (getf (cdr newslot) :accessor)
-				    (getf (cdr newslot) :reader)))
-		       (writer1 (or (getf (cdr newslot) :accessor)
-				    (getf (cdr newslot) :writer))))
-		  `(progn
-		     (defmethod ,reader1 ((self ,class-name))
-		       (,reader (slot-value self ',(class-name class))))
-		     (defmethod (setf ,writer1) (value (self ,class-name))
-		       (setf (,(cadr writer)
-			       (slot-value self ',(class-name class)))
-			     value)))))))
-	  local-lifted-slots)
-       ,(when (not (null remote-lifted-slots))
-	  ;; (warn "deflift+ overrides shared-initialize :after of class ~A"
-	  ;; 	class-name)
-	  `(defmethod shared-initialize :after ((self ,class-name) slots
-						&rest initargs)
-	     (declare (ignore initargs))
-	     ,@(mapcar (lambda (slot)
-			 (let ((class (car (find (cadr slot) lifted-slots
-						 :key #'cadr))))
-			   `(copy-slots
-			     (slot-value self ',(class-name class))
-			     self '(,(slot-definition-name (cadr slot))))))
-		       remote-lifted-slots)))
-       (class+.find ',class-name))))
+       ,@(mapcar (lambda (slot)
+		   (with-slotdef (name reader writer) slot
+		     (let ((reader1 reader) (writer1 writer))
+		       (let* ((lift-class (class+-find-slot-in-classes
+					   name supers))
+			      (lift-class-name (class-name lift-class))
+			      (lift-slot (class+.find-slot lift-class name)))
+			 (with-slotdef (reader writer) lift-slot
+			   `(progn
+			      (defmethod ,reader1 ((self ,class-name))
+				(,reader
+				 (slot-value self ',lift-class-name)))
+			      (defmethod ,writer1 (value (self ,class-name))
+				(setf
+				 (,(cadr writer)
+				   (slot-value self ',lift-class-name))
+				 value))))))))
+		 (filter (lambda (slot) (slot-definition-lift slot))
+			 (class+.slots class))))))
 
+;; -------------------------------------------------------------------------
+;; Lift Usage
+;; -------------------------------------------------------------------------
 ;; (defclass+ a ()
-;;   ((slot1 :host local)
-;;    (slot2 :host remote)))
-
-;; (defmethod hede ((self a))
-;;   (list 'lifted-slot1 (a.slot1 self) 1 2 3))
-
-;; (defmethod foo ((self a) c d e)
-;;   (list 'lifted-slot1 (a.slot1 self) c d e))
-
-;; (deflift+ b (a)
-;;   ((slot1 :host lifted)
-;;    (slot2 :host lifted)))
-
-
-;; (defmethod/lift hede ((self b)))
-;; (defmethod/lift foo ((self b) c d e))
+;;   ((slot1 :host local :initform "slot1-of-a")
+;;    (slot2 :host remote :initform "slot2-of-a")))
 
 ;; (defclass+ c ()
-;;   ())
+;;   ((slot3 :host local :initform "slot3-of-c")))
 
-;; (defmethod hede ((self c))
-;;   (list 'ccc))
+;; (defclass+ b (a c)
+;;   ((slot1 :lift t)
+;;    (slot2 :host remote :lift t)
+;;    (slot3 :host remote :lift t)))
 
-;; SERVER> (let* ((a (a :slot1 "slot1-of-a" :slot2 "slot2-of-a"))
-;; 	       (b (b :a a)))
-;; 	  (setf (b.slot1 b) "slot1-of-b")
-;; 	  (describe a)
+;; -------------------------------------------------------------------------
+;; Method Lifting
+;; -------------------------------------------------------------------------
+;; (defmethod lifted-method ((a1 a) (a2 a) x &key y)
+;;   (list 'lifted-slot2-first-a (a.slot2 a1)
+;; 	'lifted-slot2-second-a (a.slot2 a2)
+;; 	'x x 'y y))
+
+;; (defmethod (setf lifted-setf-method) (value (a1 a) (a2 a))
+;;   (list value a1 a2))
+
+;; (defmethod/lift lifted-method ((first-b b) (second-b b) x1 &key y1))
+;; (defmethod/lift (setf lifted-setf-method) (value (a1 b) (a2 b)))
+
+;; -------------------------------------------------------------------------
+;; Slot Lifting
+;; -------------------------------------------------------------------------
+;; SERVER> (let* ((a (a))
+;; 	       (b (b :a a :c (c))))
+;; 	  (setf (b.slot1 b) "foo-bar")
 ;; 	  (describe b)
-;; 	  (hede b))
-
-;; #<A  {1004CB7511}>
+;; 	  (describe a))
+;; #<B  {1002A09C91}>
 ;;   [standard-object]
 
 ;; Slots with :INSTANCE allocation:
-;;   SLOT1  = "slot1-of-b"
-;;   SLOT2  = "slot2-of-a"
-;; #<B  {1004CB7551}>
-;;   [standard-object]
-
-;; Slots with :INSTANCE allocation:
+;;   SLOT3  = "slot3-of-c"
 ;;   SLOT1  = NIL
 ;;   SLOT2  = "slot2-of-a"
-;;   A      = #<A  {1004CB7511}>
-;; (LIFTED-SLOT1 "slot1-of-b" 1 2 3)
-
-
-;; SERVER> (let* ((a (a :slot1 "slot1-of-a" :slot2 "slot2-of-a"))
-;; 	       (b (b :a a)))
-;; 	  (setf (b.slot1 b) "slot1-of-b")
-;; 	  (describe a)
-;; 	  (describe b)
-;; 	  (foo b 'c 'd 'e))
-
-;; #<A  {1003B56381}>
+;;   A      = #<A  {1002A09771}>
+;;   C      = #<C  {1002A09A31}>
+;; #<A  {1002A09771}>
 ;;   [standard-object]
 
 ;; Slots with :INSTANCE allocation:
-;;   SLOT1  = "slot1-of-b"
+;;   SLOT1  = "foo-bar"
 ;;   SLOT2  = "slot2-of-a"
-;; #<B  {1003B563C1}>
-;;   [standard-object]
-
-;; Slots with :INSTANCE allocation:
-;;   SLOT1  = NIL
-;;   SLOT2  = "slot2-of-a"
-;;   A      = #<A  {1003B56381}>
-;; (LIFTED-SLOT1 "slot1-of-b" C D E)
+;; ; No value
+;; SERVER> 
