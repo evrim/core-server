@@ -114,6 +114,11 @@
 	    session)
       session))))
 
+(defmethod context.remove-action ((self http-context))
+  (let ((k-url (http-request.query (context.request self)
+				   +continuation-query-name+)))
+    (remhash k-url (session.continuations (context.session self)))))
+
 ;; --------------------------------------------------------------------------
 ;; Methods that add "Session" Cookie to Response
 ;; --------------------------------------------------------------------------
@@ -195,7 +200,8 @@
 (defmethod print-object ((self http-application) stream)
   (print-unreadable-object (self stream :type t :identity t)
     (if (typep self 'server)
-	(format stream "FQDN:\"~A\" is ~A running" (web-application.fqdn self)
+	(format stream "FQDN:\"~A\" is ~A running"
+		(web-application.fqdn self)
 		(if (status self) "" "*not*"))
 	(format stream "FQDN:\"~A\"" (web-application.fqdn self)))))
 
@@ -271,7 +277,8 @@
 			(request http-request) (response http-response))
   "Default directory handler which serves static files"
   (let ((htdocs-path (web-application.htdocs-pathname application))
-	(paths (let ((tmp (or (uri.paths (http-request.uri request)) '(("")))))
+	(paths (let ((tmp (or (uri.paths (http-request.uri request))
+			      '(("")))))
 		 (if (equal (caar tmp) "")
 		     '(("index.html"))
 		     tmp))))
@@ -284,7 +291,8 @@
 	   (path (append '(:relative) (mapcar #'car (butlast paths))))
 	   (output (http-response.stream response))
 	   (abs-path (merge-pathnames
-		      (merge-pathnames (make-pathname :directory path) file-and-ext)
+		      (merge-pathnames (make-pathname :directory path)
+				       file-and-ext)
 		      htdocs-path))
 	   (mime-type (mime-type abs-path)))
 
@@ -298,16 +306,21 @@
 
       (http-response.set-content-type response (split "/" mime-type))
       
-      (with-open-file (input abs-path :element-type '(unsigned-byte 8) :direction :input)
-	(let ((seq (make-array (file-length input) :element-type 'unsigned-byte)))
+      (with-open-file (input abs-path :element-type '(unsigned-byte 8)
+			     :direction :input)
+	(let ((seq (make-array (file-length input)
+			       :element-type 'unsigned-byte)))
 	  (read-sequence seq input)
 	  (write-stream output seq)))
       t)))
 
-(defmethod dispatch ((self http-application) (request http-request) (response http-response))
+(defmethod dispatch ((self http-application) (request http-request)
+		     (response http-response))
   "Dispatch 'request' to 'self' application with empty 'response'"
-  (let ((session (gethash (find-session-id request) (http-application.sessions self)))
-	(k-arg (uri.query (http-request.uri request) +continuation-query-name+)))
+  (let ((session (gethash (find-session-id request)
+			  (http-application.sessions self)))
+	(k-arg (uri.query (http-request.uri request)
+			  +continuation-query-name+)))
     (acond
      ((and session (gethash k-arg (session.continuations session)))
       (log-me (application.server self) 'http-application	
@@ -324,7 +337,9 @@
       (render-404 self request response))
      ((any #'(lambda (handler)
 	       (aif (caar (uri.paths (http-request.uri request)))
-		    (let ((uri (make-uri :paths (uri.paths (http-request.uri request)))))
+		    (let ((uri (make-uri :paths
+					 (uri.paths
+					  (http-request.uri request)))))
 		      (and (cl-ppcre:scan-to-strings
 			    (cl-ppcre:create-scanner (cdr handler))
 			    (with-core-stream (s "")
@@ -353,7 +368,9 @@
     (mapc (rcurry #'remhash sessions)
 	  (let (expired)
 	    (maphash #'(lambda (k v)
-			 (when (> (- (get-universal-time) (session.timestamp v)) +session-timeout+)
+			 (when (> (- (get-universal-time)
+				     (session.timestamp v))
+				  +session-timeout+)
 			   (push k expired)))
 		     sessions)
 	    expired))))
@@ -398,7 +415,8 @@
 ;; --------------------------------------------------------------------------
 ;; defhandler Macro: Defines a static url handler
 ;; --------------------------------------------------------------------------
-(defmacro defhandler (url ((application application-class) &rest queries) &body body)
+(defmacro defhandler (url ((application application-class) &rest queries)
+		      &body body)
   "Defines an entry point/url handler to the application-class"
   (let ((handler-symbol (intern (string-upcase url))))
     (assert (stringp url))
@@ -406,16 +424,20 @@
       (setf context (intern (symbol-name context)))
       `(progn
 	 (eval-when (:load-toplevel :compile-toplevel :execute)
-	   (add-handler (find-class ',application-class) ',handler-symbol ,url))
-	 (defmethod ,handler-symbol ((,application ,application-class) (,context http-context))
+	   (add-handler (find-class ',application-class)
+			',handler-symbol ,url))
+	 (defmethod ,handler-symbol
+	     ((,application ,application-class) (,context http-context))
 	   (prog1 (with-context ,context
-		    (with-html-output (http-response.stream (context.response +context+))
+		    (with-html-output (http-response.stream
+				       (context.response +context+))
 		      (with-query ,queries (context.request ,context)
 			,@body)))
 	     (setf (context.request ,context) nil
 		   (context.response ,context) nil)))))))
 
-(defmacro defhandler/js (url ((application application-class) &rest queries) &body body)
+(defmacro defhandler/js (url ((application application-class) &rest queries)
+			 &body body)
   `(defhandler ,url ((,application ,application-class) ,@queries)
      (javascript/suspend
       (lambda (stream)
@@ -428,9 +450,10 @@
 
 (defmacro defurl (application regexp-url queries &body body)
   "Backward compat macro"
-  `(defhandler ,regexp-url ((application ,(class-name (class-of (symbol-value application))))
-			    (context http-context) ,@queries)
-     ,@body))
+  (let ((class-name (class-name (class-of (symbol-value application)))))
+    `(defhandler ,regexp-url ((application ,class-name)
+			      (context http-context) ,@queries)
+       ,@body)))
 
 ;; +-------------------------------------------------------------------------
 ;; | CPS Style Web Framework
@@ -445,7 +468,8 @@
     `(let ((,result (multiple-value-list
 		     (let/cc k
 		       (setf (context.continuation +context+) k)
-		       (with-html-output (http-response.stream (context.response +context+))
+		       (with-html-output (http-response.stream
+					  (context.response +context+))
 			 ,@body)
 		       (setf (context.response +context+) nil
 			     (context.request +context+) nil)
@@ -462,10 +486,12 @@
        (clrhash (session.continuations (context.session +context+)))
        (let ((,result (multiple-value-list (send/suspend ,@body))))
 	 (send/suspend
-	   (setf (http-response.status-code (context.response +context+)) '(301 . "Moved Permanently")) 
+	   (setf (http-response.status-code (context.response +context+))
+		 '(301 . "Moved Permanently"))
 	   (add-response-header (context.response +context+)
-				'location (action/url ()
-					    (answer (apply #'values ,result)))))))))
+				'location
+				(action/url ()
+				  (answer (apply #'values ,result)))))))))
 
 (defmacro send/finish (&body body)
   `(with-html-output (http-response.stream (context.response +context+))
@@ -574,9 +600,12 @@ executing 'body'"
 				    ("charset" "UTF-8")))
   (send/suspend
     (prog1 nil
-      (funcall lambda (if (application.debug (context.application +context+))
-			  (make-indented-stream (http-response.stream (context.response +context+)))
-			  (make-compressed-stream (http-response.stream (context.response +context+))))))))
+      (funcall lambda
+	       (if (application.debug (context.application +context+))
+		   (make-indented-stream
+		    (http-response.stream (context.response +context+)))
+		   (make-compressed-stream
+		    (http-response.stream (context.response +context+))))))))
 
 (defmacro json/suspend (&body body)
   "Json version of send/suspend, sets content-type to text/json"
@@ -605,9 +634,9 @@ executing 'body'"
 (defmacro with-test-context ((context-var uri application) &body body)
   "Executes 'body' with context bound to 'context-var'"
   `(let ((,context-var (make-new-context ,application
-					 (make-instance 'http-request :uri ,uri)
-					 (make-response (make-indented-stream *core-output*))
-					 nil)))
+			 (make-instance 'http-request :uri ,uri)
+			 (make-response (make-indented-stream *core-output*))
+			 nil)))
      ,@body))
 
 (defun kontinue (number result &rest parameters)
@@ -633,7 +662,8 @@ provide query parameters inside URL as key=value"
    (lambda (s)
      (core-server::core-library! s))))
 
-(defhandler "multipart.core" ((self http-application) (action "action") (hash "__hash"))
+(defhandler "multipart.core" ((self http-application) (action "action")
+			      (hash "__hash"))
   (let* ((uri (uri? (make-core-stream (json-deserialize action))))
 	 (action-s (uri.query uri +session-query-name+))
 	 (action-k (uri.query uri +continuation-query-name+))
@@ -647,7 +677,8 @@ provide query parameters inside URL as key=value"
 		      (current-uri (http-request.uri req)))
 
 		 (setf (uri.paths current-uri)
-		       (if (equal (web-application.fqdn self) (car (uri.paths uri)))
+		       (if (equal (web-application.fqdn self)
+				  (car (uri.paths uri)))
 			   (cdr (uri.paths uri))
 			   (uri.paths uri)))
 		 
@@ -658,14 +689,15 @@ provide query parameters inside URL as key=value"
 	     (multipart-action (hash)
 	       (javascript/suspend
 		(lambda (s)
-		  (let ((k-url (action/url ((data "data") (commit "commit")
-					    (hash "__hash"))
-				 (cond
-				   (commit (commit hash))
-				   (t
-				    (write-stream stream
-						  (subseq data 1 (- (length data) 1)))
-				    (multipart-action (json-deserialize hash)))))))
+		  (let ((k-url
+			 (action/url ((data "data") (commit "commit")
+				      (hash "__hash"))
+			   (context.remove-action +context+)
+			   (cond
+			     (commit (commit hash))
+			     (t
+			      (write-stream stream (subseq data 1 (- (length data) 1)))
+			      (multipart-action (json-deserialize hash)))))))
 		    (with-js (k-url hash) s
 		      (apply (slot-value window hash) this (list k-url))))))))
       (multipart-action (json-deserialize hash)))))
