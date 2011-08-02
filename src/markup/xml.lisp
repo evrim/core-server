@@ -35,9 +35,6 @@
    (schema :initform nil :initarg :schema :reader xml+.schema)
    (attributes :initarg :attributes :initform nil :reader xml+.attributes)))
 
-(defmethod class+.ctor-name ((self xml+))
-  (class+.name self))
-
 (defmethod class+.ctor ((self xml+))
   (let ((name (class+.name self)))
     `(progn
