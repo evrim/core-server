@@ -21,14 +21,14 @@
 			 (if (atom a)
 			     (list a)
 			     a))))
-	     (car list)))))
+	     (car list))))
 
-;; SERVER> (car (%find-method 'foo (list (find-class 'a) (find-class 'a))))
-;; #<STANDARD-METHOD FOO (A A) {100521CF71}>
-(eval-when (:compile-toplevel :load-toplevel :execute)
+  ;; SERVER> (car (%find-method 'foo (list (find-class 'a) (find-class 'a))))
+  ;; #<STANDARD-METHOD FOO (A A) {100521CF71}>
   (defun %find-method (method-name specializers)
-    (sb-pcl::compute-applicable-methods-using-classes
-     (sb-pcl::find-generic-function method-name) specializers)))
+    (aif (sb-pcl::find-generic-function method-name nil) 
+	 (sb-pcl::compute-applicable-methods-using-classes it
+							   specializers))))
 
 ;; +-------------------------------------------------------------------------
 ;; | Method Lifting
@@ -58,54 +58,74 @@
 	 (method (car (any (lambda (specializers)
 			     (%find-method method-name specializers))
 			   (permute lifts)))))
-    (assert (not (null method)))
-    (let* ((method-lambda-list (walk-lambda-list
-				(sb-pcl::method-lambda-list method)
-				nil nil :allow-specializers t))
-	   (method-specializers (sb-pcl::method-specializers method))
-	   (method-specializers (append
-				 method-specializers
-				 (mapcar
-				  (lambda (a)
-				    (declare (ignore a))
-				    (find-class 't))
-				  (seq (- (length specializers)
-					  (length method-specializers))))))
-	   (arguments (mapcar #'list specializers method-specializers
-			      walk-args method-lambda-list)))
-      (flet ((process-argument (acc atom)
-	       (destructuring-bind (old new arg arg-old) atom
-		 (let ((name (name arg))
-		       (name-old (name arg-old)))
-		   (typecase arg
-		     (specialized-function-argument-form
-		      (if (eq old new)
-			  (cons name acc)
-			  (cons
-			   `(slot-value ,name ',(class-name new))
-			   acc)))
-		     (keyword-function-argument-form
-		      (cons name
-			    (cons (make-keyword name-old) acc)))
-		     (t
-		      (cons name acc)))))))
-	`(defmethod ,(or output-method-name method-name) ,args
-	   ,(cond
-	     ((atom method-name)
-	      `(,method-name
-		,@(nreverse (reduce0 #'process-argument arguments))))
-	     (t
-	      `(,(car method-name)
-		 (,(cadr method-name)
-		   ,@(nreverse
-		      (reduce0 #'process-argument (cdr arguments))))
-		 ,(name (caddr (car arguments)))))))))))
+    (when method
+      (let* ((method-lambda-list (walk-lambda-list
+				  (sb-pcl::method-lambda-list method)
+				  nil nil :allow-specializers t))
+	     (method-lambda-list (append method-lambda-list
+					 (drop (length method-lambda-list)
+					       walk-args)))
+	     (method-specializers (sb-pcl::method-specializers method))
+	     (method-specializers (append
+				   method-specializers
+				   (mapcar
+				    (lambda (a)
+				      (declare (ignore a))
+				      (find-class 't))
+				    (seq (- (length specializers)
+					    (length method-specializers))))))
+	     (arguments (mapcar #'list method-specializers specializers
+				walk-args method-lambda-list)))
+	(labels ((find-lifted-slot (old-class new-class)
+		   ;; new: page/anonymous, old: template, in between: page
+		   (any (lambda (class)
+			  (aif (member old-class (class+.superclasses class))
+			       class))
+			(class+.direct-superclasses new-class)))
+		 (process-argument (acc atom)
+		   (destructuring-bind (new old arg arg-old) atom
+		     (let ((name (name arg))
+			   (name-old (name arg-old)))
+		       (typecase arg
+			 (specialized-function-argument-form
+			  (if (eq old new)
+			      (cons name acc)
+			      (cons
+			       `(slot-value ,name
+					    ',(class-name
+					       (find-lifted-slot new old)))
+			       acc)))
+			 (keyword-function-argument-form
+			  (cons name
+				(cons (make-keyword name-old) acc)))
+			 (t
+			  (cons name acc)))))))
+	  `(defmethod ,(or output-method-name method-name) ,args
+	     ,(cond
+	       ((atom method-name)
+		`(,method-name
+		  ,@(nreverse (reduce0 #'process-argument arguments))))
+	       (t
+		(describe (list (length method-specializers)
+				(length specializers)
+				(length walk-args)
+				(length method-lambda-list)
+				method-lambda-list
+				walk-args))
+		(describe arguments)
+		`(,(car method-name)
+		   (,(cadr method-name)
+		     ,@(nreverse
+			(reduce0 #'process-argument (cdr arguments))))
+		   ,(name (caddr (car arguments))))))))))))
 
-;; As said, this is KLUDGE. -evrim.
-(defmacro defmethod/lift (method-name (&rest args) &optional
-			  output-method-name)
-  `(eval-when (:execute)
-     (%defmethod/lift ,method-name ,args ,output-method-name)))
+(defmacro defmethod/lift (method-name (&rest args)
+			  &optional output-method-name)
+  `(progn
+     (eval-when (:compile-toplevel :load-toplevel)
+       (%defmethod/lift ,method-name ,args ,output-method-name))
+     (eval-when (:execute)
+       (%defmethod/lift ,method-name ,args ,output-method-name))))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun class+-find-slot-in-classes (slot supers)
@@ -198,7 +218,18 @@
 ;;   (list value a1 a2))
 
 ;; (defmethod/lift lifted-method ((first-b b) (second-b b) x1 &key y1))
+;; ;; (PROGN 
+;; ;;   (EVAL-WHEN (:EXECUTE)
+;; ;;     (DEFMETHOD LIFTED-METHOD ((FIRST-B B) (SECOND-B B) X1 &KEY Y1)
+;; ;;       (LIFTED-METHOD (SLOT-VALUE FIRST-B 'A) (SLOT-VALUE SECOND-B 'A)
+;; ;; 		     X1 :Y Y1))))
+
 ;; (defmethod/lift (setf lifted-setf-method) (value (a1 b) (a2 b)))
+;; ;; (PROGN 
+;; ;;   (EVAL-WHEN (:EXECUTE)
+;; ;;     (DEFMETHOD (SETF LIFTED-SETF-METHOD) (VALUE (A1 B) (A2 B))
+;; ;;       (SETF (LIFTED-SETF-METHOD (SLOT-VALUE A1 'A) (SLOT-VALUE A2 'A))
+;; ;; 	       VALUE))))
 
 ;; -------------------------------------------------------------------------
 ;; Slot Lifting
@@ -224,4 +255,4 @@
 ;;   SLOT1  = "foo-bar"
 ;;   SLOT2  = "slot2-of-a"
 ;; ; No value
-;; SERVER> 
+;; SERVER>
