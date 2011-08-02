@@ -342,29 +342,33 @@
 		(reverse (class+.slots self)))))
 
 (defmethod class+.ctor-name ((self class+))
-  (or (and (atom (caar (slot-value self 'ctor)))
-	   (caar (slot-value self 'ctor)))
-      (class+.name self)
-      ;; (intern (format nil "MAKE-~A" (class+.name self))
-      ;; 	      (symbol-package (class+.name self)))
-      ))
+  (with-slots (ctor) self
+    (or (and (atom ctor) ctor)
+	(and (atom (car ctor)) (car ctor))
+	(and (atom (caar ctor)) (caar ctor))
+	(class+.name self)
+	;; (intern (format nil "MAKE-~A" (class+.name self))
+	;; 	      (symbol-package (class+.name self)))
+	)))
 
 (defmethod class+.%ctor ((self class+))
-  (if (atom (caar (slot-value self 'ctor)))
-      (cadar (slot-value self 'ctor))
-      (caar (slot-value self 'ctor))))
+  (with-slots (ctor) self
+    (if (atom (caar ctor))
+	(cdar ctor)
+	(cdr ctor))))
 
 (defmethod class+.ctor ((self class+))
-  (let ((name (class+.name self)))
+  (let ((name (class+.name self))
+	(ctor-name (class+.ctor-name self)))
     (aif (class+.%ctor self)
 	 `(progn
-	    (fmakunbound ',it)
-	    (defun ,(class+.ctor-name self) ,it
+	    (fmakunbound ',ctor-name)
+	    (defun ,ctor-name ,it
 	      (make-instance ',name ,@(class+.ctor-arguments self it))))
 	 (let ((keywords (class+.ctor-lambda-list self t)))
 	   `(progn
-	      (fmakunbound ',(class+.ctor-name self))
-	      (defun ,(class+.ctor-name self) (&key ,@keywords)
+	      (fmakunbound ',ctor-name)
+	      (defun ,ctor-name (&key ,@keywords)
 		(declare (ignorable ,@(mapcar #'caddr keywords)))
 		(make-instance ',name ,@(class+.ctor-arguments self))))))))
 
