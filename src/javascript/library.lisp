@@ -545,7 +545,7 @@
   (defun get-cookie (name)
     (let* ((cookies (mapcar (lambda (a) (.split a "="))
 			    (.split document.cookie ";")))
-	   (found (find (lambda (a) (eq (.trim (car a)) name)) cookies)))
+	   (found (find (lambda (a) (eq (trim (car a)) name)) cookies)))
       (if found
 	  (return (car (cdr found)))
 	  (return nil))))
