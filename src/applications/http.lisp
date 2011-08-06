@@ -118,7 +118,8 @@
   (remhash k-url (session.continuations (context.session self))))
 
 (defmethod context.remove-current-action ((self http-context))
-  (context.remove-action (http-request.query (context.request self)
+  (context.remove-action +context+
+			 (http-request.query (context.request self)
 					     +continuation-query-name+)))
 
 ;; --------------------------------------------------------------------------
