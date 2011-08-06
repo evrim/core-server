@@ -114,10 +114,12 @@
 	    session)
       session))))
 
-(defmethod context.remove-action ((self http-context))
-  (let ((k-url (http-request.query (context.request self)
-				   +continuation-query-name+)))
-    (remhash k-url (session.continuations (context.session self)))))
+(defmethod context.remove-action ((self http-context) k-url)
+  (remhash k-url (session.continuations (context.session self))))
+
+(defmethod context.remove-current-action ((self http-context))
+  (context.remove-action (http-request.query (context.request self)
+					     +continuation-query-name+)))
 
 ;; --------------------------------------------------------------------------
 ;; Methods that add "Session" Cookie to Response
@@ -692,7 +694,7 @@ provide query parameters inside URL as key=value"
 		  (let ((k-url
 			 (action/url ((data "data") (commit "commit")
 				      (hash "__hash"))
-			   (context.remove-action +context+)
+			   (context.remove-current-action +context+)
 			   (cond
 			     (commit (commit hash))
 			     (t
