@@ -180,6 +180,7 @@
    #:both
    #:remote
    #:primitive
+   #:lift
 
    #:defmethod/lift
    
@@ -799,7 +800,9 @@
    #:context.response
    #:context.session
    #:context.application
-
+   #:context.remove-action
+   #:context.remove-current-action
+   
    ;; Metaclass
    #:http-application+
    #:http-application+.handlers
@@ -943,7 +946,8 @@
    #:init/js
    #:destroy
    #:destroy/js
-   
+   #:_destroy
+
    ;; [DOm Components]
    #:dom-element
    #:css-class
