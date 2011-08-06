@@ -35,7 +35,15 @@
 ;; +-------------------------------------------------------------------------
 (defmacro %defmethod/lift (method-name (&rest args)
 			   &optional output-method-name)
-  (let* ((walk-args (walk-lambda-list args nil '() :allow-specializers t))
+  (let* ((walk-args (mapcar (lambda (arg)
+			      (typecase arg
+				(keyword-function-argument-form
+				 (if (null (supplied-p-parameter arg))
+				     (setf (supplied-p-parameter arg)
+					   (gensym)))))
+			      arg)
+			    (walk-lambda-list args nil '()
+					      :allow-specializers t)))
 	 (specializers (mapcar (lambda (arg)
 				 (typecase arg
 				   (specialized-function-argument-form
@@ -76,47 +84,32 @@
 					    (length method-specializers))))))
 	     (arguments (mapcar #'list method-specializers specializers
 				walk-args method-lambda-list)))
-	(labels ((find-lifted-slot (old-class new-class)
-		   ;; new: page/anonymous, old: template, in between: page
-		   (any (lambda (class)
-			  (aif (member old-class (class+.superclasses class))
-			       class))
-			(class+.direct-superclasses new-class)))
-		 (process-argument (acc atom)
+	(labels ((process-argument (atom)
 		   (destructuring-bind (new old arg arg-old) atom
 		     (let ((name (name arg))
 			   (name-old (name arg-old)))
 		       (typecase arg
 			 (specialized-function-argument-form
 			  (if (eq old new)
-			      (cons name acc)
-			      (cons
-			       `(slot-value ,name
-					    ',(class-name
-					       (find-lifted-slot new old)))
-			       acc)))
+			      `(list ,name)
+			      `(list (slot-value ,name ',(class-name new)))))
 			 (keyword-function-argument-form
-			  (cons name
-				(cons (make-keyword name-old) acc)))
+			  `(if ,(arnesi::supplied-p-parameter arg)
+			       (list ,(make-keyword name-old) ,name)
+			       nil))
 			 (t
-			  (cons name acc)))))))
-	  `(defmethod ,(or output-method-name method-name) ,args
+			  `(list ,name)))))))
+	  `(defmethod ,(or output-method-name method-name)
+	       ,(unwalk-lambda-list walk-args)
 	     ,(cond
 	       ((atom method-name)
-		`(,method-name
-		  ,@(nreverse (reduce0 #'process-argument arguments))))
+		`(apply ',method-name
+			(append ,@(mapcar #'process-argument arguments))))
 	       (t
-		(describe (list (length method-specializers)
-				(length specializers)
-				(length walk-args)
-				(length method-lambda-list)
-				method-lambda-list
-				walk-args))
-		(describe arguments)
 		`(,(car method-name)
 		   (,(cadr method-name)
-		     ,@(nreverse
-			(reduce0 #'process-argument (cdr arguments))))
+		     ,@(flatten1
+			(mapcar #'cdr (mapcar #'process-argument (cdr arguments)))))
 		   ,(name (caddr (car arguments))))))))))))
 
 (defmacro defmethod/lift (method-name (&rest args)
@@ -128,7 +121,7 @@
        (%defmethod/lift ,method-name ,args ,output-method-name))))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defun class+-find-slot-in-classes (slot supers)
+  (defun class+-find-slot-in-classes (slot supers)    
     (any (lambda (class)
 	   (aif (class+.find-slot class slot)
 		class))
@@ -168,28 +161,27 @@
   self)
 
 (defmacro defclass+-slot-lifts (class-name)
-  (let* ((class (class+.find class-name))
-	 (supers (remove class (class-superclasses class))))
-    `(progn
-       ,@(mapcar (lambda (slot)
-		   (with-slotdef (name reader writer) slot
-		     (let ((reader1 reader) (writer1 writer))
-		       (let* ((lift-class (class+-find-slot-in-classes
-					   name supers))
-			      (lift-class-name (class-name lift-class))
-			      (lift-slot (class+.find-slot lift-class name)))
-			 (with-slotdef (reader writer) lift-slot
-			   `(progn
-			      (defmethod ,reader1 ((self ,class-name))
-				(,reader
-				 (slot-value self ',lift-class-name)))
-			      (defmethod ,writer1 (value (self ,class-name))
-				(setf
-				 (,(cadr writer)
-				   (slot-value self ',lift-class-name))
-				 value))))))))
-		 (filter (lambda (slot) (slot-definition-lift slot))
-			 (class+.slots class))))))
+  (flet ((find-lifted-slot (slot new-class)
+	   (any (lambda (class)
+		  (aif (class+.find-slot class slot)
+		       it))
+		(class+.direct-superclasses new-class))))
+    (let* ((class (class+.find class-name)))
+      `(progn
+	 ,@(mapcar
+	    (lambda (slot)
+	      (with-slotdef (name reader writer) slot
+		(let ((lifted-slot (find-lifted-slot name class)))
+		  (let ((reader1 reader)
+			(writer1 writer))
+		    (with-slotdef (reader writer) lifted-slot
+		      `(progn
+			 (defmethod/lift ,reader1 ((self ,class-name))
+			   ,reader)
+			 (defmethod/lift ,writer1 (value (self ,class-name))
+			   ,writer)))))))
+	    (filter (lambda (slot) (slot-definition-lift slot))
+		    (class+.slots class)))))))
 
 ;; -------------------------------------------------------------------------
 ;; Lift Usage
@@ -209,7 +201,8 @@
 ;; -------------------------------------------------------------------------
 ;; Method Lifting
 ;; -------------------------------------------------------------------------
-;; (defmethod lifted-method ((a1 a) (a2 a) x &key y)
+;; (defmethod lifted-method ((a1 a) (a2 a) x &key (y 'default-y y-supplied-p))
+;;   (describe (list a1 a2 y y-supplied-p))
 ;;   (list 'lifted-slot2-first-a (a.slot2 a1)
 ;; 	'lifted-slot2-second-a (a.slot2 a2)
 ;; 	'x x 'y y))
@@ -217,7 +210,11 @@
 ;; (defmethod (setf lifted-setf-method) (value (a1 a) (a2 a))
 ;;   (list value a1 a2))
 
-;; (defmethod/lift lifted-method ((first-b b) (second-b b) x1 &key y1))
+;; (defmethod lifted-method ((b1 b) (b2 b) x &key y)
+;;   (call-next-method (slot-value b1 'a)
+;; 		    (slot-value b2 'a)))
+
+;; (defmethod/lift lifted-method ((first-b b) (second-b b) x1 &key (y1 nil supplied-p)))
 ;; ;; (PROGN 
 ;; ;;   (EVAL-WHEN (:EXECUTE)
 ;; ;;     (DEFMETHOD LIFTED-METHOD ((FIRST-B B) (SECOND-B B) X1 &KEY Y1)
