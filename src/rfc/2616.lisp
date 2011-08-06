@@ -998,10 +998,12 @@
 		 (cons 'string str))))
 
 (defrule http-user-agent? (agent)  
-  (:or (:ie-user-agent? agent)
-       (:gecko-user-agent? agent)
-       (:opera-user-agent? agent))
-  (:zom (:not (:crlf?)) (:type octet?))
+  ;; (:or (:ie-user-agent? agent)
+  ;;      (:gecko-user-agent? agent)
+  ;;      (:opera-user-agent? agent))
+  ;; (:zom (:not (:crlf?)) (:type octet?))
+  ;; (:return agent)
+  (:unparsed-user-agent? agent)
   (:return agent))
 
 (defmethod http-user-agent! ((self core-stream) agent)
