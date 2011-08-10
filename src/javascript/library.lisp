@@ -17,9 +17,9 @@
 
 (in-package :core-server)
 
-;;+-----------------------------------------------------------------------------
+;;+--------------------------------------------------------------------------
 ;;| Javascript Library
-;;+-----------------------------------------------------------------------------
+;;+--------------------------------------------------------------------------
 ;;
 ;; This file contains javascript library functions.
 ;;
@@ -556,7 +556,7 @@
   (defun get-parameter (name href)
     (flet ((eval-item (_value)
 	     (cond
-	       ((eq _value "null")
+	       ((or (eq _value "") (eq _value "null"))
 		(return nil))
 	       ((and (eq "string" (typeof _value))
 		     (.match _value (regex "/^\".*\"$/gi")))
@@ -598,44 +598,46 @@
 	      (return (eval-item (_get-value (cdr _value)))))))))
 
   (defun set-parameter (name new-value)
-    (let* ((new-value (serialize new-value))
-	   (append2 (lambda (a b)
-		      (if (null a) b (if (null b) "" (+ a b)))))
-	   (one (lambda (a) (append2 (car a) (append2 ":" (car (cdr a))))))
-	   (found nil)
-	   (elements (reverse
-		      (reduce
-		       (lambda (acc a)
-			 (destructuring-bind (key value) a
-			   (cond
-			     ((eq name key)
-			      (setf found t)
-			      (if (eq new-value "null")
-				  acc
-				  (cons (cons name new-value) acc)))
-			     (t (cons a acc)))))
-		       (mapcar (lambda (a) (.split a ":"))
-			       (.split (.substr window.location.hash 1) "$"))))))
+    (if (null name)
+	(setf window.location.hash new-value)
+	(let* ((new-value (serialize new-value))
+	       (append2 (lambda (a b)
+			  (if (null a) b (if (null b) "" (+ a b)))))
+	       (one (lambda (a) (append2 (car a) (append2 ":" (car (cdr a))))))
+	       (found nil)
+	       (elements (reverse
+			  (reduce
+			   (lambda (acc a)
+			     (destructuring-bind (key value) a
+			       (cond
+				 ((eq name key)
+				  (setf found t)
+				  (if (eq new-value "null")
+				      acc
+				      (cons (cons name new-value) acc)))
+				 (t (cons a acc)))))
+			   (mapcar (lambda (a) (.split a ":"))
+				   (.split (.substr window.location.hash 1) "$"))))))
 
-      (if (and (null found) name (not (eq new-value "null")))
-	  (setf elements (cons (cons name new-value) elements)))
+	  (if (and (null found) name (not (eq new-value "null")))
+	      (setf elements (cons (cons name new-value) elements)))
 
-      (let ((value (reduce (lambda (acc a)
-			     (append2 acc (append2 "$" (one a))))
-			   (cdr elements)
-			   (if (and (null new-value)
-				    (null (car (cdr (car elements)))))
-			       name
-			       (one (car elements))))))
-	(setf window.location.hash (or value "")))))
+	  (let ((value (reduce (lambda (acc a)
+				 (append2 acc (append2 "$" (one a))))
+			       (cdr elements)
+			       (if (and (null new-value)
+					(null (car (cdr (car elements)))))
+				   name
+				   (one (car elements))))))
+	    (setf window.location.hash (or value ""))))))
 
   (defvar *css-refcount-table* (jobject))
   (defun load-css (url)
     (flet ((_load-css ()
-	     (let ((link (document.create-element "link")))
-	       (setf link.href url
-		     link.rel "stylesheet"
-		     link.type "text/css")
+	     (let ((link (make-dom-element "LINK"
+					   (jobject :href url
+						    :rel "stylesheet"
+						    :type "text/css"))))
 	       (.append-child (aref (document.get-elements-by-tag-name "head") 0)
 			      link)
 	       (return link))))
@@ -677,10 +679,9 @@
 				       nil))
 	     (head (aref (.get-elements-by-tag-name document "HEAD") 0))
 	     (body (slot-value document 'body))
-	     (loaded-p (or loaded-p (lambda () t)))
 	     (recurse
 	      (lambda (r)
-		(cond		   
+		(cond
 		  ((loaded-p window.k)
 		   (when (not (null (slot-value script 'parent-node)))
 		     (.remove-child head script)
@@ -689,10 +690,13 @@
 		  (t
 		   (make-web-thread (lambda () (Y r)))
 		   (suspend))))))
-	(when (not (loaded-p window.k))
-	  (if body (append body img))
-	  (append head script)
-	  (Y recurse)))))
+	(cond
+	  ((and loaded-p (not (loaded-p window.k)))
+	   (if body (append body img))
+	   (append head script)
+	   (Y recurse))
+	  (t
+	   (append head script))))))
   
 ;; +-------------------------------------------------------------------------
 ;; | Identity Continuation
@@ -829,7 +833,9 @@
 
   (defun/cc Y1 (arg1 f)
     (f arg1 f)
-    (suspend)))
+    (suspend))
+
+  (setf (slot-value window 'core-server-library-loaded-p) t))
 
 (eval-when (:compile-toplevel :execute :load-toplevel)
   (setf (gethash 'make-component +javascript-cps-functions+) t
@@ -847,6 +853,15 @@
 	(gethash 'find-cc +javascript-cps-functions+) t
 	(gethash 'flip-cc +javascript-cps-functions+) t
 	(gethash 'mapcar2-cc +javascript-cps-functions+) t))
+
+(defun write-core-library-to-file (pathname &optional (indented t))
+  (let ((s (make-core-file-output-stream pathname)))
+    (checkpoint-stream s)
+    (core-server::core-library! (if indented
+				    (make-indented-stream s)
+				    (make-compressed-stream s)))
+    (commit-stream s)
+    (close-stream s)))
 
 
   ;; (defvar *registry* (create))  

@@ -298,6 +298,8 @@
    #:answer-component
    #:continue-component
    #:continue/js
+   #:core-library!
+   #:write-core-library-to-file
    #:funcall-cc
    #:funcall2-cc
    #:singleton-component-mixin
