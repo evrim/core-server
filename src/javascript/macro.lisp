@@ -104,7 +104,8 @@
 
 (defjsmacro null (atom)
   `(or (typep ,atom 'undefined)
-       (eq 'null ,atom)))
+       (eq 'null ,atom)
+       (eq "" ,atom)))
 
 (defjsmacro defined (atom)
   `(not (typep ,atom 'undefined)))
