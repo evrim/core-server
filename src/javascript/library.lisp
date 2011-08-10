@@ -43,7 +43,8 @@
   (defun reduce (fun lst initial-value)
     (if (null lst)
     	nil    
-    	(let ((result (or (and (not (typep initial-value 'undefined)) initial-value) nil)))
+    	(let ((result (or (and (not (typep initial-value 'undefined))
+			       initial-value) nil)))
     	  (if (not (null lst.length))
 	      (dolist (item lst)
 		(setf result (fun result item)))
@@ -234,17 +235,17 @@
     (.replace (new (*string str)) (regex "/^\\s+|\\s+$/g") ""))
   
   (defun show (node)
-    (when (and node (slot-value node 'style))	;; (instanceof node *h-t-m-l-element)
+    (when (and node (slot-value node 'style))
       (setf node.style.display "block"))
     node)
 
   (defun hide (node)
-    (when (and node (slot-value node 'style)) ;; (instanceof node *h-t-m-l-element)
+    (when (and node (slot-value node 'style))
       (setf node.style.display "none"))
     node)
 
   (defun inline (node)
-    (when (and (slot-value node 'style))	;; (instanceof node *h-t-m-l-element)
+    (when (and (slot-value node 'style))
       (setf node.style.display "inline"))
     node)  
 
@@ -492,14 +493,15 @@
 		     (.get-time (new (*date)))
 		     (.substr (.concat "" (*math.random 10)) 3 5)))
 	    (img (make-dom-element "IMG"
-				   (jobject :class-name "coretal-loading"
-					    :src (+ "http://www.coretal.net/style/"
-						    "login/loading.gif"))
-				   nil))
+		   (jobject :class-name "coretal-loading"
+			    :src (+ "http://www.coretal.net/style/"
+				    "login/loading.gif"))
+		   nil))
 	    (args (if (null args) (jobject) args)))
 	(setf (slot-value args (or callback-name "__hash")) hash)
 	(let* ((a (serialize-to-uri args))
-	       (script (make-dom-element "script" (jobject :src (+ "" action a))
+	       (script (make-dom-element "script"
+					 (jobject :src (+ "" action a))
 					 nil))
 	      (head (aref (.get-elements-by-tag-name document "HEAD") 0))
 	      (body (slot-value document 'body)))
@@ -551,85 +553,47 @@
 	  (return nil))))
 
   (defun set-cookie (name value)
-    (setf document.cookie (+ name "=" value)))
-  
+    (setf document.cookie (+ name "=" value)))  
+
   (defun get-parameter (name href)
-    (flet ((eval-item (_value)
-	     (cond
-	       ((or (eq _value "") (eq _value "null"))
-		(return nil))
-	       ((and (eq "string" (typeof _value))
-		     (.match _value (regex "/^\".*\"$/gi")))
-		(try
-		 (let ((val (eval _value)))
-		   ;; 		(_debug (list name val _value))
-		   (cond
-		     ((eq val nil)
-		      (return nil))
-		     ((or (eq (typeof val) "function")
-			  (eq (typeof val) "object")
-			  (eq (typeof val) "undefined"))
-		      (throw (new (*error))))
-		     (t (return val))))
-		 (:catch (e)
-		   (return _value))))
-	       (t
-		(return _value))))
-	   (_get-value (_value)
-	     (return
-	       (decode-u-r-i-component
-		(reduce (lambda (acc atom) (+ acc ":" atom)) (cdr _value) (car _value))))))
-      (let ((data nil))
-	(if (not (null href))
-	    (setf data (.substr (.substr href (.search href "#")) 1))
-	    (setf data (+ (.substr window.location.hash 1) "$"
-			  (.substr window.location.search 1))))
-      
-	(if (null name)
-	    (let ((_value (decode-u-r-i-component (car (.split data "$")))))
-	      (return (eval-item _value)))
-	    (let ((_value (car
-			   (filter (lambda (a) (eq (car a) name))
-			    (mapcar
-			     (lambda (a)
-			       (flatten (mapcar (lambda (b) (.split b "="))
-						(.split a ":"))))
-			     (.split data "$"))))))
-	      (return (eval-item (_get-value (cdr _value)))))))))
-
-  (defun set-parameter (name new-value)
-    (if (null name)
-	(setf window.location.hash new-value)
-	(let* ((new-value (serialize new-value))
-	       (append2 (lambda (a b)
-			  (if (null a) b (if (null b) "" (+ a b)))))
-	       (one (lambda (a) (append2 (car a) (append2 ":" (car (cdr a))))))
-	       (found nil)
-	       (elements (reverse
-			  (reduce
-			   (lambda (acc a)
-			     (destructuring-bind (key value) a
-			       (cond
-				 ((eq name key)
-				  (setf found t)
-				  (if (eq new-value "null")
-				      acc
-				      (cons (cons name new-value) acc)))
-				 (t (cons a acc)))))
-			   (mapcar (lambda (a) (.split a ":"))
-				   (.split (.substr window.location.hash 1) "$"))))))
-
-	  (if (and (null found) name (not (eq new-value "null")))
-	      (setf elements (cons (cons name new-value) elements)))
-
-	  (let ((value (reduce (lambda (acc a)
-				 (append2 acc (append2 "$" (one a))))
-			       (cdr elements)
-			       (if (and (null new-value)
-					(null (car (cdr (car elements)))))
-				   name
-				   (one (car elements))))))
-	    (setf window.location.hash (or value ""))))))
+    ;; (_debug (list "get-parameter" name href))
+    (let* ((href (or (and href (.substr (.substr href (.search href "#")) 1))
+		     (+ (.substr window.location.hash 1) "$"
+			(.substr window.location.search 1))))
+	   (result (find (lambda (item)
+			   (if (eq name (car item))
+			       t))
+			 (mapcar (lambda (a) (.split a ":"))
+				 (.split href "$")))))
+      (if result
+	  (decode-u-r-i-component (car (cdr result)))
+	  nil)))
+  
+  (defun set-parameter (name value)
+    ;; (_debug (list "set-parameter" name value))
+    (let* ((found nil)
+	   (result (reduce
+		    (lambda (acc atom)
+		      (cond
+			((null (car (cdr atom)))			     
+			 acc)
+			((and (null value) (eq name (car atom)))
+			 (setf found t)
+			 acc)
+			((eq name (car atom))			 
+			 (setf found t)
+			 (+ acc (car atom) ":" value
+			    (encode-u-r-i-component value) "$"))
+			(t
+			 (+ acc (car atom) ":" (car (cdr atom)) "$"))))
+		    (mapcar (lambda (a) (.split a ":"))
+			    (.split (.substr window.location.hash 1) "$"))
+		    (new (*string "")))))
+      (if (or found (null value))
+	  (setf window.location.hash result)
+	  (setf window.location.hash (+ result name ":" value)))))
+  
+  
 
   (defvar *css-refcount-table* (jobject))
   (defun load-css (url)
@@ -909,3 +873,81 @@
 ;; 	   (k (new (ctor arg1))))
 ;; 	  (t
 ;; 	   (k (new (ctor)))))))
+
+;; (defun get-parameter (name href)
+;;     (flet ((eval-item (_value)
+;; 	     (cond
+;; 	       ((or (eq _value "") (eq _value "null"))
+;; 		(return nil))
+;; 	       ((and (eq "string" (typeof _value))
+;; 		     (.match _value (regex "/^\".*\"$/gi")))
+;; 		(try
+;; 		 (let ((val (eval _value)))
+;; 		   ;; 		(_debug (list name val _value))
+;; 		   (cond
+;; 		     ((eq val nil)
+;; 		      (return nil))
+;; 		     ((or (eq (typeof val) "function")
+;; 			  (eq (typeof val) "object")
+;; 			  (eq (typeof val) "undefined"))
+;; 		      (throw (new (*error))))
+;; 		     (t (return val))))
+;; 		 (:catch (e)
+;; 		   (return _value))))
+;; 	       (t
+;; 		(return _value))))
+;; 	   (_get-value (_value)
+;; 	     (return
+;; 	       (decode-u-r-i-component
+;; 		(reduce (lambda (acc atom) (+ acc ":" atom)) (cdr _value) (car _value))))))
+;;       (let ((data nil))
+;; 	(if (not (null href))
+;; 	    (setf data (.substr (.substr href (.search href "#")) 1))
+;; 	    (setf data (+ (.substr window.location.hash 1) "$"
+;; 			  (.substr window.location.search 1))))
+      
+;; 	(if (null name)
+;; 	    (let ((_value (decode-u-r-i-component (car (.split data "$")))))
+;; 	      (return (eval-item _value)))
+;; 	    (let ((_value (car
+;; 			   (filter (lambda (a) (eq (car a) name))
+;; 			    (mapcar
+;; 			     (lambda (a)
+;; 			       (flatten (mapcar (lambda (b) (.split b "="))
+;; 						(.split a ":"))))
+;; 			     (.split data "$"))))))
+;; 	      (return (eval-item (_get-value (cdr _value)))))))))
+
+;; (defun set-parameter (name new-value)
+;;     (if (null name)
+;; 	(setf window.location.hash new-value)
+;; 	(let* ((new-value (serialize new-value))
+;; 	       (append2 (lambda (a b)
+;; 			  (if (null a) b (if (null b) "" (+ a b)))))
+;; 	       (one (lambda (a) (append2 (car a) (append2 ":" (car (cdr a))))))
+;; 	       (found nil)
+;; 	       (elements (reverse
+;; 			  (reduce
+;; 			   (lambda (acc a)
+;; 			     (destructuring-bind (key value) a
+;; 			       (cond
+;; 				 ((eq name key)
+;; 				  (setf found t)
+;; 				  (if (eq new-value "null")
+;; 				      acc
+;; 				      (cons (cons name new-value) acc)))
+;; 				 (t (cons a acc)))))
+;; 			   (mapcar (lambda (a) (.split a ":"))
+;; 				   (.split (.substr window.location.hash 1) "$"))))))
+
+;; 	  (if (and (null found) name (not (eq new-value "null")))
+;; 	      (setf elements (cons (cons name new-value) elements)))
+
+;; 	  (let ((value (reduce (lambda (acc a)
+;; 				 (append2 acc (append2 "$" (one a))))
+;; 			       (cdr elements)
+;; 			       (if (and (null new-value)
+;; 					(null (car (cdr (car elements)))))
+;; 				   name
+;; 				   (one (car elements))))))
+;; 	    (setf window.location.hash (or value ""))))))
