@@ -604,10 +604,10 @@ executing 'body'"
      (answer (list ,@(mapcar #'car parameters)))))
 
 (defun/cc javascript/suspend (lambda)
-  "Javascript version of send/suspend, sets content-type to text/javascript"
+  "Javascript version of send/suspend, sets content-type to
+application/javascript"
   (http-response.set-content-type (context.response +context+)
-				  '("application" "javascript"
-				    ("charset" "UTF-8")))
+				  '("text" "javascript" ("charset" "UTF-8")))
   (send/suspend
     (prog1 nil
       (funcall lambda
