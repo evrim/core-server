@@ -4,21 +4,26 @@
 (in-package :core-server)
 
 (defparameter *ck-toolbar*
-    (list (list "Source" "-" "Save" "NewPage" "Preview" "-" "Templates" )
-	  (list "Cut" "Copy" "Paste" "PasteText" "PasteFromWord" "-" "Print" "SpellChecker" "Scayt")
-	  (list "Undo" "Redo" "-" "Find" "Replace" "-" "SelectAll" "RemoveFormat")
-	  (list "Form" "Checkbox" "Radio" "TextField" "Textarea" "Select" "Button" "ImageButton" "HiddenField")
-	  "/"
-	  (list "Bold" "Italic" "Underline" "Strike" "-" "Subscript" "Superscript")
-	  (list "NumberedList" "BulletedList" "-" "Outdent" "Indent" "Blockquote" "CreateDiv")
-	  (list "JustifyLeft" "JustifyCenter" "JustifyRight" "JustifyBlock")
-	  (list "BidiLtr" "BidiRtl")
-	  (list "Link" "Unlink" "Anchor")
-	  (list "Image" "Flash" "MediaEmbed" "Table" "HorizontalRule" "Smiley" "SpecialChar" "PageBreak" "Iframe")
-	  "/"
-	  (list "Styles" "Format" "Font" "FontSize")
-	  (list "TextColor" "BGColor")
-	  (list "Maximize" "ShowBlocks" "-" "About")))
+  (list
+   (list "Source" "-" "Save" "NewPage" "Preview" "-" "Templates" )
+   (list "Cut" "Copy" "Paste" "PasteText" "PasteFromWord" "-" "Print"
+	 "SpellChecker" "Scayt")
+   (list "Undo" "Redo" "-" "Find" "Replace" "-" "SelectAll" "RemoveFormat")
+   (list "Form" "Checkbox" "Radio" "TextField" "Textarea" "Select" "Button"
+	 "ImageButton" "HiddenField")
+   "/"
+   (list "Bold" "Italic" "Underline" "Strike" "-" "Subscript" "Superscript")
+   (list "NumberedList" "BulletedList" "-" "Outdent" "Indent" "Blockquote"
+	 "CreateDiv")
+   (list "JustifyLeft" "JustifyCenter" "JustifyRight" "JustifyBlock")
+   (list "BidiLtr" "BidiRtl")
+   (list "Link" "Unlink" "Anchor")
+   (list "Image" "Flash" "MediaEmbed" "Table" "HorizontalRule" "Smiley"
+	 "SpecialChar" "PageBreak" "Iframe")
+   "/"
+   (list "Styles" "Format" "Font" "FontSize")
+   (list "TextColor" "BGColor")
+   (list "Maximize" "ShowBlocks" "-" "About")))
 
 (defparameter *ck-config*
   (jobject
@@ -37,8 +42,8 @@
 
 (defmethod/remote get-data ((self ckeditor-component))
   (let* ((instance (instance self))
-	 (foo (event () (.get-data instance))))
-    (foo)))
+	 (_foo (event () (.get-data instance))))
+    (_foo)))
 
 (defmethod/remote call-component ((self ckeditor-component))
   (_debug (list "ckeditor-config" (config self)))
@@ -58,8 +63,8 @@
     (call-next-method self)))
 
 (defmethod/remote destroy ((self ckeditor-component))  
-  (let ((foo (event (e) (try (.destroy e) (:catch (err) nil)))))
-    (foo (instance self))
+  (let ((_foo (event (e) (try (.destroy e) (:catch (err) nil)))))
+    (_foo (instance self))
     (delete-slot self 'instance)
     (remove-css "http://www.coretal.net/style/ckeditor.css")
     (call-next-method self)))
@@ -75,6 +80,14 @@
      (and (not (null -c-k-e-d-i-t-o-r))
 	  (not (null (slot-value -c-k-e-d-i-t-o-r 'replace)))))))
 
+;; -------------------------------------------------------------------------
+;; Supply CkEditor Mixin
+;; -------------------------------------------------------------------------
+(defcomponent supply-ckeditor ()
+  ())
+
+(defmethod/local make-ckeditor ((self supply-ckeditor))
+  (ckeditor-component))
 
 ;; (defvar +fck-image-extensions+ '("bmp" "gif" "jpeg" "jpg" "png" "psd" "tif" "tiff"))
 ;; (defvar +fck-flash-extensions+ '("swf" "fla"))

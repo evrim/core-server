@@ -66,6 +66,15 @@
   (.append-child self (template self))
   (setf (overlay self) (<:div :class "coretal-dialog-overlay")))
 
+;; -------------------------------------------------------------------------
+;; Supply Dialog Mixin
+;; -------------------------------------------------------------------------
+(defcomponent supply-dialog ()
+  ())
+
+(defmethod/local make-dialog ((self supply-dialog))
+  (dialog))
+
 ;; +-------------------------------------------------------------------------
 ;; | Prompt Dialog
 ;; +-------------------------------------------------------------------------
@@ -81,7 +90,7 @@
 		  (<:div :class "message" (message self))
 		  (<:form :action "#"
 			  _prompt
-			  (<:div
+			  (<:div :class "buttons"
 			   (<:input :type "submit" :class "button" :value "OK"
 				    :onclick (lifte
 					      (answer-component self
@@ -89,6 +98,15 @@
 			   (<:input :type "button" :class "button"
 				    :value "Cancel"
 				    :onclick (lifte (hide-component self)))))))))
+
+;; -------------------------------------------------------------------------
+;; Supply Prompt Dialog Mixin
+;; -------------------------------------------------------------------------
+(defcomponent supply-prompt-dialog ()
+  ())
+
+(defmethod/local make-prompt-dialog ((self supply-prompt-dialog))
+  (prompt-dialog))
 
 ;; +-------------------------------------------------------------------------
 ;; | Yes-No Dialog
@@ -104,12 +122,22 @@
 	   (<:div :class "title" (title self))
 	   (<:div :class "message" (message self))
 	   (<:form :action "#"
+	    (<:div :class "buttons"
 		   (<:input :type "button" :class "button"
 			    :value "Yes"
 			    :onclick (lifte (answer-component self t)))
 		   (<:input :type "button" :class "button"
 			    :value "No"
-			    :onclick (lifte (answer-component self nil)))))))
+			    :onclick (lifte (answer-component self nil))))))))
+
+;; -------------------------------------------------------------------------
+;; Supply Yes-no-dialog Mixin
+;; -------------------------------------------------------------------------
+(defcomponent supply-yes-no-dialog ()
+  ())
+
+(defmethod/local make-yes-no-dialog ((self supply-yes-no-dialog))
+  (yes-no-dialog))
 
 ;; +-------------------------------------------------------------------------
 ;; | Login Dialog

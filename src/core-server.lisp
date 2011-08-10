@@ -929,11 +929,17 @@
 
    [[Dialog Components]]
    #:dialog
+   #:supply-dialog
+   #:make-dialog
    #:login-dialog
    #:yes-no-dialog
+   #:supply-yes-no-dialog
+   #:make-yes-no-dialog
    #:registration-dialog
    #:forgot-password-dialog
    #:prompt-dialog
+   #:supply-prompt-dialog
+   #:make-prompt-dialog
    #:big-dialog
    ;; #:template
    #:template/js
@@ -949,6 +955,7 @@
    #:destroy
    #:destroy/js
    #:_destroy
+   #:funkall
 
    ;; [DOm Components]
    #:dom-element
@@ -959,6 +966,7 @@
 
    ;; [HTTP Components]
    #:ckeditor-component
+   #:supply-ckeditor
    #:toaster-component
    #:toast
    
