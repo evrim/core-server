@@ -84,7 +84,20 @@
 					    (length method-specializers))))))
 	     (arguments (mapcar #'list method-specializers specializers
 				walk-args method-lambda-list)))
-	(labels ((process-argument (atom)
+	(labels ((find-slot (class class-to-find)
+		   (let ((slot (any
+				(lambda (slot)
+				  (with-slotdef (type) slot
+				    (if (member class-to-find
+					 (class+.superclasses
+					  (find-class type)))
+					slot)))
+				(filter (lambda (slot)
+					  (eq 'lift
+					      (slot-definition-host slot)))
+					(class+.slots class)))))
+		     (slot-definition-name slot)))
+		 (process-argument (atom)
 		   (destructuring-bind (new old arg arg-old) atom
 		     (let ((name (name arg))
 			   (name-old (name arg-old)))
@@ -92,7 +105,8 @@
 			 (specialized-function-argument-form
 			  (if (eq old new)
 			      `(list ,name)
-			      `(list (slot-value ,name ',(class-name new)))))
+			      `(list (slot-value ,name
+						 ',(find-slot old new)))))
 			 (keyword-function-argument-form
 			  `(if ,(arnesi::supplied-p-parameter arg)
 			       (list ,(make-keyword name-old) ,name)
