@@ -956,7 +956,7 @@
 
 (defmethod increase-indent ((self core-stream) &optional n)
   (declare (ignore n))
-  (warn "(increase-indent ~A) not implemented" self)
+  ;; (warn "(increase-indent ~A) not implemented" self)
   self)
 
 (defmethod increase-indent ((self core-indented-stream) &optional (n nil))  
@@ -968,7 +968,7 @@
 
 (defmethod decrease-indent ((self core-stream) &optional n)
   (declare (ignore n))
-  (warn "(decrease-indent ~A) not implemented" self)
+  ;; (warn "(decrease-indent ~A) not implemented" self)
   self)
 
 (defmethod decrease-indent ((self core-indented-stream) &optional (n nil))
