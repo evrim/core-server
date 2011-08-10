@@ -575,9 +575,11 @@
 	   (result (reduce
 		    (lambda (acc atom)
 		      (cond
-			((null (car (cdr atom)))			     
+			((or (null (car (cdr atom)))
+			     (eq (car (cdr atom)) ""))			     
 			 acc)
-			((and (null value) (eq name (car atom)))
+			((and (or (null value) (eq value ""))
+			      (eq name (car atom)))
 			 (setf found t)
 			 acc)
 			((eq name (car atom))			 
@@ -589,7 +591,7 @@
 		    (mapcar (lambda (a) (.split a ":"))
 			    (.split (.substr window.location.hash 1) "$"))
 		    (new (*string "")))))
-      (if (or found (null value))
+      (if (or found (or (null value) (eq "" value)))
 	  (setf window.location.hash result)
 	  (setf window.location.hash (+ result name ":" value)))))
   
