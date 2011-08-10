@@ -491,10 +491,17 @@
 	 (send/suspend
 	   (setf (http-response.status-code (context.response +context+))
 		 '(301 . "Moved Permanently"))
-	   (add-response-header (context.response +context+)
-				'location
-				(action/url ()
-				  (answer (apply #'values ,result)))))))))
+	   (http-response.add-response-header
+	    (context.response +context+)
+	    'location
+	    (action/url ()
+	      (answer (apply #'values ,result)))))))))
+
+(defun/cc send/redirect (url)
+  (let ((response (context.response +context+)))
+    (setf (http-response.status-code response) '(302 . "Found"))
+    (http-response.add-response-header response 'location url)
+    nil))
 
 (defmacro send/finish (&body body)
   `(with-html-output (http-response.stream (context.response +context+))
