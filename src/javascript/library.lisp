@@ -584,7 +584,7 @@
 			 acc)
 			((eq name (car atom))			 
 			 (setf found t)
-			 (+ acc (car atom) ":" value
+			 (+ acc (car atom) ":"
 			    (encode-u-r-i-component value) "$"))
 			(t
 			 (+ acc (car atom) ":" (car (cdr atom)) "$"))))
@@ -594,8 +594,6 @@
       (if (or found (or (null value) (eq "" value)))
 	  (setf window.location.hash result)
 	  (setf window.location.hash (+ result name ":" value)))))
-  
-  
 
   (defvar *css-refcount-table* (jobject))
   (defun load-css (url)
