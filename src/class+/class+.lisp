@@ -123,7 +123,8 @@
    (index :initarg :index :initform nil :accessor slot-definition-index)
    (print :initarg :print :initform nil :accessor slot-definition-print)
    (label :initarg :label :initform nil :accessor slot-definition-label)
-   (lift  :initarg :lift :initform nil :accessor slot-definition-lift)))
+   (lift  :initarg :lift :initform nil :accessor slot-definition-lift)
+   (export  :initarg :export :initform t :accessor slot-definition-export)))
 
 (defclass class+-direct-slot-definition (class+-slot-definition standard-direct-slot-definition)
   ())
@@ -141,7 +142,7 @@
 
 (defmethod %class+-inherited-slots ((class class+))
   '(host client-type sb-pcl::readers sb-pcl::writers relation
-    index print label lift))
+    index print label lift export))
 
 (defmethod compute-effective-slot-definition ((class class+) slot-name
 					      slot-defs)
@@ -182,7 +183,8 @@
 	  :reader (car (reverse (sb-pcl::slot-definition-readers slot)))
 	  :index (slot-definition-index slot)
 	  :label (slot-definition-label slot)
-	  :lift (slot-definition-lift slot))))
+	  :lift (slot-definition-lift slot)
+	  :export (slot-definition-export slot))))
 
 (defmacro with-slotdef (arglist slot &body body)
   `(destructuring-bind (&key ,@arglist &allow-other-keys)
