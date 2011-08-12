@@ -254,10 +254,11 @@
 (defmacro defmacro/js (name args &body body)
   "Define a 'Javascript macro' operator"
   (with-unique-names (rest)
-    `(setf (gethash ',name *javascript-macros*)
-	   #'(lambda (&rest ,rest)
-	       (destructuring-bind ,args ,rest
-		 ,@body)))))
+    `(eval-when (:compile-toplevel :execute :load-toplevel)
+       (setf (gethash ',name *javascript-macros*)
+	     #'(lambda (&rest ,rest)
+		 (destructuring-bind ,args ,rest
+		   ,@body))))))
 
 (defmacalias defmacro/js defjsmacro)
 
@@ -274,10 +275,11 @@
 ;; --------------------------------------------------------------------------
 (defmacro defsetf/js (name args &body body)
   (with-unique-names (rest)
-    `(setf (gethash ',name *javascript-setf-macros*)
-	   #'(lambda (&rest ,rest)
-	       (destructuring-bind ,args ,rest
-		 ,@body)))))
+    `(eval-when (:compile-toplevel :load-toplevel :execute)
+       (setf (gethash ',name *javascript-setf-macros*)
+	     #'(lambda (&rest ,rest)
+		 (destructuring-bind ,args ,rest
+		   ,@body))))))
 
 ;;-----------------------------------------------------------------------------
 ;; Javascript Macro Expander
