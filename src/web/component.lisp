@@ -86,7 +86,7 @@
 	   (defjsmacro ,name (&rest args) `(,',remote ,@args)))
 	 (defmethod ,morphism ((self ,metaclass))
 	   `(method ,',args	    
-	      (funkall self (+ "s:" server-session-id
+	      (funkall self (+ "?s:" server-session-id
 			       "$k:" component-instance-id
 			       "$method:" ,',(symbol-name name))
 		 (create
@@ -134,29 +134,31 @@
 		``(method ,',args
 			  (let ((,',self self))
 			    ,@',body))))
-	 (defmethod/cc ,name ((,self ,class-name) ,@args)
-	   (let (,@(mapcar (lambda (arg)
-			     `(,arg (component.serialize ,self ,arg)))
-			   (extract-argument-names args
-						   :allow-specializers t)))
-	     (with-query ((hash "__hash")) (context.request +context+)
-	       (let ((hash (json-deserialize hash)))
-		 (javascript/suspend
-		  (lambda (stream)
-		    (let ((result (action/url ((result "result"))
-				    (answer (component.deserialize ,self result)))))		  
-		      (if hash
-			  (with-js (result hash ,@args) stream
-			    (with-call/cc
-			      (apply (slot-value window hash) window
-				     (list (lambda (self)
-					     (funkall self result
-						      (create :result (,name self ,@args))))))))
-			  (with-js (result ,@args) stream
-			    (with-call/cc
-			      (lambda (self)
-				(funkall self result
-					 (create :result (,name self ,@args))))))))))))))))))
+	 ,(unless (eq name 'destroy)
+	    `(defmethod/cc ,name ((,self ,class-name) ,@args)
+	       (let (,@(mapcar (lambda (arg)
+				 `(,arg (component.serialize ,self ,arg)))
+			       (extract-argument-names args
+						       :allow-specializers t)))
+		 (with-query ((hash "__hash")) (context.request +context+)
+		   (let ((hash (json-deserialize hash)))
+		     (javascript/suspend
+		      (lambda (stream)
+			(let ((result (action/url ((result "result"))
+					(context.remove-current-action +context+)
+					(answer (component.deserialize ,self result)))))		  
+			  (if hash
+			      (with-js (result hash ,@args) stream
+				(with-call/cc
+				  (apply (slot-value window hash) window
+					 (list (lambda (self)
+						 (funkall self result
+							  (create :result (,name self ,@args))))))))
+			      (with-js (result ,@args) stream
+				(with-call/cc
+				  (lambda (self)
+				    (funkall self result
+					     (create :result (,name self ,@args)))))))))))))))))))
 
 (defmacro defmethod/remote (name ((self class-name) &rest args) &body body)
   (component+.remote-morphism (find-class class-name) name self args body))
@@ -179,18 +181,22 @@
 	  (lambda (acc slot)
 	    (let ((name (car slot))
 		  (accessor (cadr slot))
-		  (host (cddr slot)))			
-	      (append acc
-		      `((,(method-type host) ,(reader name) ((self ,class-name))
-			  (slot-value self ',name))
-			(,(method-type host) ,(writer name) ((self ,class-name) value)
-			  (setf (slot-value self ',name) value))
-			(eval-when (:compile-toplevel :execute :load-toplevel)
-			  (defmacro/js ,accessor (self)
-			    `(,',(reader name) ,self))
-			  (defsetf/js ,accessor (value self)
-			    `(,',(writer name) ,self ,value)))))))
-	  (filter (lambda (slot) (eq (cddr slot) 'local))
+		  (host (caddr slot))
+		  (export (cdddr slot)))
+	      (describe (list 'eben export slot))
+	      (if export
+		  (append acc
+			  `((,(method-type host) ,(reader name) ((self ,class-name))
+			      (slot-value self ',name))
+			    (,(method-type host) ,(writer name) ((self ,class-name) value)
+			      (setf (slot-value self ',name) value))
+			    (eval-when (:compile-toplevel :execute :load-toplevel)
+			      (defmacro/js ,accessor (self)
+				`(,',(reader name) ,self))
+			      (defsetf/js ,accessor (value self)
+				`(,',(writer name) ,self ,value)))))
+		  acc)))
+	  (filter (lambda (slot) (eq (caddr slot) 'local))
 		  slots))
        ,@(reduce0
 	  (lambda (acc slot)
@@ -210,8 +216,8 @@
 		 (cons macro2 acc))
 		(t acc))))
 	  (filter (lambda (slot)
-		    (or (eq (cddr slot) 'both)
-			(eq (cddr slot) 'remote)))
+		    (or (eq (caddr slot) 'both)
+			(eq (caddr slot) 'remote)))
 		  slots)))))
 
 ;; +-------------------------------------------------------------------------
@@ -260,8 +266,11 @@
 	       (cons (car slot)
 		     (cons (or (getf (cdr slot) :accessor)
 			       (car slot))
-			   (or (getf (cdr slot) :host)
-			       'local))))
+			   (cons (or (getf (cdr slot) :host)
+				     'local)
+				 (if (member :export slot)
+				     (getf (cdr slot) :export)
+				     t)))))
 	     slots))
        (find-class+ ',name))))
 
@@ -332,6 +341,11 @@
 	 (component! stream component))
        (call-next-method stream component)))
 
+(defvar +omitted-component-slots+
+  '(style onmouseup onmousemove onclick className ondblclick
+    onmousedown onkeypress onkeydown onkeyup dir lang dojoType open
+    onmouseover onmouseout))
+
 (defmethod component+.ctor ((component component+))
   (labels ((remove-methods (names methods)
 	     (if (null names)
@@ -340,11 +354,14 @@
 				 (remove (car names) methods :key #'car)))))
     (let* ((class-name (class-name component))
 	   (class+ (find-class+ class-name))	 	 
-	   (local-methods (remove '_destroy (class+.local-methods class+) :key #'car))
+	   (local-methods (remove '_destroy (class+.local-methods class+)
+				  :key #'car))
 	   (remote-slots (mapcar (lambda (slot)
 				   (with-slotdef (name reader initarg) slot
-				     (list name (intern (symbol-name (gensym)))
-					   reader (intern (symbol-name initarg)))))
+				     (list name
+					   (intern (symbol-name (gensym)))
+					   reader
+					   (intern (symbol-name initarg)))))
 				 (class+.remote-slots class+)))
 	   (dom-tag (any #'xml+.tag
 			 (reverse
@@ -352,9 +369,9 @@
 				    (if (typep class 'xml+) class))
 				  (cdr (class+.superclasses class+)))))))
     
-      ;; ----------------------------------------------------------------------
+      ;; --------------------------------------------------------------------
       ;; Component Internal Render Method 
-      ;; ----------------------------------------------------------------------
+      ;; --------------------------------------------------------------------
       `(defmethod %component! ((stream core-stream) (component ,class-name))
 	 (let ((component-instance-id (component.instance-id component))
 	       (server-session-id (session.id (context.session +context+)))
@@ -364,7 +381,8 @@
 							',(car slot))))
 			 remote-slots))
 	   (with-js (component-instance-id server-session-id
-					   ,@(mapcar #'cadr remote-slots)) stream
+					   ,@(mapcar #'cadr remote-slots))
+	       stream
 	     ;; -------------------------------------------------------------
 	     ;; Constructor
 	     ;; -------------------------------------------------------------
@@ -380,12 +398,7 @@
 				      (cond
 					((eq (car slot) 'class)
 					 (cons :class-name (cons (cadr slot) acc)))
-					((member (car slot)
-						 '(style onmouseup onmousemove
-						   onclick className ondblclick
-						   onmousedown onkeypress onkeydown
-						   onkeyup dir lang dojoType open
-						   onmouseover onmouseout))
+					((member (car slot) +omitted-component-slots+)
 					 acc)
 					(t
 					 (cons (make-keyword (car slot)) (cons (cadr slot) acc)))))
@@ -397,11 +410,7 @@
 			 ;; ----------------------------------------------------------------------------
 			 ,@(reduce0 (lambda (acc method)
 				      (let* ((name (car method))
-					     (proxy (intern (format nil "~A/JS" name)
-							    (if (eq (symbol-package name)
-								    (find-package :common-lisp))
-								(find-package :core-server)
-								(symbol-package name)))))
+					     (proxy (component+.morphism-function-name class+ name)))
 					(cons (make-keyword name)
 					      (cons `(make-method ,(funcall proxy class+)) acc))))
 				    (if (null local-methods)
@@ -415,14 +424,10 @@
 			 ;; Local Methods
 			 ;; ----------------------------------------------------------------------------
 			 ,@(reduce0 (lambda (acc method)
-				      (let ((name (car method)))
-					(let ((proxy (intern (format nil "~A/JS" name)
-							     (if (eq (symbol-package name)
-								     (find-package :common-lisp))
-								 (find-package :core-server)
-								 (symbol-package name)))))
-					  (cons (make-keyword name)
-						(cons (funcall proxy class+) acc)))))
+				      (let* ((name (car method))
+					     (proxy (component+.morphism-function-name class+ name)))
+					(cons (make-keyword name)
+					      (cons (funcall proxy class+) acc))))
 				    (remove-methods '(_destroy) local-methods)))))
 
 		     		     
@@ -461,38 +466,56 @@
 						   (slot-value to-extend 'destroy))
 				 (slot-value to-extend '_destroy)
 				 (make-method ,(funcall '_destroy/js class+))))
-		     ;; (when (typep (slot-value to-extend 'init) 'function)
-		     ;;   (init to-extend))
 		 
 		     to-extend))))))))))
 
 ;; --------------------------------------------------------------------------
 ;; Default Funkall Method for Components
 ;; --------------------------------------------------------------------------
-
 (eval-when (:compile-toplevel :execute :load-toplevel)
   (setf (gethash 'call-next-method +javascript-cps-functions+) t)
-  (setf (gethash 'method +javascript-cps-functions+) t)
-  ;; (setf (gethash 'funkall +javascript-cps-functions+) t)
-  )
-
-;; (defmacro/js funkall (&rest args) `(.funkall ,@args))
+  (setf (gethash 'method +javascript-cps-functions+) t))
 
 (defmethod/remote funkall ((self component) action args)
-  (_debug (list "funkall" action args))
-  (let ((retval (funcall-cc (+ (slot-value self 'url) "?" action "$")
-			    args)))
+  (let ((retval (funcall-cc (+ (slot-value self 'url) action "$") args)))
     (if (typep retval 'function)
     	(call/cc retval self) 
     	retval)))
 
 (defmethod/remote init ((self component)) self)
 (defmethod/local _destroy ((self component))
-  (context.remove-action +context+ (component.instance-id self)))
+  (describe (list '_destroy self))
+  (context.remove-action +context+ (component.instance-id self))
+  t)
 
 (defmethod/remote destroy ((self component))
+  (let ((__destroy (slot-value self '_destroy)))
+    (when (not (null __destroy))
+      (set-timeout (event () (apply __destroy self (list) window.k)) 1000)
+      (delete-slot self '_destroy)))
   (delete-slot self 'destroy)
   self)
+
+(defmethod/cc destroy ((self component))
+  (describe (list 'destroy self))
+  (context.remove-action +context+ (component.instance-id self)))
+
+(defmethod/cc call-component ((component component))    
+  (javascript/suspend
+   (lambda (stream)
+     (let ((hash (http-request.query (context.request +context+) "__hash")))
+       (if hash
+	   (with-js (hash component) stream
+	     (with-call/cc
+	       (apply (slot-value window hash) window
+		      (list (lambda (self) component))))) 
+	   (with-js (component) stream
+	     ((lambda ()
+		(let ((component component))
+		  (component null window.k))))))))))
+
+(defmethod/cc answer-component ((self component) arg)
+  (answer arg))
 
 (defmethod/cc continue-component ((component component) &optional value)
   (javascript/suspend
@@ -601,7 +624,6 @@
 	(throw (new (*error "No k found for component"))))))
 
 (defmethod/cc answer-component ((self callable-component) arg)
-  ;; (update-session 'controller (cdr (query-session 'controller)))
   (answer arg))
 
 (defmethod/remote call-component ((self callable-component))
@@ -629,161 +651,21 @@
 (defcomponent singleton-component-mixin ()
   ())
 
-(defmethod/local destroy-component-actions ((self singleton-component-mixin))
-  ;; (_destroy self)
-  t)
+(defmethod component.instance-id ((self singleton-component-mixin))
+  (or (slot-value self 'instance-id)
+      (setf (slot-value self 'instance-id)
+	    (format nil "~A"
+		    (symbol-to-js
+		     (string-replace-all
+		      "/" "-"
+		      (format nil "~A" (class-name (class-of self)))))))))
+
+(defmethod/remote _destroy ((self singleton-component-mixin))
+  nil)
 
 (defmethod/remote destroy ((self singleton-component-mixin))
-  (make-web-thread (lambda () (destroy-component-actions self)))
   (call-next-method self))
 
-;; (defmethod/cc continue-component ((self component) &optional value)
-;;   (prog1 nil
-;;     (http-response.set-content-type (context.response +context+) '("text" "javascript" ("charset" "UTF-8")))
-;;     (let ((stream (if (application.debug (context.application +context+))
-;; 		      (make-indented-stream (http-response.stream (context.response +context+)))
-;; 		      (make-compressed-stream (http-response.stream (context.response +context+)))))
-;; 	  (hash (uri.query (http-request.uri (context.request +context+)) "__hash")))
-;;       (if (and (stringp hash) (> (length hash) 0))
-;; 	  (let ((hash (intern hash)))
-;; 	    (with-js (hash value) stream
-;; 	      (apply (slot-value window hash) window (list value))))
-;; 	  (with-js (value) stream
-;; 	    value)))))
-
-;; ;; +----------------------------------------------------------------------------
-;; ;; | Component Dispatcher
-;; ;; +----------------------------------------------------------------------------
-;; (defhandler "^component\.core" ((application http-application) (component "component")
-;; 				(hash "__hash"))
-;;   (javascript/suspend
-;;    (lambda (stream)
-;;      (when (and (stringp hash) (> (length hash) 0))
-;;        (string! stream "var ")
-;;        (string! stream (json-deserialize hash))
-;;        (string! stream " = "))
-;;      (acond
-;;       ((and (typep component 'string) (find-component (json-deserialize component)))
-;;        (component! stream (make-instance it)))
-;;       (t
-;;        (with-js () stream
-;; 	 (lambda ()
-;; 	   (throw (new (*error "No Components Found - Core Server [http://labs.core.gen.tr]"))))))))))
-
-;; ;; +----------------------------------------------------------------------------
-;; ;; | Service Dispatcher
-;; ;; +----------------------------------------------------------------------------
-;; (defhandler "^service\.core$" ((application http-application) (component "service")
-;; 			       (hash "__hash"))
-;;   (javascript/suspend
-;;    (lambda (stream)
-;;      (when (and (stringp hash) (> (length hash) 0))
-;;        (string! stream "var ")
-;;        (string! stream (json-deserialize hash))
-;;        (string! stream " = "))
-;;      (acond
-;;        ((and (typep component 'string) (find-component (json-deserialize component)))
-;; 	(let ((component (query-session it)))
-;; 	  (if component
-;; 	      (component! stream component)
-;; 	      (component! stream (update-session it (make-instance it))))))
-;;        (t
-;; 	(with-js () stream
-;; 	  (lambda ()
-;; 	    (throw (new (*error "No Services Found - Core Server [http://labs.core.gen.tr]"))))))))))
-
-;; (defmethod write-stream ((stream html-stream) (object component))
-;;     (call-next-method)
-;;   ;; (if (typep object 'xml) (call-next-method))
-;; ;;   (write-stream stream
-;; ;; 		(<:script :type "text/javascript"
-;; ;;                           (with-call/cc		
-;; ;;                             (lambda (stream)
-;; ;;                               (let ((stream (make-indented-stream stream)))
-;; ;;                                 (component! stream object)
-;; ;;                                 (when (typep object 'xml)
-;; ;;                                   (write-stream stream
-;; ;;                                                 (js*
-;; ;;                                                   `(progn
-;; ;;                                                      (new
-;; ;;                                                       (,(class-name (class-of object))
-;; ;;                                                         (create)
-;; ;;                                                         (document.get-element-by-id ,(slot-value object 'id)))))))))))))
-;;   )
-
-;; (defmethod/cc replace-component ((component component) new-version)
-;;   (javascript/suspend
-;;    (lambda (stream)
-;;      (let ((hash (uri.query (http-request.uri (context.request +context+)) "__hash")))
-;;        (if (and (stringp hash) (> (length hash) 0))
-;; 	   (let ((hash (intern hash)))
-;; 	     (with-js (hash new-version) stream
-;; 	       (apply (slot-value window hash) window
-;; 		      (list (with-call/cc (lambda (self) (replace-component self new-version)))))))
-;; 	   (with-js (component) stream
-;; 	     component))))))
-
-;; (defmethod/cc upgrade-component ((component component) new-version)
-;;   (javascript/suspend
-;;    (lambda (stream)
-;;      (let ((hash (uri.query (http-request.uri (context.request +context+)) "__hash")))
-;;        (if (and (stringp hash) (> (length hash) 0))
-;; 	   (let ((hash (intern hash)))
-;; 	     (with-js (hash new-version) stream
-;; 	       (apply (slot-value window hash) window
-;; 		      (list (with-call/cc (lambda (self) (replace-component self new-version)))))))
-;; 	   (with-js (component) stream
-;; 	     component))))))
-
-;;;; HEK: dont want anymore -evrim.
-;; (defmethod shared-initialize :after ((self component) slots &key &allow-other-keys)
-;;   (if (member 'id (mapcar #'slot-definition-name (class+.slots (class-of self))))
-;;       (if (or (not (slot-boundp self 'id)) (null (slot-value self 'id)))
-;; 	  (setf (slot-value self 'id) (random-string 5))))
-  
-;;   (if (typep self 'xml)
-;;       (setf (xml.children self)
-;; 	    (cons 
-;; 	     (<:script :type "text/javascript"
-;; 		       (with-call/cc		
-;; 			 (lambda (stream)
-;; 			   (let ((stream (make-indented-stream stream)))
-;; 			     (component! stream self)
-;; 			     (when (typep self 'xml)
-;; 			       (write-stream stream
-;; 					     (js*
-;; 					       `(progn
-;; 						  (new
-;; 						   (,(class-name (class-of self))
-;; 						     (create)
-;; 						     (document.get-element-by-id ,(slot-value self 'id))))))))))))
-;; 	     (xml.children self))))
-;;   self)
-
-;; (component! stream self)
-		     ;; (when (typep self 'xml)
-			     ;;   (write-stream stream
-			     ;; 		     (js*
-			     ;; 		       `(progn
-			     ;; 			  (new
-			     ;; 			   (,(class-name (class-of self))
-			     ;; 			     (create)
-			     ;; 			     (document.get-element-by-id ,(slot-value self 'id))))))))
-;; (defmethod component+.covariant-functor-name ((self component+) function-name)
-;;   (intern (format nil "~A/JS" function-name)
-;; 	  (if (eq (find-package :common-lisp) (symbol-package function-name))
-;; 	      (find-package :core-server) (symbol-package function-name))))
-
-;; (defmethod component+.codomain-function-name ((self component+) function-name)
-;;   (intern (format nil ".~A" function-name) 
-;; 	  (if (eq (find-package :common-lisp) (symbol-package function-name))
-;; 	      (find-package :core-server) (symbol-package function-name))))
-
-;; (defmethod component+.a ((domain component+) method component+ args body)
-;;   `)
-
-
-;; (defmethod/remote upgrade-component ((self component) new-version)
-;;   (call/cc new-version self)
-;;   (suspend))
+(defmethod/remote init ((self singleton-component-mixin))
+  (call-next-method self))
 

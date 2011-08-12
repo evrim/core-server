@@ -3,13 +3,17 @@
 ;; +-------------------------------------------------------------------------
 ;; | Dialog
 ;; +-------------------------------------------------------------------------
-(defcomponent dialog (<:div)
+(defcomponent dialog (<:div callable-component)
   ((overlay :host remote :initform nil)
    (message :host remote :initform "This is a message dialog.")
    (title :host remote :initform "message")
    (css-url :host remote :initform "http://www.coretal.net/style/dialog/dialog.css")
    (_scroll :host remote :initform (list 0 0)))
   (:default-initargs :class "coretal coretal-dialog"))
+
+(defmacro/js message (self) `(get-message ,self))
+(defmethod/remote get-message ((self dialog))
+  (slot-value self 'message))
 
 (defmethod/remote destroy ((self dialog))
   (hide-component self)

@@ -292,6 +292,7 @@
    #:make-service   
    #:event
    #:method
+   #:callable-component
    #:call-component
    #:replace-component
    #:upgrade-component
