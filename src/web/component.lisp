@@ -183,7 +183,6 @@
 		  (accessor (cadr slot))
 		  (host (caddr slot))
 		  (export (cdddr slot)))
-	      (describe (list 'eben export slot))
 	      (if export
 		  (append acc
 			  `((,(method-type host) ,(reader name) ((self ,class-name))
@@ -486,20 +485,20 @@
 
 (defmethod/remote init ((self component)) self)
 (defmethod/local _destroy ((self component))
-  (describe (list '_destroy self))
+  ;; (describe (list '_destroy self))
   (context.remove-action +context+ (component.instance-id self))
   t)
 
 (defmethod/remote destroy ((self component))
   (let ((__destroy (slot-value self '_destroy)))
     (when (not (null __destroy))
-      (set-timeout (event () (apply __destroy self (list) window.k)) 1000)
+      (_destroy self)
       (delete-slot self '_destroy)))
   (delete-slot self 'destroy)
   self)
 
 (defmethod/cc destroy ((self component))
-  (describe (list 'destroy self))
+  ;; (describe (list 'destroy self))
   (context.remove-action +context+ (component.instance-id self)))
 
 (defmethod/cc call-component ((component component))    
