@@ -15,6 +15,10 @@
 (defmethod/remote get-message ((self dialog))
   (slot-value self 'message))
 
+(defmacro/js title (self) `(get-title ,self))
+(defmethod/remote get-title ((self dialog))
+  (slot-value self 'title))
+
 (defmethod/remote destroy ((self dialog))
   (hide-component self)
   (delete-slots self 'overlay 'message 'title 'css-url '_scroll)
