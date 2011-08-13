@@ -70,7 +70,8 @@
 (defun slime-run-rt-test ()
   (interactive)
   (slime-display-output-buffer)
-  (slime-interactive-eval (format "%s" `(rt:do-test ',(cadr (read (slime-last-expression)))))))
+  (slime-interactive-eval
+   (format "%s" `(rt:do-test ',(cadr (read (slime-last-expression)))))))
 
 (add-hook 'slime-mode-hook
 	  (lambda ()
@@ -81,10 +82,36 @@
 ;;(setq (get 'defmethod/cc 'common-lisp-indent-function) 'lisp-indent-defmethod
 ;;      (get 'defmethod/unit 'common-lisp-indent-function) 'lisp-indent-defmethod)
 
-(font-lock-add-keywords 'slime-mode '(("\\(defun\\/cc" . font-lock-keyword-face)))
-(font-lock-add-keywords 'slime-mode '(("\\(defmethod\\/local" . font-lock-keyword-face)))
-(font-lock-add-keywords 'slime-mode '(("\\(defhtml\-tag" . font-lock-keyword-face)))
-(font-lock-add-keywords 'slime-mode '(("\\(defclass+" . font-lock-keyword-face)))
+(defun add-macro-font-face (name)
+  (font-lock-add-keywords 'lisp-mode
+			  `((,(concat "(\\(" name "\\)[ ]*\\(\\sw+\\)?")
+			      (1 font-lock-keyword-face)
+			      (2 font-lock-function-name-face)))))
+
+(add-macro-font-face "deftransaction")
+(add-macro-font-face "defcrud")
+
+(defun add-macro-with-suffix-font-face (name suffix)
+  (font-lock-add-keywords 'lisp-mode
+			  `((,(concat "(\\(" name "\\)/\\(" suffix 
+				      "\\)[ ]*\\(\\sw+\\)?")
+			      (1 font-lock-keyword-face)
+			      (2 font-lock-constant-face)
+			      (3 font-lock-function-name-face)))))
+
+(add-macro-with-suffix-font-face "defmethod" "remote")
+(add-macro-with-suffix-font-face "defmethod" "local")
+(add-macro-with-suffix-font-face "defcrud" "lift")
+(add-macro-with-suffix-font-face "defmethod" "lift")
+
+(defun add-class-font-face (name)
+  (font-lock-add-keywords 'lisp-mode
+			  `((,(concat "(\\(" name "\\)[ ]*\\(\\sw+\\)?")
+			      (1 font-lock-keyword-face)
+			      (2 font-lock-type-face)))))
+
+(add-class-font-face "defclass\\+")
+(add-class-font-face "defcomponent")
 
 ;; DARCSUM
 (load-el "darcsum.el")
