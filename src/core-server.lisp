@@ -854,6 +854,7 @@
    ;; [HTTP Component Framework]
    #:component
    #:component.application
+   #:component.instance-id
    #:component.serialize
    #:component.deserialize
    #:component.serialize-slot
