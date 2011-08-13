@@ -380,6 +380,8 @@
 			      (component.serialize-slot component
 							',(car slot))))
 			 remote-slots))
+	   (declare (ignorable component-instance-id server-session-id
+			       ,@(mapcar #'cadr remote-slots)))
 	   (with-js (component-instance-id server-session-id
 					   ,@(mapcar #'cadr remote-slots))
 	       stream
