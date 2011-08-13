@@ -408,21 +408,18 @@
 (defmacro deftransaction (name args &body body)
   (let* ((arg-names (extract-argument-names args :allow-specializers t))
 	 (setf-p (and (listp name) (eq 'setf (car name)))))
-    `(progn
-       (warn "deftransaction overrides :around method")
-       (defmethod ,name :around ,args
-	 (if +transactionalp+
-	     (call-next-method)
-	     (execute ,(if setf-p (cadr arg-names) (car arg-names))
-		      ,(if (member '&rest args )
-			   `(apply #'transaction
-				   ',name ,@(if setf-p
-						(cons (car arg-names) (cddr arg-names))
-						(cdr arg-names)))
-			  `(transaction ',name ,@(if setf-p
-						     (cons (car arg-names) (cddr arg-names))
-						     (cdr arg-names)))))))
-       (defmethod ,name ,args ,@body))))
+    `(defmethod ,name ,args
+       (if +transactionalp+
+	   (progn ,@body)
+	   (execute ,(if setf-p (cadr arg-names) (car arg-names))
+		    ,(if (member '&rest args )
+			 `(apply #'transaction
+				 ',name ,@(if setf-p
+					      (cons (car arg-names) (cddr arg-names))
+					      (cdr arg-names)))
+			 `(transaction ',name ,@(if setf-p
+						    (cons (car arg-names) (cddr arg-names))
+						    (cdr arg-names)))))))))
 
 ;; (defmacro deftransaction (name args &body body)
 ;;   `(defmethod ,name ,args
