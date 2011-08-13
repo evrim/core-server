@@ -161,8 +161,9 @@
 
 (defmethod shared-initialize :after ((self class+-instance) slots
 				     &key &allow-other-keys)
-  (let ((supers (remove (class-of self)
-			(class-superclasses (class-of self)))))
+  (let ((supers (reverse
+		 (remove (class-of self)
+			 (class-superclasses (class-of self))))))
     (mapcar (lambda (slot)
 	      (let* ((name (slot-definition-name slot))
 		     (target (class+-find-slot-in-classes name supers)))
