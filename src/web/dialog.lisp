@@ -262,7 +262,7 @@
 (defmethod/remote dialog-buttons ((self big-dialog))
   (<:div :class "buttons right pad10"
 	 (<:input :type "button" :value "Close"
-		  :onclick (lifte self.hide-component))))
+		  :onclick (lifte (hide-component self)))))
 
 (defmethod/remote template ((self big-dialog))
   (<:div :class "center text-center"
@@ -273,3 +273,23 @@
 		(<:div :class "center content bg-white pad10" (message self))
 		(<:div :class "clear bg-pad-bottom center text-center")
 		(dialog-buttons self))))
+
+;; -------------------------------------------------------------------------
+;; Full Screen Dialog
+;; -------------------------------------------------------------------------
+(defcomponent fullscreen-dialog (dialog)
+  ()
+  (:default-initargs :class "coretal-fullscreen-dialog" :title ""))
+
+(defmethod/remote template ((self fullscreen-dialog))
+  (<:div :class "center text-center"	 
+	 (<:h1 "I am a fullscreen dialog")
+	 (<:p "Lorem ipsum ..")))
+
+(defmethod/remote init ((self fullscreen-dialog))
+  (call-next-method self)
+  (append self (<:a :onclick (lifte (hide-component self))
+		    :title "Close"
+		    :class "close-button"
+		    (<:img :src (+ "http://www.coretal.net/"
+				   "style/images/close.jpg")))))
