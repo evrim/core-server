@@ -288,12 +288,13 @@
       (let ((elem (document.create-element ,(xml.tag element))))
 	,@(reduce (lambda (acc attr)
 		    (let ((value (slot-value element attr)))
-		      (when value
-			(cons
-			 (if (eq attr 'class)			 
-			     `(setf (slot-value elem 'class-name) ,value)
-			     `(setf (slot-value elem ,attr) ,value))
-			 acc))))
+		      (if value
+			  (cons
+			   (if (eq attr 'class)			 
+			       `(setf (slot-value elem 'class-name) ,value)
+			       `(setf (slot-value elem ',attr) ,value))
+			   acc)
+			  acc)))
 		  (xml.attributes element) :initial-value nil)
 	,@(mapcar (lambda (child)
 		    (if (stringp child)
