@@ -951,6 +951,10 @@
    #:buttons
    #:get-buttons
    #:set-buttons
+   #:show-component
+   #:show-component/js
+   #:hide-component
+   #:hide-component/js
    
    #:init
    #:init/js
