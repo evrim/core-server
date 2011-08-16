@@ -88,9 +88,10 @@
 	      lst)))
 
   (defun take (n lst)
-    (if (> n 0)
-	(take (cdr lst) (- n 1))
-	(car lst)))
+    (cond
+      ((null (car lst)) nil)
+      ((> n 0) (cons (car lst) (take (- n 1) (cdr lst))))
+      (t nil)))
   
   (defun/cc filter-cc (fun lst)
     (reverse-cc
