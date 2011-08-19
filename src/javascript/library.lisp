@@ -636,7 +636,8 @@
     (let/cc current-continuation
       (let* ((img (make-dom-element "IMG"
 		   (jobject :class-name "coretal-loading"
-			    :src "http://www.coretal.net/style/login/loading.gif")
+			    :src (+ "http://www.coretal.net/"
+				    "style/login/loading.gif"))
 		   nil))
 	     (script (make-dom-element "SCRIPT"
 				       (jobject :type "text/javascript"
@@ -656,10 +657,11 @@
 		   (make-web-thread (lambda () (Y r)))
 		   (suspend))))))
 	(cond
-	  ((and loaded-p (not (loaded-p window.k)))
-	   (if body (append body img))
-	   (append head script)
-	   (Y recurse))
+	  (loaded-p
+	   (unless (loaded-p window.k)
+	     (if body (append body img))
+	     (append head script)
+	     (Y recurse)))
 	  (t
 	   (append head script))))))
   
