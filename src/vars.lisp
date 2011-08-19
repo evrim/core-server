@@ -112,6 +112,12 @@
 (defvar +jquery-ui-uri+ "/js/jquery-ui.min.js")
 (defvar +jquery-lightbox-uri+ "/js/lightbox/js/jquery.lightbox-0.5.min.js")
 (defvar +jquery-lightbox-css-uri+ "/js/lightbox/css/jquery.lightbox-0.5.css")
+(defvar +jquery-lightbox-config+
+  (jobject :image-loading "/js/lightbox/images/lightbox-ico-loading.gif"
+	   :image-btn-prev "/js/lightbox/images/lightbox-btn-prev.gif"
+	   :image-btn-next "/js/lightbox/images/lightbox-btn-next.gif"
+	   :image-btn-close "/js/lightbox/images/lightbox-btn-close.gif"
+	   :image-blank "/js/lightbox/images/lightbox-blank.gif"))
 
 ;;--------------------------------------------------------------------------
 ;; Mail Service Variables

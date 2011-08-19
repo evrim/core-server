@@ -25,7 +25,8 @@
 ;; -------------------------------------------------------------------------
 (defcomponent supply-jquery-lightbox (supply-jquery)
   ((lightbox-uri :host remote :Initform +jquery-lightbox-uri+)
-   (lightbox-css-uri :host remote :initform +jquery-lightbox-css-uri+)))
+   (lightbox-css-uri :host remote :initform +jquery-lightbox-css-uri+)
+   (lightbox-config :host remote :initform +jquery-lightbox-config+)))
 
 (defmethod/remote load-jquery-lightbox ((self supply-jquery-lightbox))
   (load-jquery self)

@@ -1001,6 +1001,7 @@
    #:supply-jquery-lightbox
    #:load-jquery-lightbox
    #:load-jquery-lightbox/js
+   #:lightbox-config
    
    ;; [Presentation]
    ;; #:defpresentation
@@ -1098,6 +1099,7 @@
    #:+jquery-ui-uri+
    #:+jquery-lightbox-uri+
    #:+jquery-lightbox-css-uri+
+   #:+jquery-lightbox-config+
    
    ))
 
