@@ -973,6 +973,8 @@
    ;; [Web Components]
    #:ckeditor-component
    #:supply-ckeditor
+   #:make-ckeditor
+   #:make-ckeditor/js
    #:toaster-component
    #:toast
    

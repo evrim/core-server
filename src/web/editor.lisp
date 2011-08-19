@@ -35,7 +35,7 @@
 ;; --------------------------------------------------------------------------
 ;; Ck Editor
 ;; --------------------------------------------------------------------------
-(defcomponent ckeditor-component ()
+(defcomponent ckeditor-component (callable-component)
   ((instance :host remote)
    (target :host remote)
    (config :host remote :initform *ck-config*)))
@@ -58,7 +58,7 @@
 	      (with-call/cc
 		(make-web-thread
 		 (lambda ()
-		   (answer-component self data)))))
+		   (answer-component self (list "save" data))))))
 	    (return false)))
     (call-next-method self)))
 
