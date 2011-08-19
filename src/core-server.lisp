@@ -970,7 +970,7 @@
    #:id
    #:div-element
 
-   ;; [HTTP Components]
+   ;; [Web Components]
    #:ckeditor-component
    #:supply-ckeditor
    #:toaster-component
@@ -992,6 +992,16 @@
    #:sortable-list-component
    #:get-input-value
 
+   #:supply-jquery
+   #:load-jquery
+   #:load-jquery/js
+   #:supply-jquery-ui
+   #:load-jquery-ui
+   #:load-jquery-ui/js
+   #:supply-jquery-lightbox
+   #:load-jquery-lightbox
+   #:load-jquery-lightbox/js
+   
    ;; [Presentation]
    ;; #:defpresentation
    
@@ -1080,6 +1090,15 @@
    #:application.initargs
    #:application.debug
    #:application.server
+
+   ;; [ Web Variables ]
+   #:+dojo-path+
+   #:+fckeditor-path+
+   #:+jquery-uri+
+   #:+jquery-ui-uri+
+   #:+jquery-lightbox-uri+
+   #:+jquery-lightbox-css-uri+
+   
    ))
 
 (defpackage :tr.gen.core.server.io

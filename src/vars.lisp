@@ -102,8 +102,16 @@
 ;;---------------------------------------------------------------------------
 (defvar +default-extension+ ".core" "Web application default extension")
 (defvar +dojo-path+ "/dojo/" "Dojo Pathname")
-(defvar +fckeditor-path+ "http://www.coretal.net/js/ckeditor/"
+(defvar +fckeditor-path+ "/js/ckeditor/"
   "Fckeditor Pathname")
+
+;; -------------------------------------------------------------------------
+;; JQuery Variables
+;; -------------------------------------------------------------------------
+(defvar +jquery-uri+ "/js/jquery.min.js")
+(defvar +jquery-ui-uri+ "/js/jquery-ui.min.js")
+(defvar +jquery-lightbox-uri+ "/js/lightbox/js/jquery.lightbox-0.5.min.js")
+(defvar +jquery-lightbox-css-uri+ "/js/lightbox/css/jquery.lightbox-0.5.css")
 
 ;;--------------------------------------------------------------------------
 ;; Mail Service Variables

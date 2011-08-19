@@ -1,5 +1,38 @@
 (in-package :core-server)
 
+;; -------------------------------------------------------------------------
+;; Supply JQuery
+;; -------------------------------------------------------------------------
+(defcomponent supply-jquery ()
+  ((jquery-uri :host remote :initform +jquery-uri+)))
+
+(defmethod/remote load-jquery ((self supply-jquery))
+  (load-javascript (jquery-uri self) (lambda () (not (null j-query)))))
+
+;; -------------------------------------------------------------------------
+;; Supply Jquery UI
+;; -------------------------------------------------------------------------
+(defcomponent supply-jquery-ui (supply-jquery)
+  ((jquery-ui-uri :host remote :initform +jquery-ui-uri+)))
+
+(defmethod/remote load-jquery-ui ((self supply-jquery-ui))
+  (load-jquery self)
+  (load-javascript (jquery-ui-uri self)
+		   (lambda () (not (null j-query.fn.accordion)))))
+
+;; -------------------------------------------------------------------------
+;; Supply LightBox
+;; -------------------------------------------------------------------------
+(defcomponent supply-jquery-lightbox (supply-jquery)
+  ((lightbox-uri :host remote :Initform +jquery-lightbox-uri+)
+   (lightbox-css-uri :host remote :initform +jquery-lightbox-css-uri+)))
+
+(defmethod/remote load-jquery-lightbox ((self supply-jquery-lightbox))
+  (load-jquery self)
+  (load-javascript (lightbox-uri self) (lambda ()
+					 (not (null j-query.fn.light-box))))
+  (load-css (lightbox-css-uri self)))
+
 ;; ;; +----------------------------------------------------------------------------
 ;; ;; | Jquery Extension
 ;; ;; +----------------------------------------------------------------------------
