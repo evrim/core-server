@@ -41,6 +41,18 @@
 					 (not (null j-query.fn.light-box))))
   (load-css (lightbox-css-uri self)))
 
+
+;; -------------------------------------------------------------------------
+;; Supply Nested Sortable
+;; -------------------------------------------------------------------------
+(defcomponent supply-jquery-nested-sortable (supply-jquery-ui)
+  ((nested-sortable-uri :host remote :initform +jquery-nested-sortable-uri+)))
+
+(defmethod/remote load-jquery-nested-sortable ((self supply-jquery-nested-sortable))
+  (load-jquery-ui self)
+  (load-javascript (nested-sortable-uri self)
+		   (lambda () (not (null j-query.ui.nested-sortable)))))
+
 ;; ;; +----------------------------------------------------------------------------
 ;; ;; | Jquery Extension
 ;; ;; +----------------------------------------------------------------------------

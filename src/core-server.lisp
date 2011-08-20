@@ -1004,6 +1004,9 @@
    #:load-jquery-lightbox
    #:load-jquery-lightbox/js
    #:lightbox-config
+   #:supply-jquery-nested-sortable
+   #:load-jquery-nested-sortable
+   #:load-jquery-nested-sortable/js
    
    ;; [Presentation]
    ;; #:defpresentation
