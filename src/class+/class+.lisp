@@ -396,8 +396,17 @@
 ;; --------------------------------------------------------------------------
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun %fix-slot-definition (class-name slot-definition)
+    (if (and (eq 'lift (getf (cdr slot-definition) :host))
+	     (null (getf (cdr slot-definition) :type)))
+	(error "Please provide :type to slot ~A" (car slot-definition)))
+    
     (if (not (member :initform slot-definition))
-	(setf (getf (cdr slot-definition) :initform) nil))
+	(setf (getf (cdr slot-definition) :initform)
+	      (if (eq 'lift (getf (cdr slot-definition) :host))
+		  `(error ,(format nil "Provide :~A"
+				   (or (getf (cdr slot-definition) :initarg)
+				       (car slot-definition))))
+		  nil)))
 
     (if (not (member :initarg slot-definition))
 	(setf (getf (cdr slot-definition) :initarg)

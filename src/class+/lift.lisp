@@ -28,151 +28,211 @@
   (defun %find-method (method-name specializers)
     (aif (sb-pcl::find-generic-function method-name nil) 
 	 (sb-pcl::compute-applicable-methods-using-classes it
-							   specializers))))
+							   specializers)))
+
+  (defun %walk-arguments (args)
+    (mapcar (lambda (arg)
+	      (typecase arg
+		(keyword-function-argument-form
+		 (if (null (supplied-p-parameter arg))
+		     (setf (supplied-p-parameter arg)
+			   (gensym)))))
+	      arg)
+	    (walk-lambda-list args nil '()
+			      :allow-specializers t)))
+
+  (defun %walk-specializers (walked-args)
+    (mapcar (lambda (arg)
+	      (typecase arg
+		(specialized-function-argument-form
+		 (find-class (arnesi::specializer arg)))
+		(t
+		 (find-class 't))))
+	    walked-args)))
 
 ;; +-------------------------------------------------------------------------
 ;; | Method Lifting
 ;; +-------------------------------------------------------------------------
-(defmacro %defmethod/lift (method-name (&rest args)
-			   &optional output-method-name)
-  (let* ((walk-args (mapcar (lambda (arg)
-			      (typecase arg
-				(keyword-function-argument-form
-				 (if (null (supplied-p-parameter arg))
-				     (setf (supplied-p-parameter arg)
-					   (gensym)))))
-			      arg)
-			    (walk-lambda-list args nil '()
-					      :allow-specializers t)))
-	 (specializers (mapcar (lambda (arg)
-				 (typecase arg
-				   (specialized-function-argument-form
-				    (find-class (arnesi::specializer arg)))
-				   (t
-				    (find-class 't))))
-			       walk-args))
+(defvar +lift-compilation+ nil)
+(defmacro defmethod/lift (method-name (&rest args) &optional output-method-name)
+  (let* ((walked-args (%walk-arguments args))
+	 (specializers (%walk-specializers walked-args))
 	 (lifts (mapcar (lambda (class)
 			  (aif (mapcar
 				(compose #'class+.find
 					 #'sb-pcl::slot-definition-type)
-				(filter
-				 (lambda (slot)
-				   (eq (slot-definition-host slot)
-				       'lift))
-				 (class+.slots class)))
+				(filter (lambda (slot)
+					  (eq (slot-definition-host slot)
+					      'lift))
+					(class+.slots class)))
 			       it
 			       (list class)))
 			specializers))
 	 (method (car (any (lambda (specializers)
 			     (%find-method method-name specializers))
 			   (permute lifts)))))
-    (when method
-      (let* ((method-lambda-list (walk-lambda-list
-				  (sb-pcl::method-lambda-list method)
-				  nil nil :allow-specializers t))
-	     (method-lambda-list (append method-lambda-list
-					 (drop (length method-lambda-list)
-					       walk-args)))
-	     (method-specializers (sb-pcl::method-specializers method))
-	     (method-specializers (append
-				   method-specializers
-				   (mapcar
-				    (lambda (a)
-				      (declare (ignore a))
-				      (find-class 't))
-				    (seq (- (length specializers)
-					    (length method-specializers))))))
-	     (arguments (mapcar #'list method-specializers specializers
-				walk-args method-lambda-list)))
-	(labels ((find-slot (class class-to-find)
-		   (let ((slot (any
-				(lambda (slot)
-				  (with-slotdef (type) slot
-				    (if (member class-to-find
-					 (class+.superclasses
-					  (find-class type)))
-					slot)))
-				(filter (lambda (slot)
-					  (eq 'lift
-					      (slot-definition-host slot)))
-					(class+.slots class)))))
-		     (slot-definition-name slot)))
-		 (process-argument (atom)
-		   (destructuring-bind (new old arg arg-old) atom
-		     (let ((name (name arg))
-			   (name-old (name arg-old)))
-		       (typecase arg
+    (if method
+	(let* ((method-lambda-list (mapcar
+				    (lambda (arg specializer)
+				      (setf (arnesi::specializer arg)
+					    (class-name specializer))
+				      arg)
+				    (walk-lambda-list
+				     (sb-pcl::method-lambda-list method)
+				     nil nil :allow-specializers t)
+				    (sb-pcl::method-specializers method)))
+	       (method-lambda-list (append method-lambda-list
+					   (drop (length method-lambda-list)
+						 walked-args)))
+	       (arguments (mapcar #'cons walked-args method-lambda-list)))
+	  (labels ((find-slot (new-class old-class)
+		     ;; page/editor template
+		     (aif (any (lambda (slot)
+				 (aif (member (class+.find old-class)
+					      (class+.superclasses
+					       (class+.find
+						(sb-pcl::slot-definition-type slot))))
+				      slot))
+			       (filter (lambda (slot)
+					 (eq 'lift
+					     (slot-definition-host slot)))
+				       (class+.slots (find-class new-class))))
+			  (slot-definition-name it)
+			  (error "error in find-slot new-class ~A old class ~A"
+				 new-class old-class)))
+		   (process-argument (atom)
+		     (destructuring-bind (new . old) atom
+		       (typecase new
 			 (specialized-function-argument-form
-			  (if (eq old new)
-			      `(list ,name)
-			      `(list (slot-value ,name
-						 ',(find-slot old new)))))
+			  (let ((new-specializer (arnesi::specializer new))
+				(old-specializer (arnesi::specializer old)))
+			    (if (eq new-specializer old-specializer)
+				`(list ,(name new))
+				`(list
+				  (slot-value ,(name new)
+					      ',(find-slot new-specializer
+							   old-specializer))))))
 			 (keyword-function-argument-form
-			  `(if ,(arnesi::supplied-p-parameter arg)
-			       (list ,(make-keyword name-old) ,name)
+			  `(if ,(arnesi::supplied-p-parameter new)
+			       (list ,(make-keyword (name old)) ,(name new))
 			       nil))
 			 (t
-			  `(list ,name)))))))
-	  `(defmethod ,(or output-method-name method-name)
-	       ,(unwalk-lambda-list walk-args)
-	     ,(cond
-	       ((atom method-name)
-		`(apply ',method-name
-			(append ,@(mapcar #'process-argument arguments))))
-	       (t
-		`(,(car method-name)
-		   (,(cadr method-name)
-		     ,@(flatten1
-			(mapcar #'cdr (mapcar #'process-argument (cdr arguments)))))
-		   ,(name (caddr (car arguments))))))))))))
+			  `(list ,(name new)))))))
+	    `(defmethod ,(or output-method-name
+			     method-name) ,(unwalk-lambda-list walked-args)
+	       ,(cond
+		 ((atom method-name)
+		  `(apply ',method-name
+			  (append ,@(mapcar #'process-argument arguments))))
+		 (t
+		  `(,(car method-name)
+		     (,(cadr method-name)
+		       ,@(flatten1
+			  (mapcar #'cdr (mapcar #'process-argument
+						(cdr arguments)))))
+		     ,(name (caar arguments))))))))
+	`(defmethod ,(or output-method-name
+			 method-name) ,(unwalk-lambda-list walked-args)
+	   (if +lift-compilation+
+	       (warn "Can't compile method lift ~A" ',(or output-method-name
+							  method-name))
+	       (let ((+lift-compilation+ t))
+		 (warn "Compiling method lift ~A" ',(or output-method-name
+							method-name))
+		 (eval `(defmethod/lift ,',method-name ,',args
+			  ,',output-method-name))
+		 ,(cond
+		   ((atom method-name)
+		    `(apply ',(or output-method-name method-name)
+			    ,(extract-apply-arguments args)))
+		   (t
+		    `(,(car method-name)
+		       (,(cadr method-name)
+			 ,@(nreverse
+			    (reduce
+			     (lambda (acc arg)
+			       (typecase arg
+				 (keyword-function-argument-form
+				  (cons (name arg)
+					(cons (make-keyword (name arg))
+					      acc)))
+				 (t (cons (name arg) acc))))
+			     (cdr walked-args) :initial-value nil)))
+		       ,(car args))))))))))
 
-(defmacro defmethod/lift (method-name (&rest args)
-			  &optional output-method-name)
-  `(progn
-     (eval-when (:compile-toplevel :load-toplevel)
-       (%defmethod/lift ,method-name ,args ,output-method-name))
-     (eval-when (:execute)
-       (%defmethod/lift ,method-name ,args ,output-method-name))))
+;; (defmacro defmethod/lift (method-name (&rest args)
+;; 			  &optional output-method-name)
+;;   `(progn
+;;      (eval-when (:compile-toplevel :load-toplevel)
+;;        (%defmethod/lift ,method-name ,args ,output-method-name))
+;;      (eval-when (:execute)
+;;        (%defmethod/lift ,method-name ,args ,output-method-name))))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun class+-find-slot-in-classes (slot supers)    
     (any (lambda (class)
 	   (aif (class+.find-slot class slot)
-		class))
+		(let ((subclass (class+-find-slot-in-classes
+				 slot
+				 (remove class (class+.superclasses class)))))
+		  (if (null subclass)
+		      class
+		      subclass))))
 	 supers))
   
   (defmethod class+-lifted-slots (name supers slots)
-    (mapcar (lambda (class)
-	      (let ((keyword (make-keyword (class-name class))))
-		`(,(class-name class) :host lift
-		   :initarg ,keyword
-		   :initform (error ,(format nil "Provide :~A" keyword))
-		   :type ,(class-name class))))
-	    (uniq
-	     (mapcar (lambda (slot)
-		       (aif (class+-find-slot-in-classes
-			     (car slot) (mapcar #'class+.find supers))
-			    it
-			    (error "Can't find slot ~A to lift in superclasses"
-				   (car slot))))
-		     (filter (lambda (slot) (getf (cdr slot) :lift))
-			     slots))))))
+    (let ((lifted-slots (filter (lambda (slot)
+				  (eq (getf (cdr slot) :host) 'lift))
+				slots)))
+      (mapcar
+       (lambda (class)
+	 (let ((keyword (make-keyword (class-name class))))
+	   `(,(class-name class) :host lift
+	      :initarg ,keyword
+	      :initform (error ,(format nil "Provide :~A" keyword))
+	      :type ,(class-name class))))
+       (uniq
+	(mapcar (lambda (slot)
+		  (aif (class+-find-slot-in-classes
+			(car slot) (mapcar #'class+.find supers))
+		       it
+		       (error "Can't find slot ~A to lift in superclasses"
+			      (car slot))))
+		(filter
+		 (lambda (slot)				  
+		   (if (any (lambda (class) (class+.find-slot class
+							      (car slot)))
+			    (mapcar (lambda (slot)
+				      (find-class (getf (cdr slot) :type)))
+				    lifted-slots))
+		       nil
+		       t))
+		 (filter (lambda (slot)
+			   (getf (cdr slot) :lift))
+			 slots))))))))
 
+(defmethod class+.find-lifted-slot ((self class+) slot-to-find)
+    (any (lambda (slot)
+	   (if (class+.find-slot (class+.find
+				  (sb-pcl::slot-definition-type slot))
+				 slot-to-find)
+	       (slot-definition-name slot)))
+	 (filter (lambda (slot)
+		   (eq 'lift (slot-definition-host slot)))
+		 (class+.slots self))))
 
 (defmethod shared-initialize :after ((self class+-instance) slots
 				     &key &allow-other-keys)
-  (let ((supers (reverse
-		 (remove (class-of self)
-			 (class-superclasses (class-of self))))))
-    (mapcar (lambda (slot)
-	      (let* ((name (slot-definition-name slot))
-		     (target (class+-find-slot-in-classes name supers)))
-		(copy-slots (slot-value self (class-name target))
-			    self (list name))))
-	    (filter (lambda (slot)
-		      (and (not (null (slot-definition-lift slot)))
-			   (eq (slot-definition-host slot) 'remote)))
-		    (class+.slots (class-of self)))))
+  (mapcar (lambda (slot)
+	    (let* ((name (slot-definition-name slot))
+		   (lifted-slot (class+.find-lifted-slot (class-of self)
+							 name)))
+	      (setf (slot-value self name)
+		    (slot-value (slot-value self lifted-slot) name))))
+	  (filter (lambda (slot)
+		    (and (slot-definition-lift slot)
+			 (eq (slot-definition-host slot) 'remote)))
+		  (class+.slots (class-of self))))
   self)
 
 (defmacro defclass+-slot-lifts (class-name)
