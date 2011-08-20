@@ -112,6 +112,7 @@
 (defvar +jquery-ui-uri+ "/js/jquery-ui.min.js")
 (defvar +jquery-lightbox-uri+ "/js/lightbox/js/jquery.lightbox-0.5.min.js")
 (defvar +jquery-lightbox-css-uri+ "/js/lightbox/css/jquery.lightbox-0.5.css")
+(defvar +jquery-nested-sortable-uri+ "/js/nested-sortable/jquery.ui.nestedSortable.js")
 
 ;;--------------------------------------------------------------------------
 ;; Mail Service Variables
