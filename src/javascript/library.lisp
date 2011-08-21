@@ -206,6 +206,14 @@
 		   acc
 		   (cons atom acc)))
 	     (sort (lambda (a b) (eq (key-fun a) (key-fun b))) lst))))
+
+  (defun remove (item lst)
+    (reverse
+     (reduce0 (lambda (acc atom)
+		(if (eq item atom)
+		    acc
+		    (cons atom acc)))
+	      lst)))
   
   (defun has-class (node class-name)
     (if (member class-name (node.class-name.split " "))
