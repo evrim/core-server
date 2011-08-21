@@ -1010,6 +1010,12 @@
    #:supply-jquery-newsticker
    #:load-jquery-newsticker
    #:load-jquery-newsticker/js
+   #:supply-jquery-slider
+   #:supply-jquery-text-effects
+   #:load-jquery-slider
+   #:load-jquery-slider/js
+   #:load-jquery-text-effects
+   #:load-jquery-text-effects/js
    
    ;; [Presentation]
    ;; #:defpresentation

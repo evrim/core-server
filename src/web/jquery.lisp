@@ -64,7 +64,32 @@
   (load-javascript (newsticker-uri self)
 		   (lambda () (not (null j-query.fn.news-ticker)))))
 
-;; ;; +----------------------------------------------------------------------------
+;; -------------------------------------------------------------------------
+;; Supply Slider
+;; -------------------------------------------------------------------------
+(defcomponent supply-jquery-slider (supply-jquery)
+  ((slider-uri :host remote :initform +jquery-slider-uri+)
+   (slider-css :host remote :initform +jquery-slider-css+)))
+
+(defmethod/remote load-jquery-slider ((self supply-jquery-newsticker))
+  (load-jquery self)
+  (load-css (slider-css self))
+  (load-javascript (slider-uri self)
+		   (lambda () (not (null j-query.fn.slider1)))))
+
+;; -------------------------------------------------------------------------
+;; Supply Jquery Text Effects
+;; -------------------------------------------------------------------------
+(defcomponent supply-jquery-text-effects (supply-jquery)
+  ((text-effects-uri :host remote :initform +jquery-text-effects-uri+)))
+
+(defmethod/remote load-jquery-text-effects ((self supply-jquery-text-effects))
+  (load-jquery self)
+  (load-javascript (text-effects-uri self)
+		   (lambda () (not (null j-query.fn.unscramble)))))
+
+;; ;; +---------------------------------------------------------------
+-------------
 ;; ;; | Jquery Extension
 ;; ;; +----------------------------------------------------------------------------
 ;; (defpackage :tr.gen.core.server.jquery

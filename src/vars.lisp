@@ -114,6 +114,9 @@
 (defvar +jquery-lightbox-css-uri+ "/js/lightbox/css/jquery.lightbox-0.5.css")
 (defvar +jquery-nested-sortable-uri+ "/js/nested-sortable/jquery.ui.nestedSortable.js")
 (defvar +jquery-newsticker-uri+ "/js/jquery.newsTicker.js")
+(defvar +jquery-slider-uri+ "/js/slider/slider.js")
+(defvar +jquery-slider-css+ "/js/slider/slider.css")
+(defvar +jquery-text-effects-uri+ "/js/slider/jquery.text-effects.js")
 
 ;;--------------------------------------------------------------------------
 ;; Mail Service Variables
