@@ -1007,6 +1007,9 @@
    #:supply-jquery-nested-sortable
    #:load-jquery-nested-sortable
    #:load-jquery-nested-sortable/js
+   #:supply-jquery-newsticker
+   #:load-jquery-newsticker
+   #:load-jquery-newsticker/js
    
    ;; [Presentation]
    ;; #:defpresentation
@@ -1106,6 +1109,7 @@
    #:+jquery-lightbox-css-uri+
    #:+jquery-lightbox-config+
    #:+jquery-nested-sortable-uri+
+   #:+jquery-newsticker-uri+
    ))
 
 (defpackage :tr.gen.core.server.io

@@ -53,6 +53,17 @@
   (load-javascript (nested-sortable-uri self)
 		   (lambda () (not (null j-query.ui.nested-sortable)))))
 
+;; -------------------------------------------------------------------------
+;; Supply Newsticker
+;; -------------------------------------------------------------------------
+(defcomponent supply-jquery-newsticker (supply-jquery)
+  ((newsticker-uri :host remote :initform +jquery-newsticker-uri+)))
+
+(defmethod/remote load-jquery-newsticker ((self supply-jquery-newsticker))
+  (load-jquery self)
+  (load-javascript (newsticker-uri self)
+		   (lambda () (not (null j-query.fn.news-ticker)))))
+
 ;; ;; +----------------------------------------------------------------------------
 ;; ;; | Jquery Extension
 ;; ;; +----------------------------------------------------------------------------
