@@ -1105,7 +1105,7 @@
    #:+jquery-lightbox-uri+
    #:+jquery-lightbox-css-uri+
    #:+jquery-lightbox-config+
-   
+   #:+jquery-nested-sortable-uri+
    ))
 
 (defpackage :tr.gen.core.server.io
