@@ -567,7 +567,7 @@ case \"$1\" in
         export CORESERVER_HOME=\"$CORESERVER_HOME\"
         sleep 1
         echo \"now!\"
-	if ![ ${STY+1} ]; then
+	if [ -z ${STY+1} ]; then
             $(lookup screen) -c /dev/null -dmS core-server \
 		$(lookup sbcl) --dynamic-space-size $MEMSIZE \
 		--load $CONFIGFILE
@@ -762,7 +762,7 @@ case \"$1\" in
         export CORESERVER_HOME=\"$CORESERVER_HOME\"
         sleep 1
         echo \"now!\"
-	if ![ ${STY+1} ]; then
+	if [ -z ${STY+1} ]; then
             $(lookup screen) -c /dev/null -dmS core-server \
 		$(lookup sbcl) --dynamic-space-size $MEMSIZE \
 		--load $CONFIGFILE
