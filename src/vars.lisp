@@ -118,6 +118,14 @@
 (defvar +jquery-slider-css+ "/js/slider/slider.css")
 (defvar +jquery-text-effects-uri+ "/js/slider/jquery.text-effects.js")
 
+;; -------------------------------------------------------------------------
+;; Picasa Variables
+;; -------------------------------------------------------------------------
+(defvar +picasa-user-format-string+
+  "http://picasaweb.google.com/data/feed/api/user/~A")
+(defvar +picasa-album-format-string+
+  "http://picasaweb.google.com/data/feed/api/user/~A/albumid/~A")
+
 ;;--------------------------------------------------------------------------
 ;; Mail Service Variables
 ;;--------------------------------------------------------------------------

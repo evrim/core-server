@@ -994,6 +994,7 @@
    #:sortable-list-component
    #:get-input-value
 
+   [Jquery]
    #:supply-jquery
    #:load-jquery
    #:load-jquery/js
@@ -1016,6 +1017,11 @@
    #:load-jquery-slider/js
    #:load-jquery-text-effects
    #:load-jquery-text-effects/js
+
+   [Picasa]
+   #:supply-picasa
+   #:get-albums
+   #:get-photos
    
    ;; [Presentation]
    ;; #:defpresentation
