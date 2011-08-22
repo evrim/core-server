@@ -218,7 +218,8 @@
 				   (:file "video")
 				   (:file "editor")
 				   (:file "dojo")
-				   (:file "jquery"))))))
+				   (:file "jquery")
+				   (:file "picasa"))))))
   :depends-on (:swank :bordeaux-threads ;; :cl-prevalence
 		      :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad :cffi)
   :serial t)

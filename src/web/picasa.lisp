@@ -6,17 +6,13 @@
 (defmethod %get-albums ((self supply-picasa) user)
   (awhen (http :url (format nil +picasa-user-format-string+ user))
     (let* ((entity it)
-	   (albums (xml-search entity
-			       (lambda (a) (typep a '<atom:entry)))))
-	 
+	   (albums (xml-search entity (lambda (a) (typep a '<atom:entry)))))
       (mapcar
        (lambda (album)
-	 (flet ((foo (a)
-		  (car (xml.children (car a)))))
-	   (cons (foo (xml-search album
-				  (make-xml-type-matcher '<atom:title)))
-		 (foo (xml-search album
-				  (make-xml-type-matcher  '<gphoto:id))))))
+	 (flet ((foo (a) (car (xml.children (car a)))))
+	   (cons
+	    (foo (xml-search album (make-xml-type-matcher '<atom:title)))
+	    (foo (xml-search album (make-xml-type-matcher  '<gphoto:id))))))
        albums))))
 
 (defmethod/cc get-albums ((self supply-picasa) user)
@@ -38,9 +34,10 @@
 	   (get-thumbnails (photo)
 	     (nreverse
 	      (mapcar (lambda (thumb)
-			(jobject :width (slot-value thumb 'core-server::width)
-				 :height (slot-value thumb 'core-server::height)
-				 :url (slot-value thumb 'core-server::url)))
+			(jobject
+			 :width (slot-value thumb 'core-server::width)
+			 :height (slot-value thumb 'core-server::height)
+			 :url (slot-value thumb 'core-server::url)))
 		      (search-for photo '<media:thumbnail)))))
       (awhen (http :url (format nil +picasa-album-format-string+
 				user album))
@@ -53,9 +50,7 @@
 	  		      :url (get-url photo)
 	  		      :name (get-name photo)
 	  		      :date (get-date photo)))
-	  	   photos))
-	  ;; photos
-	  )))))
+	  	   photos)))))))
 
 (defmethod/cc get-photos ((self supply-picasa) user album)
   (%get-photos self user album))
