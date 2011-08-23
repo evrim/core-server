@@ -655,6 +655,7 @@ echo \"[Core serveR] Installer tarball is ready: /tmp/$TARBALL \"
 	  '(bin projects lib var log))
   (ensure-directories-exist (layout.systems self)))
 
+(defvar +cp+ (whereis "cp"))
 (defmethod install ((self layout)) 
   (create-directories self)
   (read-systems self)
