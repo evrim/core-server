@@ -236,25 +236,31 @@
   self)
 
 (defmacro defclass+-slot-lifts (class-name)
-  (flet ((find-lifted-slot (slot new-class)
-	   (any (lambda (class)
-		  (aif (class+.find-slot class slot)
-		       it))
-		(class+.direct-superclasses new-class))))
-    (let* ((class (class+.find class-name)))
+  (let ((class (class+.find class-name)))
+    (flet ((find-lifted-slot (slot-to-find)
+	     (any (lambda (slot)
+		    (aif (class+.find-slot
+			  (find-class (sb-pcl::slot-definition-type slot))
+			  slot-to-find)
+			 it))
+		  (filter (lambda (slot)
+			    (eq 'lift (slot-definition-host slot)))
+			  (class+.slots class)))))
       `(progn
 	 ,@(mapcar
 	    (lambda (slot)
 	      (with-slotdef (name reader writer) slot
-		(let ((lifted-slot (find-lifted-slot name class)))
+		(let ((lifted-slot (find-lifted-slot name)))
 		  (let ((reader1 reader)
 			(writer1 writer))
+		    (assert (not (null lifted-slot))
+			    nil "Cant find slot ~A to lift" name)
 		    (with-slotdef (reader writer) lifted-slot
 		      `(progn
-			 (defmethod/lift ,reader1 ((self ,class-name))
-			   ,reader)
-			 (defmethod/lift ,writer1 (value (self ,class-name))
-			   ,writer)))))))
+			 (defmethod/lift ,reader ((self ,class-name))
+			   ,reader1)
+			 (defmethod/lift ,writer (value (self ,class-name))
+			   ,writer1)))))))
 	    (filter (lambda (slot) (slot-definition-lift slot))
 		    (class+.slots class)))))))
 
