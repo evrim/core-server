@@ -90,7 +90,6 @@
 
 (add-macro-font-face "deftransaction")
 (add-macro-font-face "defcrud")
-
 (defun add-macro-with-suffix-font-face (name suffix)
   (font-lock-add-keywords 'lisp-mode
 			  `((,(concat "(\\(" name "\\)/\\(" suffix 
@@ -103,6 +102,7 @@
 (add-macro-with-suffix-font-face "defmethod" "local")
 (add-macro-with-suffix-font-face "defcrud" "lift")
 (add-macro-with-suffix-font-face "defmethod" "lift")
+(add-macro-with-suffix-font-face "defmethod" "cc")
 
 (defun add-class-font-face (name)
   (font-lock-add-keywords 'lisp-mode
@@ -214,6 +214,10 @@ doesn't exist, it is created."
 			     (concat (match-string 0 fn) "~")))))
 	  (let ((fname (make-backup-file-name-1 file)))
 	    (concat (file-name-directory fname) "." (file-name-nondirectory fname) "~")))))
+
+;; Top Mode
+(load-el "top-mode.el")
+(top)
 
 ;; irc.core.gen.tr developer connection
 (when (locate-library "erc")
