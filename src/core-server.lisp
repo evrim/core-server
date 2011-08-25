@@ -1117,12 +1117,14 @@
    #:+fckeditor-path+
    #:+jquery-uri+
    #:+jquery-ui-uri+
+   #:+jquery-text-effects-uri+
    #:+jquery-lightbox-uri+
    #:+jquery-lightbox-css-uri+
    #:+jquery-lightbox-config+
    #:+jquery-nested-sortable-uri+
    #:+jquery-newsticker-uri+
-   ))
+   #:+jquery-slider-uri+
+   #:+jquery-slider-css+))
 
 (defpackage :tr.gen.core.server.io
   (:nicknames :io)

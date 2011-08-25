@@ -35,6 +35,10 @@
    (lightbox-css-uri :host remote :initform +jquery-lightbox-css-uri+)
    (lightbox-config :host remote :initform +jquery-lightbox-config+)))
 
+(defmethod/remote destroy ((self supply-jquery-lightbox))
+  (remove-css (lightbox-css-uri self))
+  (call-next-method self))
+
 (defmethod/remote load-jquery-lightbox ((self supply-jquery-lightbox))
   (load-jquery self)
   (load-javascript (lightbox-uri self) (lambda ()
@@ -71,7 +75,7 @@
   ((slider-uri :host remote :initform +jquery-slider-uri+)
    (slider-css :host remote :initform +jquery-slider-css+)))
 
-(defmethod/remote load-jquery-slider ((self supply-jquery-newsticker))
+(defmethod/remote load-jquery-slider ((self supply-jquery-slider))
   (load-jquery self)
   (load-css (slider-css self))
   (load-javascript (slider-uri self)
