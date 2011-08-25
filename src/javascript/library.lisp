@@ -110,6 +110,8 @@
   (defun car (lst)
     (cond
       ((null lst) nil)
+      ((and (not (null lst.length)) (eq lst.length 0))
+       nil)
       ((instanceof lst *array) (aref lst 0))
       ((and (typep lst 'object)
 	    (not (null lst.length))
