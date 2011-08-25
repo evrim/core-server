@@ -103,9 +103,9 @@
 (defmacro defmethod/local (name ((self class-name) &rest args) &body body)
   (component+.local-morphism (find-class class-name) name self args body))
 
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 ;; | defmethod/remote macro: Defines a remote method
-;; +----------------------------------------------------------------------------
+;; +-------------------------------------------------------------------------
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defmethod component+.remote-morphism ((class component+) name self args body)
     (let* ((class-name (class-name class))
@@ -456,8 +456,10 @@
 						       ,(symbol-to-js dom-tag)))
 					      to-extend)
 					 'to-extend)))
-		   
+		     (setf (slot-value to-extend 'ctor)
+			   (slot-value arguments 'callee))
 		     (apply (make-method ,(funcall 'init/js class+)) to-extend null)
+		     
 		     ,(if (null (remove-methods '(_destroy) local-methods))			  
 			  `(setf (slot-value to-extend 'destroy)
 				 (compose-prog1-cc (make-method ,(funcall 'destroy/js class+))
