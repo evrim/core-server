@@ -373,7 +373,9 @@
       ;; --------------------------------------------------------------------
       `(defmethod %component! ((stream core-stream) (component ,class-name))
 	 (let ((component-instance-id (component.instance-id component))
-	       (server-session-id (session.id (context.session +context+)))
+	       (server-session-id (if +context+
+				      (session.id (context.session +context+))
+				      "unbound-session-id"))
 	       ,@(mapcar (lambda (slot)
 			   `(,(cadr slot)
 			      (component.serialize-slot component
