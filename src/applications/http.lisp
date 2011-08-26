@@ -521,7 +521,6 @@ executing 'body'"
 		(kont (lambda (req rep &optional ,@(mapcar #'car parameters))
 			(assert (not (null req)))
 			(assert (not (null rep)))
-			(setf +context+ ,context)
 			(let ((+context+ ,context))
 			  (setf (context.request +context+) req
 				(context.response +context+) rep)			
