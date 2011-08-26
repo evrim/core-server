@@ -3,7 +3,7 @@
 ;; -------------------------------------------------------------------------
 ;; Table Component (Single Select)
 ;; -------------------------------------------------------------------------
-(defcomponent <core:table (<:table)
+(defcomponent <core:table (<:table callable-component)
   ((instances :host remote :initarg :instances :initform nil)
    (primary-field :host remote :initform "name")
    (template-class :initform nil :host remote)

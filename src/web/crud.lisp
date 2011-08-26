@@ -5,7 +5,7 @@
 ;; -------------------------------------------------------------------------
 ;; Crud Component
 ;; -------------------------------------------------------------------------
-(defcomponent <core:crud (<:div)
+(defcomponent <core:crud (<:div callable-component)
   ((instance :host remote)
    (template-class :host remote)
    (title :host remote :initform "Please set crud title")
