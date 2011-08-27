@@ -144,7 +144,8 @@
 	(string! stream " }")))))
 
 (defclass jobject ()
-  ((attributes :initarg :attributes :initform nil)))
+  ((attributes :initarg :attributes :initform nil
+	       :reader jobject.attributes)))
 
 (defun jobject (&rest attributes)
   (make-instance 'jobject :attributes attributes))
@@ -189,10 +190,10 @@
 (defun class->jobject (class &optional (slots (class+.remote-slots class)))
   (apply #'jobject
 	 (reduce0 (lambda (acc slot)
-				(cons (make-keyword (slot-definition-name slot))
-				      (cons (slot->jobject slot)
-					    acc)))
-			      slots)))
+		    (cons (make-keyword (slot-definition-name slot))
+			  (cons (slot->jobject slot)
+				acc)))
+		  slots)))
 
 (defun object->jobject (object &optional (template-class nil))
   (apply #'jobject
