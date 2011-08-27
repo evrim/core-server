@@ -9,10 +9,18 @@
   ((instance :host remote)
    (template-class :host remote)
    (title :host remote :initform "Please set crud title")
+   (deletable-p :host both :initform t)
+   (editable-p :host both :initform t)
    (crud-css :host remote :initform "http://www.coretal.net/style/crud.css")
-   (on-delete :host remote :initform nil)
+   (yes-no-dialog-ctor :host remote :initform (yes-no-dialog))
    (_template :host remote)
    (_result :host remote :initform (jobject))))
+
+(defmethod/remote make-yes-no-dialog ((self <core:crud))
+  (yes-no-dialog-ctor self))
+
+(defmethod/remote get-title ((self <core:crud))
+  (slot-value self 'title))
 
 (defmethod/remote get-template-class ((self <core:crud))
   (or (slot-value self 'template-class)
@@ -97,14 +105,15 @@
 	 (<:form
 	  (mapcar-cc
 	   (lambda (slot)
-	     (with-slots (name label) slot
+	     (with-slots (name label read-only) slot	       
 	       (with-field (+ label ":") (view-me self slot))))
 	   (reverse (reverse (get-template-class self))))
-	  (<:p (<:input :type "button" :value "Edit"
-			:onclick (lifte (do-edit self)))
-	       (if (slot-value self 'on-delete)
+	  (<:p (if (editable-p self)
+		   (<:input :type "button" :value "Edit"
+			    :onclick (lifte (do-edit self))))
+	       (if (deletable-p self)
 		   (<:input :type "button" :value "Delete"
-			    :onclick (lifte (do-delete self))))))))
+			    :onclick (lifte (do-delete1 self))))))))
 
 (defmethod/remote do-cancel ((self <core:crud))
   (let ((_template (_template self)))
@@ -113,7 +122,14 @@
 
 (defmethod/remote do-save1 ((self <core:crud))
 ;;   (_debug (list "result" (_result self)))
-  (answer-component self (_result self)))
+  (answer-component self (list "update" (_result self))))
+
+(defmethod/remote do-delete1 ((self <core:crud))
+  (if (call-component (make-component (make-yes-no-dialog self)
+				      :title "delete"
+				      :message (+ "Do you really want to"
+						  " delete this item?")))
+      (answer-component self (list "delete"))))
 
 (defmethod/remote edit-template ((self <core:crud))
   (<:div :class "crud"
