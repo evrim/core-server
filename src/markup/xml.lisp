@@ -497,11 +497,10 @@
     (cond
       ((null (xml.children object))
        (string! %stream "/>"))
-      ((stringp (car (xml.children object)))
+      ((eq 1 (length (xml.children object)))
+       (stringp (car (xml.children object)))
        (char! %stream #\>)
        (write-stream stream (car (xml.children object)))
-       (reduce #'child! (cdr (xml.children object)) 
-	       :initial-value stream)
        (outro! stream object))
       (t
        (char! %stream #\>)
