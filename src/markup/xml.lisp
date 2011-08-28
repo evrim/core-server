@@ -500,6 +500,8 @@
       ((stringp (car (xml.children object)))
        (char! %stream #\>)
        (write-stream stream (car (xml.children object)))
+       (reduce #'child! (cdr (xml.children object)) 
+	       :initial-value stream)
        (outro! stream object))
       (t
        (char! %stream #\>)
