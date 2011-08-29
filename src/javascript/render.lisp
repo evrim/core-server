@@ -269,6 +269,7 @@
 (defmacro-import/js acond)
 (defmacro-import/js cond-bind)
 (defmacro-import/js if-bind)
+(defmacro-import/js prog1)
 
 ;; --------------------------------------------------------------------------
 ;; Javascript Setf Macros
