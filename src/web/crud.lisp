@@ -94,7 +94,7 @@
 
 (defmethod/remote view-me ((self <core:crud) slot)
   (let ((value (get-value self slot)))
-    (<:span (or value "Undefined"))))
+    (<:span (or value "Not set"))))
 
 (defmethod/remote do-edit ((self <core:crud))
   (let ((_template (_template self)))
