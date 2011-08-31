@@ -329,16 +329,32 @@
 ;; This around method allows us to compile constructor evertime class
 ;; definition changed.
 ;; --------------------------------------------------------------------------
+(defcomponent lazy-component ()
+  ())
+
 (defmethod/cc component! :around ((stream core-stream) (component component))
   (if  (> (slot-value (class-of component) '%timestamp)
 	  (slot-value (class-of component) '%ctor-timestamp))      
        (let ((name (class-name (class-of component))))
 	 (format *standard-output* "Compiling constructor for ~A.~%" name)
-	 (eval (component+.ctor (class-of component)))
+	 (if (typep component 'lazy-component)
+	     (eval (component+.ctor2 (class-of component)))
+	     (eval (component+.ctor (class-of component))))
 	 (setf (slot-value (class-of component) '%ctor-timestamp)
 	       (get-universal-time))
 	 (component! stream component))
        (call-next-method stream component)))
+
+(defmethod %component! ((stream core-stream) (component+ component+))
+  (if  (> (slot-value component+ '%timestamp)
+	  (slot-value component+ '%ctor-timestamp))      
+       (let ((name (class-name component+)))
+	 (format *standard-output* "Compiling constructor for ~A.~%" name)
+	 (eval (component+.ctor2 component+))
+	 (setf (slot-value component+ 'core-server::%ctor-timestamp)
+	       (get-universal-time))
+	 (%component! stream component+))
+       (%component! stream component+)))
 
 (defvar +omitted-component-slots+
   '(style onmouseup onmousemove onclick className ondblclick
@@ -376,14 +392,22 @@
 	       (server-session-id (if +context+
 				      (session.id (context.session +context+))
 				      "unbound-session-id"))
+	       (component-destroy-uri (if +context+
+					  (format nil "~Adestroy.core"
+						  (web-application.base-url
+						   (component.application component)
+						   (context.request +context+)))
+					  "TEST-COMPONENT-DESTROY.core"))
 	       ,@(mapcar (lambda (slot)
 			   `(,(cadr slot)
 			      (component.serialize-slot component
 							',(car slot))))
 			 remote-slots))
 	   (declare (ignorable component-instance-id server-session-id
+			       component-destroy-uri
 			       ,@(mapcar #'cadr remote-slots)))
 	   (with-js (component-instance-id server-session-id
+					   component-destroy-uri
 					   ,@(mapcar #'cadr remote-slots))
 	       stream
 	     ;; -------------------------------------------------------------
@@ -474,6 +498,217 @@
 		 
 		     to-extend))))))))))
 
+(defmethod component+.ctor2 ((component component+))
+  (labels ((remove-methods (names methods)
+	     (if (null names)
+		 methods
+		 (remove-methods (cdr names)
+				 (remove (car names) methods :key #'car)))))
+    (let* ((class-name (class-name component))
+	   (class+-name (class-name (class-of component)))
+	   (class+ (find-class+ class-name))	 	 
+	   (local-methods (remove '_destroy (class+.local-methods class+)
+				  :key #'car))
+	   (remote-slots (mapcar (lambda (slot)
+				   (with-slotdef (name reader initarg) slot
+				     (list name
+					   (intern (symbol-name (gensym)))
+					   reader
+					   (intern (symbol-name initarg)))))
+				 (class+.remote-slots class+)))
+	   (dom-tag (any #'xml+.tag
+			 (reverse
+			  (filter (lambda (class)
+				    (if (typep class 'xml+) class))
+				  (cdr (class+.superclasses class+)))))))
+    
+      ;; --------------------------------------------------------------------
+      ;; Component Internal Render Method 
+      ;; --------------------------------------------------------------------
+      `(progn
+	 (defmethod %component! ((stream core-stream) (component ,class-name))
+	   (let ((component-instance-id (component.instance-id component))
+		 (server-session-id (if +context+
+					(session.id (context.session +context+))
+					"unbound-session-id"))
+		 (class-name (string (class-name (class-of component))))
+		 (component-loader-uri (if +context+
+					   (format nil "~Acomponent.core"
+						   (web-application.base-url
+						    (component.application component)
+						    (context.request +context+)))
+					   "TEST-COMPONENT-LOADER.core"))
+		 (component-destroy-uri (if +context+
+					    (format nil "~Adestroy.core"
+						    (web-application.base-url
+						     (component.application component)
+						     (context.request +context+)))
+					    "TEST-COMPONENT-DESTROY.core"))
+		 ,@(mapcar (lambda (slot)
+			     `(,(cadr slot)
+				(component.serialize-slot component
+							  ',(car slot))))
+			   remote-slots))
+	     (declare (ignorable component-instance-id server-session-id
+				 component-destroy-uri component-loader-uri
+				 ,@(mapcar #'cadr remote-slots)))
+	     (with-js (component-instance-id server-session-id class-name
+					     component-destroy-uri
+					     component-loader-uri
+					     ,@(mapcar #'cadr remote-slots))
+		 stream
+	       ;; -------------------------------------------------------------
+	       ;; Constructor
+	       ;; -------------------------------------------------------------
+	       (with-call/cc
+		 (lambda (to-extend)
+		   (let ((to-extend (or to-extend (new (*object))))
+			 (slots
+			  (jobject
+			   ;; ----------------------------------------------------------------------------
+			   ;; Remote Slot Initial Values
+			   ;; ----------------------------------------------------------------------------
+			   ,@(reduce0 (lambda (acc slot)
+					(cond
+					  ((eq (car slot) 'class)
+					   (cons :class-name (cons (cadr slot) acc)))
+					  ((member (car slot) +omitted-component-slots+)
+					   acc)
+					  (t
+					   (cons (make-keyword (car slot)) (cons (cadr slot) acc)))))
+				      remote-slots)))
+			 (methods
+			  (jobject
+			   ;; ----------------------------------------------------------------------------
+			   ;; Local Methods
+			   ;; ----------------------------------------------------------------------------
+			   ,@(reduce0 (lambda (acc method)
+					(let* ((name (car method))
+					       (proxy (component+.morphism-function-name class+ name)))
+					  (cons (make-keyword name)
+						(cons (funcall proxy class+) acc))))
+				      (remove-methods '(_destroy) local-methods)))))
+
+		     		     
+		     ;; -------------------------------------------------------------------------
+		     ;; Inject Methods to Instance
+		     ;; -------------------------------------------------------------------------
+		     (extend methods to-extend)
+
+		     ;; -------------------------------------------------------------------------
+		     ;; Inject Default Values Differentially
+		     ;; -------------------------------------------------------------------------
+		     (mapobject (lambda (k v)
+				  (if (or (and (not (null v))
+					       (or (eq "" (slot-value to-extend k))
+						   (null (slot-value to-extend k))
+						   (eq "undefined" (slot-value to-extend k))))
+					  (eq "undefined" (typeof (slot-value to-extend k))))
+				      (setf (slot-value to-extend k) v)))
+				slots)
+
+		     ,(if local-methods
+		     	  `(setf (slot-value to-extend '_destroy)
+		     		 (make-method ,(funcall '_destroy/js class+))))
+		     
+		     (with-slots (component-cache) window		       
+		       (aif (slot-value component-cache class-name)
+			    (call/cc it to-extend)
+			    (let ((ctor (funcall-cc
+					 (+ component-loader-uri
+					    "?s:" server-session-id
+					    "$component:" (encode-u-r-i-component class-name) "$")
+					 (jobject))))
+			      (setf (slot-value component-cache class-name) ctor)
+			      (apply ctor to-extend (list to-extend)))))))))))
+	 
+	 (defmethod %component! ((stream core-stream) (component ,class+-name))
+	   (let ((component-instance-id "unbound-instance-id")
+		 (server-session-id (if +context+
+					(session.id (context.session +context+))
+					"unbound-session-id")))
+	     (declare (ignorable component-instance-id server-session-id))
+	     (with-js (component-instance-id server-session-id)
+		 stream
+	       ;; -------------------------------------------------------------
+	       ;; Constructor
+	       ;; -------------------------------------------------------------
+	       (with-call/cc
+		 (lambda (to-extend)
+		   (let ((to-extend (or to-extend (new (*object))))
+			 (methods
+			  (jobject
+			   ;; ----------------------------------------------------------------------------
+			   ;; Remote Methods
+			   ;; ----------------------------------------------------------------------------
+			   ,@(reduce0 (lambda (acc method)
+					(let* ((name (car method))
+					       (proxy (component+.morphism-function-name class+ name)))
+					  (cons (make-keyword name)
+						(cons `(make-method ,(funcall proxy class+)) acc))))
+				      (if (null local-methods)
+					  (remove-methods '(funkall destroy _destroy init)
+							  (class+.remote-methods class+))
+					  (remove-methods '(destroy _destroy init)
+							  (class+.remote-methods class+)))))))
+		     		     
+		     ;; -------------------------------------------------------------------------
+		     ;; Inject Methods to Instance
+		     ;; -------------------------------------------------------------------------
+		     (extend methods to-extend)
+		     (setf (slot-value to-extend 'destroy)
+			   (compose-prog1-cc (make-method ,(funcall 'destroy/js class+))
+					     (slot-value to-extend 'destroy)))
+		     
+
+		     (let ((to-extend ,(if dom-tag
+					   `(if (null (slot-value to-extend 'node-name))
+						(extend to-extend
+							(document.create-element
+							 ,(symbol-to-js dom-tag)))
+						to-extend)
+					   'to-extend)))
+		       (setf (slot-value to-extend 'ctor) (slot-value arguments 'callee))
+		       (apply (make-method ,(funcall 'init/js class+)) to-extend null)		     		       
+		       to-extend)))))))))))
+
+;; -------------------------------------------------------------------------
+;; Component Loader
+;; -------------------------------------------------------------------------
+(defun find-component (component)
+  (find (string-upcase component)
+	(class+.subclasses (find-class 'component))
+	:key #'class-name :test #'string=))
+
+(defhandler "component.core" ((self http-application) (component "component")
+			      (hash "__hash"))
+  (let ((class (find-component component)))
+    (assert (not (null hash)))
+    (javascript/suspend
+     (lambda (stream)
+       ;; (apply (slot-value window hash) window
+       ;; 	      (list (lambda (self) component)))
+       (string! stream
+		"apply(window[\"")
+       (string! stream (json-deserialize hash))
+       (string! stream "\"], window, [")
+       (if class
+	   (%component! stream class)
+	   (string! stream "null"))
+       (string! stream "], window.k);")))))
+
+
+
+(defhandler "destroy.core" ((self http-application) (objects "objects")
+			    (hash "__hash"))
+  (mapcar (lambda (object) (context.remove-action +context+ object))
+	  (ensure-list (json-deserialize objects)))
+  (javascript/suspend
+   (lambda (stream)
+     (string! stream "apply(window[\"")
+     (string! stream (json-deserialize hash))
+     (string! stream "\"], window, [null],window.k);"))))
+
 ;; --------------------------------------------------------------------------
 ;; Default Funkall Method for Components
 ;; --------------------------------------------------------------------------
@@ -488,10 +723,15 @@
     	retval)))
 
 (defmethod/remote init ((self component)) self)
-(defmethod/local _destroy ((self component))
-  ;; (describe (list '_destroy self))
-  (context.remove-action +context+ (component.instance-id self))
+(defmethod/remote _destroy ((self component))
+  (add-to-gc (lambda ()
+	       (list (+ component-destroy-uri "?s:" server-session-id)
+		     component-instance-id)))
   t)
+
+(defmethod/remote client-destroy ((self component))
+  (setf (slot-value self '_destroy) (lambda () this))
+  (destroy self))
 
 (defmethod/remote destroy ((self component))
   (let ((__destroy (slot-value self '_destroy)))
@@ -604,17 +844,6 @@
   (with-call/cc
     (component! stream component)))
 
-(defun find-component (name)
-  (car
-   (find name
-	 (mapcar #'cons
-		 (class-subclasses (find-class 'component))
-		 (mapcar (compose #'symbol-to-js #'class-name)
-			 (class-subclasses (find-class 'component))))
-	 :test #'string=
-	 :key #'cdr)))
-
-
 ;; -------------------------------------------------------------------------
 ;; Callable Component
 ;; -------------------------------------------------------------------------
@@ -674,3 +903,133 @@
 (defmethod/remote init ((self singleton-component-mixin))
   (call-next-method self))
 
+
+
+;; (defmethod component+.ctor ((component component+))
+;;   (labels ((remove-methods (names methods)
+;; 	     (if (null names)
+;; 		 methods
+;; 		 (remove-methods (cdr names)
+;; 				 (remove (car names) methods :key #'car)))))
+;;     (let* ((class-name (class-name component))
+;; 	   (class+ (find-class+ class-name))	 	 
+;; 	   (local-methods (remove '_destroy (class+.local-methods class+)
+;; 				  :key #'car))
+;; 	   (remote-slots (mapcar (lambda (slot)
+;; 				   (with-slotdef (name reader initarg) slot
+;; 				     (list name
+;; 					   (intern (symbol-name (gensym)))
+;; 					   reader
+;; 					   (intern (symbol-name initarg)))))
+;; 				 (class+.remote-slots class+)))
+;; 	   (dom-tag (any #'xml+.tag
+;; 			 (reverse
+;; 			  (filter (lambda (class)
+;; 				    (if (typep class 'xml+) class))
+;; 				  (cdr (class+.superclasses class+)))))))
+    
+;;       ;; --------------------------------------------------------------------
+;;       ;; Component Internal Render Method 
+;;       ;; --------------------------------------------------------------------
+;;       `(defmethod %component! ((stream core-stream) (component ,class-name))
+;; 	 (let ((component-instance-id (component.instance-id component))
+;; 	       (server-session-id (if +context+
+;; 				      (session.id (context.session +context+))
+;; 				      "unbound-session-id"))
+;; 	       ,@(mapcar (lambda (slot)
+;; 			   `(,(cadr slot)
+;; 			      (component.serialize-slot component
+;; 							',(car slot))))
+;; 			 remote-slots))
+;; 	   (declare (ignorable component-instance-id server-session-id
+;; 			       ,@(mapcar #'cadr remote-slots)))
+;; 	   (with-js (component-instance-id server-session-id
+;; 					   ,@(mapcar #'cadr remote-slots))
+;; 	       stream
+;; 	     ;; -------------------------------------------------------------
+;; 	     ;; Constructor
+;; 	     ;; -------------------------------------------------------------
+;; 	     (with-call/cc
+;; 	       (lambda (to-extend)
+;; 		 (let ((to-extend (or to-extend (new (*object))))
+;; 		       (slots
+;; 			(jobject
+;; 			 ;; ----------------------------------------------------------------------------
+;; 			 ;; Remote Slot Initial Values
+;; 			 ;; ----------------------------------------------------------------------------
+;; 			 ,@(reduce0 (lambda (acc slot)
+;; 				      (cond
+;; 					((eq (car slot) 'class)
+;; 					 (cons :class-name (cons (cadr slot) acc)))
+;; 					((member (car slot) +omitted-component-slots+)
+;; 					 acc)
+;; 					(t
+;; 					 (cons (make-keyword (car slot)) (cons (cadr slot) acc)))))
+;; 				    remote-slots)))
+;; 		       (methods
+;; 			(jobject
+;; 			 ;; ----------------------------------------------------------------------------
+;; 			 ;; Remote Methods
+;; 			 ;; ----------------------------------------------------------------------------
+;; 			 ,@(reduce0 (lambda (acc method)
+;; 				      (let* ((name (car method))
+;; 					     (proxy (component+.morphism-function-name class+ name)))
+;; 					(cons (make-keyword name)
+;; 					      (cons `(make-method ,(funcall proxy class+)) acc))))
+;; 				    (if (null local-methods)
+;; 					(remove-methods '(funkall destroy init)
+;; 							(class+.remote-methods class+))
+;; 					(remove-methods '(destroy init)
+;; 							(class+.remote-methods class+))))
+
+		       
+;; 			 ;; ----------------------------------------------------------------------------
+;; 			 ;; Local Methods
+;; 			 ;; ----------------------------------------------------------------------------
+;; 			 ,@(reduce0 (lambda (acc method)
+;; 				      (let* ((name (car method))
+;; 					     (proxy (component+.morphism-function-name class+ name)))
+;; 					(cons (make-keyword name)
+;; 					      (cons (funcall proxy class+) acc))))
+;; 				    (remove-methods '(_destroy) local-methods)))))
+
+		     		     
+;; 		   ;; -------------------------------------------------------------------------
+;; 		   ;; Inject Methods to Instance
+;; 		   ;; -------------------------------------------------------------------------
+;; 		   (extend methods to-extend)
+
+;; 		   ;; -------------------------------------------------------------------------
+;; 		   ;; Inject Default Values Differentially
+;; 		   ;; -------------------------------------------------------------------------
+;; 		   (mapobject (lambda (k v)
+;; 				(if (or (and (not (null v))
+;; 					     (or (eq "" (slot-value to-extend k))
+;; 						 (null (slot-value to-extend k))
+;; 						 (eq "undefined" (slot-value to-extend k))))
+;; 					(eq "undefined" (typeof (slot-value to-extend k))))
+;; 				    (setf (slot-value to-extend k) v)))
+;; 			      slots)
+
+;; 		   (let ((to-extend ,(if dom-tag
+;; 					 `(if (null (slot-value to-extend 'node-name))
+;; 					      (extend to-extend
+;; 						      (document.create-element
+;; 						       ,(symbol-to-js dom-tag)))
+;; 					      to-extend)
+;; 					 'to-extend)))
+;; 		     (setf (slot-value to-extend 'ctor)
+;; 			   (slot-value arguments 'callee))
+;; 		     (apply (make-method ,(funcall 'init/js class+)) to-extend null)
+		     
+;; 		     ,(if (null (remove-methods '(_destroy) local-methods))			  
+;; 			  `(setf (slot-value to-extend 'destroy)
+;; 				 (compose-prog1-cc (make-method ,(funcall 'destroy/js class+))
+;; 						   (slot-value to-extend 'destroy)))
+;; 			  `(setf (slot-value to-extend 'destroy)
+;; 				 (compose-prog1-cc (make-method ,(funcall 'destroy/js class+))
+;; 						   (slot-value to-extend 'destroy))
+;; 				 (slot-value to-extend '_destroy)
+;; 				 (make-method ,(funcall '_destroy/js class+))))
+		 
+;; 		     to-extend))))))))))
