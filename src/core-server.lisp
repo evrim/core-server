@@ -63,7 +63,8 @@
   (:nicknames :core-server)
   (:use :common-lisp ;; :cl-prevalence
 	:arnesi :cl-ppcre
-	:sb-bsd-sockets :tr.gen.core.install :bordeaux-threads :cffi)
+	:sb-bsd-sockets :tr.gen.core.install :bordeaux-threads :cffi
+	:salza2)
   (:shadowing-import-from #:swank #:send #:receive #:accept-connection)
   (:shadowing-import-from #:arnesi #:name #:body #:self #:new)
 ;;   (:import-from #:cl-prevalence #:get-directory)
