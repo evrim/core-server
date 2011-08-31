@@ -511,9 +511,7 @@
 	    (args (if (null args) (jobject) args)))
 	(setf (slot-value args (or callback-name "__hash")) hash)
 	(let* ((a (serialize-to-uri args))
-	       (script (make-dom-element "script"
-					 (jobject :src (+ "" action a))
-					 nil))
+	       (script (make-dom-element "script" (jobject) nil))
 	      (head (aref (.get-elements-by-tag-name document "HEAD") 0))
 	      (body (slot-value document 'body)))
 	  (cond
@@ -528,6 +526,7 @@
 		     (current-continuation val)))
 	     (if body (append body img))
 	     (append head script)
+	     (setf (slot-value script 'src) (+ "" action a))
 	     (suspend)))))))
 
   (defun/cc funcall-cc (action args)
@@ -812,7 +811,22 @@
     (f arg1 f)
     (suspend))
 
-  (setf (slot-value window 'core-server-library-loaded-p) t))
+  (defvar *gc* (jobject))
+
+  (defun/cc gc ()
+    (mapobject (lambda (url destroy-list)
+		 (funcall-cc (+ url "$") (jobject :objects destroy-list))
+		 (delete (slot-value *gc* url)))
+	       *gc*))
+
+  (set-interval (lambda () (gc window.k)) 5000)
+  
+  (defun/cc add-to-gc (fun)
+    (destructuring-bind (url id) (call/cc fun)
+      (setf (slot-value *gc* url) (cons id (slot-value *gc* url)))))
+  
+  (setf (slot-value window 'core-server-library-loaded-p) t
+	(slot-value window 'component-cache) (jobject)))
 
 (eval-when (:compile-toplevel :execute :load-toplevel)
   (setf (gethash 'make-component +javascript-cps-functions+) t
