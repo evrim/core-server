@@ -1017,7 +1017,10 @@
    #:load-jquery-slider/js
    #:load-jquery-text-effects
    #:load-jquery-text-effects/js
-
+   #:supply-jquery-tree
+   #:load-jquery-tree
+   #:load-jquery-tree/js
+   
    [Picasa]
    #:supply-picasa
    #:get-albums
@@ -1125,6 +1128,8 @@
    #:+jquery-newsticker-uri+
    #:+jquery-slider-uri+
    #:+jquery-slider-css+
+   #:+jquery-tree-uri+
+   #:+jquery-cookie-uri+
    #:+ckeditor-toolbar+
    #:+ckeditor-config+
    #:+ckeditor-uri+

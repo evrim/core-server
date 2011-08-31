@@ -92,6 +92,22 @@
   (load-javascript (text-effects-uri self)
 		   (lambda () (not (null j-query.fn.unscramble)))))
 
+;; -------------------------------------------------------------------------
+;; Supply Jquery Tree
+;; -------------------------------------------------------------------------
+;; https://github.com/pioz/jquery-tree
+(defcomponent supply-jquery-tree (supply-jquery)
+  ((tree-uri :host remote :initform +jquery-tree-uri+)
+   (cookie-uri :host remote :initform +jquery-cookie-uri+)))
+
+(defmethod/remote load-jquery-tree ((self supply-jquery-tree))
+  (load-jquery self)
+  (load-javascript (cookie-uri self)
+		   (lambda () (not (null j-query.cookie))))
+  (load-javascript (tree-uri self)
+		   (lambda () (not (null j-query.fn.tree)))))
+
+
 ;; ;; +----------------------------------------------------------------------------
 ;; ;; | Jquery Extension
 ;; ;; +----------------------------------------------------------------------------

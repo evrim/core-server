@@ -118,6 +118,9 @@
 (defvar +jquery-slider-css+ "/js/slider/slider.css")
 (defvar +jquery-text-effects-uri+ "/js/slider/jquery.text-effects.js")
 
+(defvar +jquery-tree-uri+ "/js/jquery-tree/jquery.tree.js")
+(defvar +jquery-cookie-uri+ "/js/jquery-tree/jquery.cookie.js")
+
 ;; -------------------------------------------------------------------------
 ;; Picasa Variables
 ;; -------------------------------------------------------------------------
