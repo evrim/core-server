@@ -139,7 +139,7 @@
 (defhtml-tag <:em :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:fieldset :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:form :core :event :i18n action accept-charset enctype method
-	     name onreset onsubmit target onmouseover onmouseout)
+	     name onreset onsubmit submit target onmouseover onmouseout)
 (defhtml-empty-tag <:frame :core frameborder longdesc marginheight marginwidth noresize scrolling src)
 (defhtml-tag <:frameset :core cols onload olunload rows)
 (defhtml-tag <:h1 :core :event :i18n onmouseover onmouseout)

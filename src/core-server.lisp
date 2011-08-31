@@ -1124,7 +1124,12 @@
    #:+jquery-nested-sortable-uri+
    #:+jquery-newsticker-uri+
    #:+jquery-slider-uri+
-   #:+jquery-slider-css+))
+   #:+jquery-slider-css+
+   #:+ckeditor-toolbar+
+   #:+ckeditor-config+
+   #:+ckeditor-uri+
+   #:+ckeditor-source-uri+
+   #:+ckeditor-css+))
 
 (defpackage :tr.gen.core.server.io
   (:nicknames :io)
@@ -1156,7 +1161,7 @@
 	   #:domain-input #:email-input #:password-input
 	   #:required-value-input #:number-value-input
 	   #:username-input #:tab #:crud
-	   #:auth #:core))
+	   #:auth #:core #:ckeditor))
 
 (defpackage :tr.gen.core.server.atom
   (:nicknames :<atom)

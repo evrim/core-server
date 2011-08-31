@@ -3,7 +3,7 @@
 ;; +-------------------------------------------------------------------------
 (in-package :core-server)
 
-(defparameter *ck-toolbar*
+(defvar +ckeditor-toolbar+
   (list
    (list "Source" "-" "Save" "NewPage" "Preview" "-" "Templates" )
    (list "Cut" "Copy" "Paste" "PasteText" "PasteFromWord" "-" "Print"
@@ -25,12 +25,47 @@
    (list "TextColor" "BGColor")
    (list "Maximize" "ShowBlocks" "-" "About")))
 
-(defparameter *ck-config*
-  (jobject
-   :base-path "http://www.coretal.net/js/ckeditor/"
-   :extra-plugins "autogrow,mediaembed"
-   :remove-plugins "maximize,resize"
-   :toolbar *ck-toolbar*))
+(defparameter +ckeditor-config+
+  (jobject :base-path "/js/ckeditor/"
+	   :extra-plugins "autogrow,mediaembed"
+	   :remove-plugins "maximize,resize"
+	   :toolbar +ckeditor-toolbar+))
+
+(defvar +ckeditor-uri+ "/js/ckeditor/ckeditor.js")
+(defvar +ckeditor-source-uri+ "/js/ckeditor/ckeditor_source.js")
+(defvar +ckeditor-css+ "/style/ckeditor.css")
+
+;; -------------------------------------------------------------------------
+;; Ck Editor Form Field
+;; -------------------------------------------------------------------------
+(defcomponent <core:ckeditor (<:textarea)
+  ((ckeditor-uri :host remote :initform +ckeditor-uri+)
+   (ckeditor-css :host remote :initform +ckeditor-css+)
+   (config :host remote :initform +ckeditor-config+)
+   (instance :host remote)))
+
+(defmethod/remote get-input-value ((self <core:ckeditor))
+  (let* ((instance (instance self))
+	 (_foo (event () (.get-data instance))))
+    (_foo)))
+
+(defmethod/remote destroy ((self <core:ckeditor))
+  (remove-css (ckeditor-css self))
+  (let* ((instance (instance self))
+	 (_foo (event () (.destroy instance))))
+    (_foo))
+    
+  (delete-slots self 'ckeditor-uri 'ckeditor-css 'config 'instance)
+  (call-next-method self))
+
+(defmethod/remote init ((self <core:ckeditor))
+  (load-css (ckeditor-css self))
+  (load-javascript (ckeditor-uri self)
+   (lambda ()
+     (and (not (null -c-k-e-d-i-t-o-r))
+	  (not (null (slot-value -c-k-e-d-i-t-o-r 'replace))))))
+  (setf (instance self) (-c-k-e-d-i-t-o-r.replace self (config self)))
+  (call-next-method self))
 
 ;; --------------------------------------------------------------------------
 ;; Ck Editor
@@ -38,7 +73,9 @@
 (defcomponent ckeditor-component (callable-component)
   ((instance :host remote)
    (target :host remote)
-   (config :host remote :initform *ck-config*)))
+   (ckeditor-uri :host remote :initform +ckeditor-uri+)
+   (ckeditor-css :host remote :initform +ckeditor-css+)
+   (config :host remote :initform +ckeditor-config+)))
 
 (defmethod/remote get-data ((self ckeditor-component))
   (let* ((instance (instance self))
@@ -70,12 +107,8 @@
     (call-next-method self)))
 
 (defmethod/remote init ((self ckeditor-component))
-  (load-css "http://www.coretal.net/style/ckeditor.css")
-;;   (load-javascript "http://www.coretal.net/js/ckeditor/ckeditor_source.js"
-;;    (lambda ()
-;;      (and (not (null -c-k-e-d-i-t-o-r))
-;; 	  (not (null (slot-value -c-k-e-d-i-t-o-r 'replace))))))
-  (load-javascript "http://www.coretal.net/js/ckeditor/ckeditor.js"
+  (load-css (ckeditor-css self))
+  (load-javascript (ckeditor-uri self)
    (lambda ()
      (and (not (null -c-k-e-d-i-t-o-r))
 	  (not (null (slot-value -c-k-e-d-i-t-o-r 'replace)))))))
