@@ -585,7 +585,9 @@
     (pathname (make-instance 'core-file-input-stream :file target))
     (array (make-instance 'core-vector-io-stream :octets target))
     (sb-sys::fd-stream (make-instance 'core-fd-io-stream :stream target))
-#+ssl (cl+ssl::ssl-stream (make-instance 'core-fd-io-stream :stream target)) 
+    (gzip-stream::gzip-output-stream
+     (make-instance 'core-fd-io-stream :stream target))
+#+ssl (cl+ssl::ssl-stream (make-instance 'core-fd-io-stream :stream target))
     (list (make-instance 'core-list-io-stream :list target))
     (standard-object (make-instance 'core-object-io-stream :object target))))
 

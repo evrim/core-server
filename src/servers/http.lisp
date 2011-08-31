@@ -88,6 +88,17 @@ nil if stream data is invalid"
 		(http-request.peer-type request) peer-type)
 	  request))))
 
+
+(defmethod/cc2 render-404 ((server http-server) (request http-request) (response http-response))
+  (setf (http-response.status-code response) (make-status-code 404))
+  (rewind-stream (http-response.stream response))
+  (checkpoint-stream (http-response.stream response))
+  (with-html-output (http-response.stream response)
+    (<:html
+     (<:body
+      "Core-serveR - URL Not Found")))
+  response)
+
 (defun make-response (&optional (stream (make-core-stream "")))
   "Returns an empty HTTP Response object"
   (let ((response (make-instance 'http-response :stream stream)))
@@ -101,50 +112,40 @@ nil if stream data is invalid"
 	  (list (cons 'server  "Core-serveR - www.core.gen.tr")))
     response))
 
-(defmethod/cc2 render-404 ((server http-server) (request http-request) (response http-response))
-  (setf (http-response.status-code response) (make-status-code 404))
-  (rewind-stream (http-response.stream response))
-  (checkpoint-stream (http-response.stream response))
-  (with-html-output (http-response.stream response)
-    (<:html
-     (<:body
-      "Core-serveR - URL Not Found")))
-  response)
-
 (defmethod/cc2 eval-request ((server http-server) (request http-request))
-  (let ((response (make-response ;; (http-request.stream request)
-				 ;; (make-core-stream (slot-value (http-request.stream request) '%stream))
-				 ))
-	(host (caadr (assoc 'HOST (http-request.headers request))))
-	(app-name (caar (uri.paths (http-request.uri request)))))
+  (let* ((stream (http-request.stream request))
+	 (response (make-response (make-core-stream
+				   (slot-value stream '%stream))))
+	 (host (caadr (assoc 'HOST (http-request.headers request))))
+	 (app-name (caar (uri.paths (http-request.uri request)))))
 
     (checkpoint-stream (http-response.stream response))
-    
-    (cond
-      ;; dispatch by app-name like http://servername/app-fqdn/js.core
-      ((any #'(lambda (app)
-		(when (string= app-name (web-application.fqdn app)) 
-		  (pop (uri.paths (http-request.uri request)))
-		  (dispatch app request response)))
-	    (server.applications server))
-       response)
-      ;; dispatch by hostname like http://servername/js.core
-      ((and (stringp host)
-	    (any #'(lambda (app)
-		     (when (string= host (web-application.fqdn app)) 
-		       (dispatch app request response)))
-		 (server.applications server)))
-       response)
-      ((and (slot-value server 'root-application)
-	    (dispatch (slot-value server 'root-application)
-		      request response))
-       response)
-      ;; catch-all via 404
-      (t
-       (progn
-	 (log-me server 'eval-request
-		 (format nil "request uri: ~A" (http-request.uri request)))
-	 (render-404 server request response))))))
+    (prog1
+	(cond
+	  ;; dispatch by app-name like http://servername/app-fqdn/js.core
+	  ((any #'(lambda (app)
+		    (when (string= app-name (web-application.fqdn app)) 
+		      (pop (uri.paths (http-request.uri request)))
+		      (dispatch app request response)))
+		(server.applications server))
+	   response)
+	  ;; dispatch by hostname like http://servername/js.core
+	  ((and (stringp host)
+		(any #'(lambda (app)
+			 (when (string= host (web-application.fqdn app)) 
+			   (dispatch app request response)))
+		     (server.applications server)))
+	   response)
+	  ((and (slot-value server 'root-application)
+		(dispatch (slot-value server 'root-application)
+			  request response))
+	   response)
+	  ;; catch-all via 404
+	  (t
+	   (progn
+	     (log-me server 'eval-request
+		     (format nil "request uri: ~A" (http-request.uri request)))
+	     (render-404 server request response)))))))
 
 (defmethod/cc2 render-error ((self http-server) stream)
   "Renders a generic server error response to 'stream'"
@@ -158,40 +159,59 @@ nil if stream data is invalid"
 
 (defmethod/cc2 render-response ((self http-server) response request)
   "Renders HTTP/Mod-Lisp 'response' to 'stream'"
-  (let ((content-length (length (slot-value (http-response.stream response) '%buffer)))
-	(stream (http-request.stream request)))
-    (http-response.add-entity-header response 'content-length content-length)
-
-    (cond
-      ((eq 'mod-lisp (http-request.peer-type request))
-       ;; Renders Mod-Lisp HTTP 'response' to 'stream'
-       (mod-lisp-response-headers! stream response)
-       (string! stream "end")
-       (char! stream #\Newline))
-      (t
-       ;; Renders RFC 2616 HTTP 'response' to 'stream'
-       (http-response-headers! stream response)
-       (char! stream #\Newline)
-       ))
-    
-    ;;     (describe stream)
-    ;;     (commit-stream stream)
-    ;;     (if (not (eq 'head (http-request.method request)))
-    ;; 	(commit-stream (http-response.stream response)))
-    ;;     (write-stream stream "HTTP/1.1 200 OK
-    ;; DATE: Thu, 30 Nov 2008 17:58:12 GMT
-    ;; CONNECTION: keep-alive
-    ;; SERVER: Core-serveR - www.core.gen.tr
-    ;; CONTENT-LENGTH: 5192
-    ;; CONTENT-TYPE: text/html
-
-    ;; ")
-    ;;     (write-stream stream *5k*)
-    (when (not (eq 'head (http-request.method request)))
-      (write-stream stream (slot-value (http-response.stream response) '%buffer)))
-    ;; (describe stream)
-    ))
-
+  (let ((accept-encoding (http-request.header request 'accept-encoding))
+	(stream (http-response.stream response)))
+    (assert (eq 0 (current-checkpoint stream)))
+    (flet ((write-headers ()
+	     (let ((header-stream
+		    (make-core-stream
+		     (slot-value (http-request.stream request) '%stream))))
+	       (checkpoint-stream header-stream)
+	       (cond
+		 ((eq 'mod-lisp (http-request.peer-type request))
+		  ;; Renders Mod-Lisp HTTP 'response' to 'stream'
+		  (mod-lisp-response-headers! header-stream response)
+		  (string! stream "end"))
+		 (t
+		  ;; Renders RFC 2616 HTTP 'response' to 'stream'
+		  (http-response-headers! header-stream response)))
+	       (char! header-stream #\Newline)
+	       (commit-stream header-stream))))
+      
+      
+      (cond
+	((member "gzip" accept-encoding :key #'car :test #'string=)
+	 (let* ((content (slot-value stream '%write-buffer))
+		(content-length (length content)))
+	   (rewind-stream stream)
+	   (labels ((do-finish ()
+		      (let ((content-length (length (slot-value stream '%write-buffer))))
+			(http-response.add-entity-header response 'content-length
+							 content-length))		      
+		      (http-response.add-entity-header response 'content-encoding 'gzip)
+		      (write-headers)
+		      (commit-stream stream))
+		    (callback (stream)
+		      (lambda (buffer end)
+			(cond
+			  ((< end (length buffer))
+			    (write-stream stream (subseq buffer 0 end))
+			   (do-finish))
+			  (t
+			   (write-stream stream buffer))))))
+	     (with-compressor (compressor 'gzip-compressor :callback (callback stream))
+	       (checkpoint-stream stream)
+	       (compress-octet-vector (make-array content-length
+						  :initial-contents content 
+						  :element-type '(unsigned-byte 8))
+				      compressor)))))
+	(t
+	 (http-response.add-entity-header response 'content-length
+					  (length
+					   (slot-value stream '%write-buffer)))
+	 (write-headers)
+	 (commit-stream stream))))))
+      
 
 ;;--------------------------------------------------------------------------
 ;; Server Protocol Implementation
@@ -256,9 +276,13 @@ evaulates to a HTTP response. Its' server is an instance of http-server"))
       (let ((request (parse-request (peer.server peer) stream)))
 	(if request
 	    (let ((response (eval-request (peer.server peer) request)))
-	      (if response
-		  (render-response (peer.server peer) response request))))
-	(close-stream stream)))))
+	      (cond
+		(response
+		 (render-response (peer.server peer) response request)
+		 (close-stream (http-response.stream response)))
+		(t
+		 (close-stream stream))))
+	    (close-stream stream))))))
 
 ;; (defclass http-cps-unit (local-unit peer)
 ;;   ((%max-events :initarg :max-events :initform 100)
@@ -456,3 +480,38 @@ evaulates to a HTTP response. Its' server is an instance of http-server"))
 ;;; 				  (mime.data mime) :initial-value stream))))
 ;;; 		  (http-message.entities request))
 	  ;;	  (describe (mime-part.data (nth 3 (http-message.entities request))))
+
+
+      
+;; )
+;;     (describe (list 'pos
+;; 		    (sb-impl::fd-stream-get-file-position
+;; 		     (slot-value (http-request.stream request)
+;; 				 '%stream))
+;; 		    (slot-value (http-request.stream request)
+;; 				'%stream)))
+    
+;;     ;; (commit-stream stream)
+;;     (describe (list 'pos
+;; 		    (sb-impl::fd-stream-get-file-position
+;; 		     (slot-value (http-request.stream request)
+;; 				  '%stream))))
+;;     ;;     (describe stream)
+;;     ;;     (commit-stream stream)
+;;     ;;     (if (not (eq 'head (http-request.method request)))
+;;     ;; 	(commit-stream (http-response.stream response)))
+;;     ;;     (write-stream stream "HTTP/1.1 200 OK
+;;     ;; DATE: Thu, 30 Nov 2008 17:58:12 GMT
+;;     ;; CONNECTION: keep-alive
+;;     ;; SERVER: Core-serveR - www.core.gen.tr
+;;     ;; CONTENT-LENGTH: 5192
+;;     ;; CONTENT-TYPE: text/html
+
+;;     ;; ")
+;;     ;;     (write-stream stream *5k*)
+;;     ;; (when (not (eq 'head (http-request.method request)))
+;;     ;;   (commit-stream stream)
+;;     ;;   ;; (write-stream stream (slot-value (http-response.stream response) '%buffer))
+;;     ;;   )
+;;     ;; (describe stream)
+;;     ))
