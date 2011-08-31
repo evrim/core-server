@@ -563,6 +563,7 @@
    #:web-application.fqdn
    #:web-application.admin-email
    #:web-application.serve-url
+   #:web-application.base-url
    ;; API
    #:start
    #:stop
