@@ -683,10 +683,11 @@ provide query parameters inside URL as key=value"
 	 (paths (uri.paths uri))
 	 (stream (make-core-stream "")))
     (write-stream stream (json-deserialize action))
-    (labels ((commit (hash)
-	       (let* ((uri-full (uri? (make-core-stream (return-stream stream))))
-		      (req (context.request +context+))
-		      (rep (context.response +context+))
+    (labels ((commit (hash context)
+	       (let* ((uri-full (uri?
+				 (make-core-stream (return-stream stream))))
+		      (req (context.request context))
+		      (rep (context.response context))
 		      (current-uri (http-request.uri req)))
 
 		 (setf (uri.paths current-uri)
@@ -707,7 +708,7 @@ provide query parameters inside URL as key=value"
 				      (hash "__hash"))
 			   (context.remove-current-action +context+)
 			   (cond
-			     (commit (commit hash))
+			     (commit (commit hash +context+))
 			     (t
 			      (write-stream stream (subseq data 1 (- (length data) 1)))
 			      (multipart-action (json-deserialize hash)))))))
