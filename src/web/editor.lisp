@@ -5,7 +5,8 @@
 
 (defvar +ckeditor-toolbar+
   (list
-   (list "Source" "-" "Save" "NewPage" "Preview" "-" "Templates" )
+   (list "Source" "-" "Save" ;; "NewPage" "Preview" "-" "Templates" 
+	 )
    (list "Cut" "Copy" "Paste" "PasteText" "PasteFromWord" "-" "Print"
 	 "SpellChecker" "Scayt")
    (list "Undo" "Redo" "-" "Find" "Replace" "-" "SelectAll" "RemoveFormat")
