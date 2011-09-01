@@ -101,7 +101,7 @@
 (defcomponent history-mixin ()
   ((running-p :host remote :initform nil)
    (current-hash :host remote :initform nil)
-   (interval :host remote :initform 1000)))
+   (interval :host remote :initform 100)))
 
 (defmethod/remote destroy ((self history-mixin))
   (stop-history-timeout self)
