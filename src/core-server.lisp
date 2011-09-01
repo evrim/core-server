@@ -67,6 +67,8 @@
 	:salza2)
   (:shadowing-import-from #:swank #:send #:receive #:accept-connection)
   (:shadowing-import-from #:arnesi #:name #:body #:self #:new)
+  (:shadowing-import-from #:salza2 :callback)
+  (:shadowing-import-from #:arnesi #:result)
 ;;   (:import-from #:cl-prevalence #:get-directory)
   (:import-from #:arnesi #:fdefinition/cc)
   (:import-from #:sb-ext #:make-timer #:schedule-timer #:unschedule-timer #:timer)
