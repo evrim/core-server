@@ -50,10 +50,13 @@
 (defmethod component.deserialize ((self component) object)
   (json-deserialize object))
 
+;; FIXME: -evrim.
 (defmethod component.serialize-slot ((self component) slot-name)
-  (let ((slot (class+.find-slot (class-of self) slot-name)))
-    (with-slotdef (reader) slot
-      (funcall reader self))))
+  (slot-value self slot-name)
+  ;; (let ((slot (class+.find-slot (class-of self) slot-name)))
+  ;;   (with-slotdef (reader) slot
+  ;;     (funcall reader self)))
+  )
 
 (defmethod component.action-hash ((self component) method)
   (format nil "~A-act~A" method (component.instance-id self)))
