@@ -177,7 +177,7 @@
       ((>= num 1)
        (reverse (cons (- num 1) (reverse (seq (- num 1))))))
       (t (array))))
-  
+
   (defun mapobject (fun obj)
     (let ((result (new (*object))))
       (doeach (i obj)
@@ -185,6 +185,13 @@
 	      (fun i (slot-value obj i))))
       result))
 
+  (defun object-to-list (obj)
+    (let ((result))
+      (mapobject (lambda (k v)
+		   (setf result (cons (list k v) result)))
+		 obj)
+      (reverse result)))
+  
   (defun member (obj lst)
     (reduce (lambda (acc atom)
 	      (or acc (equal atom obj)))
@@ -789,6 +796,12 @@
     (let ((b 3155666400)
 	  (a 946677600000))
       (new (*date (+ a (* 1000 (- universal-time b)))))))
+
+  (defvar *months*
+    (array "January" "February" "March"
+	   "April" "May" "June"
+	   "July" "August" "September"
+	   "October" "November" "December"))
   
   (defun date-to-string (date)
     (flet ((pad-me (foo)
