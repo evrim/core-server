@@ -91,9 +91,12 @@
 	     (defmethod database.clone ((,server abstract-database) (instance ,class))
 	       (,add ,server ,@(reduce0
 				(lambda (acc slot)
-				  (with-slotdef (initarg reader) slot
+				  (with-slotdef (initarg reader leaf) slot
 				    (cons initarg
-					  (cons `(database.clone ,server (,reader instance)) acc))))
+					  (cons (if leaf
+						    `(database.clone ,server (,reader instance))
+						    `(,reader instance))
+						acc))))
 				(remove 'database-id (class+.local-slots class+)
 					:key #'slot-definition-name))))))))))
 
