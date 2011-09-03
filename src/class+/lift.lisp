@@ -231,7 +231,8 @@
 		    (slot-value (slot-value self lifted-slot) name))))
 	  (filter (lambda (slot)
 		    (and (slot-definition-lift slot)
-			 (eq (slot-definition-host slot) 'remote)))
+			 (or (eq (slot-definition-host slot) 'remote)
+			     (eq (slot-definition-host slot) 'both))))
 		  (class+.slots (class-of self))))
   self)
 
