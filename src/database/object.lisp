@@ -251,6 +251,11 @@
    slots-and-values :initial-value object))
 
 (deftransaction add-object ((server database) (class class+) &rest slots-and-values)
+  (let ((lifted (any (lambda (slot)
+		       (eq (slot-definition-host slot) 'lift))
+		     (class+.slots class))))
+    (assert (null lifted) nil "This is lifted, should not go into db ~A"
+	    class))
   (if (member (find-class+ 'object-with-id) (class+.superclasses class))
       (setf slots-and-values
 	    (cons (cons 'database-id (next-id server))
