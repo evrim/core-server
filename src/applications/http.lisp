@@ -42,9 +42,7 @@
 ;; --------------------------------------------------------------------------
 (defclass http-session ()
   ((id :reader session.id :initarg :id :initform (random-string 8))
-   (continuations :reader session.continuations
-		  :initform (make-hash-table :test #'equal
-					     :synchronized t)) 
+   (continuations :reader session.continuations :initform (make-hash-table :test #'equal)) 
    (timestamp :accessor session.timestamp :initform (get-universal-time))
    (data :accessor session.data
 	 :initform (make-hash-table :test #'equal
