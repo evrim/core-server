@@ -120,6 +120,10 @@
 ;; +----------------------------------------------------------------------------
 (defmethod database.serialize ((self abstract-database) (object class+-instance)
 			       &optional (k (curry #'database.serialize self)))
+  (assert (null (any (lambda (slot)
+		       (eq 'lift (slot-definition-host slot)))
+		     (class+.slots (class-of object))))
+	  nil "Lifted objects cant go into db: ~A" object)
   (with-slots (cache counter) (slot-value self 'database-cache)
     (multiple-value-bind (id foundp) (gethash object cache)
       (if foundp

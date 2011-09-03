@@ -244,29 +244,25 @@
 (defvar +transactionalp+ nil)
 (defmethod execute ((self abstract-database) (transaction transaction))
   "Execute a transaction on a system and log it to the transaction log"
-  (flet ((execute ()
-	   ;; (handler-bind ((error #'(lambda (condition)
-;;	   (format *standard-output* "Notice: system rollback/restore due to error (~a)~%" condition)
-;; 				   (restore self))))
-;; 	   (execute-on self transaction))
-	   (execute-on self transaction)
-	   ))
-    (cond
-      (+transactionalp+
-       (execute))
-      (t
-       (unless (database.status self)
-	 (error "Database should be running in order to execute a transaction"))
+  (cond
+    (+transactionalp+
+     (execute-on self transaction))
+    (t
+     (unless (database.status self)
+       (error "Database should be running in order to execute a transaction"))
        
-       (let* ((+transactionalp+ t))
-	 (checkpoint-stream (database.stream self))
-	 (write-stream (database.stream self) (database.serialize self transaction))
-;; FIXME: implement handler-bind here.
-	 (prog1 (execute)
-	   (commit-stream (database.stream self)))
-	 ;; (prog1 (execute)
-	 ;;   (log-transaction self transaction))
-	 )))))
+     (let ((+transactionalp+ t))
+       (checkpoint-stream (database.stream self))
+       (write-stream (database.stream self) (database.serialize self transaction))
+       (handler-bind ((error
+		       #'(lambda (condition)
+			   (rewind-stream (database.stream self))
+			   (signal condition)
+			   ;; (format *standard-output* "Notice: system rollback/restore due to error (~a)~%" condition)
+			   ;; (restore self)
+			   )))
+	 (execute-on self transaction)
+	 (commit-stream (database.stream self)))))))
 
 (defmethod restore ((self abstract-database))
   (clrhash (database.root self))
