@@ -217,7 +217,10 @@
 					       (slot-value target
 							   (slot-definition-name relational-slot))))
 				 object)
-			       old-value :initial-value object)))))
+			       old-value :initial-value object))
+		      (:one-to-one
+		       (setf (slot-value old-value (slot-definition-name relational-slot))
+			     nil)))))
 		 ((and (null relation) index)
 		  (delete-from-slot-index server object name)))
 	       (setf (slot-value object name) new-value)
@@ -246,7 +249,10 @@
 					     (slot-value target
 							 (slot-definition-name relational-slot))))
 				 object)
-			       new-value :initial-value object)))))))))))
+			       new-value :initial-value object))
+		      (:one-to-one
+		       (setf (slot-value new-value (slot-definition-name relational-slot))
+			     object)))))))))))
      object)
    slots-and-values :initial-value object))
 
@@ -297,7 +303,7 @@
   ;; Remove From Relational Objects
   (reduce (lambda (object slot)
 	    (let ((old-value (and (class+.slot-boundp object (slot-definition-name slot))
-				  (slot-value object  (slot-definition-name slot)))))
+				  (slot-value object (slot-definition-name slot)))))
 	      (when old-value
 		(multiple-value-bind (relation-type relational-slot) (slot-definition-relation-type slot)
 		  (case relation-type
@@ -315,7 +321,10 @@
 			       (setf (slot-value target (slot-definition-name relational-slot))
 				     (remove object (slot-value target (slot-definition-name relational-slot))))
 			       object)
-			     old-value :initial-value object)))))
+			     old-value :initial-value object))
+		    (:one-to-one
+		     (setf (slot-value old-value (slot-definition-name relational-slot))
+			   nil)))))
 	      object))
 	  (class+.relations (class-of object)) :initial-value object)
   object)

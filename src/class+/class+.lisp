@@ -266,6 +266,9 @@
 	     (slot-definition-plural-typep relational-slot))
 	;; n->n Relation
 	:n-to-n)
+       ((and (slot-definition-singular-typep slot)
+	     (slot-definition-singular-typep relational-slot))
+	:one-to-one)
        (t (error "Unknown type of relation slot: ~A" slot)))
      relational-slot)))
 
