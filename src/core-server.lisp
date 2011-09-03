@@ -965,6 +965,8 @@
    #:init/js
    #:destroy
    #:destroy/js
+   #:client-destroy
+   #:client-destroy/js
    #:_destroy
    #:funkall
 
