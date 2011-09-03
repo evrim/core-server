@@ -877,6 +877,7 @@
    #:defservice
    #:defmethod/local
    #:defmethod/remote
+   #:cached-component
    #:component!
    #:funkall
    #:funkall/js

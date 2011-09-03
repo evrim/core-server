@@ -7,7 +7,7 @@
 ;; +-------------------------------------------------------------------------
 ;; | Validting HTML Input
 ;; +-------------------------------------------------------------------------
-(defcomponent <core:validating-input (<:input lazy-component)
+(defcomponent <core:validating-input (<:input cached-component)
   ((validation-span-id :host remote :initform nil)
    (valid-class :host remote :initform "valid")
    (invalid-class :host remote :initform "invalid")

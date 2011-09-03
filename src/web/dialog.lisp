@@ -3,7 +3,7 @@
 ;; +-------------------------------------------------------------------------
 ;; | Dialog
 ;; +-------------------------------------------------------------------------
-(defcomponent dialog (<:div callable-component)
+(defcomponent dialog (<:div callable-component cached-component)
   ((overlay :host remote :initform nil)
    (message :host remote :initform "This is a message dialog.")
    (title :host remote :initform "message")

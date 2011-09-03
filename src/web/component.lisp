@@ -332,7 +332,7 @@
 ;; This around method allows us to compile constructor evertime class
 ;; definition changed.
 ;; --------------------------------------------------------------------------
-(defcomponent lazy-component ()
+(defcomponent cached-component ()
   ())
 
 (defmethod/cc component! :around ((stream core-stream) (component component))
@@ -340,7 +340,7 @@
 	  (slot-value (class-of component) '%ctor-timestamp))      
        (let ((name (class-name (class-of component))))
 	 (format *standard-output* "Compiling constructor for ~A.~%" name)
-	 (if (typep component 'lazy-component)
+	 (if (typep component 'cached-component)
 	     (eval (component+.ctor2 (class-of component)))
 	     (eval (component+.ctor (class-of component))))
 	 (setf (slot-value (class-of component) '%ctor-timestamp)
