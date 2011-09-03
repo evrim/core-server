@@ -327,6 +327,26 @@
 			   nil)))))
 	      object))
 	  (class+.relations (class-of object)) :initial-value object)
+
+  ;; Process Leafs
+  ;; FIXME: do typesafe version of the below ie. clos dispatch -evrim.
+  (reduce (lambda (object slot)
+	    (let ((value (and (class+.slot-boundp object (slot-definition-name slot))
+			      (slot-value object (slot-definition-name slot)))))
+	      (prog1 object
+		(when (slot-definition-leaf slot)
+		  (typecase value
+		    (class+-instance
+		     (delete-object server value))
+		    (list
+		     (mapcar (lambda (value)
+			       (if (typep value 'class+-instance)
+				   (delete-object server value)))
+			     value))
+		    (t
+		     ;; do nothing
+		     ))))))
+	  (class+.slots (class-of object)) :initial-value object)
   object)
 
 (deftrace object-database
