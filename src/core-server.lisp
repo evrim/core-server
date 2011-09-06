@@ -285,6 +285,7 @@
    #:new
    #:instanceof
    #:with-field
+   #:by-id
    #:make-component
    #:delete-slot
    #:delete-slots

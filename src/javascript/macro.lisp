@@ -109,6 +109,9 @@
 (defjsmacro defined (atom)
   `(not (typep ,atom 'undefined)))
 
+(defmacro/js by-id (id)
+  `(document.get-element-by-id ,id))
+
 (defjsmacro $ (id)
   `(document.get-element-by-id ,id))
 
