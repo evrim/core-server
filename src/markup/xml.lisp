@@ -691,6 +691,59 @@
 (defmethod read-stream ((stream relaxed-xml-stream))
   (parse-xml (relaxed-xml-lexer? (slot-value stream '%stream))))
 
+(defmethod write-stream ((stream html-stream) (object xml))
+  (with-slots (%stream) stream
+    (intro! stream object)
+    (reduce #'attribute!
+	    (reduce0 (lambda (acc slot)
+		       (aif (slot-value object slot)
+			    (cons (cons slot it) acc)
+			    acc))
+		     (xml.attributes object))
+	    :initial-value stream)
+    (cond
+      ;; ((null (xml.children object))
+      ;;  (string! %stream "/>"))
+      ((eq 1 (length (xml.children object)))
+       (stringp (car (xml.children object)))
+       (char! %stream #\>)
+       (write-stream stream (car (xml.children object)))
+       (outro! stream object))
+      (t
+       (char! %stream #\>)
+       (increase-indent %stream)
+       (reduce #'child!
+	       (slot-value object 'children) 
+	       :initial-value stream)
+       (decrease-indent %stream)
+       (char! %stream #\Newline)
+       (outro! stream object)))
+    stream))
+
+(defmethod write-stream ((stream relaxed-xml-stream) (object generic-xml))
+  (with-slots (%stream) stream
+    (intro! stream object)
+    (reduce #'attribute!
+	    (slot-value object 'attributes)
+	    :initial-value stream)
+    (cond
+      ;; ((null (xml.children object))
+      ;;  (string! %stream "/>"))
+      ((stringp (car (xml.children object)))
+       (char! %stream #\>)
+       (write-stream stream (car (xml.children object)))
+       (outro! stream object))
+      (t
+       (char! %stream #\>)
+       (increase-indent %stream)
+       (reduce #'child!
+	       (slot-value object 'children) 
+	       :initial-value stream)
+       (decrease-indent %stream)
+       (char! %stream #\Newline)
+       (outro! stream object)))
+    stream))
+
 (deftrace xml-parsers
     '(xml-tag-name? xml-lexer? xml-comment? xml-text-node?
       xml-cdata? %xml-lexer? xml-lwsp? xml-attribute?
