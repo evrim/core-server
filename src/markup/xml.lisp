@@ -691,7 +691,7 @@
 (defmethod read-stream ((stream relaxed-xml-stream))
   (parse-xml (relaxed-xml-lexer? (slot-value stream '%stream))))
 
-(defmethod write-stream ((stream html-stream) (object xml))
+(defmethod write-stream ((stream relaxed-xml-stream) (object xml))
   (with-slots (%stream) stream
     (intro! stream object)
     (reduce #'attribute!
