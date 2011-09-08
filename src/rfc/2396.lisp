@@ -372,7 +372,7 @@
 
 (defconstant +uri-path-seperator+ #\/)
 (defconstant +uri-segment-seperator+ #\;)
-(defconstant +uri-query-equal-seperator+ #\:)
+(defconstant +uri-query-equal-seperator+ #\=)
 (defconstant +uri-query-seperator+ #\;)
 (defun query! (stream query)
   (string! stream (car query))
