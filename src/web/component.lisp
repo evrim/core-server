@@ -289,7 +289,8 @@
 		   :key #'car))
      (%component! stream component))
     (t
-     (let ((+action-hash-override+ (component.instance-id component)))       
+     (let ((+action-hash-override+ (component.instance-id component))
+	   (k (context.continuation +context+)))       
        (let ((hash
 	      (action/url ((method-name "method"))
 		(let ((method (find (string-upcase method-name)
@@ -316,16 +317,17 @@
 				   (http-request.query
 				    (context.request +context+)
 				    "__hash"))))
-		       (javascript/suspend
-			(lambda (stream)
-			  (if hash
-			      (with-js (result hash) stream
-				(with-call/cc
-				  (apply (slot-value window hash) window
-					 (list (lambda (self) result)))))
-			      (with-js (result) stream
-				(with-call/cc
-				  (lambda (self) result)))))))))))))
+		       (kall k +context+
+			(javascript/suspend
+			 (lambda (stream)
+			   (if hash
+			       (with-js (result hash) stream
+				 (with-call/cc
+				   (apply (slot-value window hash) window
+					  (list (lambda (self) result)))))
+			       (with-js (result) stream
+				 (with-call/cc
+				   (lambda (self) result))))))))))))))
 	 (%component! stream component))))))
 
 ;; --------------------------------------------------------------------------
@@ -780,7 +782,7 @@
 	     (with-call/cc
 	       (lambda (self) value))))))))
 
-(defmethod/cc continue/js (value)
+(defun/cc continue/js (value)
   (javascript/suspend
    (lambda (stream)
      (let ((hash (json-deserialize
@@ -792,7 +794,7 @@
 	    (with-call/cc
 	      (apply (slot-value window hash) window
 		     (list (lambda (self) value))))))
-	 ((typep value 'component)	  
+	 ((typep value 'component)
 	  (with-js (value) stream
 	    (let ((c value))	      
 	      (add-on-load
