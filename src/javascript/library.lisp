@@ -78,6 +78,13 @@
       ((not lst.length) acc)
       (t
        (flatten (car lst) (flatten (cdr lst) acc)))))
+  
+  (defun flatten1 (lst)
+    (reduce0 (lambda (acc a)
+	       (if acc
+		   (.concat a acc)
+		   (list a)))
+	     lst))
 
   (defun filter (fun lst)
     (reverse
