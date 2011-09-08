@@ -1215,6 +1215,11 @@
   (:use :cl)
   (:export #:total-results :start-index :items-per-page))
 
+(defpackage :tr.gen.core.server.facebook
+  (:nicknames :<fb)
+  (:use :cl)
+  (:export #:me #:authenticate))
+
 ;; (defpackage :tr.gen.core.server.html.dojo
 ;;   (:nicknames :<dojo :core-server.html.dojo)
 ;;   (:use :core-server :<))

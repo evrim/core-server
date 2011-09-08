@@ -73,7 +73,12 @@
 		(string= "atom+xml" (cadr content-type))))
        (let ((entity (read-stream (make-relaxed-xml-stream stream))))
 	 (if entity
-	     (setf (http-response.entities response) (list entity))))) 
+	     (setf (http-response.entities response) (list entity)))))
+      ((or (and (string= "text" (car content-type))
+		(string= "javascript" (cadr content-type))))
+       (let ((entity (json? stream)))
+	 (if entity
+	     (setf (http-response.entities response) (list entity)))))
       (t
        (let ((entity (read-everything? stream)))
 	 (setf (http-response.entities response) (list entity)))))
@@ -85,16 +90,17 @@
 	 (http-response.status-code response)
 	 (uri->string (s-v 'url))))
 
+(defmethod run :before ((self http))
+  (http.setup-uri self))
+
 (defmethod run ((self http))
-  (let* ((url (http.setup-uri self))
-	 (stream (connect (uri.server url)
-			  (or (uri.port url) 80)))
+  (let* ((url (s-v 'url))
+	 (stream (connect (uri.server url) (or (uri.port url) 80)))
 	 #+ssl
 	 (stream (if (http.ssl-p self)
-		     (make-core-stream
-		      (cl+ssl:make-ssl-client-stream stream))
+		     (make-core-stream (cl+ssl:make-ssl-client-stream
+					(slot-value stream '%stream)))
 		     stream)))
-    
     (let ((request (http.send-request self stream)))
       (if (http.parse-p self)
 	  (let ((response (http.parse-response self stream)))

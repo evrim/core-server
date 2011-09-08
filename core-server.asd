@@ -120,6 +120,7 @@
                                    ;; (:file "hxpath")
 				   (:file "image")
 				   (:file "http")
+				   (:file "facebook")
 				   (:file "paypal")))
 			 (:module :install
 				  :serial t
