@@ -582,7 +582,9 @@
   (defun get-parameter (name href)
     ;; (_debug (list "get-parameter" name href))
     (let* ((href (or (and href (.substr (.substr href (.search href "#")) 1))
-		     (+ (.substr window.location.hash 1) "$"
+		     (+ (.substr (.substr window.location.href
+					  (.search window.location.href "#"))
+				 1) "$"
 			(.substr window.location.search 1))))
 	   (key-value (reduce (lambda (acc a)
 				(let ((b (.split a "=")))
@@ -602,10 +604,9 @@
 			      (list)))
 	   (result (find (lambda (item) (if (eq name (car item)) t))
 			 key-value)))
-      (setf window.key-value key-value)
       (if result
-	  (decode-u-r-i-component (car (cdr result)))
-	  nil)))
+	  (return (decode-u-r-i-component (car (cdr result))))
+	  (return nil))))
   
   (defun set-parameter (name value)
     ;; (_debug (list "set-parameter" name value))
