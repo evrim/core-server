@@ -361,3 +361,13 @@ to redistribute it under certain conditions; type
 (defun make-unique-random-string (len)
   (let ((sym (gensym (random-string len))))
     (symbol-name sym)))
+
+
+;; simple wrapper for openid signatures
+;; a longer string probably need a core-hmac-stream -evrim.
+#+ssl 
+(defun hmac (key str &optional (algo :sha256))
+  (let ((hash (crypto:make-hmac (crypto:ascii-string-to-byte-array key)
+				algo)))
+    (crypto::update-hmac hash (crypto:ascii-string-to-byte-array str))
+    (crypto:byte-array-to-hex-string (crypto:hmac-digest hash))))
