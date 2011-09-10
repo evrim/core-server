@@ -365,7 +365,8 @@
   `(if ,(consequent form)
        ,(funcall expander (then form) expander stream continue checkpoint)
        ,(if (arnesi::else form)
-	    (funcall expander (arnesi::else form) expander stream continue checkpoint))))
+	    (funcall expander (arnesi::else form) expander stream continue checkpoint)
+	    continue)))
 
 (defgrammar-expander cond (form expander stream continue checkpoint)
   `(prog1 ,continue
