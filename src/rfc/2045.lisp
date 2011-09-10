@@ -223,8 +223,7 @@
 	(:if v2 (:collect v2 acc))
 	(:if v3 (:collect v3 acc))
 	(:lwsp?)
-	(:if (null v3)
-	     (:return acc)))
+	(:if (null v3) (:return acc)))
   (:return acc))
 
 (defun base64-encode (byte1 byte2 byte3)  
@@ -253,21 +252,22 @@
 	       (char! stream char)
 	       (incf i))
 	     (write-blocks ()
-	       (reduce #'(lambda (acc atom)
-			   (cond
-			     ((= (length acc) 2)
-			      (push-atom atom acc)
-			      (multiple-value-bind (out1 out2 out3 out4)
-				  (base64-encode (aref acc 0) (aref acc 1) (aref acc 2))
-				(out out1)
-				(out out2)
-				(out out3)
-				(out out4))
-			      (make-accumulator :byte))
-			     (t
-			      (push-atom atom acc)
-			      acc)))
-		       array :initial-value (make-accumulator :byte))))    
+	       (reduce
+		(lambda (acc atom)
+		  (cond
+		    ((= (length acc) 2)
+		     (push-atom atom acc)
+		     (multiple-value-bind (out1 out2 out3 out4)
+			 (base64-encode (aref acc 0) (aref acc 1) (aref acc 2))
+		       (out out1)
+		       (out out2)
+		       (out out3)
+		       (out out4))
+		     (make-accumulator :byte))
+		    (t
+		     (push-atom atom acc)
+		     acc)))
+		array :initial-value (make-accumulator :byte))))    
       (setq leak (write-blocks))
       (let ((len (length leak)))
 	(if (> len 0)
@@ -283,7 +283,7 @@
 ;; IHNpbmd1bGFyIHBhc3Npb24gZnJvbSBvdGhlciBhbmltYWxzLCB3aGljaCBpcyBhIGx1c3Qgb2Yg
 ;; dGhlIG1pbmQsIHRoYXQgYnkgYSBwZXJzZXZlcmFuY2Ugb2YgZGVsaWdodCBpbiB0aGUgY29udGlu
 ;; dWVkIGFuZCBpbmRlZmF0aWdhYmxlIGdlbmVyYXRpb24gb2Yga25vd2xlZGdlLCBleGNlZWRzIHRo
-;; ZSBzaG9ydCB2ZWhlbWVuY2Ugb2YgYW55IGNhcm5hbCBwbGVhc3VyZS4=")
+;; ZSBzaG9ydCB2ZWhlbWVuY2Ugb2YgYW55IGNhcm5hbCBwbGVhc3VyZS4=sometrash")
 
 ;; (defparameter +base64-string+ "Man is distinguished, not only by his reason, but by this singular passion from other animals, which is a lust of the mind, that by a perseverance of delight in the continued and indefatigable generation of knowledge, exceeds the short vehemence of any carnal pleasure.")
 
@@ -292,7 +292,7 @@
 
 ;; (equal (let ((stream (make-core-stream "")))
 ;; 	 (base64! stream +base64-string+)
-;; 	 (stream-data stream))
+;; 	 (return-strteam stream))
 ;;        +base64-encoded+)
 
 ;; |#
