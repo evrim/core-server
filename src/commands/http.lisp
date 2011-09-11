@@ -4,7 +4,8 @@
   ((method :host local :initform 'get)
    (url :host local :initform (error "Please provide :url"))
    (post-data :host local :initform nil) 
-   (parse-p :host local :initform t)))
+   (parse-p :host local :initform t)
+   (debug :host local :initform t)))
 
 (defparser read-everything? (c (acc (make-accumulator :byte)))
   (:oom (:type octet? c) (:collect c acc))
@@ -35,6 +36,13 @@
 	       (nreverse (uri.queries (s-v 'url))))))
   (s-v 'url))
 
+(defmethod http.add-post ((self http) name value)
+  (setf (s-v 'post-data)
+	(if (null (s-v 'post-data))
+	    (format nil "~A=~A" name (escape-as-uri value))
+	    (format nil "~A&~A=~A" (s-v 'post-data) name
+		    (escape-as-uri value)))))
+
 (defmethod http.setup-uri ((self http))
   (if (stringp (s-v 'url))
       (setf (s-v 'url) (uri? (make-core-stream (s-v 'url)))))
@@ -49,8 +57,11 @@
   (let ((request (http.make-request self)))
     (checkpoint-stream stream)
     (http-request! stream request)
-    (aif (s-v 'post-data)
-	 (string! stream it))
+    (if (s-v 'debug) (describe request))
+    (awhen (s-v 'post-data)
+      (if (s-v 'debug) (describe (list 'post-data (s-v 'post-data))))
+      (string! stream it))
+
     (commit-stream stream)
     request))
 
@@ -66,6 +77,7 @@
 		   ((and content-length (> content-length 0))
 		    (make-bounded-stream stream content-length))
 		   (t stream))))
+    (if (s-v 'debug) (describe response))
     (cond
       ((or (and (string= "text" (car content-type))
 		(string= "html" (cadr content-type)))
