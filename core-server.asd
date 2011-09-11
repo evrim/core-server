@@ -225,7 +225,7 @@
 				   (:file "picasa"))))))
   :depends-on (:swank :bordeaux-threads ;; :cl-prevalence
 		      :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad :cffi
-		      :salza2)
+		      :salza2 :ironclad)
   :serial t)
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :core-server))))

@@ -1230,7 +1230,7 @@
 (defpackage :tr.gen.core.server.google
   (:nicknames :<google)
   (:use :cl)
-  (:export #:request-authentication
+  (:export #:associate #:request-authentication
 	   #:verify-authentication #:extract-authentication))
 
 ;; (defpackage :tr.gen.core.server.html.dojo
