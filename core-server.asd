@@ -121,6 +121,8 @@
 				   (:file "image")
 				   (:file "http")
 				   (:file "facebook")
+				   (:file "openid")
+				   (:file "google")
 				   (:file "paypal")))
 			 (:module :install
 				  :serial t

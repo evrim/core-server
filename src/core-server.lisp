@@ -1221,6 +1221,18 @@
   (:use :cl)
   (:export #:me #:authenticate))
 
+(defpackage :tr.gen.core.server.openid
+  (:nicknames :<openid)
+  (:use :cl)
+  (:export #:funkall #:associate #:request-authentication
+	   #:verify-authentication))
+
+(defpackage :tr.gen.core.server.google
+  (:nicknames :<google)
+  (:use :cl)
+  (:export #:request-authentication
+	   #:verify-authentication #:extract-authentication))
+
 ;; (defpackage :tr.gen.core.server.html.dojo
 ;;   (:nicknames :<dojo :core-server.html.dojo)
 ;;   (:use :core-server :<))
