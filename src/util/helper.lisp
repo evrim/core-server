@@ -367,7 +367,9 @@ to redistribute it under certain conditions; type
 ;; a longer string probably need a core-hmac-stream -evrim.
 #+ssl 
 (defun hmac (key str &optional (algo :sha256))
-  (let ((hash (crypto:make-hmac (crypto:ascii-string-to-byte-array key)
+  (let ((hash (crypto:make-hmac (make-array (length key)
+					    :element-type '(unsigned-byte 8)
+					    :initial-contents key)
 				algo)))
     (crypto::update-hmac hash (crypto:ascii-string-to-byte-array str))
     (crypto:byte-array-to-hex-string (crypto:hmac-digest hash))))
