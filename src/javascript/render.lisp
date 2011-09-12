@@ -325,7 +325,8 @@
   (if (eq value t)
       "true"
       (typecase value
-	(string (format nil "'~A'" value))
+	(string (json-serialize value) ;; (format nil "'~A'" value)
+		)
 	(null "null")
 	(symbol (symbol-to-js value))
 	(list
