@@ -146,7 +146,17 @@
 			     instance))
 			 children
 			 :initial-value instance)
-		 (reduce0 (lambda (acc atom) (cons (car atom) (cons (cadr atom) acc)))
+		 (reduce0 (lambda (acc atom)
+			    ;; slots with default values '((owner ..))
+			    ;; do restored as quote in front of them
+			    ;; below patch removes quotes. -evrim.
+			    (let ((default-value (cadr atom)))
+			      (cons (car atom)
+				    (cons (if (and (listp default-value)
+						   (eq 'quote (car default-value)))
+					      (cadr default-value)
+					      default-value)
+					  acc))))
 			  (class-default-initargs (class-of instance)))))))))
 
 (defmethod database.serialize ((self abstract-database) (object standard-object)
