@@ -325,7 +325,9 @@
   (if (eq value t)
       "true"
       (typecase value
-	(string (json-serialize value) ;; (format nil "'~A'" value)
+	(string (with-core-stream (s "")
+		  (quoted! s value #\')
+		  (return-stream s))  ;; (format nil "'~A'" value)
 		)
 	(null "null")
 	(symbol (symbol-to-js value))
