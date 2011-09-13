@@ -101,14 +101,23 @@
 (defcomponent history-mixin ()
   ((running-p :host remote :initform nil)
    (current-hash :host remote :initform nil)
-   (interval :host remote :initform 100)))
+   (interval :host remote :initform 100)
+   (history-observers :host remote :initform nil)))
 
 (defmethod/remote destroy ((self history-mixin))
   (stop-history-timeout self)
   (call-next-method self))
 
+(defmethod/remote register-history-observer ((self history-mixin) thunk)
+  (setf (history-observers self) (cons thunk (history-observers self))))
+
+(defmethod/remote unregister-history-observer ((self history-mixin) thunk)
+  (setf (history-observers self) (remove thunk (history-observers self))))
+
 (defmethod/remote on-history-change ((self history-mixin))
-  (_debug (list "history-change" (current-hash self) window.location.hash)))
+  ;;(_debug (list "history-change" (current-hash self) window.location.hash))
+  (mapcar (lambda (observer) (call/cc observer window.location.hash))
+	  (history-observers self)))
 
 (defmethod/remote start-history-timeout ((self history-mixin))  
   (setf (current-hash self) window.location.hash)
@@ -126,6 +135,11 @@
 
 (defmethod/remote stop-history-timeout ((self history-mixin))
   (setf (running-p self) nil))
+
+(defmethod/remote destroy ((self history-mixin))
+  (stop-history-timeout self)
+  (delete-slots self 'running-p 'current-hash 'interval 'history-observers)
+  (call-next-method self))
 
 ;; ;; -------------------------------------------------------------------------
 ;; ;; Orderable List

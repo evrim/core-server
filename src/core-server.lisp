@@ -998,6 +998,7 @@
    #:history-mixin
    #:on-history-change
    #:register-history-observer
+   #:unregister-history-observer
    #:start-history-timeout
    #:stop-history-timeout
    #:sortable-list-component
