@@ -25,7 +25,9 @@
     (let ((valid (reduce-cc
 		  (lambda (acc input)
 		    (cond
-		      ((eq (typeof (slot-value input 'valid)) "undefined")
+		      ((or (eq (typeof (slot-value input 'valid))
+			       "undefined")
+			   (slot-value input 'disabled))
 		       acc)
 		      (t
 		       (and acc (valid input)))))
