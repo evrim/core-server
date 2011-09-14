@@ -117,7 +117,7 @@
 (defmethod/remote on-history-change ((self history-mixin))
   ;;(_debug (list "history-change" (current-hash self) window.location.hash))
   (mapcar (lambda (observer) (call/cc observer window.location.hash))
-	  (history-observers self)))
+	  (reverse (history-observers self))))
 
 (defmethod/remote start-history-timeout ((self history-mixin))  
   (setf (current-hash self) window.location.hash)
