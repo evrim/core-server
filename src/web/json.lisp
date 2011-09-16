@@ -81,8 +81,12 @@
 	     (json! s p))))
     (prog1 stream
       (string! stream "[ ")
-      (reduce #'primitive! (rest sequence)
-	      :initial-value (json! stream (first sequence)))
+      (cond
+	((and (not (null (rest sequence))) (atom (rest sequence)))
+	 (primitive! (json! stream (first sequence)) (rest sequence)))
+	(t
+	 (reduce #'primitive! (rest sequence)
+		 :initial-value (json! stream (first sequence)))))
       (string! stream " ]"))))
 
 (defrule json-key? (c (acc (make-accumulator)))
