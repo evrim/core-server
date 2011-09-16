@@ -719,7 +719,7 @@
 
   (defun remove-slots (source slots)
     (mapcar (lambda (slot)
-	      (if (and (slot-value source 'hash-attribute)
+	      (if (and (slot-value source 'has-attribute)
 		       (.has-attribute source slot))
 		  (.remove-attribute source slot)
 		  (try (delete (slot-value source slot))
