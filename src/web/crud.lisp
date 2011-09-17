@@ -48,9 +48,9 @@
 	     (with-slots (_result) self
 	       (setf (slot-value _result name) this.value))))
 	 (multi-checkbox-onchange (name)
-	   (event (e)
+	   (event (e)		  
 	     (let ((value this.value))
-	       (with-slots (_result) self
+	       (with-slots (_result) self		 
 		 (if this.checked
 		     (setf (slot-value _result name)
 			   (cons value
@@ -58,9 +58,12 @@
 					 (slot-value _result name))))
 		     (setf (slot-value _result name)
 			   (filter (lambda (a) (not (eq a value)))
-				   (slot-value _result name)))))))))
-    (with-slots (name type options size) slot
-      (let ((value (slot-value (instance self) name)))
+				   (slot-value _result name))))))	     
+	     t)))
+    (with-slots (reader name type options size) slot
+      (let ((value (if reader
+		       (reader (instance self))
+		       (slot-value (instance self) name))))
 	(cond
 	  ((eq type "select")
 	   (<:select :onchange (default-onchange name)
