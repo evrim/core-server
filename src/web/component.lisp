@@ -290,7 +290,9 @@
      (%component! stream component))
     (t
      (let ((+action-hash-override+ (component.instance-id component))
-	   (k (context.continuation +context+)))       
+	   (k (if +context+
+		  (context.continuation +context+)
+		  "invalid-kontinuation")))       
        (let ((hash
 	      (action/url ((method-name "method"))
 		(let ((method (find (string-upcase method-name)
