@@ -344,11 +344,15 @@
 		 ((typep object 'number)
 		  object)
 		 ((typep object 'string)
-		  (+ "\"" (.replace (.replace (new (*string object))
-					      (regex "/\\\\/g")
-					      "\\\\\\\\") 
-				    (regex "/\"/g")
-				    "\\\\\"")
+		  (+ "\""
+		     ;; (.replace (.replace (new (*string object))
+		     ;; 			 (regex "/\\\\/g")
+		     ;; 			 "\\\\\\\\") 
+		     ;; 	       (regex "/\"/g")
+		     ;; 	       "\\\\\"")
+		     (.replace (new (*string object))
+			       (regex "/\"/g")
+			       "\\\"")
 		     "\""))
 		 ((instanceof object '*array)
 		  (if (> (slot-value object 'length) 0)
@@ -468,7 +472,7 @@
     (return xhr))
   
   (defun serialize-to-uri (arg)
-    (let ((result ""))
+    (let ((result ""))      
       (mapobject (lambda (k v)
 		   (setf result
 			 (+ result k "="
