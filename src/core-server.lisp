@@ -1234,6 +1234,11 @@
   (:export #:associate #:request-authentication
 	   #:verify-authentication #:extract-authentication))
 
+(defpackage :tr.gen.core.server.twitter
+  (:nicknames :<twitter)
+  (:use :cl)
+  (:export #:funkall #:get-user-lists))
+
 ;; (defpackage :tr.gen.core.server.html.dojo
 ;;   (:nicknames :<dojo :core-server.html.dojo)
 ;;   (:use :core-server :<))
