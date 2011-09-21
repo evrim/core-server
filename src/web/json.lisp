@@ -219,12 +219,17 @@
 			  (class+.remote-slots (or template-class (class-of object)))))))
 
 (defun assoc->jobject (lst)
-  (apply #'jobject
-	 (mapcar (lambda (a)
-		   (if (listp a)
-		       (assoc->jobject a)
-		       a))
-		 lst)))
+  (cond
+    ((null lst) nil)
+    (t
+     (apply #'jobject
+	    (mapcar (lambda (a)
+		      (cond
+			((listp a)
+			 (assoc->jobject a))
+			((null a) nil)
+			(t a)))
+		    lst)))))
 
 (defmethod json! ((stream core-stream) (jobject jobject))
   (prog1 stream
