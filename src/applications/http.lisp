@@ -245,6 +245,10 @@
   (format nil "/~A/TESTREQUEST" (web-application.fqdn self)))
 
 (defmethod web-application.base-url ((self http-application)
+				     (eq null))
+  (format nil "/~A/" (web-application.fqdn self)))
+
+(defmethod web-application.base-url ((self http-application)
 				     (req http-request))
   (format nil "/~A/" (web-application.fqdn self)))
 
