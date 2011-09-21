@@ -116,13 +116,26 @@
   '(no-cache no-store max-age max-stale min-fresh no-transform only-if-cached))
 
 (defrule http-cache-control? (result val)
-  (:oom (:or (:and (:seq "no-cache") (:do (push (cons 'no-cache nil) result)))
-	     (:and (:seq "no-store") (:do (push (cons 'no-store nil) result)))
-	     (:and (:seq "max-age") #\= (:fixnum? val) (:do (push (cons 'max-age val) result)))
-	     (:and (:seq "max-stale") #\= (:fixnum? val) (:do (push (cons 'max-stale val) result)))
-	     (:and (:seq "min-fresh") #\= (:fixnum? val) (:do (push (cons 'min-fresh val) result)))
-	     (:and (:seq "no-transform") (:do (push (cons 'no-transform nil) result)))
-	     (:and (:seq "only-if-cached") (:do (push (cons 'only-if-cached nil) result))))
+  (:oom (:or (:and (:seq "no-cache")
+		   (:do (push (cons 'no-cache nil) result)))
+	     (:and (:seq "no-store")
+		   (:do (push (cons 'no-store nil) result)))
+	     (:and (:seq "max-age") #\= (:fixnum? val)
+		   (:do (push (cons 'max-age val) result)))
+	     (:and (:seq "pre-check") #\= (:fixnum? val)
+		   (:do (push (cons 'pre-check val) result)))
+	     (:and (:seq "post-check") #\= (:fixnum? val)
+		   (:do (push (cons 'post-check val) result)))
+	     (:and (:seq "max-stale") #\= (:fixnum? val)
+		   (:do (push (cons 'max-stale val) result)))
+	     (:and (:seq "min-fresh") #\= (:fixnum? val)
+		   (:do (push (cons 'min-fresh val) result)))
+	     (:and (:seq "no-transform")
+		   (:do (push (cons 'no-transform nil) result)))
+	     (:and (:seq "only-if-cached")
+		   (:do (push (cons 'only-if-cached nil) result)))
+	     (:and (:seq "must-revalidate")
+		   (:do (push (cons 'must-revalidate nil) result))))
 	(:zom (:type (or tab? space?)))
 	(:optional #\,)
 	(:zom (:type (or tab? space?))))
@@ -1352,8 +1365,15 @@
 (defun make-http-request (&rest args)
   (apply #'make-instance 'http-request args))
 
+(defmethod http-request.headers ((self http-request))
+  (append (slot-value self 'headers)
+	  (mapcar (lambda (a)
+		    (list (car a) (octets-to-string (cdr a) :utf-8)))
+		  (slot-value self 'unknown-headers))))
+
 (defmethod http-request.header ((request http-request) key)
-  (cadr (assoc key (http-request.headers request))))
+  (cadr
+   (assoc key (http-request.headers request) :test #'string=)))
 
 (defmethod http-request.referrer ((request http-request))
   (aif (http-request.header request 'referer)
@@ -1472,20 +1492,6 @@
 (defrule x-www-form-urlencoded? (query)  
   (:query? query)
   (:return query))
-
-
-(deftrace http-headers
-    (append (list 'http-request-first-line? 'rfc2616-request-headers?
-		  'http-unknown-header? 'mod-lisp-request-headers?
-		  'http-general-header? 'http-request-header?
-		  'http-entity-header?
-		  'mod-lisp-header? 'http-request! 'http-response?)
-	    (append
-	     (mapcar (lambda (header) (intern (format nil "HTTP-~A?" header)))
-		     (append +http-general-headers+ +http-request-headers+
-			     +http-entity-headers+))
-	     (mapcar (lambda (header) (intern (format nil "MOD-LISP-HTTP-~A?" header)))
-		     +mod-lisp-request-headers+))))
 
 ;;;-----------------------------------------------------------------------------
 ;;; HTTP RESPONSE
@@ -1761,11 +1767,29 @@ Content-Type: text/html; charset=iso-8859-1
 
 (defparser http-response? (version status-code status-message gh eh uh)
   (:status-code? version status-code status-message) (:lwsp?)
-  (:http-response-headers? gh eh uh) (:crlf?)
+  (:http-response-headers? gh eh uh) (:debug) (:crlf?)
   (:return (make-instance 'http-response
 			  :status-code status-code
 			  :entity-headers eh
 			  :response-headers (append gh uh))))
+
+
+;; -------------------------------------------------------------------------
+;; Trace Definition
+;; -------------------------------------------------------------------------
+(deftrace http-headers
+    (append (list 'http-request-first-line? 'rfc2616-request-headers?
+		  'http-unknown-header? 'mod-lisp-request-headers?
+		  'http-general-header? 'http-request-header?
+		  'http-entity-header?
+		  'mod-lisp-header? 'http-request! 'http-response?
+		  'http-response-headers?)
+	    (append
+	     (mapcar (lambda (header) (intern (format nil "HTTP-~A?" header)))
+		     (append +http-general-headers+ +http-request-headers+
+			     +http-entity-headers+))
+	     (mapcar (lambda (header) (intern (format nil "MOD-LISP-HTTP-~A?" header)))
+		     +mod-lisp-request-headers+))))
 
 ;; Core Server: Web Application Server
 
