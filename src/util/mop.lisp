@@ -127,7 +127,8 @@
 		     nil)
 		 #'class-direct-superclasses
 		 #'append))
-  (nreverse lst))
+  (mapcar (lambda (a) (cons (car a) (cons (eval (cadr a)) (cddr a))))
+	  (uniq (nreverse lst) :key #'car)))
 
 (defmethod slots-of ((object standard-object))
   #+openmcl
