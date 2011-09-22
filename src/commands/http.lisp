@@ -5,7 +5,7 @@
    (url :host local :initform (error "Please provide :url"))
    (post-data :host local :initform nil) 
    (parse-p :host local :initform t)
-   (debug :host local :initform t)))
+   (debug :host local :initform nil)))
 
 (defparser read-everything? (c (acc (make-accumulator :byte)))
   (:oom (:type octet? c) (:collect c acc))
