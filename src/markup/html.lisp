@@ -185,6 +185,7 @@
 	     onblur onfocus onchange size tabindex onmouseover onmouseout)
 (defhtml-tag <:small :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:span :core :event :i18n onmouseover onmouseout)
+(defhtml-tag <:strike :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:strong :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:style :i18n type media title)
 (defhtml-tag <:sub :core :event :i18n onmouseover onmouseout)
@@ -203,6 +204,7 @@
 (defhtml-tag <:title :i18n)
 (defhtml-tag <:tr :core :event :i18n align char charoff valign onmouseover onmouseout)
 (defhtml-tag <:tt :core :event :i18n onmouseover onmouseout)
+(defhtml-tag <:u :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:ul :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:var :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:embed src width height type quality bgcolor name align
