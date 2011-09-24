@@ -81,13 +81,14 @@
   	  slots-and-values :initial-value object))
 
 (deftransaction add-object ((server database) (class standard-class) &rest slots-and-values)
-  (let ((object (apply #'allocate-instance class (class-default-initargs class)))
+  (let ((object (apply #'allocate-instance class
+		       (class-default-initarg-values class)))
 	(initargs (reduce0 #'append
 		   (uniq
 		    (filter (lambda (a)
 			      (not (member (car a) slots-and-values :key #'car :test #'string=)))
 			    (mapcar (lambda (a) (list (car a) (cadr a)))
-				    (class-default-initargs class)))
+				    (class-default-initarg-values class)))
 		    :key #'car))))
     (apply #'update-object server object slots-and-values)
     (apply #'initialize-instance object initargs)
@@ -277,7 +278,7 @@
 		    (filter (lambda (a)
 			      (not (member (car a) slots-and-values :key #'car :test #'string=)))
 			    (mapcar (lambda (a) (list (car a) (cadr a)))
-				    (class-default-initargs class)))
+				    (class-default-initarg-values class)))
 				 :key #'car))))
 
     (apply #'update-object server object slots-and-values)
