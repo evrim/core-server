@@ -139,6 +139,14 @@
 						(funcall k (slot-value object slot) k))))
 				  (class+.local-slots (class-of object)))))))))
 
+
+(defmethod database.serialize ((self abstract-database) (object html-element)
+			       &optional
+			       (k (curry #'database.serialize self) ))
+  (if (typep object 'component)
+      (call-next-method self object k)
+      object))
+
 (deftransaction next-id ((server database))
   (let ((current (database.get server :id-counter)))
     (if current

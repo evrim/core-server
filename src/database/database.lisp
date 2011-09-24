@@ -273,7 +273,7 @@
   ;; Load Snapshot
   (when (probe-file (database.snapshot-pathname self))
     (with-core-stream (s (database.snapshot-pathname self))
-      (let ((xml (read-stream (make-xml-stream s))))
+      (let ((xml (read-stream (make-xml-stream s "db"))))
 	(aif (and xml (database.deserialize self xml))
 	     (setf (database.root self) it)))))
 
@@ -285,7 +285,7 @@
   (when (probe-file (database.transaction-log-pathname self))
     (let ((+transactionalp+ t))
       (with-core-stream (s (database.transaction-log-pathname self))
-	(let ((s (make-xml-stream s)))	  
+	(let ((s (make-xml-stream s "db")))	  
 	  (do* ((xml (read-stream s) (read-stream s))
 		(tx (database.deserialize self xml) (database.deserialize self xml)))
 	       ((null xml) nil)
@@ -297,7 +297,8 @@
     (make-core-stream
      (open pathname
 	   :direction :output :if-does-not-exist :create :if-exists :append
-	   :element-type '(unsigned-byte 8))))))
+	   :element-type '(unsigned-byte 8))))
+   "db"))
 
 (defmethod snapshot ((self abstract-database))
   (unless (database.status self)
@@ -317,7 +318,8 @@
 		    (make-core-stream
 		     (open (database.snapshot-pathname self)
 			   :direction :output :if-does-not-exist :create :if-exists :supersede
-			   :element-type '(unsigned-byte 8)))))))
+			   :element-type '(unsigned-byte 8))))
+		   "db")))
       
       (setf (database.cache self) (serialization-cache))
       (unwind-protect (write-stream stream (database.serialize self (database.root self)))
