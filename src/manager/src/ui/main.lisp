@@ -5,25 +5,29 @@
 
 ;; generate a css string compile time
 (defparameter *css*
-  (make-css (list (css "body" :font-family "verdana, sans-serif")
-		  (css "#footer" :font-size "80%" :margin "2em auto" :width "60em")
-		  (css ".chapter" :margin-left "auto" :margin-right "auto" :width "50em")
-		  (css "code, pre" :font-family "monospace" :font-weight "normal")
-		  (css ".path" :color "#448844")
-		  (css "div.sysinfo"
-		       :background "#FFFFC9 none repeat scroll 0 0"
-		       :padding "1em"
-		       :border "1px solid #B4BAEA"))))
+  (make-css
+   (list (css "body" :font-family "verdana, sans-serif")
+	 (css "#footer" :font-size "80%" :margin "2em auto" :width "60em")
+	 (css ".chapter" :margin-left "auto"
+	      :margin-right "auto" :width "50em")
+	 (css "code, pre" :font-family "monospace" :font-weight "normal")
+	 (css ".path" :color "#448844")
+	 (css "div.sysinfo"
+	      :background "#FFFFC9 none repeat scroll 0 0"
+	      :padding "1em"
+	      :border "1px solid #B4BAEA"))))
 
 (defvar *cslink* (<:a :href "http://labs.core.gen.tr" "Core Server"))
-(defvar *examples* (<:code :class "path" (format nil "~A" (bootstrap:in-home #P"examples/"))))
+(defvar *examples*
+  (<:code :class "path" (format nil "~A" (bootstrap:in-home #P"examples/"))))
 (defvar *header* (<:div :id "header"))
 (defvar *footer*
   (<:div :id "footer"
     (<:hr)
     (<:p (<:a :href "http://labs.core.gen.tr" (format nil "Core Server ~A" (core-server-version)))
 	 " | "
-	 (format nil "~A ~A" (lisp-implementation-type) (lisp-implementation-version)))))
+	 (format nil "~A ~A" (lisp-implementation-type)
+		 (lisp-implementation-version)))))
 
 (defun box (summary body)
   (<:div :class "box"
