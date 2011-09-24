@@ -148,7 +148,8 @@
 			 :initial-value instance)
 		 (reduce0 (lambda (acc atom)
 			    (cons (car atom) (cons (cadr atom) acc)))
-			  (class-default-initargs (class-of instance)))))))))
+			  (class-default-initarg-values
+			   (class-of instance)))))))))
 
 (defmethod database.serialize ((self abstract-database) (object standard-object)
 			       &optional (k (curry #'database.serialize self)))
@@ -394,8 +395,7 @@
 (defmacro with-transaction ((server) &body body)
   (with-unique-names (tx)
     (let* ((form (walk-form `(progn ,@body)))
-	   (vars (filter (lambda (a)
-			   (not (eq server a)))
+	   (vars (filter (lambda (a) (not (eq server a)))
 			 (find-free-variables form)))
 	   (thunk (walk-form `(lambda (,server ,@vars)
 				,@body))))  
@@ -403,20 +403,30 @@
 	 (execute ,server ,tx)))))
 
 (defmacro deftransaction (name args &body body)
-  (let* ((arg-names (extract-argument-names args :allow-specializers t))
+  (let* ((arguments (walk-lambda-list args nil nil :allow-specializers t))
+	 (arg-names (extract-argument-names args :allow-specializers t))
 	 (setf-p (and (listp name) (eq 'setf (car name)))))
     `(defmethod ,name ,args
        (if +transactionalp+
 	   (progn ,@body)
 	   (execute ,(if setf-p (cadr arg-names) (car arg-names))
-		    ,(if (member '&rest args )
-			 `(apply #'transaction
-				 ',name ,@(if setf-p
-					      (cons (car arg-names) (cddr arg-names))
-					      (cdr arg-names)))
-			 `(transaction ',name ,@(if setf-p
-						    (cons (car arg-names) (cddr arg-names))
-						    (cdr arg-names)))))))))
+		    (apply #'transaction
+			   ',name
+			   ,(reduce
+			     (lambda (acc arg)
+			       (typecase arg
+				 (keyword-function-argument-form
+				  (with-slots (name) arg
+				    `(,@acc ,(make-keyword name) ,name)))
+				 (rest-function-argument-form
+				  `(append ,acc ,(name arg)))
+				 (t
+				  (reverse (cons (name arg)
+						 (reverse acc))))))
+			     (if setf-p
+				 (cons (car arguments) (cddr arguments))
+				 (cdr arguments))
+			     :initial-value '(list))))))))
 
 ;; (defmacro deftransaction (name args &body body)
 ;;   `(defmethod ,name ,args
