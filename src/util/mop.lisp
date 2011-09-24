@@ -127,8 +127,14 @@
 		     nil)
 		 #'class-direct-superclasses
 		 #'append))
+  (uniq (nreverse lst) :key #'car)
+  ;; (mapcar (lambda (a) (cons (car a) (cons (eval (cadr a)) (cddr a))))
+  ;; 	  (uniq (nreverse lst) :key #'car))
+  )
+
+(defun class-default-initarg-values (class)
   (mapcar (lambda (a) (cons (car a) (cons (eval (cadr a)) (cddr a))))
-	  (uniq (nreverse lst) :key #'car)))
+	  (class-default-initargs class)))
 
 (defmethod slots-of ((object standard-object))
   #+openmcl
