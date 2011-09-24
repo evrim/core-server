@@ -223,17 +223,6 @@
    #:html-stream
    
    ;; [Dom Markup]
-   #:dom-element
-   #:dom.tag
-   #:dom.namespace
-   #:dom.attributes
-   #:dom.children
-   #:set-attribute
-   #:get-attribute
-   #:make-dom-element
-   #:dom-successor
-   #:dom-element!
-   #:dom-element?
    #:dom2string
    #:get-elements-by-tag-name
    
@@ -974,11 +963,9 @@
    #:funkall
 
    ;; [DOm Components]
-   #:dom-element
    #:css-class
    #:tag
    #:id
-   #:div-element
 
    ;; [Web Components]
    #:ckeditor-component
