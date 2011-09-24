@@ -159,10 +159,10 @@
 (defmacro/js lifte (fun &rest args)
   (if (atom fun)
       `(event (e)
-	 (with-call/cc (call/cc ,fun ,@args))	      
+	 (try (with-call/cc (call/cc ,fun ,@args)) (:catch (e) (_debug e)))	      
 	 false)
       `(event (e)
-	 (with-call/cc ,fun)
+	 (try (with-call/cc ,fun) (:catch (e) (_debug e)))
 	 false)))
 
 ;; -------------------------------------------------------------------------
