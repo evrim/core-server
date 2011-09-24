@@ -285,16 +285,24 @@
 (defmethod dom2js ((element t))
   nil)
 
-(defmethod dom2js ((element html-element))  
+(defmethod dom2js ((element xml))  
   `((lambda ()
       (let ((elem (document.create-element ,(xml.tag element))))
 	,@(reduce (lambda (acc attr)
 		    (let ((value (slot-value element attr)))
 		      (if value
 			  (cons
-			   (if (eq attr 'class)			 
-			       `(setf (slot-value elem 'class-name) ,value)
-			       `(setf (slot-value elem ',attr) ,value))
+			   (cond
+			     ((eq attr 'class)			 
+			      `(setf (slot-value elem 'class-name) ,value))
+			     ((eq attr 'style)
+			      `(progn
+				 (.set-attribute elem "style" ,value)
+				 (setf (slot-value (slot-value elem 'style)
+						   'css-text)
+				       ,value)))
+			     (t
+			      `(setf (slot-value elem ',attr) ,value)))
 			   acc)
 			  acc)))
 		  (xml.attributes element) :initial-value nil)
