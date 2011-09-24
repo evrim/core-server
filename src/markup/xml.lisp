@@ -53,21 +53,18 @@
 
 (defmethod xml.tag ((xml xml))
   (xml+.tag
-   (or (any (lambda (a) (and (typep a 'xml+) a)) 
-	    (cdr (class-superclasses (class-of xml))))
-       (class-of xml))))
+   (any (lambda (a) (and (typep a 'xml+) a)) 
+	(class-superclasses (class-of xml)))))
 
 (defmethod xml.attributes ((xml xml))
   (xml+.attributes
-   (or (any (lambda (a) (and (typep a 'xml+) a))
-	    (cdr (class-superclasses (class-of xml))))
-       (class-of xml))))
+   (any (lambda (a) (and (typep a 'xml+) a))
+	(class-superclasses (class-of xml)))))
 
-(defmethod xml.namespace ((xml xml))
+(defmethod xml.namespace ((xml xml))  
   (xml+.namespace
-   (or (any (lambda (a) (and (typep a 'xml+) a))
-	    (cdr (class-superclasses (class-of xml))))
-       (class-of xml))))
+   (any (lambda (a) (and (typep a 'xml+) a))
+	(class-superclasses (class-of xml)))))
 
 (defmethod xml.attribute ((xml xml) attribute)
   (slot-value xml attribute))
@@ -77,7 +74,8 @@
    (string= (xml.tag a) (xml.tag b))
    (string= (xml.namespace a) (xml.namespace b))
    (reduce (lambda (acc attr)
-	     (and acc (xml.equal (xml.attribute a attr) (xml.attribute a attr))))
+	     (and acc (xml.equal (xml.attribute a attr)
+				 (xml.attribute a attr))))
 	   (xml.attributes a)
 	   :initial-value t)
    (= (length (xml.children a)) (length (xml.children b)))
@@ -349,8 +347,9 @@
   (:return (list* tag namespace attrs children)))
 
 (defvar +xml-namespace+ (find-package :<))
-(defvar +xml-namespaces-table+
-  (list (cons "http://www.w3.org/2005/Atom" (find-package :<atom))
+(defparameter +xml-namespaces-table+
+  (list (cons "http://labs.core.gen.tr/2011/DB" (find-package :<db))
+	(cons "http://www.w3.org/2005/Atom" (find-package :<atom))
 	(cons "http://schemas.google.com/photos/2007"
 	      (find-package :<gphoto))
 	(cons "http://search.yahoo.com/mrss/" (find-package :<media))
@@ -374,7 +373,7 @@
 	(intern (string-upcase a) package)
 	(intern (string-upcase a) (find-package :<)))))
 
-(defun parse-xml (xml)
+(defun parse-xml (xml &optional default-namespace)
   (labels ((property->keyword (property)
 	     (if (position #\- property)
 		 (make-keyword
@@ -415,6 +414,13 @@
 				 (assoc "xmlns" attributes :test #'string=))
 				+xml-namespaces-table+ :test #'string=))
 		    it)
+		   ((and default-namespace
+			 (find-package
+			  (make-keyword
+			   (format nil "<~A" 
+				   (symbol-name
+				    (xml->symbol default-namespace))))))
+		     it)
 		   (t
 		    +xml-namespace+)))
 		 (symbol (xml->symbol tag +xml-namespace+)))
@@ -432,13 +438,15 @@
 ;; | XML Stream
 ;; +------------------------------------------------------------------------
 (defclass xml-stream (wrapping-stream)
-  ())
+  ((namespace :initform nil :initarg :namespace :reader namespace)))
 
-(defun make-xml-stream (stream)
-  (make-instance 'xml-stream :stream stream))
+(defun make-xml-stream (stream &optional namespace)
+  (make-instance 'xml-stream :stream stream
+		 :namespace namespace))
 
 (defmethod read-stream ((stream xml-stream))
-  (parse-xml (xml-lexer? (slot-value stream '%stream))))
+  (parse-xml (xml-lexer? (slot-value stream '%stream))
+	     (namespace stream)))
 
 (defmethod write-stream ((stream xml-stream) (string string))
   (prog1 stream
@@ -469,7 +477,7 @@
     (let ((tag (xml.tag object))
 	  (namespace (xml.namespace object)))
       (char! %stream #\<)
-      (if namespace
+      (if (and namespace (not (equal namespace (namespace stream))))
 	  (progn
 	    (string! %stream namespace)
 	    (char! %stream #\:)
@@ -497,7 +505,7 @@
     (let ((tag (xml.tag object))
 	  (namespace (xml.namespace object)))
       (string! %stream "</")
-      (if namespace
+      (if (and namespace (not (equal (namespace stream) namespace)))
 	  (progn
 	    (string! %stream namespace)
 	    (char! %stream #\:)
@@ -711,7 +719,8 @@
   (make-instance 'relaxed-xml-stream :stream stream))
 
 (defmethod read-stream ((stream relaxed-xml-stream))
-  (parse-xml (relaxed-xml-lexer? (slot-value stream '%stream))))
+  (parse-xml (relaxed-xml-lexer? (slot-value stream '%stream))
+	     (namespace stream)))
 
 (defmethod write-stream ((stream relaxed-xml-stream) (object xml))
   (with-slots (%stream) stream

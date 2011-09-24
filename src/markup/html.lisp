@@ -1,13 +1,13 @@
-;;+----------------------------------------------------------------------------
+;;+--------------------------------------------------------------------------
 ;;| HTML 4 Library
-;;+----------------------------------------------------------------------------
+;;+--------------------------------------------------------------------------
 ;; This file contains implementation of W3C HTML 4 Standard.
 ;; http://www.w3.org/TR/html4/
 (in-package :core-server)
 
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 ;; Helpers needed while defining HTML Objects
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 (eval-when (:compile-toplevel :execute :load-toplevel)
   (defvar +html-attributes+
     '(:core (class id style title)
@@ -17,13 +17,13 @@
 
   (defun make-html-attributes (attributes)
     (let ((attrs))
-      (mapcar (lambda (attr)
-		(pushnew attr attrs))	      
+      (mapcar (lambda (attr) (pushnew attr attrs))	      
 	      (reduce (lambda (acc atom)
 			(if (keywordp atom)
 			    (aif (getf +html-attributes+ atom)
 				 (append (reverse it) acc)
-				 (error "Attributes list ~A not found." atom))
+				 (error "Attributes list ~A not found."
+					atom))
 			    (cons atom acc)))
 		      attributes :initial-value nil))
       attrs))
@@ -56,14 +56,15 @@
 	       ,@(reduce0
 		  (lambda (acc attr)
 		    (if (cdr attr)
-			(append (cond
-				  ((eq (car attr) 'class)
-				   `(:class-name ,(cdr attr)))
-				  ((eq (car attr) 'colspan)
-				   `(:col-span ,(cdr attr)
-				     :colspan ,(cdr attr)))
-				  (t
-				   `(,(make-keyword (car attr)) ,(cdr attr))))
+			(append
+			 (cond
+			   ((eq (car attr) 'class)
+			    `(:class-name ,(cdr attr)))
+			   ((eq (car attr) 'colspan)
+			    `(:col-span ,(cdr attr)
+					:colspan ,(cdr attr)))
+			   (t
+			    `(,(make-keyword (car attr)) ,(cdr attr))))
 				acc)
 			acc))
 		  (list ,@(mapcar (lambda (attr) `(cons ',attr ,attr))
@@ -76,26 +77,27 @@
 (defmacro defhtml (name supers &rest attributes)  
   `(progn
      (defclass+ ,name (,@supers xml)
-       (,@(mapcar (lambda (attr) (list attr :print nil :host 'remote)) (remove 'id attributes)))
+       (,@(mapcar (lambda (attr) (list attr :print nil :host 'remote))
+		  (remove 'id attributes)))
        (:metaclass html+)
        (:tag ,@(string-downcase (symbol-name name)))
-       (:namespace ,@nil)
+       (:namespace ,@"html")
        (:attributes ,@attributes))
      (defhtml-javascript-tag ,name ,@attributes)
      (find-class+ ',name)))
 
-;;+----------------------------------------------------------------------------
+;;+--------------------------------------------------------------------------
 ;;| HTML Class
-;;+----------------------------------------------------------------------------
-(defclass+ html-element (dom-element)
+;;+--------------------------------------------------------------------------
+(defclass+ html-element (xml)
   ((id :host both))
   (:documentation "HTML Element Class (ie html)")
-  (:metaclass dom-element+))
+  (:metaclass html+))
 
 (defclass+ empty-html-element (html-element)
   ()
   (:documentation "Empty HTML Element Class (ie img)")
-  (:metaclass dom-element+))
+  (:metaclass html+))
 
 (defmacro defhtml-tag (name &rest attributes)
   `(defhtml ,name (html-element) ,@(make-html-attributes attributes)))
@@ -103,33 +105,38 @@
 (defmacro defhtml-empty-tag (name &rest attributes)
   `(defhtml ,name (empty-html-element) ,@(make-html-attributes attributes)))
 
-;;-----------------------------------------------------------------------------
+;;---------------------------------------------------------------------------
 ;; HTML 4 Tag Definitions
-;;-----------------------------------------------------------------------------
+;;---------------------------------------------------------------------------
 ;;
 ;; See http://www.w3.org/TR/xhtml1/dtds.html for exact definitions.
 ;;
-(defhtml-tag <:a :core :i18n :event accesskey charset coords href hreflang
-	     name onblur onfocus rel rev shape tabindex target type onmouseover onmouseout)
+(defhtml-tag <:a :core :i18n :event accesskey charset coords href
+	     hreflang name onblur onfocus rel rev shape tabindex
+	     target type onmouseover onmouseout)
 (defhtml-tag <:abbr :core :event :i18n)
 (defhtml-tag <:acronym :core :event :i18n)
 (defhtml-tag <:address :core :event :i18n onmouseover onmouseout)
-(defhtml-empty-tag <:area :core :event :i18n alt accesskey coords href nohref
-		   onblur onfocus shape tabindex onmouseover onmouseout)
+(defhtml-empty-tag <:area :core :event :i18n alt accesskey coords href
+		   nohref onblur onfocus shape tabindex onmouseover
+		   onmouseout)
 (defhtml-tag <:b :core :event :i18n onmouseover onmouseout)
 (defhtml-empty-tag <:base href)
 (defhtml-tag <:bdo :i18n id style title onmouseover onmouseout)
 (defhtml-tag <:big :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:blockquote :core :event :i18n cite onmouseover onmouseout)
-(defhtml-tag <:body :core :i18n :event onload onunload onmouseover onmouseout)
+(defhtml-tag <:body :core :i18n :event onload onunload onmouseover
+	     onmouseout)
 (defhtml-empty-tag <:br :core)
 (defhtml-tag <:button :core :event :i18n accesskey disabled name onblur
 	     onfocus tabindex type value onmouseover onmouseout)
 (defhtml-tag <:caption :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:cite :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:code :core :event :i18n onmouseover onmouseout)
-(defhtml-empty-tag <:col :core :event :i18n align char charoff span valign width)
-(defhtml-tag <:colgroup :core :event :i18n align char charoff span valign width)
+(defhtml-empty-tag <:col :core :event :i18n align char charoff span
+		   valign width)
+(defhtml-tag <:colgroup :core :event :i18n align char charoff span
+	     valign width)
 (defhtml-tag <:dd :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:del :core :event :i18n cite datetime)
 (defhtml-tag <:dfn :core :event :i18n onmouseover onmouseout)
@@ -140,7 +147,8 @@
 (defhtml-tag <:fieldset :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:form :core :event :i18n action accept-charset enctype method
 	     name onreset onsubmit submit target onmouseover onmouseout)
-(defhtml-empty-tag <:frame :core frameborder longdesc marginheight marginwidth noresize scrolling src)
+(defhtml-empty-tag <:frame :core frameborder longdesc marginheight
+		   marginwidth noresize scrolling src)
 (defhtml-tag <:frameset :core cols onload olunload rows)
 (defhtml-tag <:h1 :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:h2 :core :event :i18n onmouseover onmouseout)
@@ -154,17 +162,20 @@
 (defhtml-tag <:i :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:iframe :core frameborder longdesc marginheight
 	     marginwidth name scrolling src allowtransparency)
-(defhtml-empty-tag <:img :core :event :i18n alt src height ismap longdesc usemap width onmouseover onmouseout)
+(defhtml-empty-tag <:img :core :event :i18n alt src height ismap
+		   longdesc usemap width onmouseover onmouseout)
 (defhtml-empty-tag <:input :core :event :i18n accept accesskey alt checked
 		   disabled maxlength name onblur onchange onfocus
 		   onselect readonly size src tabindex type usemap
 		   value width height onmouseover onmouseout)
 (defhtml-tag <:ins :core :event :i18n cite datetime)
 (defhtml-tag <:kbd :core :event :i18n onmouseover onmouseout)
-(defhtml-tag <:label :core :event :i18n accesskey for onblur onfocus onmouseover onmouseout)
+(defhtml-tag <:label :core :event :i18n accesskey for onblur onfocus
+	     onmouseover onmouseout)
 (defhtml-tag <:legend :core :event :i18n accesskey onmouseover onmouseout)
 (defhtml-tag <:li :core :event :i18n onmouseover onmouseout)
-(defhtml-tag <:link :core :event :i18n charset href hreflang media rel rev type)
+(defhtml-tag <:link :core :event :i18n charset href hreflang media rel
+	     rev type)
 (defhtml-tag <:map :core :event :i18n name onmouseover onmouseout)
 (defhtml-tag <:meta :i18n content http--equiv name scheme)
 (defhtml-tag <:noframes :core :event :i18n)
@@ -180,7 +191,8 @@
 (defhtml-tag <:pre :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:q :core :event :i18n cite)
 (defhtml-tag <:samp :core :event :i18n onmouseover onmouseout)
-(defhtml-tag <:script onload onreadystate type charset defer src title language)
+(defhtml-tag <:script onload onreadystate type charset defer src title
+	     language)
 (defhtml-tag <:select :core :event :i18n disabled multiple name accesskey
 	     onblur onfocus onchange size tabindex onmouseover onmouseout)
 (defhtml-tag <:small :core :event :i18n onmouseover onmouseout)
@@ -192,17 +204,21 @@
 (defhtml-tag <:sup :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:table :core :event :i18n border cellpadding cellspacing
 	     frame summary width onmouseover onmouseout)
-(defhtml-tag <:tbody :core :event :i18n align char charoff valign onmouseover onmouseout)
+(defhtml-tag <:tbody :core :event :i18n align char charoff valign
+	     onmouseover onmouseout)
 (defhtml-tag <:td :core :event :i18n abbr align axis char charoff colspan
 	     headers rowspan scope valign width onmouseover onmouseout)
-(defhtml-tag <:textarea :core :event :i18n cols rows accesskey disables
-	     name onblur onchange onfocus onselect readonly tabindex onmouseover onmouseout)
+(defhtml-tag <:textarea :core :event :i18n cols rows accesskey
+	     disables name onblur onchange onfocus onselect readonly
+	     tabindex onmouseover onmouseout)
 (defhtml-tag <:tfoot :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:th :core :event :i18n abbr align axis char charoff colspan
 	     headers rowspan scope valign onmouseover onmouseout)
-(defhtml-tag <:thead :core :event :i18n align char charoff valign onmouseover onmouseout)
+(defhtml-tag <:thead :core :event :i18n align char charoff valign
+	     onmouseover onmouseout)
 (defhtml-tag <:title :i18n)
-(defhtml-tag <:tr :core :event :i18n align char charoff valign onmouseover onmouseout)
+(defhtml-tag <:tr :core :event :i18n align char charoff valign
+	     onmouseover onmouseout)
 (defhtml-tag <:tt :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:u :core :event :i18n onmouseover onmouseout)
 (defhtml-tag <:ul :core :event :i18n onmouseover onmouseout)
@@ -210,9 +226,9 @@
 (defhtml-tag <:embed src width height type quality bgcolor name align
 	     allow-script-access pluginspage)
 
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 ;; HTML Stream
-;; ----------------------------------------------------------------------------
+;; --------------------------------------------------------------------------
 (defclass html-stream (relaxed-xml-stream)
   ())
 
@@ -347,155 +363,3 @@
 
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
-;; (defmacro defhtml-javascript-tag (name &rest attributes)
-;;   (let* ((attributes (make-html-attributes attributes))
-;; 	 (tag (symbol-to-js name)))
-;;     `(defjsmacro ,name (&rest args)
-;;        (multiple-value-bind (attributes children) (tag-attributes args)
-;; 	 (destructuring-bind (&key ,@attributes) attributes
-;; 	   (declare (ignorable ,@attributes))
-;; 	   `((lambda ()
-;; 	       (let ((elem (document.create-element ,',tag)))
-;; 		 ,@(nreverse
-;; 		    (reduce0 (lambda (acc attr)
-;; 			       (if (cdr attr)
-;; 				   (cons (if (eq (car attr) 'class)			 
-;; 					     `(setf (slot-value elem 'class-name) ,(cdr attr))
-;; 					     `(setf (slot-value elem ',(car attr)) ,(cdr attr)))
-;; 					 acc)
-;; 				   acc))
-;; 			     (list ,@(mapcar (lambda (attr) `(cons ',attr ,attr))
-;; 					     attributes))))
-;; 		 ,@(mapcar (lambda (child)
-;; 			     (if (stringp child)
-;; 				 `(elem.append-child (document.create-text-node ,child))
-;; 				 `(elem.append-child ,child)))
-;; 			   children)
-;; 		 (return elem)))))))))
-;; (defmacro defhtml-javascript-tag (name &rest attributes)
-;;   (let* ((attributes (make-html-attributes attributes))
-;; 	 (tag (symbol-to-js name)))
-;;     `(defjsmacro ,name (&rest args)
-;;        (multiple-value-bind (attributes children) (tag-attributes args)
-;; 	 (destructuring-bind (&key ,@attributes) attributes
-;; 	   (declare (ignorable ,@attributes))
-;; 	   `(make-dom-element ,',tag
-;; 	      (jobject
-;; 	       ,@(reduce0 (lambda (acc attr)
-;; 			    (if (cdr attr)
-;; 				(append (cond
-;; 					  ((eq (car attr) 'class)
-;; 					   `(:class-name ,(cdr attr)))
-;; 					  ((eq (car attr) 'colspan)
-;; 					   `(:col-span ,(cdr attr)))
-;; 					  (t
-;; 					   `(,(make-keyword (car attr)) ,(cdr attr))))
-;; 					acc)
-;; 				acc))
-;; 			  (list ,@(mapcar (lambda (attr) `(cons ',attr ,attr))
-;; 					  attributes))))
-;; 	      (array ,@children)))))))
-
-;; (defmacro defhtml-tag (name &rest attributes)
-;;   (let* ((attributes (make-html-attributes attributes))
-;; 	 (tag (symbol-to-js name)))
-;;     `(progn
-;;        (defclass ,name (html-element)
-;; 	 ()
-;; 	 (:metaclass dom-element+)
-;; 	 (:default-initargs :tag ,tag)
-;; 	 (:attributes ,@attributes))
-;;        (defhtml-javascript-tag ,name ,@attributes)
-;;        (defun ,name (&rest args)
-;; 	 (multiple-value-bind (attributes children) (tag-attributes args)
-;; 	   (destructuring-bind (&key ,@attributes) attributes
-;; 	     (make-instance ',name
-;; 			    :attributes
-;; 			    (filter (lambda (attr)
-;; 				      (not (null (cdr attr))))
-;; 				    (list ,@(mapcar (lambda (attr)
-;; 						      `(cons ,(symbol-to-js attr) ,attr))
-;; 						    attributes)))
-;; 			    :children (flatten children))))))))
-
-;; (defmacro defhtml-empty-tag (name &rest attributes)
-;;   (let ((attributes (make-html-attributes attributes)))
-;;     `(progn
-;;        (defclass ,name (empty-html-element)
-;; 	 ()
-;; 	 (:metaclass dom-element+)
-;; 	 (:default-initargs :tag ,(symbol-to-js name))
-;; 	 (:attributes ,@attributes))       
-;;        (defhtml-javascript-tag ,name ,@attributes)
-;;        (defun ,name (&key ,@attributes)
-;; 	 (make-instance ',name
-;; 			:attributes
-;; 			(filter (lambda (attr)
-;; 				  (not (null (cdr attr))))
-;; 				(list ,@(mapcar (lambda (attr)
-;; 						  `(cons ,(symbol-to-js attr) ,attr))
-;; 						attributes)))
-;; 			:children nil)))))
-
-;; (defmethod dom-element! ((stream core-stream) (element <:form)
-;; 			 &optional (indentation 0))
-;;   (prog1 stream
-;;     (let ((action (get-attribute element "action")))
-;;       (typecase action
-;; 	(string (call-next-method))
-;; 	(cons (let ((uri (uri? (make-core-stream (cdr action))))
-;; 		    (context (cdr action)))
-;; 		(if (and uri (slot-boundp context 'session))
-;; 		    (call-next-method
-;; 		     stream	     
-;; 		     (set-attribute element "action" 
-;; 				    (with-core-stream (s "")
-;; 				      (uri! s (prog1 uri
-;; 						(setf (uri.queries uri)
-;; 						      (cons
-;; 						       (cons
-;; 							(symbol-to-js +session-query-name+)
-;; 							(session.id (context.session context)))		  
-;; 						       (uri.queries uri))
-;; 						      (uri.paths uri)
-;; 						      (cons
-;; 						       (list
-;; 							(symbol-to-js
-;; 							 (web-application.fqdn
-;; 							  (context.application context))))
-;; 						       (uri.paths uri)))))
-;; 				      (return-stream s)))
-;; 		     indentation)
-;; 		    (call-next-method stream (set-attribute element "action" (cdr action)) indentation))))))))
-
-
-;; ;;-----------------------------------------------------------------------------
-;; ;; Html Validator
-;; ;;-----------------------------------------------------------------------------
-;; ;;
-;; ;; TODO: Implement validator
-;; ;;
-;; (defmethod validate-html ((dom-element t))
-;;   (warn "Unknown Html Element: ~A" dom-element)
-;;   dom-element)
-
-;; (defmethod validate-html ((dom-element string))
-;;   dom-element)
-
-;; (defmethod validate-html ((dom-element dom-element))
-;;   (aif (find-class (intern (string-upcase (dom.tag dom-element))
-;; 			   (find-package :tr.gen.core.server.html)) nil)
-;;        (change-class dom-element it))
-;;   (setf (dom.children dom-element)
-;; 	(mapcar #'validate-html (dom.children dom-element)))
-;;   dom-element)
-
-;; (defun html? (stream)
-;;   "Returns associated html element parsing from 'stream'"
-;;   (let ((dom (dom-element? stream)))
-;;     (if dom (validate-html dom))))
-
-;; (defmethod html! ((stream core-stream) element)
-;;   (dom-element! stream element))
