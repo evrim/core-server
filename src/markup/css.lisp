@@ -17,9 +17,9 @@
 
 (in-package :core-server)
 
-;;+----------------------------------------------------------------------------
+;;+--------------------------------------------------------------------------
 ;;| CSS 2 Library
-;;+----------------------------------------------------------------------------
+;;+--------------------------------------------------------------------------
 ;;
 ;; This file contains implementation of W3C CSS 2 Standard.
 ;; http://www.w3.org/TR/CSS21/
@@ -32,38 +32,40 @@
 
 (defmethod print-object ((self css-element) stream)
   (print-unreadable-object (self stream :type t :identity t)
-    (format stream "~A(~D)" (css.selector self) (length (css.children self)))))
+    (format stream "~A(~D)" (css.selector self)
+	    (length (css.children self)))))
 
 (defvar +css-current-selector+ nil)
-(defmethod dom-element! ((stream core-stream) (element css-element)
-			            &optional (indentation 0))  
-  (when +css-current-selector+
-    (string! stream +css-current-selector+)
-    (char! stream #\Space))
-  (string! stream (css.selector element))
-  (string! stream " {")
-  (char! stream #\Newline)
-  (mapc (lambda (atom)
-	  (if (keywordp atom)
-	      (progn
-		(string! stream (string-downcase (symbol-name atom)))
-		(string! stream ": "))
-	      (progn
-		(dom-element! stream atom indentation)
-		(char! stream #\;)
-		(char! stream #\Newline))))
-	(css.attributes element))
-  (string! stream "}")
-  (char! stream #\Newline)
-  (char! stream #\Newline)
-  (when (css.children element)
-    (let ((+css-current-selector+ (if +css-current-selector+
-				      (format nil "~A ~A"
-					      +css-current-selector+ (css.selector element))
-				      (css.selector element))))
-      (reduce (rcurry #'dom-element! indentation)
-	      (css.children element) :initial-value stream)))
-  stream)
+(defmethod write-stream ((stream xml-stream) (element css-element))
+  (with-slots (%stream) stream
+    (when +css-current-selector+
+      (string! %stream +css-current-selector+)
+      (char! %stream #\Space))
+    (string! %stream (css.selector element))
+    (string! %stream " {")
+    (char! %stream #\Newline)
+    (mapc (lambda (atom)
+	    (if (keywordp atom)
+		(progn
+		  (string! %stream (string-downcase (symbol-name atom)))
+		  (string! %stream ": "))
+		(progn
+		  (write-stream %stream atom)
+		  (char! %stream #\;)
+		  (char! %stream #\Newline))))
+	  (css.attributes element))
+    (string! %stream "}")
+    (char! %stream #\Newline)
+    (char! %stream #\Newline)
+    (when (css.children element)
+      (let ((+css-current-selector+
+	     (if +css-current-selector+
+		 (format nil "~A ~A"
+			 +css-current-selector+ (css.selector element))
+		 (css.selector element))))
+	(reduce #'write-stream
+		(css.children element) :initial-value stream)))
+    stream))
 
 (defun css (&rest args)
   (multiple-value-bind (attributes children) (tag-attributes (cdr args))
@@ -73,11 +75,11 @@
 		   :children (flatten children))))
 
 (defmethod css! ((stream core-stream) (element css-element))
-  (dom-element! stream element))
+  (write-stream stream element))
 
 
 ;;+----------------------------------------------------------------------------
-;;| CSS 2 Query via Selectors
+;;| css 2 Query via Selectors
 ;;+----------------------------------------------------------------------------
 ;; http://www.w3.org/TR/REC-CSS2/selector.html
 ;;
