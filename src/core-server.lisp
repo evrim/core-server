@@ -210,6 +210,7 @@
    #:xml.children
    #:xml.equal
    #:xml-search
+   #:filter-xml-nodes
    #:make-xml-type-matcher
    #:generic-xml
 

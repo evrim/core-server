@@ -105,6 +105,28 @@
 		 #'append)
     result))
 
+(defun filter-xml-nodes (root goal-p)
+  (cond
+    ((stringp root) root)
+    (t
+     (let ((ctor (core-server::class+.ctor-name (class-of root))))
+       (apply ctor
+	      (append (reduce0
+		       (lambda (acc attribute)
+			 (aif (xml.attribute root attribute)
+			      (cons (make-keyword attribute)
+				    (cons it acc))
+			      acc))
+		       (xml.attributes root))
+		      (nreverse
+		       (reduce0 (lambda (acc child)
+				  (if (and (not (stringp child))
+					   (funcall goal-p child))
+				      acc
+				      (cons (filter-xml-nodes child goal-p)
+					    acc)))
+				(xml.children root)))))))))
+
 ;; -------------------------------------------------------------------------
 ;; XML defining macro: defmxl
 ;; -------------------------------------------------------------------------
