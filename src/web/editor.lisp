@@ -26,11 +26,34 @@
    (list "TextColor" "BGColor")
    (list "Maximize" "ShowBlocks" "-" "About")))
 
+(defparameter +ckeditor-simple-toolbar+
+  (list
+   (list "Cut" "Copy" "Paste" "PasteText")
+   (list "Undo" "Redo" "-" "")
+   (list "Bold" "Italic" "Underline" "Strike" "-" "Subscript" "Superscript")
+   ;; "/"
+   (list "NumberedList" "BulletedList" "-" "Outdent" "Indent" "Blockquote")
+   (list "JustifyLeft" "JustifyCenter" "JustifyRight" "JustifyBlock")
+   (list "Link" "Unlink")
+
+   ;; (list "TextColor" "BGColor")
+   ))
+
 (defparameter +ckeditor-config+
   (jobject :base-path "/js/ckeditor/"
 	   :extra-plugins "autogrow,mediaembed"
 	   :remove-plugins "maximize,resize"
-	   :toolbar +ckeditor-toolbar+))
+	   :toolbar +ckeditor-toolbar+
+	   :toolbar-can-collapse nil))
+
+(defparameter +ckeditor-simple-config+
+  (jobject :base-path "/js/ckeditor/"
+	   :extra-plugins "autogrow,mediaembed"
+	   :remove-plugins "maximize,resize"
+	   :skin "office2003"
+	   :toolbar-can-collapse nil
+	   :startup-focus t
+	   :toolbar +ckeditor-simple-toolbar+))
 
 (defvar +ckeditor-uri+ "/js/ckeditor/ckeditor.js")
 (defvar +ckeditor-source-uri+ "/js/ckeditor/ckeditor_source.js")
@@ -59,14 +82,35 @@
   (delete-slots self 'ckeditor-uri 'ckeditor-css 'config 'instance)
   (call-next-method self))
 
+(defmethod/remote load-ckeditor ((self <core:ckeditor))
+  (load-javascript (ckeditor-uri self)
+    (lambda ()
+      (and (not (null -c-k-e-d-i-t-o-r))
+	   (not (null (slot-value -c-k-e-d-i-t-o-r 'replace)))))))
+
 (defmethod/remote init ((self <core:ckeditor))
   (load-css (ckeditor-css self))
-  (load-javascript (ckeditor-uri self)
-   (lambda ()
-     (and (not (null -c-k-e-d-i-t-o-r))
-	  (not (null (slot-value -c-k-e-d-i-t-o-r 'replace))))))
+  (load-ckeditor self)
   (setf (instance self) (-c-k-e-d-i-t-o-r.replace self (config self)))
   (call-next-method self))
+
+;; -------------------------------------------------------------------------
+;; Lazy Ck Editor Form Field
+;; -------------------------------------------------------------------------
+(defcomponent <core:lazy-ckeditor (<core:ckeditor)
+  ()
+  (:default-initargs :config +ckeditor-simple-config+))
+
+(defmethod/remote onfocus ((self <core:lazy-ckeditor) e)
+  (let ((self (slot-value e 'target)))
+    (when (null (instance self))
+      (load-css (ckeditor-css self))
+      (load-ckeditor self)
+      (setf (slot-value self 'value) "")
+      (setf (instance self) (-c-k-e-d-i-t-o-r.replace self (config self))))))
+
+(defmethod/remote init ((self <core:lazy-ckeditor))
+  self)
 
 ;; --------------------------------------------------------------------------
 ;; Ck Editor

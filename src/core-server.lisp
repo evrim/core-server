@@ -1176,7 +1176,7 @@
 	   #:domain-input #:email-input #:password-input
 	   #:required-value-input #:number-value-input
 	   #:username-input #:tab #:crud
-	   #:auth #:core #:ckeditor))
+	   #:auth #:core #:ckeditor #:lazy-ckeditor))
 
 (defpackage :tr.gen.core.server.atom
   (:nicknames :<atom)
