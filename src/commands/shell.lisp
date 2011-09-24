@@ -64,7 +64,8 @@
 (defmethod wait-process ((self shell))
   (progn
     (sb-ext:process-wait (shell.process self))
-    (setf (shell.exit-code self) (sb-ext::process-exit-code (shell.process self)))
+    (setf (shell.exit-code self)
+	  (sb-ext::process-exit-code (shell.process self)))
     (check-exit-code self)))
 
 (defmethod run ((self shell))
@@ -73,7 +74,8 @@
 	     ((pathnamep cmd) (namestring cmd))
 	     (t (error "Please provide cmd slot")))))
     (if (s-v 'verbose)
-	(format t "Executing command: ~A ~{~A~^ ~}~%" (s-v 'cmd) (render-arguments self)))
+	(format t "Executing command: ~A ~{~A~^ ~}~%"
+		(s-v 'cmd) (render-arguments self)))
     (setf (shell.process self)
 	  (sb-ext:run-program (ensure-cmd (shell.cmd self))
 			      (mapcar (lambda (a) (format nil "~A" a))
