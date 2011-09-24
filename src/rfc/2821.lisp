@@ -235,7 +235,7 @@
       (smtp! s "Content-Transfer-Encoding: 8bit")
       (char! s #\Newline)
       (cond
-	((typep (envelope.text e) 'dom-element)
+	((typep (envelope.text e) 'xml)
 	 (write-stream (make-xml-stream s) (envelope.text e)))
 	(t
 	 (string! s (envelope.text e))))
