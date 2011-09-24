@@ -1767,7 +1767,7 @@ Content-Type: text/html; charset=iso-8859-1
 
 (defparser http-response? (version status-code status-message gh eh uh)
   (:status-code? version status-code status-message) (:lwsp?)
-  (:http-response-headers? gh eh uh) (:debug) (:crlf?)
+  (:http-response-headers? gh eh uh) (:crlf?)
   (:return (make-instance 'http-response
 			  :status-code status-code
 			  :entity-headers eh
