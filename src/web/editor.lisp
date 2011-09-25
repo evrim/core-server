@@ -102,12 +102,11 @@
   (:default-initargs :config +ckeditor-simple-config+))
 
 (defmethod/remote onfocus ((self <core:lazy-ckeditor) e)
-  (let ((self (slot-value e 'target)))
-    (when (null (instance self))
-      (load-css (ckeditor-css self))
-      (load-ckeditor self)
-      (setf (slot-value self 'value) "")
-      (setf (instance self) (-c-k-e-d-i-t-o-r.replace self (config self))))))
+  (when (null (instance self))
+    (load-css (ckeditor-css self))
+    (load-ckeditor self)
+    (setf (slot-value self 'value) "")
+    (setf (instance self) (-c-k-e-d-i-t-o-r.replace self (config self)))))
 
 (defmethod/remote init ((self <core:lazy-ckeditor))
   self)
