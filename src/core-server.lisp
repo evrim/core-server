@@ -220,7 +220,9 @@
 
    ;; [HTML Stream]
    #:make-html-stream
+   #:make-safe-html-stream
    #:html-stream
+   #:safe-html-stream
    
    ;; [Dom Markup]
    #:dom2string

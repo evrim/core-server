@@ -348,6 +348,76 @@
 	 do (write-char #\& href)))))
 
 
+;; -------------------------------------------------------------------------
+;; Safe Html Stream
+;; -------------------------------------------------------------------------
+;; This is used to process html provided by client.  Some security
+;; measures are taken like, script, img tags are removed, also links
+;; are processed to be <:a tags.
+(defclass safe-html-stream (html-stream)
+  ())
+
+(defun make-safe-html-stream (stream)
+  (make-instance 'safe-html-stream :stream stream))
+
+(defun fix-hacker-tags (dom-node)
+  (filter-xml-nodes dom-node
+		    (lambda (node)
+		      (or (equal (xml.tag node) "script")
+			  (equal (xml.tag node) "img")
+			  ;; (equal (xml.tag node) "a")
+			  ))))
+
+(defparser extract-links (lst c acc1 (acc (make-accumulator)))
+  (:zom (:or (:and (:seq "http://")
+		   (:do (push acc lst)
+			(setq acc1 (make-accumulator)
+			      acc (make-accumulator)))
+		   (:oom (:type visible-char? c)
+			 (:collect c acc1))
+		   (:do (let ((a (format nil "http://~A" acc1)))
+			  (push (<:a :href a :target "_blank" a)
+				lst))))
+	     (:and (:seq "www.")
+		   (:do (push acc lst)
+			(setq acc1 (make-accumulator)
+			      acc (make-accumulator)))
+		   (:oom (:type visible-char? c)
+			 (:collect c acc1))
+		   (:do (let ((a (format nil "http://www.~A" acc1)))
+			  (push (<:a :href a :target "_blank" a)
+				lst))))
+	     (:and (:type octet? c) (:collect c acc))))
+  (:do (push acc lst))
+  (:return (remove "" (nreverse lst) :test #'equal)))
+
+(defun make-links (root)
+  (cond
+    ((stringp root)
+     (extract-links (make-core-stream root)))
+    ((typep root '<:a)
+     (setf (slot-value root 'core-server::target) "_blank")
+     root)
+    (t
+     (let ((ctor (core-server::class+.ctor-name (class-of root))))
+       (apply ctor
+	      (append (reduce0
+		       (lambda (acc attribute)
+			 (aif (xml.attribute root attribute)
+			      (cons (make-keyword attribute)
+				    (cons it acc))
+			      acc))
+		       (xml.attributes root))
+		      (reduce0 (lambda (acc child)
+				 (append acc
+					 (ensure-list (make-links child))))
+			       (xml.children root))))))))
+
+(defmethod read-stream ((self safe-html-stream))
+  (let ((a (call-next-method self)))
+    (if a
+	(make-links (fix-hacker-tags a)))))
+
 ;; Core Server: Web Application Server
 
 ;; Copyright (C) 2006-2008  Metin Evrim Ulu, Aycan iRiCAN
