@@ -111,7 +111,8 @@
 	     (with-slots (name label read-only) slot	       
 	       (with-field (+ label ":") (view-me self slot))))
 	   (reverse (reverse (get-template-class self))))
-	  (<:p (if (editable-p self)
+	  (<:p :class "buttons"
+	       (if (editable-p self)
 		   (<:input :type "button" :value "Edit"
 			    :onclick (lifte (do-edit self))))
 	       (if (deletable-p self)
