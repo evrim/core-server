@@ -30,7 +30,7 @@
   (list
    (list "Cut" "Copy" "Paste" "PasteText")
    (list "Undo" "Redo" "-" "")
-   (list "Bold" "Italic" "Underline" "Strike" "-" "Subscript" "Superscript")
+   (list "Bold" "Italic" "Underline" "Strike")
    ;; "/"
    (list "NumberedList" "BulletedList" "-" "Outdent" "Indent" "Blockquote")
    (list "JustifyLeft" "JustifyCenter" "JustifyRight" "JustifyBlock")
