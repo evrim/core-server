@@ -252,5 +252,5 @@
 (defun dom2string (element)
   "Returns rendered string representation of 'element'"
   (with-core-stream (s "")
-    (write-stream (make-xml-stream s) element)
+    (write-stream (make-html-stream s) element)
     (return-stream s)))
