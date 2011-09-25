@@ -236,7 +236,7 @@
       (char! s #\Newline)
       (cond
 	((typep (envelope.text e) 'xml)
-	 (write-stream (make-xml-stream s) (envelope.text e)))
+	 (write-stream (make-xml-stream s "html") (envelope.text e)))
 	(t
 	 (string! s (envelope.text e))))
       (char! s #\Newline)

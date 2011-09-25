@@ -230,7 +230,8 @@
 ;; HTML Stream
 ;; --------------------------------------------------------------------------
 (defclass html-stream (relaxed-xml-stream)
-  ())
+  ()
+  (:default-initargs :namespace "html"))
 
 (defun make-html-stream (stream)
   (make-instance 'html-stream :stream stream))
