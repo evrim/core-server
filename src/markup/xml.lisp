@@ -319,15 +319,19 @@
 				     (:do (push child children)))
 			       (:and (:%xml-lexer? a b c d)
 				     (:do (push (list* a b c d) children)))))
+		    (:and (:%xml-lexer? a b c d)
+			  (:do (push (list* a b c d) children)))
 		    (:and (:xml-text-node? child)
 			  (:do (push child children))
-			  #\/
-			  (:if namespace
-			       (:and (:sci namespace) #\: (:sci tag))
-			       (:sci tag))
-			  #\>
-			  (:return (values tag namespace (nreverse attrs)
-					   (nreverse children))))))
+			  ;; #\/
+			  ;; (:if namespace
+			  ;;      (:and (:sci namespace) #\: (:sci tag))
+			  ;;      (:sci tag))
+			  ;; #\>
+			  ;; (:return (values tag namespace (nreverse attrs)
+			  ;; 		   (nreverse children)))
+			  )
+		    ))
 	     #\/
 	     (:if namespace
 		  (:and (:sci namespace) #\: (:sci tag))
