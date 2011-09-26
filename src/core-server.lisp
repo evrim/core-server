@@ -906,6 +906,8 @@
    #:json-serialize
    #:json-deserialize
    #:jobject
+   #:get-attribute
+   #:jobject.attributes
    #:object->jobject
    #:assoc->jobject
    
