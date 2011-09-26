@@ -22,19 +22,19 @@
 
 (defmethod/remote enable-or-disable-form ((self <core:validating-input))
   (when (not (null (slot-value self 'form))) ;; not avail at first run-validate
-    (let ((valid (reduce-cc
-		  (lambda (acc input)
-		    (cond
-		      ((or (eq (typeof (slot-value input 'valid))
-			       "undefined")
-			   (slot-value input 'disabled))
-		       acc)
-		      (t
-		       (and acc (valid input)))))
-		  (append (self.form.get-elements-by-tag-name "INPUT")
-			  (self.form.get-elements-by-tag-name "SELECT")
-			  (self.form.get-elements-by-tag-name "TEXTAREA"))
-		  t)))
+    (let* ((form (slot-value self 'form))
+	   (valid (reduce-cc
+		   (lambda (acc input)
+		     (cond
+		       ((or (eq (typeof (slot-value input 'valid)) "undefined")
+			    (slot-value input 'disabled))
+			acc)
+		       (t (and acc (valid input)))))
+		   (append (reverse (.get-elements-by-tag-name form "INPUT"))
+			   (append
+			    (reverse (.get-elements-by-tag-name form "SELECT"))
+			    (reverse (.get-elements-by-tag-name form "TEXTAREA"))))
+		   t)))
       (mapcar (lambda (input)
 		(when (and input.type (eq "SUBMIT" (input.type.to-upper-case)))
 		  (if valid

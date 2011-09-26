@@ -62,16 +62,32 @@
 ;; -------------------------------------------------------------------------
 ;; Ck Editor Form Field
 ;; -------------------------------------------------------------------------
-(defcomponent <core:ckeditor (<:textarea)
+(defcomponent <core:ckeditor (<core:validating-input)
   ((ckeditor-uri :host remote :initform +ckeditor-uri+)
    (ckeditor-css :host remote :initform +ckeditor-css+)
    (config :host remote :initform +ckeditor-config+)
-   (instance :host remote)))
+   (instance :host remote))
+  (:tag . "textarea"))
 
 (defmethod/remote get-input-value ((self <core:ckeditor))
   (let* ((instance (instance self))
 	 (_foo (event () (.get-data instance))))
-    (_foo)))
+    (run-validator self)
+    (if (and instance (valid self))
+	(_foo)
+	(throw (new (*error (+ "Editor " (slot-value self 'id)
+			       "is empty.")))))))
+
+;; CKEDITOR.instances[i].on ('click', function ()
+;; 				      {alert ('test 1 2 3')
+;; 				      })
+(defmethod/remote validate ((self <core:ckeditor))
+  (let* ((instance (instance self))
+	 (_foo (event () (.get-data instance)))
+	 (value (if instance (_foo))))
+    (if (or (null value) (eq "" value))
+	"This field is empty."
+	t)))
 
 (defmethod/remote destroy ((self <core:ckeditor))
   (remove-css (ckeditor-css self))
@@ -83,15 +99,17 @@
   (call-next-method self))
 
 (defmethod/remote load-ckeditor ((self <core:ckeditor))
+  (load-css (ckeditor-css self))
   (load-javascript (ckeditor-uri self)
     (lambda ()
       (and (not (null -c-k-e-d-i-t-o-r))
 	   (not (null (slot-value -c-k-e-d-i-t-o-r 'replace)))))))
 
 (defmethod/remote init ((self <core:ckeditor))
-  (load-css (ckeditor-css self))
   (load-ckeditor self)
-  (setf (instance self) (-c-k-e-d-i-t-o-r.replace self (config self)))
+  (let ((instance (-c-k-e-d-i-t-o-r.replace self (config self))))
+    (setf (instance self) instance)
+    (.on instance "key" (lifte (run-validator self))))
   (call-next-method self))
 
 ;; -------------------------------------------------------------------------
@@ -103,10 +121,11 @@
 
 (defmethod/remote onfocus ((self <core:lazy-ckeditor) e)
   (when (null (instance self))
-    (load-css (ckeditor-css self))
     (load-ckeditor self)
     (setf (slot-value self 'value) "")
-    (setf (instance self) (-c-k-e-d-i-t-o-r.replace self (config self)))))
+    (let ((instance (-c-k-e-d-i-t-o-r.replace self (config self))))
+      (setf (instance self) instance)
+      (.on instance "key" (lifte (run-validator self))))))
 
 (defmethod/remote init ((self <core:lazy-ckeditor))
   self)
