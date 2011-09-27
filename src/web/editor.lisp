@@ -117,20 +117,32 @@
       (and (not (null -c-k-e-d-i-t-o-r))
 	   (not (null (slot-value -c-k-e-d-i-t-o-r 'replace)))))))
 
+(defmethod/remote onchange ((self <core:ckeditor) e)
+  (if (instance self)
+      (.update-element (instance self)))
+  
+  (run-validator self)
+  t)
+
 (defmethod/remote bind-editor ((self <core:ckeditor))
-  (load-ckeditor self)  
-  (let ((instance (-c-k-e-d-i-t-o-r.replace self (config self))))
-    (setf (instance self) instance)
-    (.on instance "key" (lifte (run-validator self)))
-    (.on instance "blur" (lifte (run-validator self)))
-    (with-slots (form) self
-      (when form
-	(let ((onsubmit (slot-value form 'onsubmit)))
-	  (+ " " onsubmit)
-	  (setf (slot-value form 'onsubmit)
-		(event (e)
-		  (make-web-thread (lambda () (destroy self window.k)))
-		  (.apply onsubmit this (list e)))))))))
+  (load-ckeditor self)
+  (with-slots (parent-node) self
+    (cond
+      ((or (null parent-node) (null (slot-value parent-node 'tag-name)))
+       (make-web-thread (lambda () (bind-editor self))))
+      (t
+       (let ((instance (-c-k-e-d-i-t-o-r.replace self (config self))))
+	 (setf (instance self) instance)
+	 (.on instance "key" (event (e) (onchange self e)))
+	 (.on instance "blur" (event (e) (onchange self e)))
+	 (with-slots (form) self
+	   (when form
+	     (let ((onsubmit (slot-value form 'onsubmit)))
+	       (+ " " onsubmit)
+	       (setf (slot-value form 'onsubmit)
+		     (event (e)
+			    (make-web-thread (lambda () (destroy self window.k)))
+			    (.apply onsubmit this (list e))))))))))))
 
 (defmethod/remote init ((self <core:ckeditor))
   (bind-editor self)
