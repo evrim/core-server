@@ -13,6 +13,9 @@
    (editable-p :host both :initform t)
    (crud-css :host remote :initform "http://www.coretal.net/style/crud.css")
    (yes-no-dialog-ctor :host remote :initform (yes-no-dialog))
+   (_ckeditor :host remote
+	      :initform (<core:ckeditor
+			 :config core-server::+ckeditor-simple-config+))
    (_template :host remote)
    (_result :host remote :initform (jobject))))
 
@@ -91,6 +94,15 @@
 	  ((eq type "password")
 	   (<:input :type "password" :name name :value value
 		    :onchange (default-onchange name)))
+	  ((not (null (slot-value value 'tag-name)))
+	   (let* ((div (<:div value))
+		  (textarea (<:textarea :name name :id (random-string)
+					(slot-value div 'inner-h-t-m-l)))
+		  (editor (call/cc (_ckeditor self) textarea)))
+	     (setf (slot-value textarea 'onchange)
+		   (compose-prog1 (slot-value textarea 'onchange)
+				  (default-onchange name)))
+	     editor))
 	  (t
 	   (<:input :type "text" :name name :value value
 		    :onchange (default-onchange name))))))))
@@ -125,7 +137,7 @@
 	  (replace-node _template (view-template self)))))
 
 (defmethod/remote do-save1 ((self <core:crud))
-;;   (_debug (list "result" (_result self)))
+  ;; (_debug (list "result" (_result self)))
   (answer-component self (list "update" (_result self))))
 
 (defmethod/remote do-delete1 ((self <core:crud))
@@ -137,23 +149,22 @@
 
 (defmethod/remote edit-template ((self <core:crud))
   (<:div :class "crud"
-	 (<:form
-	  (mapcar-cc
-	   (lambda (slot)
-	     (with-slots (name label read-only) slot	       
-	       (with-field (+ label ":")
-		 (cond
-		   (read-only
-		    (view-me self slot))
-		   (t
-		    (let ((edit (edit-me self slot)))
-		      edit))))))
-	   (reverse (reverse (get-template-class self))))
-	  (<:p (<:input :type "submit" :value "Save"
-;; 			:disabled t
-			:onclick (lifte (do-save1 self)))
-	       (<:input :type "button" :value "Cancel"
-			:onclick (lifte (do-cancel self)))))))
+	 (<:form :onsubmit (lifte (do-save1 self))
+		 (mapcar-cc
+		  (lambda (slot)
+		    (with-slots (name label read-only) slot
+		      (with-field (+ label ":")
+			(cond
+			  (read-only (view-me self slot))
+			  (t (edit-me self slot))))))
+		  (reverse (reverse (get-template-class self))))
+		 (<:p :class "buttons"
+		      (<:input :type "submit" :value "Save"
+			       ;; :disabled t
+			       ;; :onclick (lifte (do-save1 self))
+			       )
+		      (<:input :type "button" :value "Cancel"
+			       :onclick (lifte (do-cancel self)))))))
 
 (defmethod/remote remove-child-nodes ((self <core:crud))
   (mapcar-cc (lambda (a) (.remove-child self a))
@@ -163,7 +174,9 @@
   (remove-css (crud-css self))
   (remove-class self "crud")
   (remove-child-nodes self)
-  (delete-slots self 'instance 'template-class 'crud-css 'title)
+  (delete-slots self 'instance 'template-class 'crud-css 'title
+  		'deletable-p 'editable-p 'yes-no-dialog-ctor '_ckeditor
+  		'_template '_result)
   (call-next-method self))
 
 (defmethod/remote init ((self <core:crud))
