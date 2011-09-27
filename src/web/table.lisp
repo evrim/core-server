@@ -181,13 +181,64 @@
 	      (+ (slot-value (instances self) 'length) " item(s)."))))
       (<:tfoot)))
 
+;; function ResizeWidths(div) {
+;;     var headerCells =  $(div).find('.headerTable thead').find('th');
+;;     var contentCells = $(div).find('.contentTable thead').find('th');
+;;     for(var i =0, ii = headerCells.length;i<ii;i++)
+;;     {
+;;         if($(headerCells[i]).width()!=$(contentCells[i]).width())
+;;             $(headerCells[i]).width($(contentCells[i]).width());
+;;     }
+;; }
+
 (defmethod/remote init ((self <core:table))
   (add-class self "table")
   (load-css "http://www.coretal.net/style/table.css")
   (mapcar-cc (lambda (a) (.remove-child self a))
 	     (slot-value self 'child-nodes))
-  (mapcar-cc (lambda (i) (append self i))
-	     (list (thead self) (tbody self) (tfoot self))))
+  (let ((head (<:table :class (slot-value self 'class-name) (thead self)))
+	(foot (<:table :class (slot-value self 'class-name) (tfoot self))))
+    (append self (tbody self))
+    (labels ((first-child (element)
+	       (car (slot-value element 'child-nodes)))
+	     (get-width (element)
+	       (slot-value element 'offset-width))
+	     (by-tag-name (root tag-name)
+	       (node-search (lambda (a)
+			      (and (slot-value a 'tag-name)
+				   (eq (slot-value a 'tag-name)
+				       tag-name)))
+			    root))
+	     (resize-header (header content)
+	       (setf (slot-value (slot-value header 'style) 'width)
+		     (+ (slot-value content 'offset-width) "px"))
+	       (let ((header-cells (by-tag-name
+				    (car (by-tag-name header "TR")) "TH"))
+	       	     (content-cells (by-tag-name content "TD")))
+	       	 (mapcar2 (lambda (a b)
+	       		    (if (not (eq (get-width a) (get-width b)))
+	       			(setf (slot-value (slot-value a 'style)
+	       					  'width)
+	       			      (+ (- (get-width b) 10) "px"))))
+	       		  header-cells content-cells)))
+	     (wrap-me (head foot)
+	       (let ((parent-node (slot-value self 'parent-node)))
+		 (cond
+		   ((or (null parent-node)
+			(null (slot-value parent-node 'tag-name)))
+		    (make-web-thread (lambda () (wrap-me head foot))))
+		   (t
+		    (let ((div (<:div :class "table-wrapper")))
+		      (if (has-class parent-node "table-overflow")
+			  (replace-node (slot-value parent-node 'parent-node)
+					div)
+			  (replace-node self div))
+		      (append div head)
+		      (append div (<:div :class "table-overflow" self))
+		      (append div foot)
+		      (make-web-thread
+		       (lambda () (resize-header head self)))))))))
+      (make-web-thread (lambda () (wrap-me head foot))))))
 
 (defmacro deftable (name supers slots &rest rest)
   `(progn
