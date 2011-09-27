@@ -907,6 +907,7 @@
    #:json-deserialize
    #:jobject
    #:get-attribute
+   #:set-attribute
    #:jobject.attributes
    #:object->jobject
    #:assoc->jobject

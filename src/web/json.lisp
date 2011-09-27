@@ -161,6 +161,9 @@
 (defmethod get-attribute ((self jobject) attribute)
   (getf (slot-value self 'attributes) attribute))
 
+(defmethod set-attribute ((self jobject) attribute value)
+  (setf (getf (slot-value self 'attributes) attribute) value))
+
 (defun convert-label-to-javascript (label)
   (let ((pos 1)
 	(label (string-downcase label)))
