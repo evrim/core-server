@@ -70,31 +70,43 @@
   (:tag . "textarea"))
 
 (defmethod/remote get-input-value ((self <core:ckeditor))
-  (let* ((instance (instance self))
-	 (_foo (event () (.get-data instance))))
-    (run-validator self)
-    (if (and instance (valid self))
-	(_foo)
-	(throw (new (*error (+ "Editor " (slot-value self 'id)
-			       "is empty.")))))))
+  (let ((instance (instance self)))
+    (with-slots (get-snapshot get-data) instance
+      (let* ((value1 (.apply get-snapshot instance (list)))
+	     (value2 (.apply get-data instance (list)))
+	     (value (if (and (not (eq value2 ""))
+			     (not (null value2)))
+			value2
+			value1)))
+	(if (or (null value) (eq "" value))
+	    (throw (new (*error (+ "Editor " (slot-value self 'id)
+				   "is empty."))))
+	    value)))))
 
 ;; CKEDITOR.instances[i].on ('click', function ()
 ;; 				      {alert ('test 1 2 3')
 ;; 				      })
-(defmethod/remote validate ((self <core:ckeditor))
-  (let* ((instance (instance self))
-	 (_foo (event () (.get-data instance)))
-	 (value (if instance (_foo))))
-    (if (or (null value) (eq "" value))
-	"This field is empty."
-	t)))
+(defmethod/remote validate ((self <core:ckeditor))  
+  (let ((instance (instance self)))
+    (if instance
+	(with-slots (get-snapshot get-data) instance
+	  (let* ((value1 (.apply get-snapshot instance (list)))
+		 (value2 (.apply get-data instance (list)))
+		 (value (if (and (not (eq value2 ""))
+				 (not (null value2)))
+			    value2
+			    value1) ))
+	    (if (or (null value) (eq "" value))
+		"This field is empty."
+		t)))
+	"This field is empty.")))
 
 (defmethod/remote destroy ((self <core:ckeditor))
   (remove-css (ckeditor-css self))
-  (let* ((instance (instance self))
-	 (_foo (event () (.destroy instance))))
-    (_foo))
-    
+  (with-slots (instance) self
+    (if instance
+	(.apply (slot-value instance 'destroy) instance (list))))  
+
   (delete-slots self 'ckeditor-uri 'ckeditor-css 'config 'instance)
   (call-next-method self))
 
@@ -105,27 +117,38 @@
       (and (not (null -c-k-e-d-i-t-o-r))
 	   (not (null (slot-value -c-k-e-d-i-t-o-r 'replace)))))))
 
-(defmethod/remote init ((self <core:ckeditor))
-  (load-ckeditor self)
+(defmethod/remote bind-editor ((self <core:ckeditor))
+  (load-ckeditor self)  
   (let ((instance (-c-k-e-d-i-t-o-r.replace self (config self))))
     (setf (instance self) instance)
-    (.on instance "key" (lifte (run-validator self))))
+    (.on instance "key" (lifte (run-validator self)))
+    (.on instance "blur" (lifte (run-validator self)))
+    (with-slots (form) self
+      (when form
+	(let ((onsubmit (slot-value form 'onsubmit)))
+	  (+ " " onsubmit)
+	  (setf (slot-value form 'onsubmit)
+		(event (e)
+		  (make-web-thread (lambda () (destroy self window.k)))
+		  (.apply onsubmit this (list e)))))))))
+
+(defmethod/remote init ((self <core:ckeditor))
+  (bind-editor self)
   (call-next-method self))
 
 ;; -------------------------------------------------------------------------
 ;; Lazy Ck Editor Form Field
 ;; -------------------------------------------------------------------------
 (defcomponent <core:lazy-ckeditor (<core:ckeditor)
-  ()
+  ((default-value :host remote))
   (:default-initargs :config +ckeditor-simple-config+))
 
 (defmethod/remote onfocus ((self <core:lazy-ckeditor) e)
   (when (null (instance self))
-    (load-ckeditor self)
-    (setf (slot-value self 'value) "")
-    (let ((instance (-c-k-e-d-i-t-o-r.replace self (config self))))
-      (setf (instance self) instance)
-      (.on instance "key" (lifte (run-validator self))))))
+    (with-slots (default-value value) self
+      (if (eq default-value value)
+	  (setf (slot-value self 'value) "")))
+    (bind-editor self)))
 
 (defmethod/remote init ((self <core:lazy-ckeditor))
   self)
@@ -133,57 +156,57 @@
 ;; --------------------------------------------------------------------------
 ;; Ck Editor
 ;; --------------------------------------------------------------------------
-(defcomponent ckeditor-component (callable-component)
-  ((instance :host remote)
-   (target :host remote)
-   (ckeditor-uri :host remote :initform +ckeditor-uri+)
-   (ckeditor-css :host remote :initform +ckeditor-css+)
-   (config :host remote :initform +ckeditor-config+)))
+;; (defcomponent ckeditor-component (callable-component)
+;;   ((instance :host remote)
+;;    (target :host remote)
+;;    (ckeditor-uri :host remote :initform +ckeditor-uri+)
+;;    (ckeditor-css :host remote :initform +ckeditor-css+)
+;;    (config :host remote :initform +ckeditor-config+)))
 
-(defmethod/remote get-data ((self ckeditor-component))
-  (let* ((instance (instance self))
-	 (_foo (event () (.get-data instance))))
-    (_foo)))
+;; (defmethod/remote get-data ((self ckeditor-component))
+;;   (let ((instance (instance self)))
+;;     (if instance
+;; 	(.apply (slot-value instance 'get-snapshot) instance (list)))))
 
-(defmethod/remote call-component ((self ckeditor-component))
-  (_debug (list "ckeditor-config" (config self)))
-  (let* ((textarea (target self))
-	 (editor (-c-k-e-d-i-t-o-r.replace textarea (config self)))
-	 (form (slot-value textarea 'form)))
-    (setf (instance self) editor)
-    (setf (slot-value form 'submit)
-	  (event (e)
-	    (let ((data (.get-data editor)))
-	      (try (.destroy editor) (:catch (err) nil))
-	      (with-call/cc
-		(make-web-thread
-		 (lambda ()
-		   (answer-component self (list "save" data))))))
-	    (return false)))
-    (call-next-method self)))
+;; (defmethod/remote call-component ((self ckeditor-component))
+;;   (_debug (list "ckeditor-config" (config self)))
+;;   (let* ((textarea (target self))
+;; 	 (editor (-c-k-e-d-i-t-o-r.replace textarea (config self)))
+;; 	 (form (slot-value textarea 'form)))
+;;     (setf (instance self) editor)
+;;     (setf (slot-value form 'submit)
+;; 	  (event (e)
+;; 	    (let ((data (.get-snapshot editor)))
+;; 	      (try (.destroy editor) (:catch (err) nil))
+;; 	      (with-call/cc
+;; 		(make-web-thread
+;; 		 (lambda ()
+;; 		   (answer-component self (list "save" data))))))
+;; 	    (return false)))
+;;     (call-next-method self)))
 
-(defmethod/remote destroy ((self ckeditor-component))  
-  (let ((_foo (event (e) (try (.destroy e) (:catch (err) nil)))))
-    (_foo (instance self))
-    (delete-slot self 'instance)
-    (remove-css "http://www.coretal.net/style/ckeditor.css")
-    (call-next-method self)))
+;; (defmethod/remote destroy ((self ckeditor-component))  
+;;   (let ((_foo (event (e) (try (.destroy e) (:catch (err) nil)))))
+;;     (_foo (instance self))
+;;     (delete-slot self 'instance)
+;;     (remove-css "http://www.coretal.net/style/ckeditor.css")
+;;     (call-next-method self)))
 
-(defmethod/remote init ((self ckeditor-component))
-  (load-css (ckeditor-css self))
-  (load-javascript (ckeditor-uri self)
-   (lambda ()
-     (and (not (null -c-k-e-d-i-t-o-r))
-	  (not (null (slot-value -c-k-e-d-i-t-o-r 'replace)))))))
+;; (defmethod/remote init ((self ckeditor-component))
+;;   (load-css (ckeditor-css self))
+;;   (load-javascript (ckeditor-uri self)
+;;    (lambda ()
+;;      (and (not (null -c-k-e-d-i-t-o-r))
+;; 	  (not (null (slot-value -c-k-e-d-i-t-o-r 'replace)))))))
 
-;; -------------------------------------------------------------------------
-;; Supply CkEditor Mixin
-;; -------------------------------------------------------------------------
-(defcomponent supply-ckeditor ()
-  ())
+;; ;; -------------------------------------------------------------------------
+;; ;; Supply CkEditor Mixin
+;; ;; -------------------------------------------------------------------------
+;; (defcomponent supply-ckeditor ()
+;;   ())
 
-(defmethod/local make-ckeditor ((self supply-ckeditor))
-  (ckeditor-component))
+;; (defmethod/local make-ckeditor ((self supply-ckeditor))
+;;   (ckeditor-component))
 
 ;; (defvar +fck-image-extensions+ '("bmp" "gif" "jpeg" "jpg" "png" "psd" "tif" "tiff"))
 ;; (defvar +fck-flash-extensions+ '("swf" "fla"))
