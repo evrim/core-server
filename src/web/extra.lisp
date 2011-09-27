@@ -122,11 +122,11 @@
 (defmethod/remote start-history-timeout ((self history-mixin))  
   (setf (current-hash self) window.location.hash)
   (labels ((timeout-loop ()
-	     (when (not (= (current-hash self) window.location.hash))
-	       (setf (current-hash self) window.location.hash)
-	       (on-history-change self))
-
 	     (when (slot-value self 'running-p)
+	       (when (not (= (current-hash self) window.location.hash))
+		 (setf (current-hash self) window.location.hash)
+		 (on-history-change self))
+
 	       (window.set-timeout
 		(event () (with-call/cc (call/cc timeout-loop)))
 		(interval self)))))
