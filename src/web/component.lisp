@@ -489,8 +489,7 @@
 						       ,(symbol-to-js dom-tag)))
 					      to-extend)
 					 'to-extend)))
-		     (setf (slot-value to-extend 'ctor)
-			   (slot-value arguments 'callee))
+		     (setf (slot-value to-extend 'ctor) (slot-value arguments 'callee))
 		     (apply (make-method ,(funcall 'init/js class+)) to-extend null)
 		     
 		     ,(if (null (remove-methods '(_destroy) local-methods))			  
@@ -569,7 +568,8 @@
 	       ;; -------------------------------------------------------------
 	       (with-call/cc
 		 (lambda (to-extend)
-		   (let ((to-extend (or to-extend (new (*object))))
+		   (let ((args arguments)
+			 (to-extend (or to-extend (new (*object))))
 			 (slots
 			  (jobject
 			   ;; ----------------------------------------------------------------------------
@@ -596,7 +596,6 @@
 						(cons (funcall proxy class+) acc))))
 				      (remove-methods '(_destroy) local-methods)))))
 
-		     		     
 		     ;; -------------------------------------------------------------------------
 		     ;; Inject Methods to Instance
 		     ;; -------------------------------------------------------------------------
@@ -617,7 +616,10 @@
 		     ,(if local-methods
 		     	  `(setf (slot-value to-extend '_destroy)
 		     		 (make-method ,(funcall '_destroy/js class+))))
-		     
+
+		     ;; Save Constructor
+		     (setf (slot-value to-extend 'ctor) (slot-value args 'callee))
+
 		     (with-slots (component-cache) window		       
 		       (aif (slot-value component-cache class-name)
 			    (call/cc it to-extend)
@@ -674,8 +676,7 @@
 							(document.create-element
 							 ,(symbol-to-js dom-tag)))
 						to-extend)
-					   'to-extend)))
-		       (setf (slot-value to-extend 'ctor) (slot-value arguments 'callee))
+					   'to-extend)))		       
 		       (apply (make-method ,(funcall 'init/js class+)) to-extend null)		     		       
 		       to-extend)))))))))))
 
