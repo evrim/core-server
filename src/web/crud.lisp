@@ -42,6 +42,13 @@
 	 (reduce-cc (lambda (acc atom)
 		      (+ acc ", " atom))
 		    (cdr _value) (car _value)))
+	((eq "html" type)
+	 (cond
+	   ((null _value) nil)
+	   ((not (null (slot-value _value 'tag-name))) _value)
+	   (t (let ((div (<:div)))
+		(setf (slot-value div 'inner-h-t-m-l) _value)
+		div))))
 	(t
 	 _value)))))
 
@@ -94,10 +101,14 @@
 	  ((eq type "password")
 	   (<:input :type "password" :name name :value value
 		    :onchange (default-onchange name)))
-	  ((not (null (slot-value value 'tag-name)))
-	   (let* ((div (<:div value))
-		  (textarea (<:textarea :name name :id (random-string)
-					(slot-value div 'inner-h-t-m-l)))
+	  ((eq type "html")
+	   (let* ((value (cond
+			   ((null value) "")
+			   ((not (null (slot-value value 'tag-name)))
+			    (let ((div (<:div value)))
+			      (slot-value div 'inner-h-t-m-l)))
+			   (t value)))
+		  (textarea (<:textarea :name name :id (random-string) value))
 		  (editor (call/cc (_ckeditor self) textarea)))
 	     (setf (slot-value textarea 'onchange)
 		   (compose-prog1 (slot-value textarea 'onchange)
