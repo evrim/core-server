@@ -221,6 +221,7 @@
    ;; [HTML Stream]
    #:make-html-stream
    #:make-safe-html-stream
+   #:parse-safe-html
    #:html-stream
    #:safe-html-stream
    
