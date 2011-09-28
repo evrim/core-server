@@ -347,7 +347,6 @@
 	 when rest
 	 do (write-char #\& href)))))
 
-
 ;; -------------------------------------------------------------------------
 ;; Safe Html Stream
 ;; -------------------------------------------------------------------------
@@ -368,27 +367,31 @@
 			  ;; (equal (xml.tag node) "a")
 			  ))))
 
-(defparser extract-links (lst c acc1 (acc (make-accumulator)))
+(defparser extract-links (lst c acc1 (acc (make-accumulator :byte)))
   (:zom (:or (:and (:seq "http://")
-		   (:do (push acc lst)
-			(setq acc1 (make-accumulator)
-			      acc (make-accumulator)))
-		   (:oom (:type visible-char? c)
-			 (:collect c acc1))
-		   (:do (let ((a (format nil "http://~A" acc1)))
+		   (:do (push (octets-to-string acc :utf-8) lst)
+			(setq acc1 (make-accumulator :byte)
+			      acc (make-accumulator :byte)))
+		   (:oom (:not (:or #\Space #\Newline #\Linefeed))
+			 (:type octet? c)
+			 (:collect c acc1)) 
+		   (:do (let ((a (format nil "http://~A"
+					 (octets-to-string acc1 :utf-8))))
 			  (push (<:a :href a :target "_blank" a)
 				lst))))
 	     (:and (:seq "www.")
-		   (:do (push acc lst)
-			(setq acc1 (make-accumulator)
-			      acc (make-accumulator)))
-		   (:oom (:type visible-char? c)
+		   (:do (push (octets-to-string acc :utf-8) lst)
+			(setq acc1 (make-accumulator :byte)
+			      acc (make-accumulator :byte)))
+		   (:oom (:not (:or #\Space #\Newline #\Linefeed))
+			 (:type octet? c)
 			 (:collect c acc1))
-		   (:do (let ((a (format nil "http://www.~A" acc1)))
+		   (:do (let ((a (format nil "http://www.~A"
+					 (octets-to-string acc1 :utf-8))))
 			  (push (<:a :href a :target "_blank" a)
 				lst))))
 	     (:and (:type octet? c) (:collect c acc))))
-  (:do (push acc lst))
+  (:do (push (octets-to-string acc :utf-8) lst))
   (:return (remove "" (nreverse lst) :test #'equal)))
 
 (defun make-links (root)
@@ -417,6 +420,10 @@
   (let ((a (call-next-method self)))
     (if a
 	(make-links (fix-hacker-tags a)))))
+
+(defun parse-safe-html (text)
+  (read-stream (make-safe-html-stream
+		(make-core-stream (format nil "<div>~A</div>" text)))))
 
 ;; Core Server: Web Application Server
 
