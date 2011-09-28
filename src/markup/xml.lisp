@@ -272,7 +272,7 @@
 	     ;; (:and #\& (:or (:and (:seq "gt;") (:do (setf c #\<)))
 	     ;; 	  (:and (:seq "lt;") (:do (setf c #\>)))))
 	     (:xml-lwsp? c)
-	     (:type octet? c))
+	     (:type octet? c)) 
 	(:collect c acc))
   (:if (> (length acc) 0)
        (:return (octets-to-string acc :utf-8))))
@@ -643,19 +643,42 @@
        (:return #\Newline)
        (:return #\Space))))
 
-(defrule relaxed-xml-text-node? (c acc)
+;;http://msdn.microsoft.com/en-us/library/ms537495.aspx
+(eval-when (:load-toplevel :compile-toplevel :execute)
+  (defvar +xml-entities+
+    '(("gt" . #\<)
+      ("lt" . #\>)
+      ("nbsp" . #\Space)
+      ("amp" . #\&)
+      ("Uuml" . #\Ü)
+      ("Ouml" . #\Ö)
+      ("Ccedil" . #\Ç)
+      ("uuml" . #\ü)
+      ("ouml" . #\ö)
+      ("ccedil" . #\ç))))
+
+(defmacro defxml-entity-parser (entities)
+  `(defparser xml-entity? ()
+     (:or ,@(mapcar (lambda (e)
+		      `(:and (:seq ,(format nil "~A;" (car e)))
+			     (:return ,(cdr e))))
+		    (symbol-value entities)))))
+
+(defxml-entity-parser +xml-entities+)
+
+(defrule relaxed-xml-text-node? (c (acc (make-accumulator :byte)))
   (:not #\<)
   (:checkpoint #\< (:rewind-return (octets-to-string acc :utf-8)))
-  (:or (:and (:seq "&gt;") (:do (setf c #\<)))
-       (:and (:seq "&lt;") (:do (setf c #\>)))
-       (:relaxed-xml-lwsp? c) (:type octet? c))
-  (:do (setq acc (make-accumulator :byte)))
-  (:collect c acc)
-  (:zom (:checkpoint #\< (:rewind-return (octets-to-string acc :utf-8)))
-	(:or (:and (:seq "&gt;") (:do (setf c #\<)))
-	     (:and (:seq "&lt;") (:do (setf c #\>)))
-	     (:relaxed-xml-lwsp? c) (:type octet? c))
-	(:collect c acc))
+  (:oom (:checkpoint #\< (:rewind-return (octets-to-string acc :utf-8)))
+	(:debug)
+	(:or (:and #\& (:xml-entity? c)
+		   (:do (reduce (lambda (acc a)
+				  (push-atom a acc)
+				  acc)
+				(string-to-octets (format nil "~A" c) :utf-8)
+				:initial-value acc))) 
+	     (:relaxed-xml-lwsp? c)
+	     (:and (:type octet? c) (:collect c acc))))
   (:if (> (length acc) 0)
        (:return (octets-to-string acc :utf-8))))
 
@@ -786,4 +809,4 @@
       relaxed-xml-tag-name? relaxed-xml-lexer? relaxed-xml-comment?
       relaxed-xml-text-node? relaxed-xml-cdata? relaxed-xml-lwsp?
       relaxed-xml-attribute? relaxed-xml-attribute-name?
-      relaxed-xml-attribute-value?))
+      relaxed-xml-attribute-value? parse-xml))
