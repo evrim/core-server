@@ -366,7 +366,7 @@
 (defvar +omitted-component-slots+
   '(style onmouseup onmousemove onclick className ondblclick
     onmousedown onkeypress onkeydown onkeyup dir lang dojoType open
-    onmouseover onmouseout))
+    onmouseover onmouseout onfocus onchange onselect onblur))
 
 (defmethod component+.ctor ((component component+))
   (labels ((remove-methods (names methods)
