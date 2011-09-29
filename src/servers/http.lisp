@@ -258,6 +258,8 @@ evaulates to a HTTP response. Its' server is an instance of http-server"))
 	       (return-from handle-stream nil))
 	   (flet ((ignore-error (unit)
 		    (declare (ignore unit))
+		    (log-me (peer.server peer) 'error
+			    (format nil "~A" condition))
 		    (render-error (peer.server peer) stream)
 		    (close-stream stream))
 		  (retry-error (unit)
