@@ -570,7 +570,8 @@ executing 'body'"
 (defun/cc javascript/suspend (lambda)
   "Javascript version of send/suspend, sets content-type to text/javascript"
   (http-response.set-content-type (context.response +context+)
-				  '("text" "javascript" ("charset" "UTF-8")))
+				  '("application" "javascript"
+				    ("charset" "UTF-8")))
   (send/suspend
     (prog1 nil
       (funcall lambda (if (application.debug (context.application +context+))
