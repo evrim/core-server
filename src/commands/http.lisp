@@ -98,9 +98,10 @@
     response))
 
 (defmethod http.raise-error ((self http) request response)
-  (error "HTTP Status ~A at uri ~A"
-	 (http-response.status-code response)
-	 (uri->string (s-v 'url))))
+  (when (http.debug self)
+    (error "HTTP Status ~A at uri ~A"
+	   (http-response.status-code response)
+	   (uri->string (s-v 'url)))))
 
 (defmethod run :before ((self http))
   (http.setup-uri self))
