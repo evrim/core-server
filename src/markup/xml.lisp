@@ -670,7 +670,6 @@
   (:not #\<)
   (:checkpoint #\< (:rewind-return (octets-to-string acc :utf-8)))
   (:oom (:checkpoint #\< (:rewind-return (octets-to-string acc :utf-8)))
-	(:debug)
 	(:or (:and #\& (:xml-entity? c)
 		   (:do (reduce (lambda (acc a)
 				  (push-atom a acc)
