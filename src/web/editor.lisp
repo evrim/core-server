@@ -163,6 +163,12 @@
     (bind-editor self)))
 
 (defmethod/remote init ((self <core:lazy-ckeditor))
+  (with-slots (default-value value) self
+    (if (null default-value)
+	(setf (slot-value self 'default-value) value))
+
+    (if (or (null value) (eq "" value))
+	(setf (slot-value self 'value) (slot-value self 'default-value))))
   self)
 
 ;; --------------------------------------------------------------------------
