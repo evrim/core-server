@@ -138,18 +138,17 @@
 	    (id (read-from-string id)))
 	(with-slots (cache counter) (database.cache self)
 	  (setf (gethash id cache) instance counter (max counter id))
-	  (apply #'initialize-instance
-		 (reduce (lambda (instance slot)
-			   (multiple-value-bind (name value) (funcall k slot k)
-			     (if (slot-exists-p instance name)
-				 (setf (slot-value instance name) value))
-			     instance))
-			 children
-			 :initial-value instance)
-		 (reduce0 (lambda (acc atom)
-			    (cons (car atom) (cons (cadr atom) acc)))
-			  (class-default-initarg-values
-			   (class-of instance)))))))))
+	  (apply #'initialize-instance instance
+		 (flatten1
+		  (append
+		   (mapcar (lambda (slot)
+			     (multiple-value-bind (name value) (funcall k slot k)
+			       (if (slot-exists-p instance name)
+				   (list (make-keyword name) value))))
+			   children)
+		   (mapcar (lambda (a) (list (car a) (cadr a)))
+			   (class-default-initarg-values
+			    (class-of instance)))))))))))
 
 (defmethod database.serialize ((self abstract-database) (object standard-object)
 			       &optional (k (curry #'database.serialize self)))

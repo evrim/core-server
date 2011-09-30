@@ -75,8 +75,10 @@
 
 (deftransaction update-object ((server database) (object standard-object) &rest slots-and-values)
   (reduce (lambda (object slot-val)
-  	    (when (slot-exists-p object (car slot-val))
-  	      (setf (slot-value object (car slot-val)) (cdr slot-val)))
+  	    (if (slot-exists-p object (car slot-val))
+		(setf (slot-value object (car slot-val)) (cdr slot-val))
+		(warn "Slot ~A not found in ~A" (car slot-val)
+		      object))
   	    object)
   	  slots-and-values :initial-value object))
 
