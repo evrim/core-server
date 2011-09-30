@@ -236,8 +236,10 @@
 		      (append div head)
 		      (append div (<:div :class "table-overflow" self))
 		      (append div foot)
-		      (make-web-thread
-		       (lambda () (resize-header head self)))))))))
+		      (when (instances self)
+			(set-timeout
+			 (event () (with-call/cc (resize-header head self)))
+			 300))))))))
       (make-web-thread (lambda () (wrap-me head foot))))))
 
 (defmacro deftable (name supers slots &rest rest)
