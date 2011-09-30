@@ -613,7 +613,7 @@ executing 'body'"
   "Javascript version of send/suspend, sets content-type to
 application/javascript"
   (http-response.set-content-type (context.response +context+)
-				  '("text" "javascript" ("charset" "UTF-8")))
+				  '("application" "javascript" ("charset" "UTF-8")))
   (send/suspend
     (prog1 nil
       (funcall lambda
