@@ -676,8 +676,8 @@
 				  acc)
 				(string-to-octets (format nil "~A" c) :utf-8)
 				:initial-value acc))) 
-	     (:relaxed-xml-lwsp? c)
-	     (:and (:type octet? c) (:collect c acc))))
+	     (:and (:or (:relaxed-xml-lwsp? c)
+			(:type octet? c)) (:collect c acc))))
   (:if (> (length acc) 0)
        (:return (octets-to-string acc :utf-8))))
 
