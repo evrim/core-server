@@ -189,6 +189,24 @@
 	(remhash (slot-value object slot) (slot-index server object slot))))
   object)
 
+(defmethod regenerate-slot-indexes ((server database))
+  (maphash (lambda (k v)
+	     (when (and (find-class k nil)
+			(member (find-class 'class+-instance)
+				(class+.superclasses (find-class k))))
+	       (mapcar
+		(lambda (object)
+		  (reduce
+		   (lambda (object slot)
+		     (delete-from-slot-index server object
+					     (slot-definition-name slot))
+		     (add-to-slot-index server object
+					(slot-definition-name slot))
+		     object)
+		   (class+.indexes (find-class k)) :initial-value object))
+		v)))
+	   (database.root server)))
+
 (defmethod find-objects-with-slot ((server database) (class class+) (slot symbol) value)
   (let ((slot (class+.find-slot class slot)))
     (if (slot-definition-index slot)
