@@ -746,7 +746,7 @@
 	  (lambda ()
 	    (let ((args arguments) (self this))
 	      (cond
-		((> *recursion-count* 7)
+		((> *recursion-count* 11)
 		 (setf *recursion-count* 0)
 		 (make-web-thread
 		  (lambda ()

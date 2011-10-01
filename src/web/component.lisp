@@ -461,7 +461,7 @@
 				      (let* ((name (car method))
 					     (proxy (component+.morphism-function-name class+ name)))
 					(cons (make-keyword name)
-					      (cons (funcall proxy class+) acc))))
+					      (cons `(make-method ,(funcall proxy class+)) acc))))
 				    (remove-methods '(_destroy) local-methods)))))
 
 		     		     
