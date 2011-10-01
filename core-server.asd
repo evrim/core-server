@@ -123,7 +123,8 @@
 				   (:file "facebook")
 				   (:file "openid")
 				   (:file "google")
-				   (:file "paypal")))
+				   (:file "paypal")
+				   (:file "twitter")))
 			 (:module :install
 				  :serial t
 				  :components
