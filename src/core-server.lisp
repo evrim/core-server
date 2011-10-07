@@ -557,6 +557,7 @@
    #:debug
    #:server.name
    #:server.mutex
+   #:server.debug
    #:web-application.fqdn
    #:web-application.admin-email
    #:web-application.serve-url
