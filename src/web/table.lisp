@@ -10,7 +10,9 @@
    (hilight-class :initform "hilighted" :host remote)
    (selected-class :initform "selected" :host remote)
    (selected :initform nil :host remote)
-   (_sorted-slot :host remote)))
+   (_sorted-slot :host remote)
+   (_head :host remote)
+   (_foot :host remote)))
 
 (defmethod/remote get-template-class ((self <core:table))
   (let ((_instances (instances self)))
@@ -82,9 +84,7 @@
 	  (.remove-child tbody (slot-value tbody 'first-child))))
     
     (setf (instances self) (cons instance (instances self)))
-    (replace-node (aref (.get-elements-by-tag-name self "TFOOT") 0)
-		  (tfoot self))
-
+    (setf (_foot self) (replace-node (_foot self) (tfoot self)))    
     (append tbody
 	    (<:tr :class (if (eq 1 (mod (slot-value (instances self) 'length)
 					2))
@@ -101,7 +101,10 @@
 				     (slot-value instance name))))
 		      (<:td :class name
 			    (or value (slot-value slot 'initform))))))
-		(template-class self))))))))
+		(template-class self))))))
+    (setf (slot-value (slot-value self 'parent-node) 'scroll-top)
+	  "10000")
+    instance))
 
 (defmethod/remote remove-instance ((self <core:table) instance)
   (let ((_instances (instances self)))    
@@ -122,25 +125,28 @@
 
   (delete-slot instance 'radio)
   (if (eq (selected self) instance) (setf (selected self) nil))
-  (replace-node (aref (.get-elements-by-tag-name self "TFOOT") 0)
-		(tfoot self))
+  (setf (_foot self)
+	(replace-node (_foot self) (tfoot self)))
 
   (if (null (instances self))
       (replace-node (aref (.get-elements-by-tag-name self "TBODY") 0)
 		    (tbody self)))
+
+  (setf (slot-value (slot-value self 'parent-node) 'scroll-top) "0")
   instance)
 
 (defmethod/remote thead ((self <core:table))
-  (<:thead
-   (<:tr
-    (<:th :class "radio" " ")
-    (reverse
-     (mapcar (lambda (slot)
-	       (with-slots (name label) slot
-		 (<:th :class name
-		       (<:a :onclick (lifte (sort-table self slot))
-			    (or label name)))))
-	     (template-class self))))))
+  (<:table :class (slot-value self 'class-name)
+	   (<:thead
+	    (<:tr
+	     (<:th :class "radio" " ")
+	     (reverse
+	      (mapcar (lambda (slot)
+			(with-slots (name label) slot
+			  (<:th :class name
+				(<:a :onclick (lifte (sort-table self slot))
+				     (or label name)))))
+		      (template-class self)))))))
 
 (defmethod/remote tbody ((self <core:table))
   (let ((_instances (instances self)))
@@ -173,13 +179,14 @@
 	  _instances (seq (slot-value _instances 'length)))))))
 
 (defmethod/remote tfoot ((self <core:table))
-  (if (instances self)
-      (<:tfoot
-       (<:tr
-	(<:td :class "text-right"
-	      :colspan (column-span self)
-	      (+ (slot-value (instances self) 'length) " item(s)."))))
-      (<:tfoot)))
+  (<:table :class (slot-value self 'class-name)
+	   (if (instances self)
+	       (<:tfoot
+		(<:tr
+		 (<:td :class "text-right"
+		       :colspan (column-span self)
+		       (+ (slot-value (instances self) 'length) " item(s)."))))
+	       (<:tfoot))))
 
 ;; function ResizeWidths(div) {
 ;;     var headerCells =  $(div).find('.headerTable thead').find('th');
@@ -196,8 +203,8 @@
   (load-css "http://www.coretal.net/style/table.css")
   (mapcar-cc (lambda (a) (.remove-child self a))
 	     (slot-value self 'child-nodes))
-  (let ((head (<:table :class (slot-value self 'class-name) (thead self)))
-	(foot (<:table :class (slot-value self 'class-name) (tfoot self))))
+  (let ((head (thead self))
+	(foot (tfoot self)))
     (append self (tbody self))
     (labels ((first-child (element)
 	       (car (slot-value element 'child-nodes)))
@@ -233,9 +240,9 @@
 			  (replace-node (slot-value parent-node 'parent-node)
 					div)
 			  (replace-node self div))
-		      (append div head)
+		      (append div (setf (_head self) head))
 		      (append div (<:div :class "table-overflow" self))
-		      (append div foot)
+		      (append div (setf (_foot self) foot))
 		      (when (instances self)
 			(set-timeout
 			 (event () (with-call/cc (resize-header head self)))
