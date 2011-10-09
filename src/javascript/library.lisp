@@ -614,6 +614,9 @@
   
   (defun set-parameter (name value)
     ;; (_debug (list "set-parameter" name value))
+    (if (eq (get-parameter name) value)
+	(return nil))
+    
     (let* ((found nil)
 	   (result (reduce
 		    (lambda (acc atom)
