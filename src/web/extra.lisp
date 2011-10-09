@@ -102,7 +102,8 @@
   ((running-p :host remote :initform nil)
    (current-hash :host remote :initform nil)
    (interval :host remote :initform 100)
-   (history-observers :host remote :initform nil)))
+   (history-observers :host remote :initform nil)
+   (timeout-id :host remote :initform 0)))
 
 (defmethod/remote destroy ((self history-mixin))
   (stop-history-timeout self)
@@ -127,14 +128,17 @@
 		 (setf (current-hash self) window.location.hash)
 		 (on-history-change self))
 
-	       (window.set-timeout
-		(event () (with-call/cc (call/cc timeout-loop)))
-		(interval self)))))
+	       (setf (timeout-id self)
+		     (window.set-timeout
+		      (event () (with-call/cc (call/cc timeout-loop)))
+		      (interval self))))))
     (setf (running-p self) t)
     (call/cc timeout-loop)))
 
 (defmethod/remote stop-history-timeout ((self history-mixin))
-  (setf (running-p self) nil))
+  (setf (running-p self) nil)
+  (clear-timeout (timeout-id self))
+  (setf (timeout-id self) 0))
 
 (defmethod/remote destroy ((self history-mixin))
   (stop-history-timeout self)
