@@ -1,11 +1,15 @@
 (in-package :core-server)
 
+(defvar +http-cache+
+  (make-hash-table :test #'equal :synchronized t))
+
 (defcommand http ()
   ((method :host local :initform 'get)
    (url :host local :initform (error "Please provide :url"))
    (post-data :host local :initform nil) 
    (parse-p :host local :initform t)
-   (debug :host local :initform nil)))
+   (debug :host local :initform nil)
+   (cache-p :host local :initform nil)))
 
 (defparser read-everything? (c (acc (make-accumulator :byte)))
   (:oom (:type octet? c) (:collect c acc))
@@ -79,6 +83,8 @@
 		   (t stream))))
     (if (s-v 'debug) (describe response))
     (cond
+      ((eq (s-v 'method) 'head)
+       response)
       ((or (and (string= "text" (car content-type))
 		(string= "html" (cadr content-type)))
 	   (and (string= "application" (car content-type))
@@ -103,10 +109,7 @@
 	   (http-response.status-code response)
 	   (uri->string (s-v 'url)))))
 
-(defmethod run :before ((self http))
-  (http.setup-uri self))
-
-(defmethod run ((self http))
+(defmethod fetch-url ((self http))
   (let* ((url (s-v 'url))
 	 (stream (connect (uri.server url) (or (uri.port url) 80)))
 	 #+ssl
@@ -117,11 +120,45 @@
     (let ((request (http.send-request self stream)))
       (if (http.parse-p self)
 	  (let ((response (http.parse-response self stream)))
-	    (prog1 (if (eq (http-response.status-code response) 200)
-		       (let ((entities (http-response.entities response)))
-			 (if (eq 1 (length entities))
-			     (car entities)
-			     entities))
-		       (http.raise-error self request response))
-	      (close-stream stream)))
+	    (if (eq (http-response.status-code response) 200)
+		(let ((entities (http-response.entities response)))
+		  (if (eq 1 (length entities))
+		      (setf (http-response.entities response)
+			    (car entities))))
+		(http.raise-error self request response))
+	    (close-stream stream)
+	    (values (http-response.entities response) response))
 	  stream))))
+
+(defmethod run :before ((self http))
+  (http.setup-uri self))
+
+(defmethod run ((self http))
+  (let ((url-string (uri->string (s-v 'url))))
+    (cond
+      ((and (not (eq (s-v 'method) 'head)) (http.cache-p self)
+	    (http.parse-p self))
+       (cond
+	 ((null (gethash url-string +http-cache+))
+	  (multiple-value-bind (entity response) (fetch-url self)
+	    (setf (gethash url-string +http-cache+) (cons entity response))
+	    (values entity response)))
+	 ((eq 0 (random 20))
+	  (multiple-value-bind (entity response)
+	      (http :url url-string :post-data (s-v 'post-data)
+		    :method 'head)
+	    (declare (ignore entity))
+	    (let ((last-modified (http-response.get-entity-header response 'last-modified)))
+	      (destructuring-bind (entity . response)
+		  (gethash url-string +http-cache+) 
+		(cond
+		  ((> last-modified (http-response.get-entity-header response 'last-modified))
+		   (remhash url-string +http-cache+)
+		   (run self))
+		  (t (values entity response)))))))
+	 (t
+	  (destructuring-bind (entity . response)
+	      (gethash url-string +http-cache+)
+	    (values entity response)))))
+      (t
+       (fetch-url self)))))
