@@ -174,19 +174,18 @@
 ;;---------------------------------------------------------------------------
 ;; XML Parser
 ;;---------------------------------------------------------------------------
+(defatom xml-attribute-char? ()
+  (or (alphanum? c) (= c #.(char-code #\-)) (= c #.(char-code #\_))))
+
 (defrule xml-attribute-name? (c attribute namespace)
-  (:or (:type alphanum? c)
-       (:and #\- (:do (setq c #\-))))
-  (:and (:do (setq attribute (make-accumulator)))
-	(:collect c attribute))
-  (:zom (:or (:type alphanum? c)
-	     (:and #\- (:do (setq c #\-))))
-	(:collect c attribute))  
+  (:type xml-attribute-char? c)
+  (:do (setq attribute (make-accumulator)))
+  (:collect c attribute)
+  (:zom (:type xml-attribute-char? c) (:collect c attribute))  
   (:or (:and #\:
 	     (:do (setq namespace attribute)
 		  (setq attribute (make-accumulator)))
-	     (:oom (:or (:type alphanum? c)
-			(:and #\- (:do (setq c #\-))))
+	     (:oom (:type xml-attribute-char? c)
 		   (:collect c attribute))
 	     (:return (if namespace
 			  (values attribute namespace)
@@ -429,7 +428,8 @@
 		    +xml-namespace+)))
 		 (symbol (xml->symbol tag +xml-namespace+)))
 	    (if (and (fboundp symbol)
-		     (not (eq (symbol-package symbol) #.(find-package :cl))))
+		     (not (eq (symbol-package symbol) #.(find-package :cl)))
+		     (not (eq (symbol-package symbol) #.(find-package :arnesi))))
 		(let ((instance (make-element symbol attributes children)))
 		  (if (slot-exists-p instance 'tag)
 		      (setf (slot-value instance 'tag) tag))
@@ -580,20 +580,34 @@
 ;; This is a duplicate of the xml parser that is slow but allows
 ;; us to parse some of the broken xml's like HTML.
 (defrule relaxed-xml-attribute-name? (c attribute namespace)
-  (:or (:type alphanum? c)
-	     (:and #\- (:do (setq c #\-))))
-  (:and (:do (setq attribute (make-accumulator)))
-	(:collect c attribute))
-  (:zom (:or (:type alphanum? c)
-	     (:and #\- (:do (setq c #\-))))
-	(:collect c attribute))  
+  (:type xml-attribute-char? c)
+  (:do (setq attribute (make-accumulator)))
+  (:collect c attribute)
+  (:zom (:type xml-attribute-char? c) (:collect c attribute))  
+  (:or (:and #\:
+	     (:do (setq namespace attribute)
+		  (setq attribute (make-accumulator)))
+	     (:oom (:type xml-attribute-char? c)
+		   (:collect c attribute))
+	     (:return (if namespace
+			  (values attribute namespace)
+			  ;;  (format nil "~A:~A" namespace attribute)
+			  attribute)))
+       (:return (if namespace
+		    (values attribute namespace)
+		    ;;  (format nil "~A:~A" namespace attribute)
+		    attribute))))
+
+(defrule relaxed-xml-attribute-name? (c attribute namespace)
+  (:type xml-attribute-char? c)
+  (:do (setq attribute (make-accumulator)))
+  (:collect c attribute)
+  (:zom (:type xml-attribute-char? c) (:collect c attribute))  
   (:optional
    #\:
    (:do (setq namespace attribute)
 	(setq attribute (make-accumulator)))
-   (:oom (:or (:type alphanum? c)
-	      (:and #\- (:do (setq c #\-))))
-	 (:collect c attribute)))
+   (:oom (:type xml-attribute-char? c) (:collect c attribute)))
   (:return (if namespace
 	       (values attribute namespace)
 	       attribute)))
@@ -704,6 +718,9 @@
 	       (:zom (:not #\>) (:type octet?)) (:lwsp?) (:commit))
   (:checkpoint (:seq "<!DOCTYPE")
 	       (:zom (:not #\>) (:type octet?)) (:lwsp?) (:commit))
+  (:zom (:lwsp?)
+	(:relaxed-xml-comment? child)
+	(:lwsp?))
   #\<
   (:relaxed-xml-tag-name? tag namespace)
   (:zom (:lwsp?)
@@ -741,8 +758,9 @@
 (defclass relaxed-xml-stream (xml-stream)
   ())
 
-(defun make-relaxed-xml-stream (stream)
-  (make-instance 'relaxed-xml-stream :stream stream))
+(defun make-relaxed-xml-stream (stream &optional namespace)
+  (make-instance 'relaxed-xml-stream :stream stream
+		 :namespace namespace))
 
 (defmethod read-stream ((stream relaxed-xml-stream))
   (parse-xml (relaxed-xml-lexer? (slot-value stream '%stream))
