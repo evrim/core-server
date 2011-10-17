@@ -1234,6 +1234,22 @@
   (:use :cl)
   (:export #:funkall #:get-user-lists))
 
+(defpackage :tr.gen.core.server.wordpress
+  (:nicknames :<wordpress :<wp)
+  (:use :cl)
+  (:export #:wxr_version #:base_site_url #:base_blog_url #:category
+	   #:category_nicename #:tag #:tag_slug #:tag_name #:term
+	   #:term_taxonomy #:category_parent #:cat_name #:term_slug
+	   #:term_parent #:term_name #:post_id #:post_date #:post_name
+	   #:post_parent #:post_date_gmt #:post_type #:post_password
+	   #:comment_status #:ping_status #:is_sticky #:status #:menu_order
+	   #:postmeta #:meta_key #:meta_value
+	   #:comment #:comment_id #:comment_author #:comment_author_email
+	   #:comment_author_url #:comment_author_-I-P #:comment_date
+	   #:comment_date_gmt #:comment_content #:comment_approved
+	   #:comment_user_id #:comment_type #:comment_parent
+	   #:attachment_url))
+
 ;; (defpackage :tr.gen.core.server.html.dojo
 ;;   (:nicknames :<dojo :core-server.html.dojo)
 ;;   (:use :core-server :<))

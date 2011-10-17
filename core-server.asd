@@ -168,7 +168,8 @@
 				   (:file "atom")
 				   (:file "gphoto")
 				   (:file "media")
-				   (:file "open-search")))
+				   (:file "open-search")
+				   (:file "wordpress")))
 			 (:module :database
 				  :serial t
 				  :components
