@@ -35,8 +35,7 @@
        (:attributes ,@attributes))
      (find-class+ ',name)))
 
-(defatom-tag <atom:feed gphoto media opensearch exif geo gml georss
-	     batch gd)
+(defatom-tag <atom:feed gphoto media opensearch exif geo gml georss batch gd)
 (defatom-tag <atom:content src)
 (defatom-tag <atom:author)
 (defatom-tag <atom:category term scheme label)
@@ -57,6 +56,19 @@
 (defatom-tag <atom:entry)
 (defatom-tag <atom:published)
 (defatom-tag <atom:summary)
+
+
+;; RSS 2.0 Compatbility
+(defatom-tag <atom:rss gphoto media opensearch exif geo gml georss batch gd)
+(defatom-tag <atom:channel)
+(defatom-tag <atom:description)
+(defatom-tag <atom:pub-date)
+(defatom-tag <atom:language)
+(defatom-tag <atom:cloud)
+(defatom-tag <atom:image)
+(defatom-tag <atom:url)
+(defatom-tag <atom:item)
+(defatom-tag <atom:guid)
 
 ;; (defparameter +atom-feed+
 ;;   "<?xml version= \"1.0\" encoding= \"utf-8\"?>

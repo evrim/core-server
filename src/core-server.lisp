@@ -1179,7 +1179,9 @@
   (:export #:feed #:author #:category #:contributor
 	   #:generator #:icon #:id #:link #:logo #:rights
 	   #:subtitle #:title #:updated #:name #:email #:entry
-	   #:summary #:uri #:published #:content))
+	   #:summary #:uri #:published #:content
+	   #:rss #:channel #:description #:pub-date #:language
+	   #:cloud #:image #:url #:item #:guid))
 
 (defpackage :tr.gen.core.server.gphoto
   (:nicknames :<gphoto)
