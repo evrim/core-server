@@ -40,7 +40,8 @@
 			 :url (slot-value thumb 'core-server::url)))
 		      (search-for photo '<media:thumbnail)))))
       (awhen (http :url (format nil +picasa-album-format-string+
-				user album))
+				user album)
+		   :cache-p t)
 	(let* ((entity it)
 	       (photos (xml-search entity
 				   (make-xml-type-matcher '<atom:entry))))
