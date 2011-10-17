@@ -1041,6 +1041,13 @@
 ;; 14.5 Accept Ranges
 ;; Accept-Ranges     = "Accept-Ranges" ":" acceptable-ranges
 ;; acceptable-ranges = 1#range-unit | "none"
+(defparser http-accept-ranges? (c acc)
+  (:or (:and (:seq "none") (:return 'none))
+       (:and (:do (setf acc (make-accumulator)))
+	     (:oom (:type (or visible-char? space?) c)
+		   (:collect c acc))
+	     (:return acc))))
+
 (defun http-accept-ranges! (stream &optional accept-ranges)
   (if accept-ranges
       (string! stream accept-ranges)
@@ -1049,6 +1056,9 @@
 ;; 14.6 Age
 ;; Age = "Age" ":" age-value
 ;; age-value = delta-seconds
+(defparser http-age? (c)
+  (:fixnum? c) (:return c))
+
 (defun http-age! (stream age)
   (fixnum! stream age))
 
@@ -1058,6 +1068,9 @@
 ;; ETag: W/"xyzzy"
 ;; ETag: ""
 ;; FIXmE: whats thiz?
+(defparser http-etag? (c)
+  (:quoted? c) (:return c))
+
 (defun http-etag! (stream etag)
   (if (cdr etag)
       (progn
@@ -1069,11 +1082,18 @@
 ;; 14.30 Location
 ;; Location       = "Location" ":" absoluteURI
 ;; Location: http://www.w3.org/pub/WWW/People.html
+(defparser http-location? (c)
+  (:uri? c) (:return c))
+
 (defun http-location! (stream uri)
   (uri! stream uri))
 
 ;; 14.33 Proxy Authenticate
 ;; Proxy-Authenticate  = "Proxy-Authenticate" ":" 1#challenge
+;; FIXME -evrim.
+(defparser http-proxy-authenticate? ()
+  (:return nil))
+
 (defun http-proxy-authenticate! (stream challenge)
   (http-challenge! stream challenge))
 
@@ -1081,6 +1101,10 @@
 ;; Retry-After  = "Retry-After" ":" ( HTTP-date | delta-seconds )
 ;; Retry-After: Fri, 31 Dec 1999 23:59:59 GMT
 ;; Retry-After: 120
+(defparser http-retry-after? (c)
+  (:or (:fixnum? c) (:http-date? c))
+  (:return c))
+
 (defun http-retry-after! (stream ra)
   (if (> ra 1000000000)
       (http-date! stream ra)
@@ -1089,11 +1113,19 @@
 ;; 14.38 Server
 ;; Server         = "Server" ":" 1*( product | comment )
 ;; Server: CERN/3.0 libwww/2.17
+(defparser http-server? (c (acc (make-accumulator)))
+  (:oom (:type (or visible-char? space?) c) (:collect c acc))
+  (:return acc))
+
 (defun http-server! (stream server)
   (string! stream server))
 
 ;; 14.44 Vary
 ;; Vary  = "Vary" ":" ( "*" | 1#field-name )
+;; FIXME: -evrim.
+(defparser http-vary? ()
+  (:return nil))
+
 (defun http-vary! (stream vary)
   (if (> (length vary) 1)
       (if (car vary)
@@ -1108,10 +1140,17 @@
 
 ;; 14.47 WWW-Authenticate
 ;; WWW-Authenticate  = "WWW-Authenticate" ":" 1#challenge
+;; FIXME -evrim.
+(defparser http-www-authenticate? ()
+  (:return nil))
+
 (defun http-www-authenticate! (stream challenge)
   (http-challenge! stream challenge))
 
 ;; RFC 2109 Cookie - rfc/2109.lisp
+(defparser http-set-cookie? (c)
+  (:cookie? c) (:return c))
+
 (defun http-set-cookie! (stream cookie)
   (cookie! stream cookie))
 
@@ -1458,7 +1497,7 @@
   (:oom (:type http-header-name? c) (:collect c key))
   (:or (:and #\: (:zom (:type space?))) (:crlf?))
   (:oom (:type http-header-value? c) (:collect c value))
-  (:return (cons key value)))
+  (:return (list key value)))
 
 (defrule mod-lisp-request-headers? (header mlh gh rh eh uh)
   (:mod-lisp-header? header) (:do (push header mlh)) (:crlf?)
@@ -1719,40 +1758,10 @@
 	      (mod-lisp-entity-header! stream item))
 	  (http-response.entity-headers response) :initial-value nil))
 
-
-;; HTTP/1.1 404 Not Found
-;; Date: Sat, 02 Jul 2011 16:06:29 GMT
-;; Server: Apache/2.2.16 (Debian)
-
-;; Vary: Accept-Encoding
-;; Content-Length: 205
-;; Content-Type: text/html; charset=iso-8859-1
-
-;; <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
-;; <html><head>
-;; <title>404 Not Found</title>
-;; </head><body>
-;; <h1>Not Found</h1>
-;; <p>The requested URL /foo.bar was not found on this server.</p>
-;; </body></html>
-
-(defparameter *response* "HTTP/1.1 404 Not Found
-Server: Apache/2.2.16 (Debian)
-Vary: Accept-Encoding
-Date: Sat, 02 Jul 2011 16:06:29 GMT
-Content-Length: 205
-Content-Type: text/html; charset=iso-8859-1
-
-<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">
-<html><head>
-<title>404 Not Found</title>
-</head><body>
-<h1>Not Found</h1>
-<p>The requested URL /foo.bar was not found on this server.</p>
-</body></html>")
-
+(defhttp-header-parser http-response-header? "HTTP-~A?" +http-response-headers+)
 (defparser http-response-headers? (header gh eh uh key value c)
   (:zom (:or (:and (:http-general-header? header) (:do (push header gh)))
+	     (:and (:http-response-header? header) (:do (push header gh)))
 	     (:and (:http-entity-header? header) (:do (push header eh)))
 	     (:and (:type http-header-name? c)
 		   (:do (setq key (make-accumulator))) (:collect c key)
@@ -1761,7 +1770,7 @@ Content-Type: text/html; charset=iso-8859-1
 			(:and (:zom (:type space?)) (:crlf?)))
 		   (:do (setq value (make-accumulator :byte)))
 		   (:zom (:type http-header-value? c) (:collect c value)) 
-		   (:do (push (cons key value) uh))))
+		   (:do (push (list key value) uh))))
 	(:optional (:crlf?)))
   (:return (values (nreverse gh) (nreverse eh) (nreverse uh))))
 
@@ -1772,7 +1781,6 @@ Content-Type: text/html; charset=iso-8859-1
 			  :status-code status-code
 			  :entity-headers eh
 			  :response-headers (append gh uh))))
-
 
 ;; -------------------------------------------------------------------------
 ;; Trace Definition
@@ -1807,3 +1815,35 @@ Content-Type: text/html; charset=iso-8859-1
 
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+;; HTTP/1.1 404 Not Found
+;; Date: Sat, 02 Jul 2011 16:06:29 GMT
+;; Server: Apache/2.2.16 (Debian)
+
+;; Vary: Accept-Encoding
+;; Content-Length: 205
+;; Content-Type: text/html; charset=iso-8859-1
+
+;; <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+;; <html><head>
+;; <title>404 Not Found</title>
+;; </head><body>
+;; <h1>Not Found</h1>
+;; <p>The requested URL /foo.bar was not found on this server.</p>
+;; </body></html>
+
+;; (defparameter *response* "HTTP/1.1 404 Not Found
+;; Server: Apache/2.2.16 (Debian)
+;; Vary: Accept-Encoding
+;; Date: Sat, 02 Jul 2011 16:06:29 GMT
+;; Content-Length: 205
+;; Content-Type: text/html; charset=iso-8859-1
+
+;; <!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">
+;; <html><head>
+;; <title>404 Not Found</title>
+;; </head><body>
+;; <h1>Not Found</h1>
+;; <p>The requested URL /foo.bar was not found on this server.</p>
+;; </body></html>")
