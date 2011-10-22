@@ -301,6 +301,11 @@ iv) t      - 06/06/2008 17:30"
 	    (core-server::hex-value! output peek)))	 	 
 	 (t (core-server::byte! output peek)))))))
 
+(defun javascript-date-to-lisp (universal-time)
+  (let ((b 3155666400)
+	(a 946677600000))
+    (+ b (/ (- universal-time a) 1000))))
+
 ;; DNS aids
 (defun host-part (fqdn)
   (awhen (position #\. fqdn)
