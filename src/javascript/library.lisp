@@ -363,6 +363,8 @@
 				",")
 			 "]")
 		      "[]"))
+		 ((typep (slot-value object 'get-time) 'function)
+		  (serialize (.get-time object)))
 		 ((typep object 'object)
 		  (let ((result "{")
 			(keys))
