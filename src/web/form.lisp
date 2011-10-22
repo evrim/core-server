@@ -200,3 +200,30 @@
 
 (defmethod/remote validate ((self <core:number-value-input))
   (and (call-next-method self) (validate-number self)))
+
+
+;; -------------------------------------------------------------------------
+;; Date Input
+;; -------------------------------------------------------------------------
+(defcomponent <core:date-time-input (<core:validating-input supply-jquery-ui)
+  ((jquery-date-time-picker-uri :host remote
+				:initform "http://www.coretal.net/js/jquery-ui-timepicker-addon.js")
+   (jquery-date-time-picker-css :host remote
+				:initform "http://www.coretal.net/js/jquery-ui-timepicker-addon.css")
+   (default-value :host remote))
+  (:default-initargs :default-value "Enter a date" :type "text"))
+
+(defmethod/remote get-input-value ((self <core:date-time-input))
+  (.datetimepicker (j-query self) "getDate"))
+
+(defmethod/remote init ((self <core:date-time-input))
+  (call-next-method self)
+  (load-jquery-ui self)
+  (load-css (jquery-date-time-picker-css self))
+  (load-javascript (jquery-date-time-picker-uri self)
+		   (lambda () (not (null j-query.fn.datetimepicker))))  
+  (.datetimepicker (j-query self)
+		   (jobject :time-format "h:m" :separator " @ "))
+  (.datetimepicker (j-query self)
+		   "setTime" (or (default-value self)
+				  (new (*date)))))

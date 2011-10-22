@@ -1170,7 +1170,7 @@
 	   #:validating-input #:default-value-input
 	   #:domain-input #:email-input #:password-input
 	   #:required-value-input #:number-value-input
-	   #:username-input #:tab #:crud
+	   #:username-input #:tab #:crud #:date-time-input
 	   #:auth #:core #:ckeditor #:lazy-ckeditor))
 
 (defpackage :tr.gen.core.server.atom
