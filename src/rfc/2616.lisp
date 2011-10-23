@@ -244,7 +244,7 @@
 
 ;; Sun, 06 Nov 1994 08:49:37 GmT  ; RFC 822, updated by RFC 1123
 (defrule rfc1123-date? ((acc (make-accumulator)) c
-			day month year hour minute second)
+			day month year hour minute second gmt)
   (:zom (:type visible-char?)) (:lwsp?)
   (:fixnum? day) (:lwsp?)
   (:zom (:type alpha? c)
@@ -252,12 +252,16 @@
   (:do (setq month (find-rfc1123-month acc)))
   (:lwsp?) (:fixnum? year) (:lwsp?)
   (:fixnum? hour) #\: (:fixnum? minute) #\: (:fixnum? second) 
-  (:lwsp?) (:seq "GMT") (:lwsp?)
-  (:return (encode-universal-time second minute hour day month year 0)))
+  (:lwsp?)
+  (:or (:and (:seq "GMT") (:do (setq gmt 0)))
+       (:and #\+ (:fixnum? gmt))
+       (:and #\- (:fixnum? gmt) (:do (setq gmt (* gmt -1)))))
+  (:lwsp?)
+  (:return (encode-universal-time second minute hour day month year gmt)))
 
 ;; Sunday, 06-Nov-94 08:49:37 GmT ; RFC 850, obsoleted by RFC 1036
 (defrule rfc850-date? (day month year hour minute second
-			   (acc (make-accumulator)) c)
+			   (acc (make-accumulator)) c (gmt 0))
   (:zom (:type visible-char?))
   (:lwsp?)
   (:fixnum? day) #\-
@@ -267,8 +271,12 @@
   (:do (setq year (+ 1900 year)))    
   (:lwsp?)
   (:fixnum? hour) #\: (:fixnum? minute) #\: (:fixnum? second)
-  (:lwsp?) (:seq "GMT") (:lwsp?)
-  (:return (encode-universal-time second minute hour day month year 0)))
+  (:lwsp?)
+  (:or (:and (:seq "GMT") (:do (setq gmt 0)))
+       (:and #\+ (:fixnum? gmt))
+       (:and #\- (:fixnum? gmt) (:do (setq gmt (* gmt -1)))))
+  (:lwsp?)
+  (:return (encode-universal-time second minute hour day month year gmt)))
 
 ;;        Sun Nov  6 08:49:37 1994       ; ANSI C's asctime() format
 (defrule asctime-date? ((acc (make-accumulator)) c
@@ -1068,9 +1076,6 @@
 ;; ETag: W/"xyzzy"
 ;; ETag: ""
 ;; FIXmE: whats thiz?
-(defparser http-etag? (c)
-  (:quoted? c) (:return c))
-
 (defun http-etag! (stream etag)
   (if (cdr etag)
       (progn
