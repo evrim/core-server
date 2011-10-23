@@ -357,7 +357,15 @@
 	      (find-package :<gphoto))
 	(cons "http://search.yahoo.com/mrss/" (find-package :<media))
 	(cons "http://www.opensearch.org/Specifications/OpenSearch/1.1"
-	      (find-package :<open-search))))
+	      (find-package :<open-search))
+	(cons "http://wordpress.org/export/1.0/"
+	      (find-package :<wordpress))
+	(cons "http://purl.org/rss/1.0/modules/content/"
+	      (find-package :<content))
+	(cons "http://purl.org/dc/elements/1.1/"
+	      (find-package :<dc))
+	(cons "http://wordpress.org/export/1.0/excerpt/"
+	      (find-package :<excerpt))))
 
 (declaim (inline xml->symbol))
 (defun xml->symbol (name &optional package)
@@ -412,7 +420,7 @@
 				     (format nil "<~A" 
 					     (symbol-name
 					      (xml->symbol namespace))))))
-		     it)
+		    it)
 		   ((cdr (assoc (cdr
 				 (assoc "xmlns" attributes :test #'string=))
 				+xml-namespaces-table+ :test #'string=))
@@ -423,13 +431,18 @@
 			   (format nil "<~A" 
 				   (symbol-name
 				    (xml->symbol default-namespace))))))
-		     it)
-		   (t
-		    +xml-namespace+)))
-		 (symbol (xml->symbol tag +xml-namespace+)))
-	    (if (and (fboundp symbol)
+		    it)
+		   (t +xml-namespace+)))
+		 (symbol (let ((symbol1 (xml->symbol tag +xml-namespace+))
+			       (symbol2 (intern tag +xml-namespace+)))
+			   (if (fboundp symbol1)
+			       symbol1
+			       (if (fboundp symbol2)
+				   symbol2)))))
+	    (if (and symbol
 		     (not (eq (symbol-package symbol) #.(find-package :cl)))
-		     (not (eq (symbol-package symbol) #.(find-package :arnesi))))
+		     ;; (not (eq (symbol-package symbol) #.(find-package :arnesi)))
+		     )
 		(let ((instance (make-element symbol attributes children)))
 		  (if (slot-exists-p instance 'tag)
 		      (setf (slot-value instance 'tag) tag))
@@ -597,20 +610,6 @@
 		    (values attribute namespace)
 		    ;;  (format nil "~A:~A" namespace attribute)
 		    attribute))))
-
-(defrule relaxed-xml-attribute-name? (c attribute namespace)
-  (:type xml-attribute-char? c)
-  (:do (setq attribute (make-accumulator)))
-  (:collect c attribute)
-  (:zom (:type xml-attribute-char? c) (:collect c attribute))  
-  (:optional
-   #\:
-   (:do (setq namespace attribute)
-	(setq attribute (make-accumulator)))
-   (:oom (:type xml-attribute-char? c) (:collect c attribute)))
-  (:return (if namespace
-	       (values attribute namespace)
-	       attribute)))
 
 (defrule relaxed-xml-attribute-value? (c val)
   (:or (:and

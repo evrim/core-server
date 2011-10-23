@@ -1252,14 +1252,17 @@
 	   #:comment_user_id #:comment_type #:comment_parent
 	   #:attachment_url))
 
-;; (defpackage :tr.gen.core.server.html.dojo
-;;   (:nicknames :<dojo :core-server.html.dojo)
-;;   (:use :core-server :<))
+(defpackage :tr.gen.core.server.content
+  (:nicknames :<content)
+  (:use :cl)
+  (:export #:encoded))
 
-;; (defpackage :tr.gen.core.server.html.dijit
-;;   (:nicknames :<dijit :core-server.html.dijit)
-;;   (:use :core-server :<))
+(defpackage :tr.gen.core.server.dc
+  (:nicknames :<dc)
+  (:use :cl)
+  (:export #:creator))
 
-;; (defpackage :tr.gen.core.server.html.dijit.layout
-;;   (:nicknames :<dijit.layout :core-server.html.dijit.layout)
-;;   (:use :core-server :<))
+(defpackage :tr.gen.core.server.excerpt
+  (:nicknames :<excerpt)
+  (:use :cl)
+  (:export #:encoded))
