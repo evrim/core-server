@@ -99,6 +99,12 @@
       ((null (car lst)) nil)
       ((> n 0) (cons (car lst) (take (- n 1) (cdr lst))))
       (t nil)))
+
+  (defun drop (n lst)
+    (cond
+      ((> n 0)
+       (drop (- n 1) (cdr lst)))
+      (t lst)))
   
   (defun/cc filter-cc (fun lst)
     (reverse-cc
@@ -294,6 +300,22 @@
 		(reduce (flip cons)
 			(reduce (flip cons) to)
 			(reverse (reduce (flip cons) item)))))))
+
+  (defun scroll-to-node (node)
+    (labels ((parent-search (root acc)
+	       (cond
+		 ((and root (slot-value root 'offset-parent))
+		  (parent-search (slot-value root 'offset-parent)
+				 (cons root acc)))
+		 (t acc))))
+      (let* ((parents (parent-search node (list)))
+	     (pos-x (reduce (lambda (acc atom)
+			      (+ acc (slot-value atom 'offset-left)))
+			    parents 0))
+	     (pos-y (reduce (lambda (acc atom)
+			      (+ acc (slot-value atom 'offset-top)))
+			    parents 0)))
+	(window.scroll-to pos-x (- pos-y 50)))))
 
   (defun flip (fun) (return (lambda (a b) (fun b a))))
   (defun flip-cc (fun k) (return (lambda (a b k) (fun b a k))))
