@@ -1781,7 +1781,7 @@
 
 (defparser http-response? (version status-code status-message gh eh uh)
   (:status-code? version status-code status-message) (:lwsp?)
-  (:http-response-headers? gh eh uh) (:crlf?)
+  (:http-response-headers? gh eh uh) (:optional (:crlf?))
   (:return (make-instance 'http-response
 			  :status-code status-code
 			  :entity-headers eh
