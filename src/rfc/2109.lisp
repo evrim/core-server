@@ -30,6 +30,8 @@
    (domain :accessor cookie.domain :initarg :domain :initform nil)
    (max-age :accessor cookie.max-age :initarg :max-age :initform nil
 	    :type integer)
+   (expires :accessor cookie.expires :initarg :expires :initform nil
+	    :type integer)
    (path :accessor cookie.path :initarg :path :initform nil)
    (secure :accessor cookie.secure :initarg :secure :initform nil
 	   :type boolean)))
@@ -42,7 +44,8 @@
   (:method ((cookie t)) nil))
 
 (defun make-cookie (name value &key (version 1) (comment nil) (domain nil)
-		                    (max-age nil) (path nil) (secure nil))
+		                    (max-age nil) (path nil) (secure nil)
+		    (expires nil))
   (make-instance 'cookie
 		 :name name
 		 :value value
@@ -51,6 +54,7 @@
 		 :domain domain
 		 :max-age max-age
 		 :path path
+		 :expires expires
 		 :secure secure))
 
 ;; Set-Cookie: Part_Number="Riding_Rocket_0023"; Version="1"; Path="/acme/ammo"
@@ -100,26 +104,39 @@
 
 ;; Cookie: $Version="1"; Customer="WILE_E_COYOTE"; $Path="/acme"; $Domain=".core.gen.tr"
 (defrule cookie? ((key (make-accumulator))
-		  value version path domain (cookies '()) c)
+		  value version path domain (cookies '()) c max-age 
+		  comment expires secure)
   (:lwsp?)
   (:optional
    (:sci "$Version=")
    (:rfc2109-quoted-value? version)
    (:or #\; #\,)
    (:do (setq version (parse-integer version))))
-  (:zom (:lwsp?)
-	(:zom (:type rfc2109-cookie-header? c)
-	      (:collect c key))
-	#\=
-	(:rfc2109-quoted-value? value)
-	(:optional #\; (:lwsp?) (:sci "$Path=") (:rfc2109-quoted-value? path))
-	(:optional #\; (:lwsp?) (:sci "$Domain=") (:rfc2109-quoted-value? domain))
-	(:do (push (make-cookie key value :version version :domain domain :path path)
-		   cookies)
-	     (setq key (make-accumulator)
-		   value nil version nil domain nil path nil))
-	(:or #\; #\,))
-  (:return (nreverse cookies)))
+  (:zom (:type rfc2109-cookie-header? c)
+	(:collect c key))
+  #\=
+  (:rfc2109-quoted-value? value)
+  #\;
+  (:zom (:not (or #\Return #\Newline))
+	(:lwsp?)
+	(:or (:and (:sci "path=") (:rfc2109-quoted-value? path))
+	     (:and (:sci "domain=") (:rfc2109-quoted-value? domain))
+	     (:and (:sci "expires=") (:http-date? expires))
+	     (:and (:sci "max-age=") (:rfc2109-quoted-value? max-age))
+	     (:and (:sci "version=") (:rfc2109-quoted-value? version))
+	     (:and (:sci "comment=") (:rfc2109-quoted-value? comment))
+	     (:and (:sci "secure=") (:rfc2109-quoted-value? secure)))
+	#\; (:lwsp?))
+  (:zom (:type (and (not carriage-return?)
+		    (not linefeed?)
+		    octet?)))
+  (:return (list (make-cookie key value :version version 
+			      :domain domain 
+			      :path path
+			      :max-age max-age
+			      :comment comment
+			      :expires expires
+			      :secure secure))))
 
 
 #|
