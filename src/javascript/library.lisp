@@ -665,6 +665,16 @@
 	  (setf window.location.hash result)
 	  (setf window.location.hash (+ result name ":" value)))))
 
+  (defun get-style (node)
+    (cond
+      ((and document.default-view
+	    document.default-view.get-computed-style)
+       (document.default-view.get-computed-style node null))
+      ((slot-value node 'current-style)
+       (slot-value node 'current-style))
+      (t
+       (_debug (list "cant (get-style " node ")")))))
+  
   (defvar *css-refcount-table* (jobject))
   (defun load-css (url)
     (flet ((_load-css ()
@@ -699,9 +709,18 @@
 	 (setf (slot-value *css-refcount-table* url)
 	       (- (slot-value *css-refcount-table* url) 1))))
       url))
+
+  (defvar *loading-table* (jobject))
   
   (defun/cc load-javascript (url loaded-p)
     (_debug (list "load-javascript" url loaded-p))
+
+    (when (slot-value *loading-table* url)
+      (make-web-thread
+       (lambda ()
+	 (load-javascript url loaded-p)))
+      (suspend))
+    
     (let/cc current-continuation
       (let* ((img (make-dom-element "IMG"
 		   (jobject :class-name "coretal-loading"
@@ -711,25 +730,35 @@
 	     (script (make-dom-element "SCRIPT"
 				       (jobject :type "text/javascript"
 						:src url)
-				       nil))
-	     (head (aref (.get-elements-by-tag-name document "HEAD") 0))
+				       nil))	     
 	     (body (slot-value document 'body))
+	     (head (aref (.get-elements-by-tag-name document "HEAD") 0))
+	     (time (.get-time (new (*date))))
 	     (recurse
-	      (lambda (r)
+	      (lambda (r)		
 		(cond
-		  ((loaded-p window.k)
+		  ((loaded-p window.k)		   
 		   (when (not (null (slot-value script 'parent-node)))
 		     (.remove-child head script)
 		     (if body (.remove-child body img)))
+		   (delete (slot-value *loading-table* url))
 		   (current-continuation null))
+		  ;; ((> (- (.get-time (new (*date))) time) 15000)
+;; 		   (setq time (.get-time (new (*date))))
+;; 		   (alert (list "readloing" url loaded-p))
+;; 		   (.remove-child head script)
+;; 		   (.append-child head script)
+;; 		   (make-web-thread (lambda () (Y r)))
+;; 		   (suspend))
 		  (t
 		   (make-web-thread (lambda () (Y r)))
 		   (suspend))))))
 	(cond
 	  (loaded-p
-	   (unless (loaded-p window.k)
+	   (unless (call/cc loaded-p)
 	     (if body (append body img))
 	     (append head script)
+	     (setf (slot-value *loading-table* url) t)
 	     (Y recurse)))
 	  (t
 	   (append head script))))))
