@@ -169,7 +169,10 @@
 				   (:file "gphoto")
 				   (:file "media")
 				   (:file "open-search")
-				   (:file "wordpress")))
+				   (:file "wordpress")
+				   (:file "content")
+				   (:file "dc")
+				   (:file "excerpt")))
 			 (:module :database
 				  :serial t
 				  :components
@@ -212,6 +215,7 @@
 				   (:file "tags")
 				   (:file "component")
 				   (:file "service")
+				   (:file "jquery")
 				   (:file "form")
 				   (:file "dialog")
 				   (:file "extra")
@@ -223,7 +227,6 @@
 				   (:file "video")
 				   (:file "editor")
 				   (:file "dojo")
-				   (:file "jquery")
 				   (:file "picasa"))))))
   :depends-on (:swank :bordeaux-threads ;; :cl-prevalence
 		      :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad :cffi
