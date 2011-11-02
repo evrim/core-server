@@ -1250,7 +1250,9 @@
 	   #:comment_author_url #:comment_author_-I-P #:comment_date
 	   #:comment_date_gmt #:comment_content #:comment_approved
 	   #:comment_user_id #:comment_type #:comment_parent
-	   #:attachment_url))
+	   #:attachment_url #:category_description #:term_id
+	   #:author #:author_id #:author_email #:author_display_name
+	   #:author_first_name #:author_last_name #:author_login))
 
 (defpackage :tr.gen.core.server.content
   (:nicknames :<content)
