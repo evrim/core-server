@@ -13,11 +13,12 @@
 ;; Supply Jquery UI
 ;; -------------------------------------------------------------------------
 (defcomponent supply-jquery-ui (supply-jquery)
-  ((jquery-ui-uri :host remote :initform +jquery-ui-uri+)))
+  ((jquery-ui-uri :host remote :initform +jquery-ui-uri+)
+   (jquery-ui-css-uri :host remote :initform +jquery-ui-css-uri+)))
 
 (defmethod/remote load-jquery-ui ((self supply-jquery-ui))
   (load-jquery self)
-  (load-css "http://www.coretal.net/js/jquery/css/blitzer/jquery-ui-1.8.9.custom.css")
+  (load-css (jquery-ui-css-uri self))
   (load-javascript (jquery-ui-uri self)
 		   (lambda () (not (null j-query.fn.accordion)))))
 
