@@ -126,6 +126,10 @@
 
 (defmethod/remote bind-editor ((self <core:ckeditor))
   (load-ckeditor self)
+
+  (if (slot-value *c-k-e-d-i-t-o-r.instances (slot-value self 'id))
+      (setf (slot-value self 'id) (random-string 5)))
+  
   (with-slots (parent-node) self
     (cond
       ((or (null parent-node) (null (slot-value parent-node 'tag-name)))
