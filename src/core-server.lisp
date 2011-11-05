@@ -1124,6 +1124,7 @@
    #:+dojo-path+
    #:+fckeditor-path+
    #:+jquery-uri+
+   #:+jquery-ui-css-uri+
    #:+jquery-ui-uri+
    #:+jquery-text-effects-uri+
    #:+jquery-lightbox-uri+
