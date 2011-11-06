@@ -542,34 +542,38 @@
   (defun/cc funcall2-cc (action args callback-name)
     (_debug (list "funcall/cc" action args))
     (let/cc current-continuation
-      (let ((hash (+ "__result"
-		     (.get-time (new (*date)))
-		     (.substr (.concat "" (*math.random 10)) 3 5)))
-	    (img (make-dom-element "IMG"
-		   (jobject :class-name "coretal-loading"
-			    :src (+ "http://www.coretal.net/style/"
-				    "login/loading.gif"))
-		   nil))
-	    (args (if (null args) (jobject) args)))
-	(setf (slot-value args (or callback-name "__hash")) hash)
-	(let* ((a (serialize-to-uri args))
-	       (script (make-dom-element "script" (jobject) nil))
-	      (head (aref (.get-elements-by-tag-name document "HEAD") 0))
-	      (body (slot-value document 'body)))
-	  (cond
-	    ((and a (slot-value a 'length) (> (slot-value a 'length) 2000))
-	     (funcall-long-cc action args))
-	    (t	     
-	     (setf (slot-value window hash)
-		   (event (val)
-		     (when (not (null (slot-value script 'parent-node)))
-		       (.remove-child head script)
-		       (if body (.remove-child body img)))
-		     (current-continuation val)))
-	     (if body (append body img))
-	     (append head script)
-	     (setf (slot-value script 'src) (+ "" action a))
-	     (suspend)))))))
+      (let* ((args (if (null args) (jobject) args))
+	     (hash (if (slot-value args '__hash)
+		       (let ((__hash (slot-value args '__hash)))			 
+			 (delete-slot args '__hash)
+			 __hash)
+		       (+ "__result"
+			  (.get-time (new (*date)))
+			  (.substr (.concat "" (*math.random 10)) 3 5)))))
+	(let ((img (make-dom-element "IMG"
+				     (jobject :class-name "coretal-loading"
+					      :src (+ "http://www.coretal.net/style/"
+						      "login/loading.gif"))
+				     nil)))
+	  (setf (slot-value args (or callback-name "__hash")) hash)
+	  (let* ((a (serialize-to-uri args))
+		 (script (make-dom-element "script" (jobject) nil))
+		 (head (aref (.get-elements-by-tag-name document "HEAD") 0))
+		 (body (slot-value document 'body)))
+	    (cond
+	      ((and a (slot-value a 'length) (> (slot-value a 'length) 2000))
+	       (funcall-long-cc action args))
+	      (t	     
+	       (setf (slot-value window hash)
+		     (event (val)
+			    (when (not (null (slot-value script 'parent-node)))
+			      (.remove-child head script)
+			      (if body (.remove-child body img)))
+			    (current-continuation val)))
+	       (if body (append body img))
+	       (append head script)
+	       (setf (slot-value script 'src) (+ "" action a))
+	       (suspend))))))))
 
   (defun/cc funcall-cc (action args)
     (funcall2-cc action args nil))

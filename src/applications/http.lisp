@@ -673,10 +673,53 @@ provide query parameters inside URL as key=value"
 			     :stream *core-output*)
 	      (make-response *core-output*))))
 
+(defparameter +etag-key+ (string-to-octets "gLZntebnfM" :utf-8))
+(defmacro with-cache (etag-key &body body)
+  `(progn
+     (let ((response (context.response +context+))
+	   (timestamp ,etag-key))
+       (labels ((calculate-etag ()
+		  (hmac +etag-key+ (format nil "~A" timestamp) :sha1))
+		(add-cache-headers ()
+		  ;; Date:Sat, 05 Nov 2011 22:05:05 GMT
+		  ;; ETag: "8eb52-e2b-4b0dbed652d80"
+		  (http-response.add-general-header response 'date timestamp)
+		  (http-response.add-response-header response 'etag (cons (calculate-etag) nil))
+		  (setf (slot-value response 'general-headers)
+			(remove 'pragma
+				(remove 'cache-control
+					(slot-value response 'general-headers)
+					:key #'car)
+				:key #'car))
+		  ;; (http-response.add-general-header response 'cache-control (list (cons 'max-age 1000)))
+		  (http-response.add-entity-header response 'expires (+ timestamp 10000))
+		  ;; (http-response.add-entity-header response 'last-modified timestamp)
+		  )
+		(render-response ()
+		  (add-cache-headers)
+		  ,@body))
+	 ;; If-Modified-Since:Thu, 03 Nov 2011 22:15:34 GMT
+	 ;; If-None-Match: "8eb50-b16-4b0dbed652d80"
+	 (let* ((request (context.request +context+))
+		(date (http-request.header request 'if-modified-since))
+		(etag (http-request.header request 'if-none-match)))
+	   (cond
+	     (etag
+	      (if (equal (calculate-etag) (caar etag))
+		  (prog1 (<:html (<:body "[core-server] 304 - Not modified"))
+		    (add-cache-headers)
+		    (setf (http-response.status-code response)
+			  (core-server::make-status-code 304)))
+		  (render-response)))
+	     (t (render-response))))))))
+
+(defparameter +library.core-timestamp+ (get-universal-time))
 (defhandler "library.core" ((self http-application))
   (javascript/suspend
    (lambda (s)
-     (core-server::core-library! s))))
+     (flet ((foo () +library.core-timestamp+))
+       (with-cache (foo)
+	 (core-server::core-library! s))))))
 
 (defhandler "multipart.core" ((self http-application) (action "action")
 			      (hash "__hash"))
