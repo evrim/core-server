@@ -499,14 +499,11 @@
     (return xhr))
   
   (defun serialize-to-uri (arg)
-    (let ((result ""))      
-      (mapobject (lambda (k v)
-		   (setf result
-			 (+ result k "="
-			    (encode-u-r-i-component (serialize v))
-			    "&")))
-		 arg)
-      result))
+    (let ((arg (object-to-list arg)))
+      (reduce (lambda (acc a)
+		(+ acc "&" (car a) "=" (encode-u-r-i-component (serialize (car (cdr a))))))
+	      (cdr arg)
+	      (+ (car (car arg)) "=" (encode-u-r-i-component (serialize (car (cdr (car arg)))))))))
 
   (defun _debug (what k)
     (if (and (not (null console))
