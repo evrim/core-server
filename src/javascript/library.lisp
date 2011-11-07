@@ -557,7 +557,7 @@
 				     nil)))
 	  (setf (slot-value args (or callback-name "__hash")) hash)
 	  (let* ((a (serialize-to-uri args))
-		 (script (make-dom-element "script" (jobject) nil))
+		 (script (make-dom-element "script" (jobject :type "text/javascript") nil))
 		 (head (aref (.get-elements-by-tag-name document "HEAD") 0))
 		 (body (slot-value document 'body)))
 	    (cond
@@ -567,7 +567,7 @@
 	       (setf (slot-value window hash)
 		     (event (val)
 			    (when (not (null (slot-value script 'parent-node)))
-			      (.remove-child head script)
+			      ;; (.remove-child head script)
 			      (if body (.remove-child body img)))
 			    (current-continuation val)))
 	       (if body (append body img))
