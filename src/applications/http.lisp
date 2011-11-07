@@ -677,39 +677,48 @@ provide query parameters inside URL as key=value"
 (defmacro with-cache (etag-key &body body)
   `(progn
      (let ((response (context.response +context+))
-	   (timestamp ,etag-key))
+	   (timestamp ,etag-key)
+	   (request (context.request +context+)))       
        (labels ((calculate-etag ()
 		  (hmac +etag-key+ (format nil "~A" timestamp) :sha1))
 		(add-cache-headers ()
 		  ;; Date:Sat, 05 Nov 2011 22:05:05 GMT
 		  ;; ETag: "8eb52-e2b-4b0dbed652d80"
-		  (http-response.add-general-header response 'date timestamp)
+		  (http-response.remove-header response 'pragma)
+		  (http-response.remove-header response 'cache-control)
+		  (http-response.remove-header response 'expires)
+		  (http-response.add-general-header response 'date (get-universal-time))
 		  (http-response.add-response-header response 'etag (cons (calculate-etag) nil))
-		  (setf (slot-value response 'general-headers)
-			(remove 'pragma
-				(remove 'cache-control
-					(slot-value response 'general-headers)
-					:key #'car)
-				:key #'car))
-		  ;; (http-response.add-general-header response 'cache-control (list (cons 'max-age 1000)))
-		  (http-response.add-entity-header response 'expires (+ timestamp 10000))
-		  ;; (http-response.add-entity-header response 'last-modified timestamp)
+		  (http-response.add-entity-header response 'expires (+ (get-universal-time) 50000))
+		  (http-response.add-entity-header response 'last-modified timestamp)
+		  ;; (let* ((agent (http-request.header request 'user-agent))
+		  ;; 	 (str (cdr (assoc 'string agent)))
+		  ;; 	 (msie (if (search "MSIE" str) t)))
+		  ;;   (if msie
+		  ;; 	(http-response.add-general-header response 'cache-control
+		  ;; 					  (list ;; 'public 'must-revalidate 'no-transform (cons 'max-age 0)
+		  ;; 					   'no-cache))
+		  ;; 	(http-response.add-general-header response 'cache-control
+		  ;; 					  (list ;; 'private 'must-revalidate 'no-transform
+		  ;; 					   (cons 'max-age 50000)))))
+		  (http-response.add-general-header response 'cache-control
+		  				    (list ;; 'private 'must-revalidate 'no-transform
+		  				     (cons 'max-age 50000)))
 		  )
 		(render-response ()
 		  (add-cache-headers)
 		  ,@body))
 	 ;; If-Modified-Since:Thu, 03 Nov 2011 22:15:34 GMT
 	 ;; If-None-Match: "8eb50-b16-4b0dbed652d80"
-	 (let* ((request (context.request +context+))
-		(date (http-request.header request 'if-modified-since))
+	 (let* ((date (http-request.header request 'if-modified-since))
 		(etag (http-request.header request 'if-none-match)))
 	   (cond
-	     (etag
+	     ((and timestamp (> timestamp 0) etag)
 	      (if (equal (calculate-etag) (caar etag))
-		  (prog1 (<:html (<:body "[core-server] 304 - Not modified"))
+		  (prog1 nil
 		    (add-cache-headers)
 		    (setf (http-response.status-code response)
-			  (core-server::make-status-code 304)))
+		  	  (core-server::make-status-code 304)))
 		  (render-response)))
 	     (t (render-response))))))))
 
@@ -719,7 +728,7 @@ provide query parameters inside URL as key=value"
    (lambda (s)
      (flet ((foo () +library.core-timestamp+))
        (with-cache (foo)
-	 (core-server::core-library! s))))))
+     	 (core-server::core-library! s))))))
 
 (defhandler "multipart.core" ((self http-application) (action "action")
 			      (hash "__hash"))
