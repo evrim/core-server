@@ -1493,8 +1493,8 @@
 		   (:do (setq value (make-accumulator :byte)))
 		   (:zom (:type http-header-value? c) (:collect c value)) 
 		   (:do (push (cons key value) uh))))
-	(:crlf?))
-  (:crlf?)
+	(:optional (:crlf?)))
+  (:optional (:crlf?))
   (:return (values method uri version (nreverse gh)
 		   (nreverse rh) (nreverse eh) (nreverse uh))))
 
@@ -1570,6 +1570,12 @@
 	(cons (cons key val)
 	      (remove-if #'(lambda (a) (eq a key))
 			 (slot-value self 'general-headers) :key #'car))))
+
+(defmethod http-response.remove-header ((self http-response) key)
+  (mapcar (lambda (a)
+	    (setf (slot-value self a)
+		  (remove key (slot-value self a) :key #'car)))
+	  '(general-headers response-headers entity-headers)))
 
 (defmethod http-response.disable-cache ((self http-response))
   (http-response.add-general-header self 'cache-control 'no-cache)
