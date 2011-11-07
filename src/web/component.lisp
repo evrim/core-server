@@ -474,12 +474,17 @@
 		   ;; Inject Default Values Differentially
 		   ;; -------------------------------------------------------------------------
 		   (mapobject (lambda (k v)
-				(if (or (and (not (null v))
-					     (or (eq "" (slot-value to-extend k))
-						 (null (slot-value to-extend k))
-						 (eq "undefined" (slot-value to-extend k))))
-					(eq "undefined" (typeof (slot-value to-extend k))))
-				    (setf (slot-value to-extend k) v)))
+				(if
+				 (or (and (not (null v))
+					  (null-p (slot-value to-extend k))
+					  ;; (or (eq "" (slot-value to-extend k))
+				 	  ;; 	 (null (slot-value to-extend k))
+				 	  ;; 	 (eq "undefined" (slot-value to-extend k)))
+					  )
+				     (eq "undefined" (typeof (slot-value to-extend k))))
+				 ;; (and (not (null v))
+				 ;;      (not (nullp (slot-value to-extend k))))
+				 (setf (slot-value to-extend k) v)))
 			      slots)
 
 		   (let ((to-extend ,(if dom-tag
@@ -539,7 +544,7 @@
 					"unbound-session-id"))
 		 (class-name (string (class-name (class-of component))))
 		 (component-loader-uri (if +context+
-					   (format nil "~Acomponent.core"
+					   (format nil "~Acomponent/"
 						   (web-application.base-url
 						    (component.application component)
 						    (context.request +context+)))
@@ -606,11 +611,14 @@
 		     ;; -------------------------------------------------------------------------
 		     (mapobject (lambda (k v)
 				  (if (or (and (not (null v))
-					       (or (eq "" (slot-value to-extend k))
-						   (null (slot-value to-extend k))
-						   (eq "undefined" (slot-value to-extend k))))
-					  (eq "undefined" (typeof (slot-value to-extend k))))
-				      (setf (slot-value to-extend k) v)))
+				      	       (null-p (slot-value to-extend k))
+					       ;; (or (eq "" (slot-value to-extend k))
+				      	       ;; 	   (null (slot-value to-extend k))
+				      	       ;; 	   (eq "undefined" (slot-value to-extend k)))
+					       )
+				      	  (eq "undefined" (typeof (slot-value to-extend k))))
+				   ;; (and (not (null v)) (not (nullp (slot-value to-extend k))))
+				   (setf (slot-value to-extend k) v)))
 				slots)
 
 		     ,(if local-methods
@@ -625,8 +633,12 @@
 			    (call/cc it to-extend)
 			    (let ((ctor (funcall-cc
 					 (+ component-loader-uri
-;;; 					    "?s:" server-session-id
-					    "?component:" (encode-u-r-i-component class-name) "$")
+					    (.replace class-name "/" "XXYZ")
+					    ".core?"
+					    ;; "?s=" server-session-id "$"
+					    ;; "?"
+					    "component=" (encode-u-r-i-component class-name)
+					    "&")
 					 (jobject :__hash (+ "__" class-name)))))
 			      (setf (slot-value component-cache class-name) ctor)
 			      (apply ctor to-extend (list to-extend)))))))))))
@@ -689,58 +701,25 @@
 	:key #'class-name :test #'string=))
 
 (defparameter +etag-key+ (string-to-octets "gLZntebnfM" :utf-8))
-
-(defhandler "component.core" ((self http-application) (component "component")
-			      (hash "__hash"))
-  (let ((class (find-component component)))
-    (assert (not (null hash)))
-    (let ((response (context.response +context+))
-	  (timestamp (slot-value class '%ctor-timestamp)))
-      (labels ((calculate-etag ()
-		 (hmac +etag-key+ (format nil "~A" timestamp) :sha1))
-	       (add-cache-headers ()
-		 ;; Date:Sat, 05 Nov 2011 22:05:05 GMT
-		 ;; ETag: "8eb52-e2b-4b0dbed652d80"
-		 (http-response.add-general-header response 'date timestamp)
-		 (http-response.add-response-header response 'etag (cons (calculate-etag) nil))
-		 (setf (slot-value response 'general-headers)
-		       (remove 'pragma
-			       (remove 'cache-control
-				       (slot-value response 'general-headers)
-				       :key #'car)
-			       :key #'car))
-		 ;; (http-response.add-general-header response 'cache-control (list (cons 'max-age 1000)))
-		 (http-response.add-entity-header response 'expires (+ timestamp 10000))
-		 ;; (http-response.add-entity-header response 'last-modified timestamp)
-		 )
-	       (render-response ()
-		 (add-cache-headers)
-		 (javascript/suspend
-		  (lambda (stream)
-		    ;; (apply (slot-value window hash) window
-		    ;; 	      (list (lambda (self) component)))
-		    (string! stream
-			     "apply(window[\"")
-		    (string! stream (json-deserialize hash))
-		    (string! stream "\"], window, [")
-		    (if class
-			(%component! stream class)
-			(string! stream "null"))
-		    (string! stream "], window.k);")))))
-	;; If-Modified-Since:Thu, 03 Nov 2011 22:15:34 GMT
-	;; If-None-Match: "8eb50-b16-4b0dbed652d80"
-	(let* ((request (context.request +context+))
-	       (date (http-request.header request 'if-modified-since))
-	       (etag (http-request.header request 'if-none-match)))
-	  (cond
-	    (etag
-	     (if (equal (calculate-etag) (caar etag))
-		 (prog1 (<:html (<:body "[core-server] 304 - Not modified"))
-		   (add-cache-headers)
-		   (setf (http-response.status-code response)
-			 (core-server::make-status-code 304)))
-		 (render-response)))
-	    (t (render-response))))))))
+(defhandler "component/.*\.core" ((self http-application) (component "component")
+				  (hash "__hash"))
+  (let ((class (find-component (string-replace-all "XXYZ" "/" component))))
+    (assert (not (null class)))
+    (assert (not (null component)))
+    (flet ((foo () (slot-value class '%ctor-timestamp)))
+      (with-cache (foo)
+    	(javascript/suspend
+    	 (lambda (stream)
+    	   ;; (apply (slot-value window hash) window
+    	   ;; 	      (list (lambda (self) component)))
+    	   (string! stream
+    		    "apply(window[\"")
+    	   (string! stream (json-deserialize hash))
+    	   (string! stream "\"], window, [")
+    	   (if class
+    	       (%component! stream class)
+    	       (string! stream "null"))
+    	   (string! stream "], window.k);")))))))
 
 (defhandler "destroy.core" ((self http-application) (objects "objects")
 			    (hash "__hash"))
