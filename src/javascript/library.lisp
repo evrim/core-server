@@ -34,6 +34,9 @@
 
   (defun listp (a)
     (not (atom a)))
+
+  (defun null-p (a)
+    (or (null a) (eq "undefined" a) (eq "" a)))
   
   (defun/cc reduce-cc (fun lst initial-value)
     (if (or (null lst) (= 0 lst.length))
