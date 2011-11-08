@@ -702,9 +702,8 @@ provide query parameters inside URL as key=value"
 		  ;; 					  (list ;; 'private 'must-revalidate 'no-transform
 		  ;; 					   (cons 'max-age 50000)))))
 		  (http-response.add-general-header response 'cache-control
-		  				    (list ;; 'private 'must-revalidate 'no-transform
-		  				     (cons 'max-age 50000)))
-		  )
+		  				    (list 'public ;; 'must-revalidate 'no-transform
+							  (cons 'max-age 50000))))
 		(render-response ()
 		  (add-cache-headers)
 		  ,@body))
