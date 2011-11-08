@@ -743,17 +743,10 @@
 		(cond
 		  ((loaded-p window.k)		   
 		   (when (not (null (slot-value script 'parent-node)))
-		     (.remove-child head script)
+		     ;; (.remove-child head script)
 		     (if body (.remove-child body img)))
 		   (delete (slot-value *loading-table* url))
 		   (current-continuation null))
-		  ;; ((> (- (.get-time (new (*date))) time) 15000)
-;; 		   (setq time (.get-time (new (*date))))
-;; 		   (alert (list "readloing" url loaded-p))
-;; 		   (.remove-child head script)
-;; 		   (.append-child head script)
-;; 		   (make-web-thread (lambda () (Y r)))
-;; 		   (suspend))
 		  (t
 		   (make-web-thread (lambda () (Y r)))
 		   (suspend))))))
