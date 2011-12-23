@@ -98,16 +98,20 @@
 	      lst)))
 
   (defun take (n lst)
-    (cond
-      ((null (car lst)) nil)
-      ((> n 0) (cons (car lst) (take (- n 1) (cdr lst))))
-      (t nil)))
+    (if (typep lst 'string)
+	(.join (take n (.split lst "")) "")
+	(cond
+	  ((null (car lst)) nil)
+	  ((> n 0) (cons (car lst) (take (- n 1) (cdr lst))))
+	  (t nil))))
 
   (defun drop (n lst)
-    (cond
-      ((> n 0)
-       (drop (- n 1) (cdr lst)))
-      (t lst)))
+    (if (typep lst 'string)
+	(.join (drop n (.split lst "")) "")
+	(cond
+	  ((> n 0)
+	   (drop (- n 1) (cdr lst)))
+	  (t lst))))
   
   (defun/cc filter-cc (fun lst)
     (reverse-cc
@@ -273,6 +277,9 @@
       (setf node.style.display "block"))
     node)
 
+  (defun is-showing (node)
+    (not (eq "none" node.style.display)))
+  
   (defun hide (node)
     (when (and node (slot-value node 'style))
       (setf node.style.display "none"))
@@ -568,7 +575,8 @@
 		     (event (val)
 			    (when (not (null (slot-value script 'parent-node)))
 			      ;; (.remove-child head script)
-			      (if body (.remove-child body img)))
+			      (if (and (slot-value img 'parent-node) body)
+				  (.remove-child body img)))
 			    (current-continuation val)))
 	       (if body (append body img))
 	       (append head script)
@@ -717,8 +725,6 @@
   (defvar *loading-table* (jobject))
   
   (defun/cc load-javascript (url loaded-p)
-    (_debug (list "load-javascript" url loaded-p))
-
     (when (slot-value *loading-table* url)
       (make-web-thread
        (lambda ()
@@ -753,11 +759,13 @@
 	(cond
 	  (loaded-p
 	   (unless (call/cc loaded-p)
+	     (_debug (list "load-javascript" url loaded-p))
 	     (if body (append body img))
 	     (append head script)
 	     (setf (slot-value *loading-table* url) t)
 	     (Y recurse)))
 	  (t
+	   (_debug (list "load-javascript" url loaded-p))
 	   (append head script))))))
   
 ;; +-------------------------------------------------------------------------
@@ -895,6 +903,13 @@
        (pad-me (date.get-minutes)) ":"
        (pad-me (date.get-seconds)))))
 
+  (defun date-to-string2 (date)
+    (.join (take 10 (.split (date-to-string date) "")) ""))
+
+  (defun capitalize (str)
+    (+ (.to-upper-case (.char-at str 0))
+       (.slice str 1)))
+  
   (defun/cc Y (f)
     (f f)
     (suspend))
