@@ -220,6 +220,7 @@
 
    ;; [HTML Stream]
    #:make-html-stream
+   #:parse-html
    #:make-safe-html-stream
    #:parse-safe-html
    #:html-stream
@@ -638,6 +639,7 @@
    #:update-object
    #:add-object
    #:delete-object
+   #:change-class-of
    #:next-id
    
    #:standard-model-class
