@@ -221,6 +221,13 @@
 (defmethod find-object-with-id ((server database) id)
   (find-object-with-slot server (find-class+ 'object-with-id) 'database-id id))
 
+(deftransaction change-class-of ((server database) (object class+-instance)
+				 (class class+))
+  (delete-from-class-index server object)
+  (change-class object class)
+  (add-to-class-index server object)
+  object)
+
 (deftransaction update-object ((server database) (object class+-instance) &rest slots-and-values)
   (reduce
    (lambda (object slot-val)	    
