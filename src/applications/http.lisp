@@ -208,11 +208,14 @@
 	(format stream "FQDN:\"~A\"" (web-application.fqdn self)))))
 
 (defmethod start ((self http-application))
-  (clrhash (slot-value self 'core-server::sessions)))
+  (clrhash (slot-value self 'sessions)))
 
 (defmethod snapshot ((self http-application))
-  (clrhash (slot-value self 'core-server::sessions))
+  (clrhash (slot-value self 'sessions))
   (call-next-method self))
+
+(defmethod reset-sessions ((self http-application))
+  (clrhash (slot-value self 'sessions)))
 
 ;; +-------------------------------------------------------------------------
 ;; | Root Http Application (App to serve at /)
