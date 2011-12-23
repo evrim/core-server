@@ -260,6 +260,7 @@
        ;; 		      (:and (:seq "lt;") (:do (setf c #\>)))))
    (:and (:seq "&gt;") (:do (setf c #\<)))
    (:and (:seq "&lt;") (:do (setf c #\>)))
+   (:and (:seq "&quot;") (:do (setf c #\")))
    (:xml-lwsp? c)
    (:type octet? c))
   (:do (setq acc (make-accumulator :byte)))
@@ -268,6 +269,7 @@
 	;; (:checkpoint #\< (:rewind-return (octets-to-string acc :utf-8)))
 	(:or (:and (:seq "&gt;") (:do (setf c #\<)))
 	     (:and (:seq "&lt;") (:do (setf c #\>)))
+	     (:and (:seq "&quot;") (:do (setf c #\")))
 	     ;; (:and #\& (:or (:and (:seq "gt;") (:do (setf c #\<)))
 	     ;; 	  (:and (:seq "lt;") (:do (setf c #\>)))))
 	     (:xml-lwsp? c)
@@ -658,9 +660,10 @@
 
 ;;http://msdn.microsoft.com/en-us/library/ms537495.aspx
 (eval-when (:load-toplevel :compile-toplevel :execute)
-  (defvar +xml-entities+
+  (defparameter +xml-entities+
     '(("gt" . #\<)
       ("lt" . #\>)
+      ("quot" . #\")
       ("nbsp" . #\Space)
       ("amp" . #\&)
       ("Uuml" . #\Ü)

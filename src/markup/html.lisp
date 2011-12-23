@@ -236,6 +236,10 @@
 (defun make-html-stream (stream)
   (make-instance 'html-stream :stream stream))
 
+(defun parse-html (text)
+  (read-stream (make-html-stream
+		(make-core-stream (format nil "<div>~A</div>" text)))))
+
 (defmethod write-stream ((stream html-stream) (element <:html))
   (prog1 stream
     (let ((%stream (slot-value stream '%stream)))
