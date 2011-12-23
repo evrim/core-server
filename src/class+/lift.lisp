@@ -60,6 +60,10 @@
 	 (lifts (mapcar (lambda (class)
 			  (aif (mapcar
 				(compose #'class+.find
+					 (lambda (a)
+					   (if (listp a)
+					       (cadr a)
+					       a))
 					 #'sb-pcl::slot-definition-type)
 				(filter (lambda (slot)
 					  (eq (slot-definition-host slot)
@@ -91,7 +95,10 @@
 				 (aif (member (class+.find old-class)
 					      (class+.superclasses
 					       (class+.find
-						(sb-pcl::slot-definition-type slot))))
+						(let ((slot-type (sb-pcl::slot-definition-type slot)))
+						  (if (listp slot-type)
+						      (cadr slot-type)
+						      slot-type)))))
 				      slot))
 			       (filter (lambda (slot)
 					 (eq 'lift
@@ -214,7 +221,10 @@
 (defmethod class+.find-lifted-slot ((self class+) slot-to-find)
     (any (lambda (slot)
 	   (if (class+.find-slot (class+.find
-				  (sb-pcl::slot-definition-type slot))
+				  (let ((a (sb-pcl::slot-definition-type slot)))
+				    (if (listp a)
+					(cadr a)
+					a)))
 				 slot-to-find)
 	       (slot-definition-name slot)))
 	 (filter (lambda (slot)
@@ -241,7 +251,12 @@
     (flet ((find-lifted-slot (slot-to-find)
 	     (any (lambda (slot)
 		    (aif (class+.find-slot
-			  (find-class (sb-pcl::slot-definition-type slot))
+			  (let ((slot-type
+				 (sb-pcl::slot-definition-type slot)))
+			    (find-class
+			     (if (listp slot-type)
+				 (cadr slot-type)
+				 slot-type)))
 			  slot-to-find)
 			 it))
 		  (filter (lambda (slot)
