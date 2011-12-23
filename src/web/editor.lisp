@@ -71,34 +71,46 @@
 
 (defmethod/remote get-input-value ((self <core:ckeditor))
   (let ((instance (instance self)))
-    (with-slots (get-snapshot get-data) instance
-      (let* ((value1 (.apply get-snapshot instance (list)))
-	     (value2 (.apply get-data instance (list)))
-	     (value (if (and (not (eq value2 ""))
-			     (not (null value2)))
-			value2
-			value1)))
-	(if (or (null value) (eq "" value))
-	    (throw (new (*error (+ "Editor " (slot-value self 'id)
-				   "is empty."))))
-	    value)))))
+    (.update-element instance)
+    (let ((data (.get-data instance)))
+      ;; (_debug data)
+      data)
+      ;; (with-slots (get-snapshot get-data update-element) instance    
+      ;; 	(let* ((value1 (.apply get-snapshot instance (list)))
+      ;; 	       (value2 (.apply get-data instance (list)))
+      ;; 	       (value (if (and (not (eq value2 ""))
+      ;; 			       (not (null value2)))
+      ;; 			  value2
+      ;; 			  value1)))
+      ;; 	  (if (or (null value) (eq "" value))
+      ;; 	      (throw (new (*error (+ "Editor " (slot-value self 'id)
+      ;; 				     "is empty."))))
+      ;; 	      value)))
+      ))
 
 ;; CKEDITOR.instances[i].on ('click', function ()
 ;; 				      {alert ('test 1 2 3')
 ;; 				      })
 (defmethod/remote validate ((self <core:ckeditor))  
   (let ((instance (instance self)))
+    (.update-element instance)
     (if instance
-	(with-slots (get-snapshot get-data) instance
-	  (let* ((value1 (.apply get-snapshot instance (list)))
-		 (value2 (.apply get-data instance (list)))
-		 (value (if (and (not (eq value2 ""))
-				 (not (null value2)))
-			    value2
-			    value1) ))
+	(progn
+	  (.update-element instance)
+	  (let ((value (.get-snapshot instance)))
 	    (if (or (null value) (eq "" value))
 		"This field is empty."
 		t)))
+	;; (with-slots (get-snapshot get-data update-element) instance	  
+	;;   (let* ((value1 (.apply get-snapshot instance (list)))
+	;; 	 (value2 (.apply get-data instance (list)))
+	;; 	 (value (if (and (not (eq value2 ""))
+	;; 			 (not (null value2)))
+	;; 		    value2
+	;; 		    value1) ))
+	;;     (if (or (null value) (eq "" value))
+	;; 	"This field is empty."
+	;; 	t)))
 	"This field is empty.")))
 
 (defmethod/remote destroy ((self <core:ckeditor))
