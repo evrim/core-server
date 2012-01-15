@@ -171,3 +171,6 @@
 (defmacro/js method (lambda-list &rest body)
   `(lambda ,lambda-list     
      (javascript-cps-method-body ,@body)))
+
+(defmacro/js _ (str &rest args)
+  `(gettext ,str (array ,@args)))
