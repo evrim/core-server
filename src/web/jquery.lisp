@@ -47,6 +47,27 @@
 					 (not (null j-query.fn.light-box))))
   (load-css (lightbox-css-uri self)))
 
+;; -------------------------------------------------------------------------
+;; Supply Jquery Carousel
+;; -------------------------------------------------------------------------
+(defvar +jquery-carousel-config+
+  (jobject))
+
+(defcomponent supply-jquery-carousel (supply-jquery-ui)
+  ((carousel-uri :host remote :Initform +jquery-carousel-uri+)
+   (carousel-css-uri :host remote :initform +jquery-carousel-css-uri+)
+   (carousel-config :host remote :initform +jquery-carousel-config+)))
+
+(defmethod/remote destroy ((self supply-jquery-carousel))
+  (remove-css (carousel-css-uri self))
+  (call-next-method self))
+
+(defmethod/remote load-jquery-carousel ((self supply-jquery-carousel))
+  (load-jquery-ui self)
+  (load-javascript (carousel-uri self)
+		   (lambda ()
+		     (not (null j-query.fn.rcarousel))))
+  (load-css (carousel-css-uri self)))
 
 ;; -------------------------------------------------------------------------
 ;; Supply Nested Sortable

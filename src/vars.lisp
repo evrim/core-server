@@ -113,6 +113,9 @@
 (defvar +jquery-ui-css-uri+ "/js/jquery-ui/css/blitzer/jquery-ui.custom.css")
 (defvar +jquery-lightbox-uri+ "/js/lightbox/js/jquery.lightbox-0.5.min.js")
 (defvar +jquery-lightbox-css-uri+ "/js/lightbox/css/jquery.lightbox-0.5.css")
+(defvar +jquery-carousel-uri+ "/js/jcarousel/lib/jquery.jcarousel.min.js")
+(defvar +jquery-carousel-css-uri+ "/js/jcarousel/skins/tango/skin.css")
+
 (defvar +jquery-nested-sortable-uri+ "/js/nested-sortable/jquery.ui.nestedSortable.js")
 (defvar +jquery-newsticker-uri+ "/js/jquery.newsTicker.js")
 (defvar +jquery-slider-uri+ "/js/slider/slider.js")

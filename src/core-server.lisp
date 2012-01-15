@@ -1013,6 +1013,10 @@
    #:load-jquery-lightbox
    #:load-jquery-lightbox/js
    #:lightbox-config
+   #:supply-jquery-carousel
+   #:load-jquery-carousel
+   #:load-jquery-carousel/js
+   #:carousel-config
    #:supply-jquery-nested-sortable
    #:load-jquery-nested-sortable
    #:load-jquery-nested-sortable/js
@@ -1133,6 +1137,9 @@
    #:+jquery-lightbox-uri+
    #:+jquery-lightbox-css-uri+
    #:+jquery-lightbox-config+
+   #:+jquery-carousel-uri+
+   #:+jquery-carousel-css-uri+
+   #:+jquery-carousel-config+
    #:+jquery-nested-sortable-uri+
    #:+jquery-newsticker-uri+
    #:+jquery-slider-uri+
