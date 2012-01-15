@@ -288,6 +288,22 @@
     (string! stream ";base64,")
     (base64! stream (mime.data media))))
 
+(defmacro with-output ((type stream) &body body)
+  (with-unique-names (element %stream)
+    `(flet ((choose-output ()
+	      (cond
+		((equal type "json")
+		 ,stream
+		 ;; (if (typep ,stream 'xml-stream)
+		 ;;     ,stream
+		 ;;     (make-html-stream ,stream))
+		 )
+		(t
+		 (if (typep ,stream 'xml-stream)
+		     ,stream
+		     (make-html-stream ,stream))))))
+       (write-stream (choose-output) (progn ,@body)))))
+
 (defmacro with-html-output (stream &body body)
   "Renders dom elements in 'body' to 'stream'"
   (with-unique-names (element %stream)
