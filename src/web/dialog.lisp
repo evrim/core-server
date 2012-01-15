@@ -99,12 +99,13 @@
 		  (<:form :action "#"
 			  _prompt
 			  (<:div :class "buttons"
-			   (<:input :type "submit" :class "button" :value "OK"
+			   (<:input :type "submit" :class "button"
+				    :value (_"OK")
 				    :onclick (lifte
 					      (answer-component self
 						  (slot-value _prompt 'value))))
 			   (<:input :type "button" :class "button"
-				    :value "Cancel"
+				    :value (_"Cancel")
 				    :onclick (lifte (hide-component self)))))))))
 
 ;; -------------------------------------------------------------------------
@@ -132,10 +133,10 @@
 	   (<:form :action "#"
 	    (<:div :class "buttons"
 		   (<:input :type "button" :class "button"
-			    :value "Yes"
+			    :value (_"Yes")
 			    :onclick (lifte (answer-component self t)))
 		   (<:input :type "button" :class "button"
-			    :value "No"
+			    :value (_"No")
 			    :onclick (lifte (answer-component self nil))))))))
 
 ;; -------------------------------------------------------------------------
@@ -289,7 +290,7 @@
 (defmethod/remote init ((self fullscreen-dialog))
   (call-next-method self)
   (append self (<:a :onclick (lifte (hide-component self))
-		    :title "Close"
+		    :title (_"Close")
 		    :class "close-button"
 		    (<:img :src (+ "http://www.coretal.net/"
 				   "style/images/close.jpg")))))
