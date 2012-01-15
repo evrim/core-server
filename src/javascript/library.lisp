@@ -868,6 +868,43 @@
 		      (fun))))
 	    (setf window.onload fun))))
 
+  (defvar +default-language+ "en-us")
+  (defvar +language-data+ (jobject))
+  (defun gettext-lang (lang str args)
+    (flet ((combine (str args)
+	     (return
+	       (.replace str (regex "/%[1-9]/gi")
+			 (lambda (a)
+			   (return (aref args
+					 (- (parse-int (.substr a 1))
+					    1))))))))
+      (let ((lang (slot-value +language-data+ lang)))
+	(if lang
+	    (combine (or (slot-value lang str) str) args)
+	    (combine str args)))))
+
+  (defun gettext (str args)
+    (gettext-lang +default-language+ str args))
+
+  (defun pop-up (url name width height)
+    (with-call/cc
+      (let* ((width (if width
+			width
+			(if (> screen.width 0)
+			    (*math.floor (/ (- screen.width 10) 2))
+			    400)))
+	     (height (if height
+			 height
+			 (if (> screen.height 0)
+			     (*math.floor (/ (- screen.height 10) 2))
+			     400)))
+	     (left (*math.floor (/ (- screen.width width) 2)))
+	     (top (*math.floor (/ (- screen.height height) 2)))
+	     (params (+ "left=" left ", top=" top ",width=" width ", height=" height ", screenX=" left ", screenY=" top ", toolbar=no, status=yes, location=no, menubar=no, directories=no, scrollbars=yes, resizable=yes")))
+	;; (_debug (list "he" height "wi" width "param" params))
+	(window.open url "" ;; name
+		     params))))
+  
   (defun random-string (len)
     (let ((len (or len 8))
 	  (alphabet (+  "0123456789" "ABCDEFGHIJKLMNOPQRSTUVWXTZ"
@@ -883,7 +920,7 @@
     (let ((b 3155666400)
 	  (a 946677600000))
       (new (*date (+ a (* 1000 (- universal-time b)))))))
-
+  
   (defvar *months*
     (array "January" "February" "March"
 	   "April" "May" "June"
