@@ -77,7 +77,8 @@
 (defmethod/remote get-input-value ((self <core:validating-input))
   (cond
     ((eq "string" (typeof (validate self)))
-     (throw (new (*error (+ "get-input-value called although input is invalid. Value:"
+     (throw (new (*error (+ "get-input-value called although"
+			    " input is invalid. Value:"
 			    (slot-value self 'value))))))
     (t
      (slot-value self 'value))))
@@ -116,6 +117,9 @@
   (if (null (slot-value self 'default-value))
       (setf (slot-value self 'default-value) (slot-value self 'value)))
 
+  (setf (slot-value self 'default-value)
+	(_ (slot-value self 'default-value)))
+  
   (if (or (null (slot-value self 'value)) (eq "" (slot-value self 'value)))
       (setf (slot-value self 'value) (slot-value self 'default-value)))
 
@@ -131,7 +135,7 @@
   (let ((expression (regex "/^[a-zA-Z0-9._-]+@([a-zA-Z0-9.-]+\.)+[a-zA-Z0-9.-]{2,4}$/")))
     (if (.test expression self.value)
 	t
-	"Your email is invalid")))
+	(_"Your email is invalid."))))
 
 (defmethod/remote validate ((self <core:email-input))
   (and (call-next-method self) (validate-email self)))
@@ -146,7 +150,7 @@
 (defmethod/remote validate-password ((self <core:password-input))
   (cond
     ((or (null self.value) (< self.value.length self.min-length))
-     "Your password is too short.")
+     (_"Your password is too short."))
     (t
      t)))
 
@@ -165,11 +169,11 @@
 	 (equal (slot-value self 'type) "radio"))
      (if (slot-value self 'checked)
 	 t
-	 "This box must be checked."))
+	 (_"This box must be checked.")))
     (t
      (let ((_val (slot-value self 'value)))
        (if (or (null _val) (eq _val ""))
-	   "This field is required."
+	   (_"This field is required.")
 	   t)))))
 
 (defmethod/remote validate ((self <core:required-value-input))
@@ -194,9 +198,9 @@
     (try
      (if (eq (typeof (eval _val)) "number")
 	 t
-	 (+ _val " is not a number."))
+	 (_ "%1 is not a number." _val))
      (:catch (e)
-       (+ _val " is not a number.")))))
+       (_"%1 is not a number." _val)))))
 
 (defmethod/remote validate ((self <core:number-value-input))
   (and (call-next-method self) (validate-number self)))
