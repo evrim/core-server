@@ -234,3 +234,116 @@
 					   (new (*date (default-value self))))
 				     (default-value self))
 				 (new (*date)))))
+
+;; -------------------------------------------------------------------------
+;; Select Input
+;; -------------------------------------------------------------------------
+(defcomponent <core:select-input (<:select)
+  ((current-value :host remote)
+   (select-values :host remote)
+   (item-equal-p :host remote :initform nil)
+   (_value-cache :host remote :initform nil)))
+
+(defmethod/remote get-input-value ((self <core:select-input))
+  (slot-value (_value-cache self) (slot-value self 'value)))
+
+(defmethod/remote init ((self <core:select-input))
+  (setf (_value-cache self) (jobject))
+  (let ((equal-fun (or (item-equal-p self) (lambda (a b) (eq a b))))
+	(hash-list (mapcar (lambda (a) (random-string))
+			   (seq (slot-value (select-values self) 'length)))))
+    (mapcar (lambda (a) (append self a))
+	    (mapcar
+	     (lambda (a)
+	       (destructuring-bind (hash data) a
+		 ;; (_debug (list "a" a "hash" hash "data" data))
+		 (cond
+		   ((atom data)
+		    (setf (slot-value (_value-cache self) hash) data)
+		    (<:option :selected (call/cc equal-fun
+						 (current-value self)
+						 data)
+			      :value hash (_ data)))
+		   (t
+		    (destructuring-bind (name value) data
+		      ;; (_debug (list 2 "name" name "value" value))
+		      (setf (slot-value (_value-cache self) hash) value)
+		      (<:option :selected (call/cc equal-fun
+						   (current-value self)
+						   value)
+				:value hash (_ name)))))))
+	     (mapcar2 (lambda (a b) (list b a))
+		      (select-values self)
+		      hash-list)))))
+
+;; -------------------------------------------------------------------------
+;; Radio Group
+;; -------------------------------------------------------------------------
+(defcomponent <core:radio-group (<:div)
+  ((items :host remote)
+   (_result :host remote)))
+
+(defmethod/remote get-input-value ((self <core:radio-group))
+  (if (_result self)
+      (.index-of (items self) (_result self))
+      (throw (new (*error (+ "get-input-value called although"
+			    " input is invalid. (radiogroup)"))))))
+
+(defmethod/remote init ((self <core:radio-group))
+  (let ((rnd (random-string)))
+    (+ rnd "")
+    (labels ((match (a)
+	       (with-slots (type tag-name) a
+		 (let ((type (and type (.to-upper-case type)))
+		       (tag-name (and tag-name (.to-upper-case tag-name))))
+		   (and tag-name type (eq tag-name "INPUT")
+			(or (eq type "TEXT") (eq type "SELECT"))
+			(not (eq type "RADIO"))))))
+	     (input-nodes (a)
+	       (cond
+		 ((null a) nil)
+		 ((call/cc match a) (list a))
+		 (t (node-search match a))))
+	     (disable-inputs (a)
+	       (let ((inputs (call/cc input-nodes a)))
+		 (_debug (list "inputs" inputs a))
+		 (mapcar (lambda (a) (setf (slot-value a 'disabled) t))
+			 inputs)
+		 inputs))
+	     (enable-input (a) (setf (slot-value a 'disabled) false))
+	     (handle-event (item)
+	       (let ((payload (nth 1 item)))
+		 (_debug (list "payload"payload))
+		 (setf (_result self) item)
+		 (mapcar-cc
+		  (lambda (a)
+		    (_debug (list "a1" a))
+		    (mapcar-cc (lambda (a)
+				 (_debug (list "a2" a))
+				 (setf (slot-value a 'disabled) t)
+				 (_debug (list "disabling" a)))
+			       (call/cc input-nodes a)))
+		  (mapcar-cc (lambda (a) (car (cdr a))) (items self)))
+		 (mapcar-cc (lambda (a)
+			      (_debug (list "a3" a))
+			      (setf (slot-value a 'disabled) false)
+			      (_debug (list "enabling" a)))
+			    (call/cc input-nodes payload)))))
+      (mapcar-cc (lambda (a) (append self a))
+		 (mapcar-cc
+		  (lambda (item)
+		    (destructuring-bind (title payload checked) item
+		      (with-field
+			  (list (<:input :checked (and checked t)
+					 :type "radio" :name rnd
+					 :onclick
+					 (event (e)
+					   (let ((self this))
+					     (with-call/cc
+					       (call/cc handle-event item)))
+					   true))
+				" " (_ title))
+			(progn (if (not checked)
+				   (disable-inputs payload))
+			       payload))))
+		  (items self))))))

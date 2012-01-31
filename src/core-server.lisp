@@ -1182,7 +1182,8 @@
 	   #:domain-input #:email-input #:password-input
 	   #:required-value-input #:number-value-input
 	   #:username-input #:tab #:crud #:date-time-input
-	   #:auth #:core #:ckeditor #:lazy-ckeditor))
+	   #:auth #:core #:ckeditor #:lazy-ckeditor
+	   #:select-input #:radio-group))
 
 (defpackage :tr.gen.core.server.atom
   (:nicknames :<atom)
