@@ -325,7 +325,9 @@
 			 (cons (list symbol initform supplied-p) acc)
 			 (cons (list symbol initform) acc)))
 		   acc)))
-	   (reverse (class+.slots self))))
+	   (filter (lambda (slot)
+		     (not (string= 'none (slot-definition-host slot))))
+	    (class+.slots self))))
 
 (defmethod class+.local-ctor-lambda-list ((self class+) &optional
 					  (include-supplied-p nil))
