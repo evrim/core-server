@@ -23,9 +23,8 @@
 	  (transaction.env self)))
 
 (defclass+ serialization-cache ()
-  ((counter :initform 0)
-   (cache :initform (make-hash-table :weakness :key-or-value)))
-  (:ctor ()))
+  ((counter :initform 0 :host local)
+   (cache :initform (make-hash-table :weakness :key-or-value))))
 
 (defclass+ abstract-database (server)
   ((database-directory :type pathname :accessor database.directory
