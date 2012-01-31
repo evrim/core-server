@@ -348,7 +348,10 @@
 			  (with-slotdef (name) slot
 			    (member name it)))
 			 (class+.slots self))
-		(reverse (class+.slots self)))))
+		(reverse
+		 (filter (lambda (slot)
+			   (not (string= 'none (slot-definition-host slot))))
+			 (class+.slots self))))))
 
 (defmethod class+.ctor-name ((self class+))
   (with-slots (ctor) self
