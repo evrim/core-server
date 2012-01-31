@@ -7,7 +7,7 @@
   ((overlay :host remote :initform nil)
    (message :host remote :initform "This is a message dialog.")
    (title :host remote :initform "message")
-   (css-url :host remote :initform "http://www.coretal.net/style/dialog/dialog.css")
+   (css-url :host remote :initform "/style/dialog/dialog.css")
    (_scroll :host remote :initform (list 0 0)))
   (:default-initargs :class "coretal coretal-dialog"))
 
