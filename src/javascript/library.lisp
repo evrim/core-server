@@ -119,13 +119,14 @@
 		  (if (call/cc fun a) (cons a acc) acc))
 		 lst)))
   
-  (defun cons (atom lst)
-    (if (null lst)
-	(array atom)
-	(.concat (array atom)
-		 (if (instanceof lst *array)
-		     lst
-		     (list lst)))))
+  (defun cons (an-atom lst)
+    (cond
+      ((null lst) (array an-atom))
+      ((atom lst) (array an-atom lst))
+      (t (.concat (array an-atom)
+		  (if (instanceof lst *array)
+		      lst
+		      (list lst))))))
 
   (defun car (lst)
     (cond
@@ -148,8 +149,7 @@
     (cond
       ((null lst) nil)
       ((atom lst) lst)
-      ((and (or (typep lst '*array)
-		(typep lst 'object))
+      ((and (or (typep lst '*array) (typep lst 'object))
 	    (not (null (slot-value lst 'slice))))
        (.slice lst 1))
       (t
@@ -211,7 +211,7 @@
 		   (setf result (cons (list k v) result)))
 		 obj)
       (reverse result)))
-  
+    
   (defun member (obj lst)
     (reduce (lambda (acc atom)
 	      (or acc (equal atom obj)))
