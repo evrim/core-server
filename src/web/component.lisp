@@ -402,8 +402,7 @@
 	       (component-destroy-uri (if +context+
 					  (format nil "~Adestroy.core"
 						  (web-application.base-url
-						   (component.application component)
-						   (context.request +context+)))
+						   (component.application component)))
 					  "TEST-COMPONENT-DESTROY.core"))
 	       ,@(mapcar (lambda (slot)
 			   `(,(cadr slot)
@@ -546,14 +545,12 @@
 		 (component-loader-uri (if +context+
 					   (format nil "~Acomponent/"
 						   (web-application.base-url
-						    (component.application component)
-						    (context.request +context+)))
+						    (component.application component)))
 					   "TEST-COMPONENT-LOADER.core"))
 		 (component-destroy-uri (if +context+
 					    (format nil "~Adestroy.core"
 						    (web-application.base-url
-						     (component.application component)
-						     (context.request +context+)))
+						     (component.application component)))
 					    "TEST-COMPONENT-DESTROY.core"))
 		 ,@(mapcar (lambda (slot)
 			     `(,(cadr slot)

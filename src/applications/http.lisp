@@ -247,17 +247,11 @@
 (defmethod web-application.serve-url ((self http-application) (req t))
   (format nil "/~A/TESTREQUEST" (web-application.fqdn self)))
 
-(defmethod web-application.base-url ((self http-application)
-				     (eq null))
+(defmethod web-application.base-url ((self http-application))
   (format nil "/~A/" (web-application.fqdn self)))
 
-(defmethod web-application.base-url ((self http-application)
-				     (req http-request))
-  (format nil "/~A/" (web-application.fqdn self)))
-
-(defmethod web-application.serve-url ((self http-application)
-				      (req http-request))
-  (format nil "/~A/~A" (web-application.fqdn self)
+(defmethod web-application.serve-url ((self http-application) (req http-request))
+  (format nil "~A~A" (web-application.base-url self)
 	  (with-core-stream (s "")
 	    (mapc #'(lambda (path)
 		      (char! s core-server::+uri-path-seperator+)
