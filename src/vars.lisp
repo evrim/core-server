@@ -130,8 +130,8 @@
 ;; -------------------------------------------------------------------------
 (defvar +picasa-user-format-string+
   "http://picasaweb.google.com/data/feed/api/user/~A")
-(defvar +picasa-album-format-string+
-  "http://picasaweb.google.com/data/feed/api/user/~A/albumid/~A")
+(defparameter +picasa-album-format-string+
+  "http://picasaweb.google.com/data/feed/api/user/~A/albumid/~A?imgmax=640")
 
 ;;--------------------------------------------------------------------------
 ;; Mail Service Variables
