@@ -158,7 +158,7 @@ nil if stream data is invalid"
     (commit-stream stream)))
 
 (defmethod/cc2 render-response ((self http-server) response request)
-  "Renders HTTP/Mod-Lisp 'response' to 'stream'"
+  "Renders HTTP 'response' to 'stream'"
   (let ((accept-encoding (http-request.header request 'accept-encoding))
 	(stream (http-response.stream response)))
     (assert (eq 0 (current-checkpoint stream)))
@@ -167,14 +167,7 @@ nil if stream data is invalid"
 		    (make-core-stream
 		     (slot-value (http-request.stream request) '%stream))))
 	       (checkpoint-stream header-stream)
-	       (cond
-		 ((eq 'mod-lisp (http-request.peer-type request))
-		  ;; Renders Mod-Lisp HTTP 'response' to 'stream'
-		  (mod-lisp-response-headers! header-stream response)
-		  (string! stream "end"))
-		 (t
-		  ;; Renders RFC 2616 HTTP 'response' to 'stream'
-		  (http-response-headers! header-stream response)))
+	       (http-response-headers! header-stream response)
 	       (char! header-stream #\Newline)
 	       (commit-stream header-stream))))
       
@@ -451,7 +444,6 @@ evaulates to a HTTP response. Its' server is an instance of http-server"))
       receive-events
     ;;   render-headers
       make-response;;  render-http-headers
-;;       render-mod-lisp-headers
       ))
 
 ;; Core Server: Web Application Server
