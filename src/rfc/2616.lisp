@@ -256,7 +256,6 @@
   (:or (:and (:seq "GMT") (:do (setq gmt 0)))
        (:and #\+ (:fixnum? gmt))
        (:and #\- (:fixnum? gmt) (:do (setq gmt (* gmt -1)))))
-  (:lwsp?)
   (:return (encode-universal-time second minute hour day month year gmt)))
 
 ;; Sunday, 06-Nov-94 08:49:37 GmT ; RFC 850, obsoleted by RFC 1036
@@ -275,7 +274,6 @@
   (:or (:and (:seq "GMT") (:do (setq gmt 0)))
        (:and #\+ (:fixnum? gmt))
        (:and #\- (:fixnum? gmt) (:do (setq gmt (* gmt -1)))))
-  (:lwsp?)
   (:return (encode-universal-time second minute hour day month year gmt)))
 
 ;;        Sun Nov  6 08:49:37 1994       ; ANSI C's asctime() format
@@ -1032,8 +1030,7 @@
 
 ;; RFC 2109 Cookie - rfc/2109.lisp
 (defrule http-cookie? (cookie)
-  (:cookie? cookie)
-  (:return cookie))
+  (:cookies? cookie) (:return cookie))
 
 (defmethod http-cookie! ((stream core-stream) cookie)
   (cookie! stream cookie))
@@ -1314,78 +1311,6 @@
   (http-date! stream timestamp))
 
 ;;;-----------------------------------------------------------------------------
-;;; MODLISP REQUEST HEADERS
-;;;-----------------------------------------------------------------------------
-(eval-when (:compile-toplevel :execute :load-toplevel)
-  (defvar +mod-lisp-request-headers+
-    '(url method remote-ip-addr remote-ip-port server-ip-addr server-ip-port
-      server-protocol script-filename ssl-session-id server-id
-      server-baseversion modlisp-version modlisp-major-version))) ;; len=9
-
-;; 1. URL
-(defrule mod-lisp-http-url? (uri)
-  (:uri? uri) (:return uri))
-
-(defun mod-lisp-http-url! (stream url)
-  (uri! stream url))
-
-;; 2. METHOD
-(defrule mod-lisp-http-method? (method)
-  (:http-method? method) (:return method))
-
-(defun mod-lisp-http-method! (stream method)
-  (http-method! stream method))
-
-;; 3. REMOTE-IP-ADDR
-(defrule mod-lisp-http-remote-ip-addr? (ip)
-  (:ipv4address? ip) (:return ip))
-
-;; 4. REMOTE-IP-PORT
-(defrule mod-lisp-http-remote-ip-port? (port)
-  (:port? port) (:return port))
-
-;; 5. SERVER-IP-ADDR
-(defrule mod-lisp-http-server-ip-addr? (ip)
-  (:ipv4address? ip) (:return ip))
-
-;; 6. SERVER-IP-PORT
-(defrule mod-lisp-http-server-ip-port? (port)
-  (:port? port) (:return port))
-
-;; 7. SERVER-PROTOCOL
-(defrule mod-lisp-http-server-protocol? (proto)
-  (:http-protocol? proto) (:return proto))
-
-;; 8. SCRIPT-FILENAME
-(defrule mod-lisp-http-script-filename? (c (acc (make-accumulator :byte)))
-  (:zom (:type (and (not linefeed?) (not carriage-return?) octet?) c)
-	(:collect c acc))
-  (:return (octets-to-string acc :utf-8)))
-
-;; 9. SSL-SESSION-ID
-(defrule mod-lisp-http-ssl-session-id? (c (acc (make-accumulator)))
-  (:zom (:type http-header-value? c) (:collect c acc))
-  (:return acc))
-
-;; 10. SERVER-ID
-(defrule mod-lisp-http-server-id? (c (acc (make-accumulator)))
-  (:zom (:type http-header-value? c) (:collect c acc))
-  (:return acc))
-
-;; 11. SERVER BASE VERSION
-(defrule mod-lisp-http-server-baseversion? (version)
-  (:seq "Apache/") (:version? version)
-  (:return (list 'apache version)))
-
-;; 12. mODLISP-VERSION
-(defrule mod-lisp-http-modlisp-version? (version)
-  (:version? version) (:return version))
-
-;; 13. mODLISP-mAJOR-VERSION
-(defrule mod-lisp-http-modlisp-major-version? (version)
-  (:version? version) (:return version))
-
-;;;-----------------------------------------------------------------------------
 ;;; HTTP mESSAGE
 ;;;-----------------------------------------------------------------------------
 (defclass http-message ()
@@ -1477,7 +1402,6 @@
 (defhttp-header-parser http-general-header? "HTTP-~A?" +http-general-headers+)
 (defhttp-header-parser http-request-header? "HTTP-~A?" +http-request-headers+)
 (defhttp-header-parser http-entity-header? "HTTP-~A?" +http-entity-headers+)
-(defhttp-header-parser mod-lisp-header? "MOD-LISP-HTTP-~A?" +mod-lisp-request-headers+)
 
 (defrule rfc2616-request-headers? (c method uri version key value header gh rh eh uh)
   (:http-request-first-line? method uri version)
@@ -1504,34 +1428,9 @@
   (:oom (:type http-header-value? c) (:collect c value))
   (:return (list key value)))
 
-(defrule mod-lisp-request-headers? (header mlh gh rh eh uh)
-  (:mod-lisp-header? header) (:do (push header mlh)) (:crlf?)
-  (:zom (:or (:and (:http-general-header? header) (:do (push header gh)))
-	     (:and (:http-request-header? header) (:do (push header rh)))
-	     (:and (:http-entity-header? header) (:do (push header eh)))	     
-	     (:and (:mod-lisp-header? header) (:do (push header mlh)))
-	     (:and (:http-unknown-header? header) (:do (push header uh))))
-	(:optional (:crlf?))
-	(:checkpoint
-	  (:seq "end")
-	  (:return (values  (cadr (assoc 'method mlh))	      ;;method
-			    (cadr (assoc 'url mlh))	      ;; uri
-			    (cadadr (assoc 'server-protocol mlh)) ;; version
-			    (nreverse gh) (nreverse rh)
-			    (nreverse eh) (nreverse uh)
-			    (nreverse mlh)))))
-  (:return (values  (cadr (assoc 'method mlh))	    ;;method
-		    (cadr (assoc 'url mlh))	    ;; uri
-		    (cadadr (assoc 'server-protocol mlh)) ;; version
-		    (nreverse gh) (nreverse rh)
-		    (nreverse eh) (nreverse uh)
-		    (nreverse mlh))))
-
-(defrule http-request-headers? (method uri version gh rh eh uh mlh)
-  (:or (:and (:rfc2616-request-headers? method uri version gh rh eh uh)
-	     (:return (values 'http method uri version gh rh eh uh)))
-       (:and (:mod-lisp-request-headers? method uri version gh rh eh uh mlh)
-	     (:return (values 'mod-lisp method uri version gh (append rh mlh) eh uh)))))
+(defrule http-request-headers? (method uri version gh rh eh uh)
+  (:rfc2616-request-headers? method uri version gh rh eh uh)
+  (:return (values 'http method uri version gh rh eh uh)))
 
 (defrule x-www-form-urlencoded? (query)  
   (:query? query)
@@ -1625,28 +1524,6 @@
 (defhttp-header-render http-response-header! "HTTP-~A!" +http-response-headers+)
 (defhttp-header-render http-request-header! "HTTP-~A!" +http-request-headers+)
 (defhttp-header-render http-entity-header! "HTTP-~A!" +http-entity-headers+)
-;; (defhttp-header-render mod-lisp-header! "MOD-LISP-HTTP-~A!" +mod-lisp-response-headers+)
-
-(defmacro defmod-lisp-header-render (name format header-list) 
-  (let ((hname (gensym)))
-    `(defun ,name (stream hdr)
-       (funcall (let ((,hname (car hdr)))
-		  (cond
-		    ,@(mapcar #'(lambda (h)
-				  `((eql ,hname ',h)
-				    (progn
-				      (symbol! stream ',h)
-				      (char! stream #\Newline)
-				      (function ,(intern (format nil format h))))))
-			      (eval header-list))
-		    (t (error (format nil "Unknown header name: ~A" (car hdr))))))
-		stream (cdr hdr))
-       (char! stream #\Newline))))
-
-(defmod-lisp-header-render mod-lisp-general-header! "HTTP-~A!" +http-general-headers+)
-(defmod-lisp-header-render mod-lisp-response-header! "HTTP-~A!" +http-response-headers+)
-(defmod-lisp-header-render mod-lisp-entity-header! "HTTP-~A!" +http-entity-headers+)
-;; (defmod-lisp-header-render mod-lisp-header! "MOD-LISP-HTTP-~A!" +mod-lisp-response-headers+)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter *status-codes*
@@ -1740,35 +1617,6 @@
 	      (http-entity-header! stream item))
 	  (http-response.entity-headers response) :initial-value nil))
 
-(defun mod-lisp-status-code! (stream version status-code)
-  (declare (ignore version))
-  (string! stream "Status")
-  (char! stream #\Newline)
-  (fixnum! stream (car status-code))
-  (char! stream #\ )
-  (string! stream (cdr status-code))
-  (char! stream #\Newline))
-
-(defun mod-lisp-response-headers! (stream response)
-  (mod-lisp-status-code! stream
-			 (http-message.version response)
-			 (http-response.status-code response))
-  ;; general headers
-  (reduce #'(lambda (acc item)
-	      (declare (ignorable acc))
-	      (mod-lisp-general-header! stream item))
-	  (http-message.general-headers response) :initial-value nil)
-  ;; response headers
-  (reduce #'(lambda (acc item)
-	      (declare (ignorable acc))
-	      (mod-lisp-response-header! stream item))
-	  (http-response.response-headers response) :initial-value nil)
-  ;; entity headers
-  (reduce #'(lambda (acc item)
-	      (declare (ignorable acc))
-	      (mod-lisp-entity-header! stream item))
-	  (http-response.entity-headers response) :initial-value nil))
-
 (defhttp-header-parser http-response-header? "HTTP-~A?" +http-response-headers+)
 (defparser http-response-headers? (header gh eh uh key value c)
   (:zom (:or (:and (:http-general-header? header) (:do (push header gh)))
@@ -1798,17 +1646,12 @@
 ;; -------------------------------------------------------------------------
 (deftrace http-headers
     (append (list 'http-request-first-line? 'rfc2616-request-headers?
-		  'http-unknown-header? 'mod-lisp-request-headers?
-		  'http-general-header? 'http-request-header?
-		  'http-entity-header?
-		  'mod-lisp-header? 'http-request! 'http-response?
+		  'http-unknown-header? 'http-general-header? 'http-request-header?
+		  'http-entity-header? 'http-request! 'http-response?
 		  'http-response-headers?)
-	    (append
-	     (mapcar (lambda (header) (intern (format nil "HTTP-~A?" header)))
-		     (append +http-general-headers+ +http-request-headers+
-			     +http-entity-headers+))
-	     (mapcar (lambda (header) (intern (format nil "MOD-LISP-HTTP-~A?" header)))
-		     +mod-lisp-request-headers+))))
+	    (mapcar (lambda (header) (intern (format nil "HTTP-~A?" header)))
+		    (append +http-general-headers+ +http-request-headers+
+			    +http-entity-headers+))))
 
 ;; Core Server: Web Application Server
 
