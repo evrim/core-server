@@ -104,20 +104,18 @@
 
 ;; Cookie: $Version="1"; Customer="WILE_E_COYOTE"; $Path="/acme"; $Domain=".core.gen.tr"
 (defrule cookie? ((key (make-accumulator))
-		  value version path domain (cookies '()) c max-age 
+		  value version path domain c max-age 
 		  comment expires secure)
-  (:lwsp?)
   (:optional
    (:sci "$Version=")
    (:rfc2109-quoted-value? version)
    (:or #\; #\,)
    (:do (setq version (parse-integer version))))
-  (:zom (:type rfc2109-cookie-header? c)
-	(:collect c key))
+  (:oom (:type rfc2109-cookie-header? c) (:collect c key))
   #\=
   (:rfc2109-quoted-value? value)
-  #\;
-  (:zom (:not (or #\Return #\Newline))
+  (:zom #\;
+	;; (:not (or #\Return #\Newline))
 	(:lwsp?)
 	(:or (:and (:sci "path=") (:rfc2109-quoted-value? path))
 	     (:and (:sci "domain=") (:rfc2109-quoted-value? domain))
@@ -127,16 +125,17 @@
 	     (:and (:sci "comment=") (:rfc2109-quoted-value? comment))
 	     (:and (:sci "secure=") (:rfc2109-quoted-value? secure)))
 	#\; (:lwsp?))
-  (:zom (:type (and (not carriage-return?)
-		    (not linefeed?)
-		    octet?)))
-  (:return (list (make-cookie key value :version version 
-			      :domain domain 
-			      :path path
-			      :max-age max-age
-			      :comment comment
-			      :expires expires
-			      :secure secure))))
+  (:return (make-cookie key value :version version 
+			:domain domain 
+			:path path
+			:max-age max-age
+			:comment comment
+			:expires expires
+			:secure secure)))
+
+(defrule cookies? (cookie acc)
+  (:oom (:cookie? cookie) (:do (push cookie acc)))
+  (:return (nreverse acc)))
 
 
 #|
