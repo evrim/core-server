@@ -574,7 +574,7 @@
 
 ;; http-accept? :: stream -> ((type subtype ((attr . val) ...)) ...)
 (defrule http-accept? (type subtype params accept)
-  (:zom (:and (:http-media-range? type subtype params)
+  (:oom (:and (:http-media-range? type subtype params)
 	      (:do (push (list type subtype params) accept))
 	      (:zom (:not #\,) (:type http-header-name?))) 
 	(:zom (:type space?)))
@@ -1387,13 +1387,13 @@
 
 (defmacro defhttp-header-parser (name format header-list)
   `(defrule ,name (stub)
+     (:not #\Newline)
      (:or ,@(nreverse
 	     (reduce #'(lambda (acc atom)
 			 (cons
-			  `(:checkpoint
+			  `(:and
 			    (:sci ,(symbol-name atom))
-			    (:or (:and #\: (:zom (:type space?)))
-				 (:crlf?))
+			    #\: (:zom (:type space?))
 			    (,(intern (format nil format atom) :keyword) stub)
 			    (:return (list ',atom stub)))
 			  acc))
@@ -1403,30 +1403,23 @@
 (defhttp-header-parser http-request-header? "HTTP-~A?" +http-request-headers+)
 (defhttp-header-parser http-entity-header? "HTTP-~A?" +http-entity-headers+)
 
+(defrule http-unknown-header? ((key (make-accumulator))
+			       (value (make-accumulator :byte)) c)
+  (:oom (:type http-header-name? c) (:collect c key))
+  #\: (:zom (:type space?))
+  (:oom (:type http-header-value? c) (:collect c value))
+  (:return (cons key value)))
+
 (defrule rfc2616-request-headers? (c method uri version key value header gh rh eh uh)
   (:http-request-first-line? method uri version)
   (:lwsp?)
-  (:zom (:or (:and (:http-general-header? header) (:do (push header gh)))		    
+  (:zom	(:or (:and (:http-general-header? header) (:do (push header gh)))
 	     (:and (:http-request-header? header) (:do (push header rh)))
 	     (:and (:http-entity-header? header) (:do (push header eh)))
-	     (:and (:do (setq key (make-accumulator)))
-		   (:type http-header-name? c) (:collect c key)
-		   (:zom (:type http-header-name? c) (:collect c key))
-		   (:or (:and #\: (:zom (:type space?)))
-			(:and (:zom (:type space?)) (:crlf?)))
-		   (:do (setq value (make-accumulator :byte)))
-		   (:zom (:type http-header-value? c) (:collect c value)) 
-		   (:do (push (cons key value) uh))))
-	(:optional (:crlf?)))
-  (:optional (:crlf?))
+	     (:and (:http-unknown-header? header) (:do (push header uh))))	
+	(:crlf?))
   (:return (values method uri version (nreverse gh)
 		   (nreverse rh) (nreverse eh) (nreverse uh))))
-
-(defrule http-unknown-header? ((key (make-accumulator)) (value (make-accumulator :byte)) c)
-  (:oom (:type http-header-name? c) (:collect c key))
-  (:or (:and #\: (:zom (:type space?))) (:crlf?))
-  (:oom (:type http-header-value? c) (:collect c value))
-  (:return (list key value)))
 
 (defrule http-request-headers? (method uri version gh rh eh uh)
   (:rfc2616-request-headers? method uri version gh rh eh uh)
