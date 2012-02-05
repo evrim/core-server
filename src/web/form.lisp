@@ -49,7 +49,7 @@
 (defmethod/remote _validate ((self <core:validating-input))
   (validate self))
 
-(defmethod/remote run-validator ((self <core:validating-input))  
+(defmethod/remote run-validator ((self <core:validating-input))
   (let ((result (_validate self)))
     (cond
       ((typep result 'string)
@@ -107,10 +107,13 @@
   (adjust-default-value self))
 
 (defmethod/remote validate ((self <core:default-value-input))
-  (if (and (or (eq "INPUT" (slot-value self 'tag-name))
+  (if (and (or (and (eq "INPUT" (slot-value self 'tag-name))
+		    (or (eq "" (slot-value self 'type))
+			(eq "TEXT" (.to-upper-case (slot-value self 'type)))
+			(eq "PASSWORD" (.to-upper-case (slot-value self 'type)))))
 	       (eq "TEXTAREA" (slot-value self 'tag-name)))
-	   (equal (slot-value self 'default-value) (slot-value self 'value)))
-      ""
+	   (eq (slot-value self 'default-value) (slot-value self 'value)))
+      (_"This field is required.")
       (call-next-method self)))
 
 (defmethod/remote init ((self <core:default-value-input))
@@ -138,7 +141,10 @@
 	(_"Your email is invalid."))))
 
 (defmethod/remote validate ((self <core:email-input))
-  (and (call-next-method self) (validate-email self)))
+  (let ((result (call-next-method self)))
+    (if (typep result 'string)
+	result
+	(validate-email self))))
 
 ;; +-------------------------------------------------------------------------
 ;; | Password HTML Component
@@ -155,7 +161,10 @@
      t)))
 
 (defmethod/remote validate ((self <core:password-input))
-  (and (call-next-method self) (validate-password self)))
+  (let ((result (call-next-method self)))
+    (if (typep result 'string)
+	result
+	(validate-password self))))
 
 ;; +-------------------------------------------------------------------------
 ;; | Required Input
@@ -177,7 +186,10 @@
 	   t)))))
 
 (defmethod/remote validate ((self <core:required-value-input))
-  (and (call-next-method self) (validate-required-value self)))
+  (let ((result (call-next-method self)))
+    (if (typep result 'string)
+	result
+	(validate-required-value self))))
 
 ;; +-------------------------------------------------------------------------
 ;; | Number Input
@@ -203,8 +215,10 @@
        (_"%1 is not a number." _val)))))
 
 (defmethod/remote validate ((self <core:number-value-input))
-  (and (call-next-method self) (validate-number self)))
-
+  (let ((result (call-next-method self)))
+    (if (typep result 'string)
+	result
+	(validate-number self))))
 
 ;; -------------------------------------------------------------------------
 ;; Date Input
