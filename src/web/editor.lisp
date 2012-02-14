@@ -72,20 +72,22 @@
 (defmethod/remote get-input-value ((self <core:ckeditor))
   (let ((instance (instance self)))
     (.update-element instance)
-    (let ((data (.get-data instance)))
-      ;; (_debug data)
+    (let ((data (aif (.get-snapshot instance)
+		     it
+		     (.get-data instance))))
+      (_debug (list "editor-data" data))
       data)
-      ;; (with-slots (get-snapshot get-data update-element) instance    
-      ;; 	(let* ((value1 (.apply get-snapshot instance (list)))
-      ;; 	       (value2 (.apply get-data instance (list)))
-      ;; 	       (value (if (and (not (eq value2 ""))
-      ;; 			       (not (null value2)))
-      ;; 			  value2
-      ;; 			  value1)))
-      ;; 	  (if (or (null value) (eq "" value))
-      ;; 	      (throw (new (*error (+ "Editor " (slot-value self 'id)
-      ;; 				     "is empty."))))
-      ;; 	      value)))
+    ;; (with-slots (get-snapshot get-data update-element) instance    
+    ;;   	(let* ((value1 (.apply get-snapshot instance (list)))
+    ;;   	       (value2 (.apply get-data instance (list)))
+    ;;   	       (value (if (and (not (eq value2 ""))
+    ;;   			       (not (null value2)))
+    ;;   			  value2
+    ;;   			  value1)))
+    ;;   	  (if (or (null value) (eq "" value))
+    ;;   	      (throw (new (*error (+ "Editor " (slot-value self 'id)
+    ;;   				     "is empty."))))
+    ;;   	      value)))
       ))
 
 ;; CKEDITOR.instances[i].on ('click', function ()
