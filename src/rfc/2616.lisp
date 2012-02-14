@@ -1439,6 +1439,7 @@
 
 (defparser http-unknown-header? ((key (make-accumulator))
 			       (value (make-accumulator :byte)) c)
+  (:not #\Newline)
   (:oom (:type http-header-name? c) (:collect c key))
   #\: (:zom (:type space?))
   (:oom (:type http-header-value? c) (:collect c value))
