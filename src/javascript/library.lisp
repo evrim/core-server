@@ -161,6 +161,17 @@
 	(car lst)
 	(nth (1- seq) (cdr lst))))
 
+  (defun position (atom lst)
+    (let ((n -1))
+      (cond
+	((null lst) n)
+	(t       
+	 (mapcar2 (lambda (a b)
+		    (if (eq a atom)
+			(setf n b)))
+		  lst (seq (slot-value lst 'length)))
+	 n))))
+  
   (defun/cc mapcar-cc (fun lst)
     (reverse-cc
      (reduce-cc (lambda (acc atom)
@@ -204,6 +215,9 @@
 	(setf (slot-value result i)
 	      (fun i (slot-value obj i))))
       result))
+
+  (defun describe (obj)
+    (mapobject (lambda (a b) (_debug (list a b))) obj))
 
   (defun object-to-list (obj)
     (let ((result))
@@ -698,6 +712,9 @@
        (slot-value node 'current-style))
       (t
        (_debug (list "cant (get-style " node ")")))))
+
+  (defun css (node attributes)
+    (flip extend))
   
   (defvar *css-refcount-table* (jobject))
   (defun load-css (url)
@@ -1009,7 +1026,6 @@
 				    (make-compressed-stream s)))
     (commit-stream s)
     (close-stream s)))
-
 
   ;; (defvar *registry* (create))  
   ;; (defun/cc make-service (name properties)
