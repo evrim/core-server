@@ -163,7 +163,7 @@
 (defhtml-tag <:iframe :core frameborder longdesc marginheight
 	     marginwidth name scrolling src allowtransparency)
 (defhtml-empty-tag <:img :core :event :i18n alt src height ismap
-		   longdesc usemap width onmouseover onmouseout)
+		   longdesc usemap width onmouseover onmouseout onload)
 (defhtml-empty-tag <:input :core :event :i18n accept accesskey alt checked
 		   disabled maxlength name onblur onchange onfocus
 		   onselect readonly size src tabindex type usemap
