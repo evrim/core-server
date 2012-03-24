@@ -178,8 +178,9 @@
 
 ;;       toplabel      = alpha | alpha *( alphanum | "-" ) alphanum
 ;; FIXmE: Toplabel can't end with a #\-
+;; Fixed: first char can be a num, not just alpha, bnf was wrong! -evrim.
 (defrule toplabel? ((label (make-accumulator)) a)  
-  (:type alpha? a) (:collect a label)
+  (:type alphanum? a) (:collect a label)
   (:zom (:or (:and (:type alphanum? a) (:collect a label))
 	     (:and #\- (:collect #\- label))))
   (:return label))
