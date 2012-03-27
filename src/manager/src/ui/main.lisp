@@ -1,66 +1,131 @@
 (in-package :manager)
 
-(defun make-css (css-list)
-  (apply #'concatenate 'string (mapcar #'dom2string css-list)))
+(defcomponent basic-widget ()
+  ())
 
-;; generate a css string compile time
-(defparameter *css*
-  (make-css
-   (list (css "body" :font-family "verdana, sans-serif")
-	 (css "#footer" :font-size "80%" :margin "2em auto" :width "60em")
-	 (css ".chapter" :margin-left "auto"
-	      :margin-right "auto" :width "50em")
-	 (css "code, pre" :font-family "monospace" :font-weight "normal")
-	 (css ".path" :color "#448844")
-	 (css "div.sysinfo"
-	      :background "#FFFFC9 none repeat scroll 0 0"
-	      :padding "1em"
-	      :border "1px solid #B4BAEA"))))
+(defmethod/remote destroy ((self basic-widget))
+  (mapcar (lambda (a) (.remove-child self a))
+	  (reverse (slot-value self 'child-nodes))))
 
-(defvar *cslink* (<:a :href "http://labs.core.gen.tr" "Core Server"))
-(defvar *examples*
-  (<:code :class "path" (format nil "~A" (bootstrap:in-home #P"examples/"))))
-(defvar *header* (<:div :id "header"))
-(defvar *footer*
-  (<:div :id "footer"
-    (<:hr)
-    (<:p (<:a :href "http://labs.core.gen.tr" (format nil "Core Server ~A" (core-server-version)))
-	 " | "
-	 (format nil "~A ~A" (lisp-implementation-type)
-		 (lisp-implementation-version)))))
+;; -------------------------------------------------------------------------
+;; Info Component
+;; -------------------------------------------------------------------------
+(defcomponent info-component (basic-widget)
+  ((_hostname :host remote :initform (hostname))
+   (_memory :host remote
+	    :initform (format nil "~10:D" (sb-kernel::dynamic-usage)))
+   (_date :host remote :initform (get-universal-time))))
 
-(defun box (summary body)
-  (<:div :class "box"
-    (<:table :border "0" :summary summary
-	     (<:tbody
-	      (<:tr
-	       (<:td :align "center" :width "25" :valign "top" :rowspan "2"
-		     (<:img :src "images/note.png" :alt "info icon"))
-	       (<:th :align "left" summary))
-	      (<:tr
-	       (<:td :align "left" :valign "top"
-		     body))))))
+(defmethod/remote init ((self info-component))
+  (append self (<:p "Date:" (date-to-string
+			     (lisp-date-to-javascript (_date self)))))
+  (append self (<:p "Hostname:" (_hostname self)))
+  (append self (<:p "Memory: " (_memory self) " bytes")))
 
-(defun/cc page (body)
-  (<:html
-   (<:head
-    (<:title "Core Server Manager")
-    (<:meta :http--equiv "Content-Type" :content "text/html; charset=utf-8")
-    (<:style :type "text/css" *css*))
-   (<:body
-    *header*
-    (<:div :class "chapter"
-      body)
-    *footer*)))
+;; -------------------------------------------------------------------------
+;; Settings Component
+;; -------------------------------------------------------------------------
+(defcomponent settings-component (basic-widget)
+  ())
 
-(defun/cc main ()
-  (page
-   (<:div :id "content"
-     (<:div :id "introduction"
-       (<:h1 "Core Server Manager")
-       (<:p *cslink* " is an application server written in Common Lisp. You can find sample applications at " *examples* "."))
-     (<:div :class "sysinfo"
-       (box "System Information" (<:p (format nil "Hostname: ~A" (hostname))))))))
 
-(defhandler "manager" ((self manager-application))
-  (main))
+;; -------------------------------------------------------------------------
+;; Sites Table
+;; -------------------------------------------------------------------------
+(deftable sites-table ()
+  ((fqdn :label "FQDN")))
+
+;; -------------------------------------------------------------------------
+;; Sites Component 
+;; -------------------------------------------------------------------------
+(defcomponent sites-component (basic-widget)
+  ((_table-ctor :host remote :initform (sites-table))
+   (_table :host remote)
+   (_fqdn-input :host remote :initform (<core:default-value-input))))
+
+(defmethod/remote destroy ((self sites-component))
+  (delete-slots self '_table)
+  (call-next-method self))
+
+(defmethod/local get-sites ((self sites-component))
+  (site.list application))
+
+(defmethod/remote make-table ((self sites-component))
+  (make-component (_table-ctor self) :instances (get-sites self)))
+
+(defmethod/local add-site ((self sites-component) fqdn)
+  (site.add application :fqdn fqdn))
+
+(defmethod/remote do-add-site ((self sites-component) fqdn)
+  (add-site self fqdn)
+  (setf (_table self) (replace-node (_table self) (make-table self))))
+
+(defmethod/remote make-form ((self sites-component))
+  (let ((fqdn (make-component (_fqdn-input self)
+			      :default-value "enter site name")))
+    (<:form :onsubmit (lifte (do-add-site self (get-input-value fqdn)))
+	    (with-field "Fqdn of the site:" fqdn)
+	    (with-field "" (<:input :type "submit" :disabled t
+				    :value "Add")))))
+
+(defmethod/remote init ((self sites-component))
+  (append self (make-table self))
+  (append self (setf (_table self) (make-form self))))
+
+;; -------------------------------------------------------------------------
+;; Manager Component
+;; -------------------------------------------------------------------------
+(defcomponent manager-controller (simple-controller)
+  ((_menu :host remote)
+   (_content :host remote))
+  (:default-initargs :default-page "info")
+  (:ctor make-manager-controller))
+
+(defun make-controller (application user)
+  (flet ((make-page (name widget)
+	   (let ((map (make-simple-widget-map :selector "content"
+					      :widget widget)))
+	     (make-simple-page :name name :widgets (list map))))
+	 (make-map (name widget)
+	   (make-simple-widget-map :selector name :widget widget)))
+    (let ((pages (list (make-page "info" (info-component))
+		       (make-page "sites" (sites-component))
+		       (make-page "settings" (settings-component))))
+	  (constants (list
+		      (make-map "clock" (<core:simple-clock))
+		      ;; (make-map "menu" (<core:menu
+		      ;; 			:items (list (cons "INFO" "info")
+		      ;; 				     (cons "SITES" "sites")
+		      ;; 				     (cons "SETTINGS" "settings"))))
+		      )))
+      (authorize application (simple-user.find application :name "admin")
+		 (make-manager-controller :pages pages :constants constants)))))
+
+;; (defmethod/local get-component ((self manager-component) name)
+;;   (cond
+;;     ((equal name "info") (info-component))
+;;     ((equal name "sites") (sites-component))
+;;     ((equal name "settings") (settings-component))
+;;     (t nil)))
+
+;; (defmethod/remote load-component ((self manager-component) name)
+;;   (let ((ctor (get-component self name)))
+;;     (if ctor
+;; 	(progn
+;; 	  (when (slot-value (_content self) 'destroy)
+;; 	    (destroy (_content self)))
+;; 	  (call/cc ctor (_content self))))))
+
+;; (defmethod/remote menu-template ((self manager-component))
+;;   (<:ul
+;;    (<:li (<:a :class "hilight" :onclick (lifte (load-component self "info")) "INFO"))
+;;    (<:li (<:a :onclick (lifte (load-component self "sites")) "SITES"))
+;;    (<:li (<:a :onclick (lifte (load-component self "settings")) "SETTINGS"))))
+
+;; (defmethod/remote init ((self manager-component))
+;;   (_debug "manager ready!")
+;;   (setf (_clock self) (call/cc (_clock self) (document.get-element-by-id "clock")))
+;;   (let ((menu (setf (_menu self) (document.get-element-by-id "menu"))))
+;;     (append menu (menu-template self))
+;;     (setf (_content self) (document.get-element-by-id "content"))
+;;     (load-component self "info")))

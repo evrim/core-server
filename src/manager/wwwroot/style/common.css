@@ -1,0 +1,69 @@
+/* 
+   Evrim's Common CSS
+   aka CSS combinators
+
+  Author: Evrim Ulu <evrim@core.gen.tr>
+  Date: 2008-2009
+  License: Use the force for greater good.
+
+ - Employ after Eric A. Meyer's Reset CSS 
+ - Instead of defining new style for
+   each node, just combine css classes in the html
+*/
+
+* {
+    font-family: Arial,Helvetica,FreeSans,"Luxi-sans","Nimbus Sans L",sans-serif;
+}
+body { 
+    text-align:left;
+    font-size:12px; 
+}
+.pad0 { padding:0px; }
+.margin0 { margin:0px; }
+.pad10 { padding:10px; }
+.margin10 { margin:10px; }
+.pad5 { padding:5px; }
+.margin5 { margin:5px; }
+.pad15 { padding:15px; }
+.margin15 {margin:15px; }
+.left { float:left; }
+.right { float:right; }
+.clear { clear:both; }
+.inline { display:inline; }
+.hidden { display:none; }
+.block { display:block; }
+.absolute { position:absolute; }
+.relative { position:relative; }
+.fixed { position:fixed; }
+.border-left { border-left:1px dotted #000; }
+.border-right { border-right: 1px dotted #000; }
+.center { margin:auto;}
+ul.pad5 li { padding:5px; }
+ul.disc li { list-style:disc; }
+ul.none li { list-style:none; }
+ul.inline li { display:inline; }
+.text-left {text-align:left;}
+.text-right {text-align:right;}
+.text-center {text-align:center;}
+.width-70p {width:70%;}
+.width-30p {width:30%;}
+.width-100p {width:100%;}
+.width-200px { width:200px !important; }
+.width-250px { width:250px !important; }
+.width-400px { width:400px !important; }
+.width-600px { width:600px !important; }
+.width-800px { width:800px !important; }
+.bg-white { background:#ffffff; }
+.text-white { color:#ffffff; }
+.text-white a { color:#ffffff; }
+.bg-gray { background:#eeeeee; }
+.bg-black { background:#000000; }
+strong, .bold { font-weight:bold; }
+.opacity9 { filter: alpha(opacity=90); opacity:0.9;}
+.opacity7 { filter: alpha(opacity=70); opacity:0.7;}
+.border-left-shadow { border-left:3px solid #222222; }
+.border-right-shadow { border-right:3px solid #222222; }
+.border-bottom-shadow { border-bottom:3px solid #222222; }
+a:hover { cursor:pointer; }
+.line-15 { line-height:1.5em; }
+.font-15 { font-size:1.5em; }
