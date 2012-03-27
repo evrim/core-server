@@ -87,11 +87,12 @@
 		     list (seq (length list)))
 	 ,@body))))
 
-(defjsmacro aif (a b &optional (c 'nil))
-  `((lambda (it)     
-      (if it
-	  ,b
-	  ,c)) ,a))
+(defjsmacro aif (a b &rest rest)
+  (let ((c (car rest)))
+    `((lambda (it)     
+	(if it
+	    ,b
+	    ,(or c 'nil))) ,a)))
 
 (defjsmacro typep (object type)
   `(= ,(if (eq 'quote (car type))
