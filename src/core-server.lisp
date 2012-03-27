@@ -977,7 +977,7 @@
    #:tag
    #:id
 
-   ;; [Web Components]
+   ;; [Web Components]   
    #:ckeditor-component
    #:supply-ckeditor
    #:make-ckeditor
@@ -1150,7 +1150,41 @@
    #:+ckeditor-config+
    #:+ckeditor-uri+
    #:+ckeditor-source-uri+
-   #:+ckeditor-css+))
+   #:+ckeditor-css+
+
+   ;; [Coretal]
+   #:abstract-controller
+   #:simple-controller
+   #:make-simple-controller
+   #:abstract-page
+   #:simple-page
+   #:make-simple-page
+   #:abstract-widget-map
+   #:simple-widget-map
+   #:make-simple-widget-map
+   #:abstract-widget
+   #:simple-widget
+   #:make-simple-widget
+
+   #:authorize
+   #:simple-user
+   #:make-simple-user   
+   #:simple-group
+   #:make-simple-group
+   #:user.has-group
+   #:simple-user.add
+   #:simple-user.delete
+   #:simple-user.find
+   #:simple-user.list
+   #:simple-user.query
+   #:simple-user.update
+   #:simple-group.add
+   #:simple-group.delete
+   #:simple-group.find
+   #:simple-group.list
+   #:simple-group.query
+   #:simple-group.update
+   ))
 
 (defpackage :tr.gen.core.server.io
   (:nicknames :io)
@@ -1183,7 +1217,7 @@
 	   #:required-value-input #:number-value-input
 	   #:username-input #:tab #:crud #:date-time-input
 	   #:auth #:core #:ckeditor #:lazy-ckeditor
-	   #:select-input #:radio-group))
+	   #:select-input #:radio-group #:simple-clock))
 
 (defpackage :tr.gen.core.server.atom
   (:nicknames :<atom)

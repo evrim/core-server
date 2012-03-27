@@ -227,7 +227,17 @@
 				   (:file "video")
 				   (:file "editor")
 				   (:file "dojo")
-				   (:file "picasa"))))))
+				   (:file "picasa")))
+			 (:module :coretal
+				  :serial t
+				  :components
+				  ((:file "authenticate")
+				   (:file "authorize")
+				   (:file "map")
+				   (:file "page")
+				   (:file "widget")
+				   (:file "controller"))))))
+  
   :depends-on (:swank :bordeaux-threads ;; :cl-prevalence
 		      :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad :cffi
 		      :salza2 :ironclad)
