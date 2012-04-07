@@ -1204,6 +1204,11 @@
 	   #:table #:tbody #:td #:textarea #:tfoot #:th #:thead
 	   #:title #:tr #:tt #:u #:ul #:var #:embed #:foo #:bar))
 
+(defpackage :tr.gen.core.server.widget
+  (:nicknames :<widget :core-server.widget)
+  (:use :core-server)
+  (:export #:content-widget #:simple-menu-widget))
+
 (defpackage :tr.gen.core.server.rss
   (:nicknames :<rss :core-server.rss)
   (:use :core-server))
