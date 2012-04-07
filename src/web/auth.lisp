@@ -6,36 +6,40 @@
 ;; --------------------------------------------------------------------------
 ;; Login Box
 ;; --------------------------------------------------------------------------
-(defcomponent login-box (<:div)
-  ()
+(defcomponent login-box (<:div callable-component)
+  ((_password-input :host remote
+		    :initform (<core:password-input  :min-length 5))
+   (_username-input :host remote :initform (<core:required-value-input)))
   (:default-initargs :id "loginBox"))
 
+(defmethod/local answer-component ((self login-box) arg)
+  (answer arg))
+
 (defmethod/remote template ((self login-box))
-  (list
-   (<:form :action "#"
-	   :onsubmit (event (e)
-		       (let ((password this.password.value))
-			 (with-call/cc
-			   (setf this.password.value nil)
-			   (answer-component self
-			       (cons this.email.value password)))
-			 false))
-      (with-field
-	  (<core:email-input :class-name "text" :type "text" :name "email"
-			     :validation-span-id "email-validation"
-			     :default-value "Email")
-	(<:span :class "validation"
-		:id "email-validation" "Enter your email address"))
-      (with-field
-	  (<core:password-input :class-name "text"
-				:default-value "password"
-				:type "password" :name "password"
-				:validation-span-id "password-validation")
-	(<:span :class "validation"
-		:id "password-validation" "Enter your password"))
-      (with-field ""
-	(<:input :type "submit" :class "button"
-		 :value "login or register" :disabled t)))))
+  (let ((_username (make-component (_username-input self)
+				   :class-name "text"
+				   :type "text" :name "username"
+				   :validation-span-id "username-validation"
+				   :default-value "Username"))
+	(_password (make-component (_password-input self)
+				    :class-name "text"
+				    :default-value "password"
+				    :type "password" :name "password"
+				    :validation-span-id "password-validation")))
+    (list
+     (<:form :onsubmit
+	     (lifte (answer-component self
+				      (cons (get-input-value _username)
+					    (get-input-value _password))))
+	     (with-field _username
+	       (<:span :class "validation"
+		       :id "username-validation" "Enter your username"))
+	     (with-field _password
+	       (<:span :class "validation"
+		       :id "password-validation" "Enter your password"))
+	     (with-field ""
+	       (<:input :type "submit" :class "button"
+			:value "login" :disabled t))))))
 
 (defmethod/remote init ((self login-box))
   (mapcar (lambda (a) (.append-child self a)) (template self)))
