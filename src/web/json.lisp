@@ -284,21 +284,24 @@
      (string! stream (js* (dom2js element))))))
 
 (defmethod json! ((stream core-stream) (closure arnesi::closure/cc))
-  (string! stream (js* `((lambda ,(mapcar (lambda (arg)
-					    (case (car arg)
-					      (:let (cadr arg))
-					      (t (prog1 nil
-						   (warn "Fixme: serialize closure to json: ~A" arg)))))
-					  (slot-value closure 'arnesi::env))
-			   (return
-			     ,(unwalk-form (slot-value closure 'arnesi::code))))
-			 ,@(mapcar (lambda (arg)
-				     (case (car arg)
-				       (:let (cddr arg))
-				       (t (prog1 nil
-					    (warn "Fixme: serialize closure to json: ~A" arg)))))
-				   (ast-search-type (slot-value closure 'arnesi::env)
-						    'variable-reference))))))
+  (let* ((frees (find-free-variables (slot-value closure 'code)))
+	 (frees (filter (lambda (arg) (member (cadr arg) frees))
+			(slot-value closure 'arnesi::env))))
+    (string! stream (js* `((lambda ,(mapcar
+				     (lambda (arg)
+				       (case (car arg)
+					 (:let (cadr arg))
+					 (t (prog1 nil
+					      (warn "Fixme: serialize closure to json: ~A" arg)))))
+				     frees)
+			     (return
+			       ,(unwalk-form (slot-value closure 'arnesi::code))))
+			   ,@(mapcar (lambda (arg)
+				       (case (car arg)
+					 (:let (cddr arg))
+					 (t (prog1 nil
+					      (warn "Fixme: serialize closure to json: ~A" arg)))))
+				     frees))))))
 
 (defun json-serialize (object)
   (let ((s (make-core-stream "")))
