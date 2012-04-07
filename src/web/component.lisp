@@ -738,7 +738,7 @@
 (defmethod/remote funkall ((self component) action args)
   (let ((retval (funcall-cc (+ (slot-value self 'url) action "$") args)))
     (if (typep retval 'function)
-    	(call/cc retval self) 
+	(call/cc retval self) 
     	retval)))
 
 (defmethod/remote init ((self component)) self)
@@ -804,10 +804,14 @@
 		   (context.request +context+) "__hash"))))
        (cond
 	 (hash
-	  (with-js (value hash) stream
-	    (with-call/cc
-	      (apply (slot-value window hash) window
-		     (list (lambda (self) value))))))
+	  (if (typep value 'arnesi::closure/cc)
+	      (with-js (value hash) stream
+		(with-call/cc
+		  (apply (slot-value window hash) window (list value))))
+	      (with-js (value hash) stream
+		(with-call/cc
+		  (apply (slot-value window hash) window
+			 (list (lambda (self) value)))))))
 	 ((typep value 'component)
 	  (with-js (value) stream
 	    (let ((c value))	      
