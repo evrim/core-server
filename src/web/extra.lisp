@@ -3,6 +3,31 @@
 ;; +-------------------------------------------------------------------------
 (in-package :core-server)
 
+;; -------------------------------------------------------------------------
+;; Simple Digital Clock
+;; -------------------------------------------------------------------------
+(defcomponent <core:simple-clock ()
+  ((_update-thread :host remote)))
+
+(defmethod/remote update-me ((self <core:simple-clock))
+  (setf (slot-value self 'inner-h-t-m-l) "")
+  (let ((str (date-to-string (new (*date)))))
+    (append self (<:p (take 10 str)))
+    (append self (<:p (drop 13 str)))))
+
+(defmethod/remote destroy ((self <core:simple-clock))
+  (clear-timeout (_update-thread self))
+  (delete-slot self '_update-thread)
+  (remove-class "core-clock-widget")
+  (call-next-method self))
+
+(defmethod/remote init ((self <core:simple-clock))
+  (update-me self)
+  (add-class self "core-clock-widget")
+  (setf (_update-thread self)
+	(set-interval (event () (update-me self window.k))
+		      1000)))
+
 ;; --------------------------------------------------------------------------
 ;; Hilighter
 ;; --------------------------------------------------------------------------
