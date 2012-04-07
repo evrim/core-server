@@ -41,8 +41,10 @@
 (defmethod/remote show-component ((self dialog))
   (load-css (css-url self))
   (setf (_scroll self)
-	(list (or document.document-element.scroll-left window.page-x-offset)
-	      (or document.document-element.scroll-top window.page-y-offset)))
+	(list (or document.document-element.scroll-left
+		  window.page-x-offset)
+	      (or document.document-element.scroll-top
+		  window.page-y-offset)))
   (window.scroll 0 0)
   (prepend document.body (overlay self))
   (prepend document.body self)
@@ -58,7 +60,8 @@
 
 (defmethod/remote template ((self dialog))    
   (<:div :class "center text-center"
-	 (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
+	 (<:div :class "left left-bg"
+		(<:a :href "http://www.coretal.net/" ""))
 	 (<:div :class "right right-bg"
 		(<:div :class "title" (title self))
 		(<:div :class "message" (message self))
@@ -92,7 +95,8 @@
 (defmethod/remote template ((self prompt-dialog))
   (let ((_prompt (<:input :type "text" :name "prompt" :class "text")))
     (<:div :class "center text-center"
-	   (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
+	   (<:div :class "left left-bg"
+		  (<:a :href "http://www.coretal.net/" ""))
 	   (<:div :class "right right-bg"
 		  (<:div :class "title" (title self))
 		  (<:div :class "message" (message self))
@@ -103,7 +107,7 @@
 				    :value (_"OK")
 				    :onclick (lifte
 					      (answer-component self
-						  (slot-value _prompt 'value))))
+					       (slot-value _prompt 'value))))
 			   (<:input :type "button" :class "button"
 				    :value (_"Cancel")
 				    :onclick (lifte (hide-component self)))))))))
@@ -165,25 +169,30 @@
 				  :validation-span-id "email-validation"
 				  :default-value "Email")))
 	(_password (call/cc (password-input self)
-			    (jobject :class-name "text" :default-value "password"
+			    (jobject :class-name "text"
+				     :default-value "password"
 				     :type "password" :name "password"
 				     :validation-span-id "password-validation"))))
     (<:div :class "center text-center"
-	   (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
+	   (<:div :class "left left-bg"
+		  (<:a :href "http://www.coretal.net/" ""))
 	   (<:div :class "right right-bg"
 		  (<:div :class "title" (title self))
 		  (<:form :action "#"
-			  :onsubmit (event (e)			      
-				     (let ((password (slot-value _password 'value)))
-				       (with-call/cc
-					 (setf (slot-value _password 'value) nil)
-					 (answer-component self
-				          (cons (slot-value _email 'value) password))))
-				     false)
-			  (with-field (<:span :class "validation" :id "email-validation"
+			  :onsubmit
+			  (event (e)			      
+			    (let ((password (slot-value _password 'value)))
+			      (with-call/cc
+				(setf (slot-value _password 'value) nil)
+				(answer-component self
+				  (cons (slot-value _email 'value) password))))
+				 false)
+			  (with-field (<:span :class "validation"
+					      :id "email-validation"
 					      "Enter your email address")
 			    _email)
-			  (with-field (<:span :class "validation" :id "password-validation"
+			  (with-field (<:span :class "validation"
+					      :id "password-validation"
 					      "Enter your password")
 			    _password)
 			  (with-field ""
@@ -191,7 +200,8 @@
 					    :value "login" :disabled t)
 				   (<:input :type "button" :class "button"
 					    :value "cancel"
-					    :onclick (lifte (hide-component self))))))))))
+					    :onclick (lifte
+						      (hide-component self))))))))))
 
 ;; +-------------------------------------------------------------------------
 ;; | Registration Dialog
@@ -207,7 +217,8 @@
 				  :validation-span-id "email-validation"
 				  :default-value "Email"))))
     (<:div :class "center text-center"
-	   (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
+	   (<:div :class "left left-bg"
+		  (<:a :href "http://www.coretal.net/" ""))
 	   (<:div :class "right right-bg"
 		  (<:div :class "title" (title self))
 		  (<:form :action "#"
@@ -236,7 +247,8 @@
 				  :validation-span-id "email-validation"
 				  :default-value "Email"))))
     (<:div :class "center text-center"
-	   (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
+	   (<:div :class "left left-bg"
+		  (<:a :href "http://www.coretal.net/" ""))
  	   (<:div :class "right right-bg"
 		  (<:div :class "title" (title self))
 		  (<:form :action "#"
@@ -267,7 +279,8 @@
 
 (defmethod/remote template ((self big-dialog))
   (<:div :class "center text-center"
-	 (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
+	 (<:div :class "left left-bg"
+		(<:a :href "http://www.coretal.net/" ""))
 	 (<:div :class "right right-bg2"
 		(<:div :class "title" (title self))
 		(<:div :class "bg-pad-top center text-center")
