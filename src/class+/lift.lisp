@@ -231,6 +231,9 @@
 		   (eq 'lift (slot-definition-host slot)))
 		 (class+.slots self))))
 
+(defmethod copy-lifted-slot ((self class+-instance) (slot standard-slot-definition) value)
+  value)
+
 (defmethod shared-initialize :after ((self class+-instance) slots
 				     &key &allow-other-keys)
   (mapcar (lambda (slot)
@@ -238,7 +241,8 @@
 		   (lifted-slot (class+.find-lifted-slot (class-of self)
 							 name)))
 	      (setf (slot-value self name)
-		    (slot-value (slot-value self lifted-slot) name))))
+	      	    (copy-lifted-slot self slot
+				      (slot-value (slot-value self lifted-slot) name)))))
 	  (filter (lambda (slot)
 		    (and (slot-definition-lift slot)
 			 (or (eq (slot-definition-host slot) 'remote)

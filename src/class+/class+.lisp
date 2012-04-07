@@ -124,6 +124,7 @@
    (print :initarg :print :initform nil :accessor slot-definition-print)
    (label :initarg :label :initform nil :accessor slot-definition-label)
    (lift  :initarg :lift :initform nil :accessor slot-definition-lift)
+   (authorize :initarg :authorize :initform nil :accessor slot-definition-authorize)
    (export  :initarg :export :initform t :accessor slot-definition-export)
    (leaf :initarg :leaf :initform nil :accessor slot-definition-leaf)))
 
@@ -186,7 +187,8 @@
 	  :label (slot-definition-label slot)
 	  :lift (slot-definition-lift slot)
 	  :export (slot-definition-export slot)
-	  :leaf (slot-definition-leaf slot))))
+	  :leaf (slot-definition-leaf slot)
+	  :authorize (slot-definition-authorize slot))))
 
 (defmacro with-slotdef (arglist slot &body body)
   `(destructuring-bind (&key ,@arglist &allow-other-keys)
