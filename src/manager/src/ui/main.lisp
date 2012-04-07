@@ -93,11 +93,10 @@
 		       (make-page "settings" (settings-component))))
 	  (constants (list
 		      (make-map "clock" (<core:simple-clock))
-		      ;; (make-map "menu" (<core:menu
-		      ;; 			:items (list (cons "INFO" "info")
-		      ;; 				     (cons "SITES" "sites")
-		      ;; 				     (cons "SETTINGS" "settings"))))
-		      )))
+		      (make-map "menu" (<widget:simple-menu-widget
+		      			:items (list (cons "INFO" "info")
+		      				     (cons "SITES" "sites")
+		      				     (cons "SETTINGS" "settings")))))))
       (authorize application (simple-user.find application :name "admin")
 		 (make-manager-controller :pages pages :constants constants)))))
 

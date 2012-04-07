@@ -30,7 +30,10 @@
 
 (defvar *app* (make-instance 'manager-application))
 
-(defun register-me (&optional (server *server*)) (register server *app*))
+(defun register-me (&optional (server *server*))
+  (if (null *app*) (start *app*))
+  (register server *app*))
+
 (defun unregister-me (&optional (server *server*)) (unregister server *app*))
 
 (defparameter +admin+ (list "admin" "admin"))
