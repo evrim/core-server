@@ -37,9 +37,9 @@
 (defcomponent simple-controller/anonymous (simple-controller
 					   secure-object/authorized)
   ((secure-object :host lift :type simple-controller)
-   (pages :host local :lift t :export nil :type abstract-page*)
+   (pages :host local :lift t :export nil :authorize t :type abstract-page*)
    (default-page :host remote :lift t)
-   (constants :host remote :lift t)
+   (constants :host remote :lift t :authorize t)
    (_page :host remote)))
 
 (defmethod/remote destroy ((self simple-controller/anonymous))
@@ -50,7 +50,7 @@
 
 (defmethod/local get-page ((self simple-controller/anonymous) name)
   (aif (find name (pages self) :key #'name :test #'string=)
-       it))
+       (authorize (current-application self) (user self) it)))
 
 (defmethod/remote load-page ((self simple-controller/anonymous) name)
   (let ((ctor (get-page self name)))

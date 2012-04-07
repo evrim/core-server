@@ -87,6 +87,26 @@
 ;; -------------------------------------------------------------------------
 ;; Authorization Protocol
 ;; -------------------------------------------------------------------------
+(defmethod copy-lifted-slot ((self secure-object/authorized)
+			     (slot standard-slot-definition) value)
+  (if (slot-definition-authorize slot)
+      (authorize (current-application self) (user self) value)
+      value))
+
+(defmethod copy-lifted-slot ((self secure-object/unauthorized)
+			     (slot standard-slot-definition) value)
+  (if (slot-definition-authorize slot)
+      (authorize (current-application self) (make-anonymous-user) value)
+      value))
+
+(defmethod authorize ((application application) (user abstract-user)
+		      (object t))
+  object)
+
+(defmethod authorize ((application application) (user abstract-user)
+		      (object list))
+  (mapcar (curry #'authorize application user) object))
+
 (defmethod authorize ((application application)
 		      (user abstract-user) (object secure-object))
   (apply (%secure-constructor object user)
