@@ -32,6 +32,15 @@
    (widget :host remote :lift t :authorize t)
    (enabled :host remote :lift t)))
 
+(defmethod/remote on-page-load ((self simple-widget-map/anonymous) name)
+  (if (and (enabled self)
+	   (typep (slot-value (widget self) 'on-page-load) 'function))
+      (on-page-load (widget self) name)))
+
+(defmethod/remote destroy ((self simple-widget-map/anonymous))
+  (when (enabled self)
+    (destroy (widget self))))
+
 (defmethod/remote init ((self simple-widget-map/anonymous))
   (awhen (document.get-element-by-id (selector self))
     (setf (enabled self) t

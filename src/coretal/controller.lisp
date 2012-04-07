@@ -34,7 +34,8 @@
 ;; -------------------------------------------------------------------------
 ;; Anonymous Controller
 ;; -------------------------------------------------------------------------
-(defcomponent simple-controller/anonymous (simple-controller
+(defcomponent simple-controller/anonymous (history-mixin
+					   simple-controller
 					   secure-object/authorized)
   ((secure-object :host lift :type simple-controller)
    (pages :host local :lift t :export nil :authorize t :type abstract-page*)
@@ -55,14 +56,40 @@
 (defmethod/remote load-page ((self simple-controller/anonymous) name)
   (let ((ctor (get-page self name)))
     (cond
-      (ctor (setf (_page self) (make-component ctor)))
+      (ctor
+       (if (_page self) (destroy (_page self)))
+       (setf (_page self) (make-component ctor))
+       (mapcar-cc (lambda (a)
+		    (make-web-thread
+		     (lambda () (on-page-load a name))))
+		  (constants self)))
       (t (_debug (list "page not found" name))
 	 nil))))
+
+(defmethod/remote get-page-in-the-url ((self simple-controller/anonymous))
+  (get-parameter "page"))
+
+(defmethod/remote set-page-in-the-url ((self simple-controller/anonymous) _name)
+  (unless (eq _name (get-page-in-the-url self))
+    (set-parameter "page" _name)))
+
+(defmethod/remote on-history-change ((self simple-controller/anonymous))
+  (_debug (list "on-history-change" self))
+  (let ((page (_page self))
+	(anchor (or (get-page-in-the-url self) (default-page self))))
+    (if page
+	(let ((name (name page)))
+	  (if (and (not (eq name anchor))
+		   (not (eq name window.location.pathname)))
+	      (load-page self anchor)
+	      (call-next-method self)))
+	(load-page self anchor))))
 
 (defmethod/remote init ((self simple-controller/anonymous))
   (setf (constants self)
   	(mapcar-cc (lambda (a) (make-component a)) (constants self)))
   (load-page self (or (get-parameter "page") (default-page self)))
+  (start-history-timeout self)
   (_debug "loaded."))
 
 ;; -------------------------------------------------------------------------
