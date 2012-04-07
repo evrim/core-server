@@ -236,7 +236,11 @@
 				   (:file "map")
 				   (:file "page")
 				   (:file "widget")
-				   (:file "controller"))))))
+				   (:file "controller")))
+			 (:module :widget
+				  :serial t
+				  :components
+				  ((:file "menu"))))))
   
   :depends-on (:swank :bordeaux-threads ;; :cl-prevalence
 		      :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad :cffi
