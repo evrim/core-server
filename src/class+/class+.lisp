@@ -144,7 +144,7 @@
 
 (defmethod %class+-inherited-slots ((class class+))
   '(host client-type sb-pcl::readers sb-pcl::writers relation
-    index print label lift export leaf))
+    index print label lift export leaf authorize))
 
 (defmethod compute-effective-slot-definition ((class class+) slot-name
 					      slot-defs)

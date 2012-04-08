@@ -241,8 +241,8 @@
 		   (lifted-slot (class+.find-lifted-slot (class-of self)
 							 name)))
 	      (setf (slot-value self name)
-	      	    (copy-lifted-slot self slot
-				      (slot-value (slot-value self lifted-slot) name)))))
+		    (copy-lifted-slot self slot
+			   (slot-value (slot-value self lifted-slot) name)))))
 	  (filter (lambda (slot)
 		    (and (slot-definition-lift slot)
 			 (or (eq (slot-definition-host slot) 'remote)
