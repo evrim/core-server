@@ -34,7 +34,7 @@
 ;; Simple User
 ;; -------------------------------------------------------------------------
 (defcomponent simple-user (abstract-user)
-  ((name :accessor user.name :initform (error "Provide :name")
+  ((name :accessor user.name :initform nil
 	 :initarg :name :host local :index t :export t :print t)
    (groups :accessor user.groups :host local :type simple-group*
 	   :relation users :export nil))
