@@ -30,8 +30,20 @@
 
 (defvar *app* (make-instance 'manager-application))
 
+(deftransaction init-database ((self manager-application))
+  (assert (null (database.get self 'initialized)))
+  (setf (database.get self 'api-secret) (random-string))
+  (manager-user.add self :name "Root User" :username "root" :password "core-server")
+  (setf (database.get self 'initialized) t)
+  t)
+
+(defmethod start ((self manager-application))
+  (if (null (database.get self 'initialized))
+      (prog1 t (init-database self))
+      nil))
+
 (defun register-me (&optional (server *server*))
-  (if (null *app*) (start *app*))
+  (if (null (status *app*)) (start *app*))
   (register server *app*))
 
 (defun unregister-me (&optional (server *server*)) (unregister server *app*))
@@ -42,7 +54,7 @@
 ;; Index Loop
 ;; -------------------------------------------------------------------------
 (defhandler "index\.core" ((self manager-application))
-  (destructuring-bind (name password)
+  (destructuring-bind (username password)
       (javascript/suspend
        (lambda (stream)
 	 (let ((box (core-server::login-box))
@@ -56,10 +68,12 @@
 			(lambda (result)
 			  (cl (document.get-element-by-id "clock" window.k)))))))))))
     (continue/js
-     (if (and (equal (car +admin+) name) (equal (cadr +admin+) password))
-	 (prog1 (lambda (self k) (k (setf window.location "manager.html")))
-	   (update-session :user +admin+))
-	 nil))))
+     (let ((admin (manager-user.find self :username username)))
+       (cond
+	 ((and admin (equal (manager-user.password admin) password))
+	  (prog1 (lambda (self k) (k (setf window.location "manager.html")))
+	    (update-session :user admin)))
+	 (t nil))))))
 
 ;; -------------------------------------------------------------------------
 ;; Main Manager Loop

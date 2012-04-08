@@ -81,23 +81,39 @@
   (:default-initargs :default-page "info")
   (:ctor make-manager-controller))
 
+(defvar +pages+
+  (list (list "info" "Info" "Information regarding to the current instance"
+	      (info-component))
+	(list "aanda" "A & A" "Authentication & Authorization"
+	      (sites-component))
+	(list "settings" "Settings" "Settings related to the current instance"
+	      (settings-component))))
+
 (defun make-controller (application user)
-  (flet ((make-page (name widget)
-	   (let ((map (make-simple-widget-map :selector "content"
-					      :widget widget)))
-	     (make-simple-page :name name :widgets (list map))))
-	 (make-map (name widget)
-	   (make-simple-widget-map :selector name :widget widget)))
-    (let ((pages (list (make-page "info" (info-component))
-		       (make-page "sites" (sites-component))
-		       (make-page "settings" (settings-component))))
+  (labels ((make-heading (title subtitle)
+	     (make-simple-widget-map :selector "title"
+				     :widget (<widget:simple-content-widget
+					      :content (list (<:h1 title)
+							     (<:h2 subtitle)))))
+	   (make-page (name title subtitle widget)
+	     (let ((map (make-simple-widget-map :selector "content"
+						:widget widget)))
+	       (make-simple-page :name name
+				 :widgets
+				 (list (make-heading title subtitle)
+				       map))))
+	   (make-map (name widget)
+	     (make-simple-widget-map :selector name :widget widget))
+	   (make-menu (pages)
+	     (<widget:simple-menu-widget
+	      :items (mapcar (lambda (pages)
+			       (cons (cadr pages) (car pages)))
+			     pages))))
+    (let ((pages (mapcar (curry #'apply #'make-page) +pages+))
 	  (constants (list
 		      (make-map "clock" (<core:simple-clock))
-		      (make-map "menu" (<widget:simple-menu-widget
-		      			:items (list (cons "INFO" "info")
-		      				     (cons "SITES" "sites")
-		      				     (cons "SETTINGS" "settings")))))))
-      (authorize application (simple-user.find application :name "admin")
+		      (make-map "menu" (make-menu +pages+)))))
+      (authorize application user
 		 (make-manager-controller :pages pages :constants constants)))))
 
 ;; (defmethod/local get-component ((self manager-component) name)

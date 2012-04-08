@@ -1,6 +1,15 @@
 (in-package :manager)
 
 ;; -------------------------------------------------------------------------
+;; Manager Users
+;; -------------------------------------------------------------------------
+(defclass+ manager-user (simple-user)
+  ((username :host both :print t :index t)
+   (password :host both)))
+
+(defcrud manager-user)
+
+;; -------------------------------------------------------------------------
 ;; Site Definition
 ;; -------------------------------------------------------------------------
 (defclass+ site (object-with-id)
