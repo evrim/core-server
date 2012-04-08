@@ -200,6 +200,7 @@
 
 (defmethod/remote init ((self <core:table))
   (add-class self "table")
+  (add-class self "coretal-table")
   (load-css "http://www.coretal.net/style/table.css")
   (mapcar-cc (lambda (a) (.remove-child self a))
 	     (slot-value self 'child-nodes))
