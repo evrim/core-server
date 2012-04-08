@@ -354,20 +354,16 @@
 (defvar +xml-namespace+ (find-package :<))
 (defparameter +xml-namespaces-table+
   (list (cons "http://labs.core.gen.tr/2011/DB" (find-package :<db))
+	(cons "http://labs.core.gen.tr/2011/API" (find-package :<core-server))
 	(cons "http://www.w3.org/2005/Atom" (find-package :<atom))
-	(cons "http://schemas.google.com/photos/2007"
-	      (find-package :<gphoto))
+	(cons "http://schemas.google.com/photos/2007" (find-package :<gphoto))
 	(cons "http://search.yahoo.com/mrss/" (find-package :<media))
 	(cons "http://www.opensearch.org/Specifications/OpenSearch/1.1"
 	      (find-package :<open-search))
-	(cons "http://wordpress.org/export/1.0/"
-	      (find-package :<wordpress))
-	(cons "http://purl.org/rss/1.0/modules/content/"
-	      (find-package :<content))
-	(cons "http://purl.org/dc/elements/1.1/"
-	      (find-package :<dc))
-	(cons "http://wordpress.org/export/1.0/excerpt/"
-	      (find-package :<excerpt))))
+	(cons "http://wordpress.org/export/1.0/" (find-package :<wordpress))
+	(cons "http://purl.org/rss/1.0/modules/content/" (find-package :<content))
+	(cons "http://purl.org/dc/elements/1.1/" (find-package :<dc))
+	(cons "http://wordpress.org/export/1.0/excerpt/" (find-package :<excerpt))))
 
 (declaim (inline xml->symbol))
 (defun xml->symbol (name &optional package)
