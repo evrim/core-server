@@ -25,6 +25,7 @@
 		      :serial t
 		      :components
 		      ((:file "sites")
+		       (:file "users")
 		       (:file "main"))))))
   :depends-on (:arnesi :core-server)
   :serial t)

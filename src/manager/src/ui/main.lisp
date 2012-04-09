@@ -35,6 +35,8 @@
 	      (info-component))
 	(list "aanda" "A & A" "Authentication & Authorization"
 	      (sites-component))
+	(list "users" "Manager Users" "Accounts that manage this server instance"
+	      (manager-users-component))
 	(list "settings" "Settings" "Settings related to the current instance"
 	      (settings-component))))
 

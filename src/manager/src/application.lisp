@@ -111,3 +111,21 @@
   (call-next-method self :fqdn fqdn :api-key api-key
 		    :api-password api-password :owner owner
 		    :timestamp timestamp))
+
+
+(defhandler "auth\.core" ((self manager-application) (reply-to "reply-to")
+			(action "action") (mode "mode"))
+  (<:html
+   (<:head
+    (<:title "Core Server - http://labs.core.gen.tr/")
+    (<:meta :http--equiv "Content-Type" :content "text/html; charset=utf-8")
+    (<:link :rel "stylesheet" :href "/style/reset.css")
+    (<:link :rel "stylesheet" :href "/style/common.css")
+    (<:style :type "text/css"
+	     (css "body"
+		  :background "url('/style/dialog/stripe.png')"))
+    (<:script :type "text/javascript" :src "library.core"))
+   (<:body :class "stripe-bg"
+	   (<:div :class "max-width center text-center"
+		  (core-server::login-box)
+		  "foo"))))

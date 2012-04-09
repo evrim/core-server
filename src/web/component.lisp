@@ -834,38 +834,29 @@
   (if (member 'id (mapcar #'slot-definition-name (class+.slots (class-of self))))
       (if (or (not (slot-boundp self 'id)) (null (slot-value self 'id)))
 	  (setf (slot-value self 'id) (random-string 5))))
-  
-  (if (typep self 'xml)
-      (setf (xml.children self)
-  	    (cons 
-  	     (<:script :type "text/javascript"
-  		       (with-call/cc		
-  			 (lambda (stream)
-  			   (let ((stream (make-indented-stream stream))
-  				 (component self)
-  				 (id (slot-value self 'id)))
-  			     (with-js (component id) stream
-  			       ((lambda ()
-  				  (let ((ctor component))
-  				    (ctor (document.get-element-by-id id) window.k)))))))))
-  	     (xml.children self))))
+
   self)
 
 (defmethod write-stream ((stream html-stream) (self component))
-  (write-stream stream
-		(<:script :type "text/javascript"
-			  (with-call/cc		
-			    (lambda (stream)
-			      (let ((stream (make-indented-stream stream))
-				    (component self))
-				(with-js (component) stream
-				  ((lambda ()
-				     (let ((ctor component))
-				       (ctor null window.k)))))))))))
+  (prog1 (call-next-method stream self)
+    (when (typep self 'xml)
+      (write-stream stream
+		    (<:script :type "text/javascript"
+			      (with-call/cc		
+				(lambda (stream)
+				  (let ((stream (make-indented-stream stream))
+					(component self)
+					(id (slot-value self 'id)))
+				    (with-js (id component) stream
+				      ((lambda ()
+					 (let ((ctor component))
+					   (ctor (document.get-element-by-id id)
+						 window.k)))))))))))))
 
 (defmethod json! ((stream core-stream) (component component))
-  (with-call/cc
-    (component! stream component)))
+  (prog1 stream
+    (with-call/cc
+      (component! stream component))))
 
 ;; -------------------------------------------------------------------------
 ;; Callable Component
@@ -1056,3 +1047,24 @@
 ;; 				 (make-method ,(funcall '_destroy/js class+))))
 		 
 ;; 		     to-extend))))))))))
+
+;; (defmethod shared-initialize :after ((self component) slots &key &allow-other-keys)
+;;   (if (member 'id (mapcar #'slot-definition-name (class+.slots (class-of self))))
+;;       (if (or (not (slot-boundp self 'id)) (null (slot-value self 'id)))
+;; 	  (setf (slot-value self 'id) (random-string 5))))
+  
+;;   ;; (if (typep self 'xml)
+;;   ;;     (setf (xml.children self)
+;;   ;; 	    (cons 
+;;   ;; 	     (<:script :type "text/javascript"
+;;   ;; 		       (with-call/cc		
+;;   ;; 			 (lambda (stream)
+;;   ;; 			   (let ((stream (make-indented-stream stream))
+;;   ;; 				 (component self)
+;;   ;; 				 (id (slot-value self 'id)))
+;;   ;; 			     (with-js (component id) stream
+;;   ;; 			       ((lambda ()
+;;   ;; 				  (let ((ctor component))
+;;   ;; 				    (ctor (document.get-element-by-id id) window.k)))))))))
+;;   ;; 	     (xml.children self))))
+;;   self)

@@ -164,6 +164,7 @@
 				   (:file "dom")
 				   (:file "html")
 				   (:file "css")
+				   (:file "core-server")
 				   ;; (:file "rss")
 				   (:file "atom")
 				   (:file "gphoto")
@@ -222,6 +223,7 @@
 				   (:file "auth")
 				   (:file "table")
 				   (:file "crud")
+				   (:file "table-with-crud")
 				   (:file "tab")
 				   (:file "image")
 				   (:file "video")
@@ -240,7 +242,8 @@
 			 (:module :widget
 				  :serial t
 				  :components
-				  ((:file "menu"))))))
+				  ((:file "menu")
+				   (:file "content"))))))
   
   :depends-on (:swank :bordeaux-threads ;; :cl-prevalence
 		      :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad :cffi
