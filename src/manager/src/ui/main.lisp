@@ -1,16 +1,9 @@
 (in-package :manager)
 
-(defcomponent basic-widget ()
-  ())
-
-(defmethod/remote destroy ((self basic-widget))
-  (mapcar (lambda (a) (.remove-child self a))
-	  (reverse (slot-value self 'child-nodes))))
-
 ;; -------------------------------------------------------------------------
 ;; Info Component
 ;; -------------------------------------------------------------------------
-(defcomponent info-component (basic-widget)
+(defcomponent info-component (<widget:simple-widget)
   ((_hostname :host remote :initform (hostname))
    (_memory :host remote
 	    :initform (format nil "~10:D" (sb-kernel::dynamic-usage)))
@@ -25,52 +18,8 @@
 ;; -------------------------------------------------------------------------
 ;; Settings Component
 ;; -------------------------------------------------------------------------
-(defcomponent settings-component (basic-widget)
+(defcomponent settings-component (<widget:simple-widget)
   ())
-
-
-;; -------------------------------------------------------------------------
-;; Sites Table
-;; -------------------------------------------------------------------------
-(deftable sites-table ()
-  ((fqdn :label "FQDN")))
-
-;; -------------------------------------------------------------------------
-;; Sites Component 
-;; -------------------------------------------------------------------------
-(defcomponent sites-component (basic-widget)
-  ((_table-ctor :host remote :initform (sites-table))
-   (_table :host remote)
-   (_fqdn-input :host remote :initform (<core:default-value-input))))
-
-(defmethod/remote destroy ((self sites-component))
-  (delete-slots self '_table)
-  (call-next-method self))
-
-(defmethod/local get-sites ((self sites-component))
-  (site.list application))
-
-(defmethod/remote make-table ((self sites-component))
-  (make-component (_table-ctor self) :instances (get-sites self)))
-
-(defmethod/local add-site ((self sites-component) fqdn)
-  (site.add application :fqdn fqdn))
-
-(defmethod/remote do-add-site ((self sites-component) fqdn)
-  (add-site self fqdn)
-  (setf (_table self) (replace-node (_table self) (make-table self))))
-
-(defmethod/remote make-form ((self sites-component))
-  (let ((fqdn (make-component (_fqdn-input self)
-			      :default-value "enter site name")))
-    (<:form :onsubmit (lifte (do-add-site self (get-input-value fqdn)))
-	    (with-field "Fqdn of the site:" fqdn)
-	    (with-field "" (<:input :type "submit" :disabled t
-				    :value "Add")))))
-
-(defmethod/remote init ((self sites-component))
-  (append self (make-table self))
-  (append self (setf (_table self) (make-form self))))
 
 ;; -------------------------------------------------------------------------
 ;; Manager Component
@@ -81,7 +30,7 @@
   (:default-initargs :default-page "info")
   (:ctor make-manager-controller))
 
-(defvar +pages+
+(defparameter +pages+
   (list (list "info" "Info" "Information regarding to the current instance"
 	      (info-component))
 	(list "aanda" "A & A" "Authentication & Authorization"

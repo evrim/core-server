@@ -23,7 +23,9 @@
 	     (:file "interfaces" :depends-on ("application"))
 	     (:module :ui
 		      :serial t
-		      :components ((:file "main"))))))
+		      :components
+		      ((:file "sites")
+		       (:file "main"))))))
   :depends-on (:arnesi :core-server)
   :serial t)
 

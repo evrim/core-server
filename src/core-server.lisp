@@ -1001,7 +1001,11 @@
    #:stop-history-timeout
    #:sortable-list-component
    #:get-input-value
-
+   #:get-instances
+   #:add-instance
+   #:delete-instance
+   #:update-instance
+   
    [Jquery]
    #:supply-jquery
    #:load-jquery
@@ -1212,7 +1216,7 @@
 (defpackage :tr.gen.core.server.widget
   (:nicknames :<widget :core-server.widget)
   (:use :core-server)
-  (:export #:simple-content-widget #:simple-menu-widget))
+  (:export #:simple-widget #:simple-content-widget #:simple-menu-widget))
 
 (defpackage :tr.gen.core.server.rss
   (:nicknames :<rss :core-server.rss)
@@ -1227,7 +1231,7 @@
 	   #:required-value-input #:number-value-input
 	   #:username-input #:tab #:crud #:date-time-input
 	   #:auth #:core #:ckeditor #:lazy-ckeditor
-	   #:select-input #:radio-group #:simple-clock))
+	   #:select-input #:radio-group #:simple-clock #:table-with-crud))
 
 (defpackage :tr.gen.core.server.atom
   (:nicknames :<atom)

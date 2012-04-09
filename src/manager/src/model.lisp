@@ -3,27 +3,35 @@
 ;; -------------------------------------------------------------------------
 ;; Manager Users
 ;; -------------------------------------------------------------------------
-(defclass+ manager-user (simple-user)
-  ((username :host both :print t :index t)
-   (password :host both)))
+(defcomponent manager-user (simple-user)
+  ((username :host both :print t :index t :accessor manager-user.username)
+   (password :host local :export nil :accessor manager-user.password)
+   (timestamp :host both :initform (get-universal-time)))
+  (:ctor make-manager-user))
 
 (defcrud manager-user)
 
 ;; -------------------------------------------------------------------------
 ;; Site Definition
 ;; -------------------------------------------------------------------------
-(defclass+ site (object-with-id)
-  ((fqdn :host both :print t :documentation "FQDN of remote site")
-   (api-key :host local :export nil :print t
+(defcomponent site (object-with-id)
+  ((fqdn :host both :print t :documentation "FQDN of remote site" :index t)
+   (api-key :host both :index t
 	    :documentation "Api key of this site")
-   (api-password :host local :export nil
-		 :documentation "Api pass of this site"))
+   (api-password :host both :documentation "Api pass of this site")
+   (owner :host both :type manager-user :initform nil
+	  :documentation "Owner of this site")
+   (timestamp :host both :type integer :initform 0
+	      :documentation "Creation timestamp of this site"))
   (:ctor make-site))
+
+(defmethod/remote init ((self site))
+  (setf (owner self) (make-component (owner self))))
 
 ;; -------------------------------------------------------------------------
 ;; Account Definition
 ;; -------------------------------------------------------------------------
-(defclass+ account (object-with-id)
+(defcomponent account (object-with-id)
   ((user :host local :type user :relation accounts :export nil
 	 :documentation "Associated coretal4-user to this account"))
   (:ctor make-account))
@@ -31,7 +39,7 @@
 ;; -------------------------------------------------------------------------
 ;; Local Account Definition
 ;; -------------------------------------------------------------------------
-(defclass+ local-account (account)
+(defcomponent local-account (account)
   ((email :host local :print t :index t
 	  :documentation "Email address of the local account")
    (password :host local :print t
@@ -41,7 +49,7 @@
 ;; -------------------------------------------------------------------------
 ;; External Account Definition
 ;; -------------------------------------------------------------------------
-(defclass+ external-account (account)
+(defcomponent external-account (account)
   ((username :host local :print t :index t
 	     :documentation "Username association with this account")
    (token :host local :export nil
@@ -51,21 +59,21 @@
 ;; -------------------------------------------------------------------------
 ;; Facebook Account Definition
 ;; -------------------------------------------------------------------------
-(defclass+ fb-account (external-account)
+(defcomponent fb-account (external-account)
   ()
   (:ctor make-fb-account))
 
 ;; -------------------------------------------------------------------------
 ;; Google Account
 ;; -------------------------------------------------------------------------
-(defclass+ google-account (external-account)
+(defcomponent google-account (external-account)
   ()
   (:ctor make-google-account))
 
 ;; -------------------------------------------------------------------------
 ;; Twitter Account
 ;; -------------------------------------------------------------------------
-(defclass+ twitter-account (external-account)
+(defcomponent twitter-account (external-account)
   ()
   (:ctor make-twitter-account))
 
@@ -97,7 +105,7 @@
 ;; -------------------------------------------------------------------------
 ;; User Definition
 ;; -------------------------------------------------------------------------
-(defclass+ user (object-with-id)
+(defcomponent user (object-with-id)
   ((accounts :host both :type account* :relation user
 	     :documentation "Associated accounts to this user")
    (profiles :host both :type profile* :relation account

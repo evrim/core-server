@@ -11,7 +11,7 @@
    (title :host remote :initform "Please set crud title")
    (deletable-p :host both :initform t)
    (editable-p :host both :initform t)
-   (crud-css :host remote :initform "http://www.coretal.net/style/crud.css")
+   (crud-css :host remote :initform "style/crud.css")
    (yes-no-dialog-ctor :host remote :initform (yes-no-dialog))
    (_ckeditor :host remote
 	      :initform (<core:ckeditor
@@ -135,12 +135,19 @@
 	       (with-field (+ label ":") (view-me self slot))))
 	   (reverse (reverse (get-template-class self))))
 	  (<:p :class "buttons"
-	       (if (editable-p self)
-		   (<:input :type "button" :value "Edit"
-			    :onclick (lifte (do-edit self))))
-	       (if (deletable-p self)
-		   (<:input :type "button" :value "Delete"
-			    :onclick (lifte (do-delete1 self))))))))
+	       (cond
+		 ((editable-p self)
+		  (<:input :type "button" :value "Edit"
+			   :onclick (lifte (do-edit self))))
+		 ((deletable-p self)
+		  (<:input :type "button" :value "Delete"
+			   :onclick (lifte (do-delete1 self))))
+		 ((and (deletable-p self) (editable-p self))
+		  (list (<:input :type "button" :value "Edit"
+				 :onclick (lifte (do-edit self)))
+			(<:input :type "button" :value "Delete"
+				 :onclick (lifte (do-delete1 self)))))
+		 (t nil))))))
 
 (defmethod/remote do-cancel ((self <core:crud))
   (let ((_template (_template self)))

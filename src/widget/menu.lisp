@@ -3,7 +3,7 @@
 ;; -------------------------------------------------------------------------
 ;; Simple Menu Widget
 ;; -------------------------------------------------------------------------
-(defcomponent <widget:simple-menu-widget (<:ul simple-widget)
+(defcomponent <widget:simple-menu-widget (<:ul <widget:simple-widget)
   ((items :host remote :initform (error "Provide :items"))
    (hilight-class :host remote :initform "hilight")))
 

@@ -45,7 +45,7 @@
 
 (defmethod/remote destroy ((self simple-controller/anonymous))
   (mapcar-cc (lambda (a) (destroy a)) (constants self))
-  (aif (_page self) (destroy it))
+  (aif (_page self) (destroy it) nil)
   (delete-slots self 'constants)
   (call-next-method self))
 

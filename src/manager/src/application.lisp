@@ -46,9 +46,8 @@
   (if (null (status *app*)) (start *app*))
   (register server *app*))
 
-(defun unregister-me (&optional (server *server*)) (unregister server *app*))
-
-(defparameter +admin+ (list "admin" "admin"))
+(defun unregister-me (&optional (server *server*))
+  (unregister server *app*))
 
 ;; -------------------------------------------------------------------------
 ;; Index Loop
@@ -90,3 +89,25 @@
 	  (with-js () stream
 	    (setf window.location "index.html"))))))
 
+
+;; -------------------------------------------------------------------------
+;; Interface
+;; -------------------------------------------------------------------------
+(deftransaction make-api-key ((self manager-application) fqdn)
+  (let ((secret (ironclad::ascii-string-to-byte-array (database.get self 'api-secret))))
+    (core-server::hmac secret (format nil "~A-api-key" fqdn))))
+
+(deftransaction make-api-password ((self manager-application) fqdn)
+  (let ((secret (ironclad::ascii-string-to-byte-array (database.get self 'api-secret))))
+    (core-server::hmac secret (format nil "~A-api-password" fqdn))))
+
+(deftransaction site.add ((self manager-application) &key
+			  (fqdn (error "Provide :fqdn"))
+			  (api-key (make-api-key self fqdn))
+			  (api-password (make-api-password self fqdn))
+			  (owner (manager-user.find self :username "root"))
+			  (timestamp (get-universal-time)))
+  (assert (not (null owner)))
+  (call-next-method self :fqdn fqdn :api-key api-key
+		    :api-password api-password :owner owner
+		    :timestamp timestamp))

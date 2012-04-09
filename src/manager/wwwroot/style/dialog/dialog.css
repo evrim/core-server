@@ -74,12 +74,13 @@
     line-height:1.5em;
     margin-left:0;
     padding:5px;
+    text-align:left;
 }
 .coretal-dialog .buttons {
     padding:10px;
     padding-left:0px;
 }
-.coretal-dialog form { width:100%; }
+.coretal-dialog form { width:100%; text-align:left; }
 
 .coretal-dialog form div {
     /* clear:both; */

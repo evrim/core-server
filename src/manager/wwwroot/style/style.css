@@ -98,3 +98,11 @@ form span.validation {
     /*background-color: #616161;*/
     color : #fff;
 }
+
+.footer { 
+  background: white url(images/rlline.gif) no-repeat top right;
+  padding:10px;
+  color:#777;
+  line-height:1.4em;
+}
+.content h2 { padding:10px; }
