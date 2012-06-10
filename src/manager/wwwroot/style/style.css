@@ -3,7 +3,11 @@ h1 { margin:20px 0; margin-bottom:10px; }
 p { margin:10px 0; }
 body { line-height:1.2em; }
 
-a, a:link, a:visited, a:hover { color:#7ADD33; font-weight:bold; }
+a, a:link, a:visited, a:hover { 
+    color:#646D7E;
+    /* color:#7ADD33; */
+    font-weight:bold; 
+}
 
 form { width:100%; }
 input[type=text], select, input[type=password], textarea { 
@@ -64,15 +68,15 @@ form span.validation {
 
 
 .container {
-    background:url(images/bg.jpg);
+    background:url(images/bg-gray.jpg);
     background-repeat:repeat-x;
 }
 
 .header h1 { color:#353535; }
-.header h2 { color:#454545; font-size:11px; }
-.title { height:60px }
-.title h1 { color:#fff; }
-.title h2 { color:#eee; font-size:11px; }
+.header h2 { color:#777; font-size:11px; }
+.title { height:60px;}
+.title h1 { color:#fff; font-size:18px; margin-bottom:5px;}
+.title h2 { color:#bbb; font-size:11px; }
 
 .menu { height : 34px; padding-top:2px;}
 .menu li {
@@ -90,12 +94,15 @@ form span.validation {
 }
 .menu li a:hover {
     color : #fff;
-    background : #a7cc44;
+    /* background : #a7cc44; */
+    background: #646D7E;
     margin : 0;
 }
 .menu li a.hilight {
-    background : #616161 url(images/trcorner.gif) no-repeat top right;
+    /* background : #616161 url(images/trcorner.gif) no-repeat top right; */
     /*background-color: #616161;*/
+    /* background:#2e384b url(images/trcorner-blue.gif) no-repeat top right; */
+    background:#404d65 url(images/trcorner-blue.gif) no-repeat top right;  
     color : #fff;
 }
 
