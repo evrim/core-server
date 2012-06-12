@@ -118,7 +118,7 @@
 
 (defclass class+-slot-definition (standard-slot-definition)
   ((host :initarg :host :initform 'none :accessor slot-definition-host)
-   (client-type :initarg :client-type :initform 'primitive :accessor slot-definition-client-type)
+   (remote-type :initarg :remote-type :initform 'primitive :accessor slot-definition-remote-type)
    (relation :initarg :relation :initform nil :accessor slot-definition-relation)
    (index :initarg :index :initform nil :accessor slot-definition-index)
    (print :initarg :print :initform nil :accessor slot-definition-print)
@@ -143,7 +143,7 @@
   (find-class 'class+-effective-slot-definition))
 
 (defmethod %class+-inherited-slots ((class class+))
-  '(host client-type sb-pcl::readers sb-pcl::writers relation
+  '(host remote-type sb-pcl::readers sb-pcl::writers relation
     index print label lift export leaf authorize))
 
 (defmethod compute-effective-slot-definition ((class class+) slot-name
@@ -178,7 +178,7 @@
 		(slot-definition-initform slot)))
 	  :supplied-p (slot-definition-supplied-p slot)
 	  :host (slot-definition-host slot)
-	  :client-type (slot-definition-client-type slot)
+	  :remote-type (slot-definition-remote-type slot)
 	  :type (sb-pcl::slot-definition-type slot)
 	  :relation (slot-definition-relation slot)
 	  :writer (car (reverse (sb-pcl::slot-definition-writers slot)))

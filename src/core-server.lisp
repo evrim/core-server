@@ -1231,7 +1231,9 @@
 	   #:required-value-input #:number-value-input
 	   #:username-input #:tab #:crud #:date-time-input
 	   #:auth #:core #:ckeditor #:lazy-ckeditor
-	   #:select-input #:radio-group #:simple-clock #:table-with-crud))
+	   #:select-input #:multiple-select-input
+	   #:radio-group #:simple-clock #:table-with-crud
+	   #:multiple-checkbox))
 
 (defpackage :tr.gen.core.server.atom
   (:nicknames :<atom)

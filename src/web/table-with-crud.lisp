@@ -66,4 +66,6 @@
 		 (delete-instance self result)
 		 (setf (_crud self) (replace-node (_crud self) (<:div)))
 		 (remove-instance (_table self) result))
-		(t nil))))))))))
+		(t
+		 (_debug (list "crud" "action" action "args" args))
+		 nil))))))))))

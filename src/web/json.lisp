@@ -172,14 +172,14 @@
       (setf (aref label pos) #\Space))))
 
 (defun slot->jobject (slot)
-  (with-slotdef (name client-type label) slot
+  (with-slotdef (name remote-type label) slot
     (cond 
-      ((string= 'password client-type)
+      ((string= 'password remote-type)
        (jobject :name (symbol-to-js name)
 		;; :value ""
 		:type "password"
 		:label (or label (convert-label-to-javascript name))))
-      ((string= 'string client-type)
+      ((string= 'string remote-type)
        (jobject :name (symbol-to-js name)
 		;; :value (let ((value (slot-value object name)))
 		;; 	 (typecase value
@@ -190,11 +190,11 @@
       (t
        (jobject :name (symbol-to-js name)
 		;; :value (slot-value object name)
-		:type (symbol-to-js client-type)
+		:type (symbol-to-js remote-type)
 		;; (typecase (slot-value object name)
 		;;   (string "string")
 		;;   (boolean "boolean")
-		;;   (t (symbol-to-js client-type)))
+		;;   (t (symbol-to-js remote-type)))
 		
 		:label (or label (convert-label-to-javascript name)))))))
 
@@ -215,9 +215,9 @@
 					       template-class)
 					   (class-of object))))
 		 (reduce0 (lambda (acc slot)
-			    (with-slotdef (name client-type) slot
+			    (with-slotdef (name remote-type) slot
 			      (cons (make-keyword name)
-				    (cons (if (not (string= 'password client-type))
+				    (cons (if (not (string= 'password remote-type))
 					      (slot-value object name)) acc))))
 			  (class+.remote-slots (or template-class (class-of object)))))))
 

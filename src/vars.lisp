@@ -125,6 +125,9 @@
 (defvar +jquery-tree-uri+ "/js/jquery-tree/jquery.tree.js")
 (defvar +jquery-cookie-uri+ "/js/jquery-tree/jquery.cookie.js")
 
+(defvar +jquery-date-time-picker-uri+ "/js/jquery-ui-timepicker-addon.js")
+(defvar +jquery-date-time-picker-css+ "/js/jquery-ui-timepicker-addon.css")
+
 ;; -------------------------------------------------------------------------
 ;; Picasa Variables
 ;; -------------------------------------------------------------------------

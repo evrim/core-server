@@ -1,6 +1,8 @@
+.crud .field .label-edit {padding:10px 0;}
+.crud .field .value-view {padding:0px 5px;}
 .crud .field .label {
  padding:10px;
- padding-right:2px; 
+ padding-right:5px; 
  margin-right:2px;
  float:left;
  font-weight:bold;
@@ -8,6 +10,7 @@
  background-color:#EEEEEE;
  text-align:right;
  font-size:12px;
+ /* border-right:3px solid #777; */
 }
 .crud .field .value {
   padding:10px;
@@ -15,6 +18,7 @@
   padding-left:5px;
   background-color:#CCCCCC;
   color:#000000;
+  border-left:3px solid #777;
 }
 /* .crud .field .value > a, .crud .field .value > a:link, .crud .field .value a:visited, .crud .field .value span { */
 /*   text-decoration:underline; */
@@ -40,3 +44,26 @@
   padding:5px;
   clear:both;
 }
+
+.crud span.validation { display:inline; color:#008; padding-left:5px; }
+.crud form .field .value input, .crud form .field .value select {
+   padding:5px;
+}
+.crud form .field .value input, .crud form .field .value select {
+  min-width:170px;
+}
+.crud form .field .value input[type=checkbox] {
+  min-width:30px;
+}
+.crud form input[type=submit], .crud form input[type=reset], .crud form input[type=button] {
+    padding:5px 10px;
+    min-width:60px;
+}
+
+.crud form .field .value input.invalid { 
+    border-left:2px solid #8A0000;
+    border-top:2px solid #8A0000;
+    border-bottom:2px solid #B94E4E;
+    border-right:2px solid #B94E4E;
+}
+.crud form .field span.invalid { color:#8A0000; }

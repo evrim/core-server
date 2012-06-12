@@ -12,17 +12,24 @@
    (valid-class :host remote :initform "valid")
    (invalid-class :host remote :initform "invalid")
    (valid :host remote :initform nil))
-  (:default-initargs :value ""))
+  (:default-initargs :value "" :type "text"))
 
-(defmethod/remote set-validation-message ((self <core:validating-input) msg)
-  (when (not (null (validation-span-id self)))
-    (let ((element (document.get-element-by-id (validation-span-id self))))
-      (when element
-	(setf (slot-value element 'inner-h-t-m-l) msg)))))
+(defmethod/remote set-validation-message ((self <core:validating-input)
+					  result msg)
+  (awhen (validation-span-id self)
+    (awhen (document.get-element-by-id it)
+      (cond
+	(result
+	 (add-class it (valid-class self))
+	 (remove-class it (invalid-class self)))
+	(t
+	 (add-class it (invalid-class self))
+	 (remove-class it (valid-class self))))
+      (setf (slot-value it 'inner-h-t-m-l) msg))))
 
 (defmethod/remote enable-or-disable-form ((self <core:validating-input))
-  (when (not (null (slot-value self 'form))) ;; not avail at first run-validate
-    (let* ((form (slot-value self 'form))
+  (awhen (slot-value self 'form) ;; not avail at first run-validate
+    (let* ((form it)
 	   (valid (reduce-cc
 		   (lambda (acc input)
 		     (cond
@@ -54,13 +61,13 @@
     (cond
       ((typep result 'string)
        (setf (valid self) nil)
-       (set-validation-message self result)
+       (set-validation-message self nil result)
        (add-class self (invalid-class self))
        (remove-class self (valid-class self))
        (enable-or-disable-form self))
       (t
        (setf (valid self) t)
-       (set-validation-message self "OK")
+       (set-validation-message self t "OK")
        (add-class self (valid-class self))
        (remove-class self (invalid-class self))
        (enable-or-disable-form self)))))
@@ -84,14 +91,17 @@
      (slot-value self 'value))))
 
 (defmethod/remote init ((self <core:validating-input))
-  (run-validator self))
+  (flet ((do-validate (f)
+	   (if (slot-value self 'form)
+	       (run-validator self)
+	       (make-web-thread (lambda () (f f))))))
+    (do-validate do-validate)))
 
 ;; +-------------------------------------------------------------------------
 ;; | Default Value HTML Input
 ;; +-------------------------------------------------------------------------
 (defcomponent <core:default-value-input (<core:validating-input)
-  ((default-value :host remote :initform nil))
-  (:default-initargs :value ""))
+  ((default-value :host remote :initform nil)))
 
 (defmethod/remote adjust-default-value ((self <core:default-value-input))
   (cond
@@ -132,7 +142,8 @@
 ;; | Email HTML Component
 ;; +-------------------------------------------------------------------------
 (defcomponent <core:email-input (<core:default-value-input)
-  ())
+  ()
+  (:default-initargs :default-value "Enter email"))
 
 (defmethod/remote validate-email ((self <core:email-input))
   (let ((expression (regex "/^[a-zA-Z0-9._-]+@([a-zA-Z0-9.-]+\.)+[a-zA-Z0-9.-]{2,4}$/")))
@@ -151,7 +162,7 @@
 ;; +-------------------------------------------------------------------------
 (defcomponent <core:password-input (<core:default-value-input)
   ((min-length :initform 6 :host remote))
-  (:default-initargs :type "password"))
+  (:default-initargs :type "password" :default-value "Enter password"))
 
 (defmethod/remote validate-password ((self <core:password-input))
   (cond
@@ -196,14 +207,13 @@
 ;; +-------------------------------------------------------------------------
 (defcomponent <core:number-value-input (<core:default-value-input)
   ()
-  (:default-initargs :default-value "Enter a number" :type "text"))
+  (:default-initargs :default-value "Enter a number"))
 
+;; FIXME: validate loses cc.
 (defmethod/remote get-input-value ((self <core:number-value-input))
-  (cond
-    ((eq "string" (typeof (validate self)))
-     nil)
-    (t
-     (eval (+ (slot-value self 'value) " ")))))
+  ;; (if (not (eq "string" (typeof (validate self))))
+  ;;     (parse-float (slot-value self 'value)))
+  (parse-float (slot-value self 'value)))
 
 (defmethod/remote validate-number ((self <core:number-value-input))
   (let ((_val (slot-value self 'value)))
@@ -225,11 +235,11 @@
 ;; -------------------------------------------------------------------------
 (defcomponent <core:date-time-input (<core:validating-input supply-jquery-ui)
   ((jquery-date-time-picker-uri :host remote
-				:initform "http://www.coretal.net/js/jquery-ui-timepicker-addon.js")
+				:initform +jquery-date-time-picker-uri+)
    (jquery-date-time-picker-css :host remote
-				:initform "http://www.coretal.net/js/jquery-ui-timepicker-addon.css")
+				:initform +jquery-date-time-picker-css+)
    (default-value :host remote))
-  (:default-initargs :default-value "Enter a date" :type "text"))
+  (:default-initargs :default-value "Enter a date"))
 
 (defmethod/remote get-input-value ((self <core:date-time-input))
   (.datetimepicker (j-query self) "getDate"))
@@ -254,7 +264,7 @@
 ;; -------------------------------------------------------------------------
 (defcomponent <core:select-input (<:select)
   ((current-value :host remote)
-   (select-values :host remote)
+   (option-values :host remote)
    (item-equal-p :host remote :initform nil)
    (_value-cache :host remote :initform nil)))
 
@@ -265,7 +275,7 @@
   (setf (_value-cache self) (jobject))
   (let ((equal-fun (or (item-equal-p self) (lambda (a b) (eq a b))))
 	(hash-list (mapcar (lambda (a) (random-string))
-			   (seq (slot-value (select-values self) 'length)))))
+			   (seq (slot-value (option-values self) 'length)))))
     (mapcar (lambda (a) (append self a))
 	    (mapcar
 	     (lambda (a)
@@ -287,12 +297,90 @@
 						   value)
 				:value hash (_ name)))))))
 	     (mapcar2 (lambda (a b) (list b a))
-		      (select-values self)
+		      (option-values self)
+		      hash-list)))))
+
+;; -------------------------------------------------------------------------
+;; Multiple Select Input
+;; -------------------------------------------------------------------------
+(defcomponent <core:multiple-select-input (<core:select-input)
+  ()
+  (:default-initargs :size 5 :multiple "multiple"))
+
+(defmethod/remote get-input-value ((self <core:multiple-select-input))
+  (reverse-cc
+   (reduce-cc (lambda (acc option)
+		(if (slot-value option 'selected)
+		    (cons (slot-value (_value-cache self)
+				      (slot-value option 'value))
+			  acc)
+		    acc))
+	      (slot-value self 'options) nil)))
+
+(defmethod/remote init ((self <core:multiple-select-input))
+  (setf (slot-value self 'multiple) "multiple")
+  (call-next-method self))
+
+;; -------------------------------------------------------------------------
+;; Multiple Checkbox
+;; -------------------------------------------------------------------------
+(defcomponent <core:multiple-checkbox (<:div)
+  ((current-value :host remote)
+   (option-values :host remote)
+   (item-equal-p :host remote :initform nil)
+   (_value-cache :host remote :initform nil)))
+
+(defmethod/remote get-input-value ((self <core:multiple-checkbox))
+  (reverse-cc
+   (reduce-cc (lambda (acc checkbox)
+		(if (slot-value checkbox 'checked)
+		    (cons (slot-value (_value-cache self)
+				      (slot-value checkbox 'value))
+			  acc)
+		    acc))
+	      (node-search (lambda (a)
+			     (with-slots (type) a
+			       (and type
+				    (eq "CHECKBOX" (.to-upper-case type)))))
+			   self) nil)))
+
+(defmethod/remote init ((self <core:multiple-checkbox))
+  (setf (_value-cache self) (jobject))
+  (let ((equal-fun (or (item-equal-p self) (lambda (a b) (eq a b))))
+	(hash-list (mapcar (lambda (a) (random-string))
+			   (seq (slot-value (option-values self) 'length)))))
+    (mapcar (lambda (a) (append self a))
+	    (mapcar
+	     (lambda (a)
+	       (destructuring-bind (hash data) a
+		 ;; (_debug (list "a" a "hash" hash "data" data))
+		 (cond
+		   ((atom data)
+		    (setf (slot-value (_value-cache self) hash) data)
+		    (<:div (<:input :type "checkbox"
+				    :checked (call/cc equal-fun
+						      (current-value self)
+						      data)
+				    :value hash)
+			   (_ data)))
+		   (t
+		    (destructuring-bind (name value) data
+		      ;; (_debug (list 2 "name" name "value" value))
+		      (setf (slot-value (_value-cache self) hash) value)
+		      (<:div (<:input :type "checkbox"
+				      :checked (call/cc equal-fun
+							(current-value self)
+							value)
+				      :value hash)
+			     (_ name)))))))
+	     (mapcar2 (lambda (a b) (list b a))
+		      (option-values self)
 		      hash-list)))))
 
 ;; -------------------------------------------------------------------------
 ;; Radio Group
 ;; -------------------------------------------------------------------------
+;; NOTE: Used in Coretal Sidebar
 (defcomponent <core:radio-group (<:div)
   ((items :host remote)
    (_result :host remote)))

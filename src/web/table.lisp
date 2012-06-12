@@ -3,7 +3,7 @@
 ;; -------------------------------------------------------------------------
 ;; Table Component (Single Select)
 ;; -------------------------------------------------------------------------
-(defcomponent <core:table (<:table callable-component)
+(defcomponent <core:table (<:table slot-representations callable-component)
   ((instances :host remote :initarg :instances :initform nil)
    (primary-field :host remote :initform "name")
    (template-class :initform nil :host remote)
@@ -140,13 +140,12 @@
 	   (<:thead
 	    (<:tr
 	     (<:th :class "radio" " ")
-	     (reverse
-	      (mapcar (lambda (slot)
-			(with-slots (name label) slot
-			  (<:th :class name
-				(<:a :onclick (lifte (sort-table self slot))
-				     (or label name)))))
-		      (template-class self)))))))
+	     (mapcar (lambda (slot)
+		       (with-slots (name label) slot
+			 (<:th :class name
+			       (<:a :onclick (lifte (sort-table self slot))
+				    (or label name)))))
+		     (template-class self))))))
 
 (defmethod/remote tbody ((self <core:table))
   (let ((_instances (instances self)))
@@ -165,17 +164,10 @@
 	      (setf (slot-value object 'radio) radio)
 	      (<:tr :class (if (eq 0 (mod index 2)) (hilight-class self))
 		    (cons
-		     (<:td :class "radio" radio)	       
-		     (reverse
-		      (mapcar
-		       (lambda (slot)
-			 (with-slots (name label initform reader) slot
-			   (let ((value (if reader
-					    (reader object)
-					    (slot-value object name))))
-			     (<:td :class name
-				   (or value (slot-value slot 'initform))))))
-		       (template-class self)))))))
+		     (<:td :class "radio" radio)
+		     (mapcar (lambda (slot)
+			       (<:td :class name (get-slot-view self slot object)))
+			     (template-class self))))))
 	  _instances (seq (slot-value _instances 'length)))))))
 
 (defmethod/remote tfoot ((self <core:table))
@@ -251,20 +243,10 @@
       (make-web-thread (lambda () (wrap-me head foot))))))
 
 (defmacro deftable (name supers slots &rest rest)
-  `(progn
-     (defcomponent ,name (,@supers <core:table)
-       ()
-       (:default-initargs
-	 :template-class
-	   (jobject
-	    ,@(reduce
-	       (lambda (acc slot)			
-		 (append acc
-			 `(,(make-keyword (car slot))
-			    (core-server::jobject
-			     :name ',(symbol-to-js (car slot)) ,@(cdr slot)))))
-	       (reverse slots) :initial-value nil))
-	 ,@(cdr (flatten1 rest))))))
+  `(defcomponent ,name (,@supers <core:table)
+     ()
+     (:default-initargs :template-class ,(%generate-template-class slots)
+       ,@(cdr (flatten1 rest)))))
 
 ;; +----------------------------------------------------------------------------
 ;; | Table Component

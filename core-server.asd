@@ -221,6 +221,7 @@
 				   (:file "dialog")
 				   (:file "extra")
 				   (:file "auth")
+				   (:file "representations")
 				   (:file "table")
 				   (:file "crud")
 				   (:file "table-with-crud")
