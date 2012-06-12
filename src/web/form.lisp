@@ -30,23 +30,30 @@
 (defmethod/remote enable-or-disable-form ((self <core:validating-input))
   (awhen (slot-value self 'form) ;; not avail at first run-validate
     (let* ((form it)
-	   (valid (reduce-cc
-		   (lambda (acc input)
-		     (cond
-		       ((or (eq (typeof (slot-value input 'valid)) "undefined")
-			    (slot-value input 'disabled))
-			acc)
-		       (t (and acc (valid input)))))
-		   (append (reverse (.get-elements-by-tag-name form "INPUT"))
-			   (append
-			    (reverse (.get-elements-by-tag-name form "SELECT"))
-			    (reverse (.get-elements-by-tag-name form "TEXTAREA"))))
-		   t)))
+	   (valid
+	    (reduce-cc
+	     (lambda (acc input)
+	       (cond
+		 ((or (eq (typeof (slot-value input 'valid)) "undefined")
+		      (slot-value input 'disabled))
+		  acc)
+		 (t (and acc (valid input)))))
+	     (append (reverse (.get-elements-by-tag-name form "INPUT"))
+		     (append
+		      (reverse (.get-elements-by-tag-name form "SELECT"))
+		      (reverse (.get-elements-by-tag-name form "TEXTAREA"))))
+	     t)))
       (mapcar (lambda (input)
-		(when (and input.type (eq "SUBMIT" (input.type.to-upper-case)))
-		  (if valid
-		      (setf input.disabled false)
-		      (setf input.disabled true)))
+		(when (and (slot-value input 'type)
+			   (eq "SUBMIT"
+			       (.to-upper-case (slot-value input 'type))))
+		  (cond
+		    (valid
+		     (setf (slot-value input 'disabled) false)
+		     (remove-class input "disabled"))
+		    (t
+		     (setf (slot-value input 'disabled) true)
+		     (add-class input "disabled"))))
 		nil)
 	      (self.form.get-elements-by-tag-name "INPUT")))))
 
@@ -125,6 +132,12 @@
 	   (eq (slot-value self 'default-value) (slot-value self 'value)))
       (_"This field is required.")
       (call-next-method self)))
+
+(defmethod/remote reset-input-value ((self <core:default-value-input))
+  (setf (slot-value self 'value) "")
+  (adjust-default-value self)
+  (run-validator self)
+  (set-validation-message self nil ""))
 
 (defmethod/remote init ((self <core:default-value-input))
   (if (null (slot-value self 'default-value))
