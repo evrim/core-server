@@ -85,9 +85,13 @@
 	      (set-ret
 	       (make-component slot-editor :value _value
 			       :validation-span-id _id)))
-	     ((member remote-type '("date" "timestamp")) ;; OK
+	     ((eq remote-type "timestamp")
 	      (set-ret
 	       (make-component slot-editor :value _value
+			       :validation-span-id _id)))
+	     ((eq remote-type "date")
+	      (set-ret
+	       (make-component slot-editor :value _value :show-time nil
 			       :validation-span-id _id)))
 	     ((eq "html" remote-type) ;; OK
 	      (let* ((value (cond

@@ -238,7 +238,8 @@
 				:initform +jquery-date-time-picker-uri+)
    (jquery-date-time-picker-css :host remote
 				:initform +jquery-date-time-picker-css+)
-   (default-value :host remote))
+   (default-value :host remote)
+   (show-time :host remote :initform t))
   (:default-initargs :default-value "Enter a date"))
 
 (defmethod/remote get-input-value ((self <core:date-time-input))
@@ -251,7 +252,10 @@
   (load-javascript (jquery-date-time-picker-uri self)
 		   (lambda () (not (null j-query.fn.datetimepicker))))  
   (.datetimepicker (j-query self)
-		   (jobject :time-format "h:m" :separator " @ "))
+		   (jobject :time-format "h:m" :separator " @ "
+			    :show-timepicker (if (show-time self)
+						 t
+						 false)))
   (.datetimepicker (j-query self)
 		   "setDate" (or (if (typep (default-value self) 'string)
 				     (setf (default-value self)
