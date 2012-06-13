@@ -10,61 +10,61 @@ a, a:link, a:visited, a:hover {
 }
 
 form { width:100%; }
-input[type=text], select, input[type=password], textarea { 
-    background-image:url(images/input-bg.png);
-    font-size:15px;
-    padding:5px;
-    border:1px solid #cc0000;
-    color:#000000;
-}
-.content input[type=submit] {
-    padding:5px;
-    text-align:center;
-    margin:5px;
-}
-textarea {min-height:80px;}
-select {min-height:30px; width:150px;}
-input[type=text], input[type=password] {
-    width:150px;
-    min-height:16px;
-    margin:2px;
-}
+/* input[type=text], select, input[type=password], textarea { */
+/*     background-image:url(images/input-bg.png); */
+/*     font-size:15px; */
+/*     padding:5px; */
+/*     border:1px solid #cc0000; */
+/*     color:#000000; */
+/* } */
+/* .content input[type=submit] { */
+/*     padding:5px; */
+/*     text-align:center; */
+/*     margin:5px; */
+/* } */
+/* textarea {min-height:80px;} */
+/* select {min-height:30px; width:150px;} */
+/* input[type=text], input[type=password] { */
+/*     width:150px; */
+/*     min-height:16px; */
+/*     margin:2px; */
+/* } */
 
-input[type=submit], input[type=button], input[type=reset]  { 
-    padding:5px;
-    padding-right:10px;
-    padding-left:10px;
-    margin:0px 5px 0px 2px;
-    font-size:14px;
-    background: #EEEEEE;
-    border-top:1px solid #EEEEEE;
-    border-bottom:1px solid #000000;
-    border-left:1px solid #EEEEEE; 
-    border-right:1px solid #000000;
-    text-align:center;
-}
-.label {font-size:14px;}
-.field { margin-bottom:7px; }
-input.valid, textarea.valid {
-  border:2px solid #000088 !important;
-}
-input.invalid, textarea.invalid {
-  border:2px solid #cc0000 !important;
-}
-form input.text { 
-    background-image:url(images/input-bg.png);
-    font-size:15px;
-    width:220px;
-    padding:5px;
-    border:1px solid #cc0000;
-}
-form span.validation { 
-    font-size:13px;
-    display:block;
-    padding:2px 0px;
-    /* color:#770000; */
-    color:#DEDEDE;
-}
+/* input[type=submit], input[type=button], input[type=reset]  {  */
+/*     padding:5px; */
+/*     padding-right:10px; */
+/*     padding-left:10px; */
+/*     margin:0px 5px 0px 2px; */
+/*     font-size:14px; */
+/*     background: #EEEEEE; */
+/*     border-top:1px solid #EEEEEE; */
+/*     border-bottom:1px solid #000000; */
+/*     border-left:1px solid #EEEEEE;  */
+/*     border-right:1px solid #000000; */
+/*     text-align:center; */
+/* } */
+/* .label {font-size:14px;} */
+/* .field { margin-bottom:7px; } */
+/* input.valid, textarea.valid { */
+/*   border:2px solid #000088 !important; */
+/* } */
+/* input.invalid, textarea.invalid { */
+/*   border:2px solid #cc0000 !important; */
+/* } */
+/* form input.text {  */
+/*     background-image:url(images/input-bg.png); */
+/*     font-size:15px; */
+/*     width:220px; */
+/*     padding:5px; */
+/*     border:1px solid #cc0000; */
+/* } */
+/* form span.validation {  */
+/*     font-size:13px; */
+/*     display:block; */
+/*     padding:2px 0px; */
+/*     /\* color:#770000; *\/ */
+/*     color:#DEDEDE; */
+/* } */
 
 
 .container {

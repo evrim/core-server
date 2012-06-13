@@ -1,74 +1,60 @@
-table.coretal-table {
+table.core-table {
   width:100%;
   border:0;
   background-color:#FFFFFF;
   border-spacing:2px;
 }
-table.tr { 
+table.core-table tr { 
   margin:2px;
 }
-table.coretal-table td, table.coretal-table th {
+table.core-table td, table.core-table th {
   border:0;
 }
-table.coretal-table th {
+table.core-table th {
   padding:8px 5px;
   font-size:13px;
   background-color:#222222;
   color:#ffffff;
   text-align:center;
 }
-table.coretal-table th a {
+table.core-table th a {
   font-size:13px;
   font-weight:bold;
   color:#ffffff; 
   text-decoration:none;
 }
-table.coretal-table th a:hover {
+table.core-table th a:hover {
   text-decoration:underline;
 }
-table.coretal-table td {
+table.core-table td {
   padding:5px;
   background-color:#EEEEEE;
   text-align:center;
   font-size:12px;
 }
-table.coretal-table tr.hilighted td {
+table.core-table tr.hilighted td {
   background-color:#CCCCCC;
 }
-table.coretal-table tr.selected td {
+table.core-table tr.selected td {
   background-color:#646D7E;
   color:#ffffff;
 }
-table.coretal-table tfoot tr td { 
+table.core-table tfoot tr td { 
   background-color:#CCCCCC;
   color:#000000;
   padding:4px;
   text-align:right;
 }
-table.coretal-table th.radio {width:20px;}
-table.coretal-table td.radio {width:20px;}
-table.coretal-table th.name {width:130px;}
-table.coretal-table td.name {
+table.core-table th.first-column {width:20px;}
+table.core-table td.first-column {width:20px;}
+table.core-table th.name {width:130px;}
+table.core-table td.name {
 /*     width:130px; */
 /*     font-size:1.1em; */
 /*     font-weight:bold; */
 }
-div.table-overflow {
+div.core-table-overflow {
     max-height:260px;
     overflow:auto;
     overflow-x:hidden;
-}
-table.coretal-table {
-    width:100%;
-    /* display:block; */
-    /* height:262px; */
-    /* overflow-y: auto; */
-    /* overflow-x:hidden; */
-    /* width:100%; */
-    /* max-height:250px; */
-    .height:250px;
-    /* .height:auto; */
-    /*   height:100%; */
-    /* overflow-y:auto; */
-    /* overflow-x:hidden; */
 }

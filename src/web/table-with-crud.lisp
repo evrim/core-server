@@ -35,15 +35,27 @@
 	(add-instance (_table self) (make-component _instance)))))
 
 (defmethod/remote make-form ((self <core:table-with-crud))
-  (let ((val (make-component (input-element self))))
+  (let* ((_id (random-string))
+	 (_span (<:span :id _id :class "validation"))
+	 (val (make-component (input-element self)
+			      :validation-span-id _id)))
     (add-class val "width-250px")
     (add-class val "pad5")
-    (<:form :onsubmit (lifte (do-add-instance self (get-input-value value))
-			     (setf (slot-value val 'value) ""))
+    (<:form :onsubmit (lifte
+		       (let ((_value (get-input-value val)))
+			 (+ _value "")
+			 (reset-input-value val)
+			 (do-add-instance self _value)))
+	    _span
 	    val
 	    (<:input :type "submit" :disabled t :value "Add"))))
 
+(defmethod/remote destroy ((self <core:table-with-crud))
+  (remove-class self "core")
+  (call-next-method self))
+
 (defmethod/remote init ((self <core:table-with-crud))
+  (add-class self "core")
   (call-next-method self)
   (let ((form (make-form self))
 	(table (setf (_table self) (make-table self)))

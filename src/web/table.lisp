@@ -9,25 +9,23 @@
    (template-class :initform nil :host remote)
    (hilight-class :initform "hilighted" :host remote)
    (selected-class :initform "selected" :host remote)
+   (table-css :host remote :initform "style/table.css")
    (selected :initform nil :host remote)
    (_sorted-slot :host remote)
    (_head :host remote)
    (_foot :host remote)))
 
 (defmethod/remote get-template-class ((self <core:table))
-  (let ((_instances (instances self)))
-    (or (slot-value self 'template-class)
-	(and _instances (slot-value (car _instances) 'core-class)))))
+  (with-slots (instances) self
+    (if (and instances (null (template-class self)))
+	(setf (template-class self)
+	      (slot-value (car instances) 'core-class))))
+  (slot-value self 'template-class))
 
 (defmethod/remote column-span ((self <core:table))
-  (call/cc
-   (event (c)
-     (apply self.get-template-class self
-	    (list
-	     (lambda (_class)		      
-	       (let ((a 1))
-		 (mapobject (lambda (k v) (setq a (+ 1 a))) _class)
-		 (c a))))))))
+  (aif (object-to-list (template-class self))
+       (slot-value it 'length)
+       1))
 
 (defmethod/remote sort-table ((self <core:table) slot)
   (with-slots (name) slot
@@ -51,95 +49,27 @@
       (awhen (find (lambda (a) (eq a it)) (instances self))
 	(_on-select self it)))))
 
-(defmethod/remote _on-select ((self <core:table) object)
-  (flet ((parent (node) (slot-value node 'parent-node)))
-    (mapcar-cc (lambda (object)
-		 (let* ((_radio (slot-value object 'radio))
-			(_parent (call/cc parent (call/cc parent _radio))))
-		   (remove-class _parent (selected-class self))))
-	       (instances self))
-    (add-class (call/cc parent (call/cc parent (slot-value object 'radio)))
-	       (selected-class self))
-    (setf (slot-value (slot-value object 'radio) 'checked) t
-	  (selected self) object)))
+(defmethod/remote _on-select ((self <core:table) instance)
+  (mapcar-cc (lambda (instance)
+	       (awhen (slot-value instance '_table-row)
+		 (remove-class it (selected-class self))))
+	     (instances self))
 
-(defmethod/remote on-select ((self <core:table) object)
-  (_on-select self object)
-  (answer-component self object))
+  (flet ((first-child (node) (slot-value node 'first-child)))
+    (awhen (slot-value instance '_table-row)
+      (add-class it (selected-class self))
+      (setf (slot-value (call/cc first-child (call/cc first-child it)) 'checked) t
+	    (selected self) instance))))
 
-(defmethod/remote add-instance ((self <core:table) instance)
-  (let ((tbody (aref (.get-elements-by-tag-name self "TBODY") 0))
-	(radio (<:input :type "radio"
-			:name "table-object"
-			:onclick (event (e)
-				   (with-call/cc
-				     (on-select self instance))
-				   true)))
-	(_instances (instances self)))
-    
-    (setf (slot-value instance 'radio) radio)
-
-    (if (null _instances)
-	(let ((tbody (aref (.get-elements-by-tag-name self "TBODY") 0)))
-	  (.remove-child tbody (slot-value tbody 'first-child))))
-    
-    (setf (instances self) (cons instance (instances self)))
-    (setf (_foot self) (replace-node (_foot self) (tfoot self)))    
-    (append tbody
-	    (<:tr :class (if (eq 1 (mod (slot-value (instances self) 'length)
-					2))
-			     (hilight-class self)
-			     "")
-	     (cons
-	      (<:td :class "radio" radio)	       
-	      (reverse
-	       (mapcar
-		(lambda (slot)
-		  (with-slots (name label initform reader) slot
-		    (let ((value (if reader
-				     (reader instance)
-				     (slot-value instance name))))
-		      (<:td :class name
-			    (or value (slot-value slot 'initform))))))
-		(template-class self))))))
-    (setf (slot-value (slot-value self 'parent-node) 'scroll-top)
-	  "10000")
-    instance))
-
-(defmethod/remote remove-instance ((self <core:table) instance)
-  (let ((_instances (instances self)))    
-    (setf (instances self)
-	  (filter-cc (lambda (a) (not (eq instance a))) _instances)))
-
-  (awhen (slot-value instance 'radio)
-    (labels ((find-parent-tr (node)
-	       (cond
-		 ((null node)
-		  nil)
-		 ((eq "tr" (.to-lower-case (slot-value node 'tag-name)))
-		  node)
-		 (t
-		  (call/cc find-parent-tr (slot-value node 'parent-node))))))
-      (awhen (find-parent-tr it)
-	(.remove-child (slot-value it 'parent-node) it))))
-
-  (delete-slot instance 'radio)
-  (if (eq (selected self) instance) (setf (selected self) nil))
-  (setf (_foot self)
-	(replace-node (_foot self) (tfoot self)))
-
-  (if (null (instances self))
-      (replace-node (aref (.get-elements-by-tag-name self "TBODY") 0)
-		    (tbody self)))
-
-  (setf (slot-value (slot-value self 'parent-node) 'scroll-top) "0")
-  instance)
+(defmethod/remote on-select ((self <core:table) instance)
+  (_on-select self instance)
+  (answer-component self instance))
 
 (defmethod/remote thead ((self <core:table))
   (<:table :class (slot-value self 'class-name)
 	   (<:thead
 	    (<:tr
-	     (<:th :class "radio" " ")
+	     (<:th :class "first-column" " ")
 	     (mapcar (lambda (slot)
 		       (with-slots (name label) slot
 			 (<:th :class name
@@ -147,38 +77,47 @@
 				    (or label name)))))
 		     (template-class self))))))
 
+(defmethod/remote make-row ((self <core:table) instance)
+  (let* ((radio (<:input :type "radio" :name "table-object"
+			 :onclick (lifte2 (on-select self instance))))
+	 (row (<:tr (cons (<:td :class "first-column" radio)
+			  (mapcar
+			   (lambda (slot)
+			     (with-slots (name reader) slot
+			       (let ((value (if reader
+						(reader instance)
+						(slot-value instance name))))
+				 (<:td :class name
+				       (or value (slot-value slot 'initform))))))
+			   (template-class self))))))
+    (setf (slot-value instance '_table-row) row)
+    row))
+
 (defmethod/remote tbody ((self <core:table))
-  (let ((_instances (instances self)))
-    (if (null _instances)
-	(<:tbody (<:tr (<:td :colspan (column-span self)
-			     "Table has no elements.")))
-	(<:tbody
-	 (mapcar2-cc
-	  (lambda (object index)
-	    (let ((radio
-		   (<:input :type "radio"
-			    :name "table-object"
-			    :onclick (event (e)
-				      (with-call/cc (on-select self object))
-				      true))))
-	      (setf (slot-value object 'radio) radio)
-	      (<:tr :class (if (eq 0 (mod index 2)) (hilight-class self))
-		    (cons
-		     (<:td :class "radio" radio)
-		     (mapcar (lambda (slot)
-			       (<:td :class name (get-slot-view self slot object)))
-			     (template-class self))))))
-	  _instances (seq (slot-value _instances 'length)))))))
+  (aif (instances self)
+       (<:tbody
+	(mapcar2-cc
+	 (lambda (instance index)
+	   (let ((row (make-row self instance)))
+	     (if (eq 0 (mod index 2))
+		 (add-class row (hilight-class self)))
+	     row))
+	 it (seq (slot-value it 'length))))
+       (<:tbody
+	(<:tr (<:td :colspan (column-span self) "Table has no elements.")))))
 
 (defmethod/remote tfoot ((self <core:table))
   (<:table :class (slot-value self 'class-name)
-	   (if (instances self)
-	       (<:tfoot
-		(<:tr
-		 (<:td :class "text-right"
-		       :colspan (column-span self)
-		       (+ (slot-value (instances self) 'length) " item(s)."))))
-	       (<:tfoot))))
+	   (<:tfoot
+	    (<:tr
+	     (<:td :class "text-right"
+		   :colspan (column-span self)
+		   (aif (instances self)
+			(+ (slot-value it 'length) " item(s).")
+			"No items."))))))
+
+(defmethod/remote update-tfoot ((self <core:table))
+  (setf (_foot self) (replace-node (_foot self) (tfoot self))))
 
 ;; function ResizeWidths(div) {
 ;;     var headerCells =  $(div).find('.headerTable thead').find('th');
@@ -189,58 +128,89 @@
 ;;             $(headerCells[i]).width($(contentCells[i]).width());
 ;;     }
 ;; }
+(defmethod/remote resize-thead ((self <core:table))
+  (flet ((get-width (element)
+	   (slot-value element 'offset-width))
+	 (by-tag-name (root tag-name)
+	   (node-search (lambda (a)
+			  (and (slot-value a 'tag-name)
+			       (eq (slot-value a 'tag-name)
+				   tag-name)))
+			root)))
+    (setf (slot-value (slot-value (_head self) 'style) 'width)
+	  (+ (get-width self) "px"))
+    (mapcar2 (lambda (head-cell body-cell)
+	       (setf (slot-value (slot-value head-cell 'style) 'width)
+		     (+ (- (get-width body-cell) 10) "px")))
+	     (by-tag-name (car (by-tag-name (_head self) "TR")) "TH")
+	     (by-tag-name self "TD"))))
+
+(defmethod/remote remove-child-nodes ((self <core:table))
+  (mapcar-cc (lambda (a) (.remove-child self a)) (slot-value self 'child-nodes)))
 
 (defmethod/remote init ((self <core:table))
-  (add-class self "table")
-  (add-class self "coretal-table")
-  (load-css "style/table.css")
-  (mapcar-cc (lambda (a) (.remove-child self a))
-	     (slot-value self 'child-nodes))
-  (let ((head (thead self))
-	(foot (tfoot self)))
+  (add-class self "core-table")
+  (load-css (table-css self))
+  (remove-child-nodes self)
+  (let ((head (setf (_head self) (thead self)))
+	(foot (setf (_foot self) (tfoot self))))
     (append self (tbody self))
-    (labels ((first-child (element)
-	       (car (slot-value element 'child-nodes)))
-	     (get-width (element)
-	       (slot-value element 'offset-width))
-	     (by-tag-name (root tag-name)
-	       (node-search (lambda (a)
-			      (and (slot-value a 'tag-name)
-				   (eq (slot-value a 'tag-name)
-				       tag-name)))
-			    root))
-	     (resize-header (header content)
-	       (setf (slot-value (slot-value header 'style) 'width)
-		     (+ (slot-value content 'offset-width) "px"))
-	       (let ((header-cells (by-tag-name
-				    (car (by-tag-name header "TR")) "TH"))
-	       	     (content-cells (by-tag-name content "TD")))
-	       	 (mapcar2 (lambda (a b)
-	       		    (if (not (eq (get-width a) (get-width b)))
-	       			(setf (slot-value (slot-value a 'style)
-	       					  'width)
-	       			      (+ (- (get-width b) 10) "px"))))
-	       		  header-cells content-cells)))
+    (labels ((do-when-parent (f)
+	       (if (slot-value self 'parent-node)
+		   (call/cc f)
+		   (make-web-thread (lambda () (do-when-parent f)))))
 	     (wrap-me (head foot)
 	       (let ((parent-node (slot-value self 'parent-node)))
-		 (cond
-		   ((or (null parent-node)
-			(null (slot-value parent-node 'tag-name)))
-		    (make-web-thread (lambda () (wrap-me head foot))))
-		   (t
-		    (let ((div (<:div :class "table-wrapper")))
-		      (if (has-class parent-node "table-overflow")
-			  (replace-node (slot-value parent-node 'parent-node)
-					div)
-			  (replace-node self div))
-		      (append div (setf (_head self) head))
-		      (append div (<:div :class "table-overflow" self))
-		      (append div (setf (_foot self) foot))
-		      (when (instances self)
-			(set-timeout
-			 (event () (with-call/cc (resize-header head self)))
-			 300))))))))
-      (make-web-thread (lambda () (wrap-me head foot))))))
+		 (let ((div (<:div :class "core-table-wrapper")))
+		   (if (has-class parent-node "core-table-overflow")
+		       (replace-node (slot-value parent-node 'parent-node)
+				     div)
+		       (replace-node self div))
+		   (append div head)
+		   (append div (<:div :class "core-table-overflow" self))
+		   (append div foot)
+		   (set-timeout (event () (resize-thead self window.k))
+				300)))))
+      (do-when-parent (lambda () (wrap-me head foot))))))
+
+(defmethod/remote add-instance ((self <core:table) instance)
+  (with-slots (instances) self
+    (let ((tbody (aref (.get-elements-by-tag-name self "TBODY") 0))
+	  (row (make-row self instance)))
+    
+      (if (null instances)
+	  (.remove-child tbody (slot-value tbody 'first-child)))
+    
+      (setf (instances self) (cons instance instances))
+      (update-tfoot self)
+
+      (if (eq 1 (mod (slot-value instances 'length) 2))
+	  (add-class row (hilight-class self)))
+    
+      (prepend tbody row)
+      (setf (slot-value (slot-value self 'parent-node) 'scroll-top) "0")
+      (resize-thead self)
+      (on-select self instance))))
+
+(defmethod/remote remove-instance ((self <core:table) instance)
+  (with-slots (instances) self
+    (setf (instances self)
+	  (filter-cc (lambda (a) (not (eq instance a))) instances))
+
+    (with-slots (_table-row) instance
+      (if _table-row
+	  (.remove-child (slot-value _table-row 'parent-node) _table-row))
+
+      (delete-slot instance '_table-row)
+      (if (eq (selected self) instance) (setf (selected self) nil))
+      (update-tfoot self)
+
+      (if (null (instances self))
+	  (replace-node (aref (.get-elements-by-tag-name self "TBODY") 0)
+			(tbody self))))
+
+    ;; (setf (slot-value (slot-value self 'parent-node) 'scroll-top) "0")
+    instance))
 
 (defmacro deftable (name supers slots &rest rest)
   `(defcomponent ,name (,@supers <core:table)
@@ -445,3 +415,14 @@
 ;; ;; 			   :label (getf (cdr slot) :label)))
 ;; ;; 		(table.slots component)))
 ;;   )
+
+
+;; (defmethod/remote column-span ((self <core:table))
+;;   (call/cc
+;;    (event (c)
+;;      (apply self.get-template-class self
+;; 	    (list
+;; 	     (lambda (_class)		      
+;; 	       (let ((a 1))
+;; 		 (mapobject (lambda (k v) (setq a (+ 1 a))) _class)
+;; 		 (c a))))))))
