@@ -1,0 +1,110 @@
+/*
+  Core Common CSS aka Evrim's Common CSS
+  Author: Evrim Ulu <evrim@core.gen.tr>
+  Date: 2008-2009
+*/
+.core .pad0 { padding:0px; }
+.core .margin0 { margin:0px; }
+.core .pad10 { padding:10px; }
+.core .margin10 { margin:10px; }
+.core .pad5 { padding:5px; }
+.core .margin5 { margin:5px; }
+.core .pad15 { padding:15px; }
+.core .margin15 {margin:15px; }
+.core .left { float:left; }
+.core .right { float:right; }
+.core .clear { clear:both; visibility:visible; }
+.core .inline { display:inline; }
+.core .hidden { display:none; }
+.core .block { display:block; }
+.core .absolute { position:absolute; }
+.core .relative { position:relative; }
+.core .fixed { position:fixed; }
+.core .border-left { border-left:1px dotted #000; }
+.core .border-right { border-right: 1px dotted #000; }
+.core .center { margin:auto;}
+.core ul.pad5 li { padding:5px; }
+.core ul.disc li { list-style:disc; }
+.core ul.no-bullet li { list-style:none; }
+.core ul.inline li { display:inline; }
+.core .text-left {text-align:left;}
+.core .text-right {text-align:right;}
+.core .text-center {text-align:center;}
+.core .width-70p {width:70% !important;}
+.core .width-90p {width:90% !important;}
+.core .width-30p {width:30% !important;}
+.core .width-100p {width:100% !important; }
+.core .width-200px { width:200px !important; }
+.core .width-250px { width:250px !important; }
+.core .width-300px { width:300px !important; }
+.core .width-400px { width:400px !important; }
+.core .width-500px { width:500px !important; }
+.core .width-600px { width:600px !important; }
+.core .width-700px { width:700px !important; }
+.core .width-800px { width:800px !important; }
+.core .bg-white { background:#ffffff; }
+.core .text-white { color:#ffffff; }
+.core .bg-gray { background:#eeeeee; }
+.core .bg-black { background:#000000; }
+.core strong { font-weight:bold; }
+.core .opacity9 { filter: alpha(opacity=90); opacity:0.9;}
+.core .opacity7 { filter: alpha(opacity=70); opacity:0.7;}
+.core .border-left-shadow { border-left:3px solid #222222; }
+.core .border-right-shadow { border-right:3px solid #222222; }
+.core .border-bottom-shadow { border-bottom:3px solid #222222; }
+.core a:hover { cursor:pointer; }
+.core .line-15 { line-height:1.5em; }
+.core .line-30 { line-height:3.0em; }
+.core .left { height:auto; width:auto; float:left; }
+.core .right { height:auto; width:auto; float:right; }
+.core .font-15 {font-size: 1.5em;}
+.core .font-11 {font-size: 1.1em;}
+.core .font-12 {font-size: 1.2em;}
+
+/* Core specific details */
+.core *, .core a {
+  text-align:left;
+  font-family: Arial,Helvetica,FreeSans,"Luxi-sans","Nimbus Sans L",sans-serif;
+  font-size:12px;
+  font-weight:normal;
+  line-height:14px;
+  border:0;
+  margin:0;
+  padding:0;
+  color:#000000;
+  /* background:none; */
+/*   background-color:#ffffff; */
+/*   min-height:0; */
+}
+.core a { text-decoration:none; }
+.core span.validation { display:inline; color:#008; padding-left:5px; padding-right:5px; }
+.core input, .core select {padding:5px;}
+.core input[type=text],.core input[type=password], .core select {
+    min-width:170px;
+    border:2px inset #EEE;
+    font-size:13px;
+}
+.core input[type=submit].disabled, .core input[type=reset].disabled, .core input[type=button].disabled {
+    color:gray;
+}
+.core input[type=submit], .core input[type=reset], .core input[type=button] {
+    padding:5px 10px;
+    min-width:60px;
+    text-align:center;
+    border:2px outset #DDD;
+    color:#000;
+    background:#DDD;
+    margin:2px;
+    font-size:13px;
+}
+
+.core input.invalid { 
+    border-left:2px solid #8A0000;
+    border-top:2px solid #8A0000;
+    border-bottom:2px solid #B94E4E;
+    border-right:2px solid #B94E4E;
+    /* border:2px inset #8A0000; */
+}
+.core span.invalid { color:#8A0000; }
+.core h2 { font-size:17px; font-weight:bold; }
+.twitter a.twtr-join-conv {font-size:12px !important;}
