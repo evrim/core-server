@@ -7,6 +7,10 @@ table.core-table {
 table.core-table tr { 
   margin:2px;
 }
+table.core-table tr.hover td {
+  background:#646D7E !important;
+  color:#fff;
+}
 table.core-table td, table.core-table th {
   border:0;
 }

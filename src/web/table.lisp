@@ -8,6 +8,7 @@
    (primary-field :host remote :initform "name")
    (template-class :initform nil :host remote)
    (hilight-class :initform "hilighted" :host remote)
+   (hover-class :initform "hover" :host remote)
    (selected-class :initform "selected" :host remote)
    (table-css :host remote :initform "style/table.css")
    (selected :initform nil :host remote)
@@ -80,17 +81,17 @@
 (defmethod/remote make-row ((self <core:table) instance)
   (let* ((radio (<:input :type "radio" :name "table-object"
 			 :onclick (lifte2 (on-select self instance))))
-	 (row (<:tr (cons (<:td :class "first-column" radio)
+	 (row (<:tr :onmouseover (event (e) (add-class this (hover-class self)))
+		    :onmouseout (event (e) (remove-class this (hover-class self)))
+		    :onclick (lifte (on-select self (slot-value this 'instance)))
+		    (cons (<:td :class "first-column" radio)
 			  (mapcar
 			   (lambda (slot)
-			     (with-slots (name reader) slot
-			       (let ((value (if reader
-						(reader instance)
-						(slot-value instance name))))
-				 (<:td :class name
-				       (or value (slot-value slot 'initform))))))
+			     (<:td :class (slot-value slot 'name)
+				   (get-slot-view self slot instance)))
 			   (template-class self))))))
-    (setf (slot-value instance '_table-row) row)
+    (setf (slot-value instance '_table-row) row
+	  (slot-value row 'instance) instance)
     row))
 
 (defmethod/remote tbody ((self <core:table))
