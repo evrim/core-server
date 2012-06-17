@@ -1314,9 +1314,12 @@
 ;;; HTTP mESSAGE
 ;;;-----------------------------------------------------------------------------
 (defclass http-message ()
-  ((version :accessor http-message.version :initform '(1 1))
-   (general-headers :accessor http-message.general-headers :initarg :general-headers :initform '())
-   (unknown-headers :accessor http-message.unknown-headers :initform '())
+  ((version :accessor http-message.version :initform '(1 1)
+	    :initarg :version)
+   (general-headers :accessor http-message.general-headers
+		    :initarg :general-headers :initform '())
+   (unknown-headers :accessor http-message.unknown-headers :initform '()
+		    :initarg :unknown-headers)
    (entities :accessor http-message.entities :initarg :entities :initform '())))
 
 ;;;--------------------------------------------------------------------------
@@ -1333,6 +1336,14 @@
 
 (defun make-http-request (&rest args)
   (apply #'make-instance 'http-request args))
+
+(defmethod http-request.content-type ((self http-request))
+  (aif (assoc 'content-type (http-request.entity-headers self))
+       (cadr it)))
+
+(defmethod http-request.content-length ((self http-request))
+  (aif (assoc 'content-length (http-request.entity-headers self))
+       (cadr it)))
 
 (defmethod http-request.headers ((self http-request))
   (append (slot-value self 'headers)
@@ -1392,8 +1403,8 @@
 	     (reduce #'(lambda (acc atom)
 			 (cons
 			  `(:and
-			    (:sci ,(symbol-name atom))
-			    #\: (:zom (:type space?))
+			    (:sci ,(format nil "~A:" (symbol-name atom)))
+			    (:zom (:type space?))
 			    (,(intern (format nil format atom) :keyword) stub)
 			    (:return (list ',atom stub)))
 			  acc))
@@ -1445,6 +1456,13 @@
    (entities :accessor http-response.entities :initform nil
 	     :initarg :entities)))
 
+(defun make-http-response (&rest args)
+  (apply #'make-instance 'http-response args))
+
+(defmethod http-response.add-entity ((self http-response) entity)
+  (with-slots (entities) self
+    (setf entities (cons entity entities))))
+
 (defmethod http-response.add-entity-header ((self http-response) key val)
   (setf (slot-value self 'entity-headers)
 	(cons (cons key val)
@@ -1478,7 +1496,7 @@
   (http-response.add-entity-header self 'content-type content-type))
 
 (defmethod http-response.get-entity-header ((self http-response) key)
-  (cadr (assoc key (http-response.entity-headers self))))
+  (cdr (assoc key (http-response.entity-headers self))))
 
 (defmethod http-response.get-response-header ((self http-response) key)
   (cadr (assoc key (http-response.response-headers self))))
