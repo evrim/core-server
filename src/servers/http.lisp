@@ -8,100 +8,140 @@
    (root-application :accessor server.root-application :initform nil))
   (:default-initargs :port 3001 :peer-class '(http-unit)))
 
-;; (defclass nio-custom-http-peer (nio-http-peer-mixin custom-http-peer)
-;;   ())
+;;--------------------------------------------------------------------------
+;; Server Protocol Implementation
+;;--------------------------------------------------------------------------
+(defmethod find-application ((self http-server) fqdn)
+  (find fqdn (server.applications self) :key #'web-application.fqdn
+	:test #'equal))
 
-;; (defclass+ nio-http-server (web-server nio-socket-server logger-server)
-;;   ()
-;;   (:default-initargs :peer-class '(nio-custom-http-peer)))
+(defmethod register ((self http-server) (app http-application))
+  (setf (server.applications self)
+	(sort (cons app
+		    (remove (web-application.fqdn app)
+			    (server.applications self)
+			    :test #'equal :key #'web-application.fqdn))
+	      #'> :key (lambda (app) (length (web-application.fqdn app)))))
+  (setf (application.server app) self))
 
-(defvar +default-encoding-for-remote-mimes+
-  :utf-8 "FIXME: Browser shoudl supply in which encoding did it encode data.")
+(defmethod unregister ((self http-server) (app http-application))
+  (setf (server.applications self)
+	(remove (web-application.fqdn app)
+		(server.applications self)
+		:test #'equal :key #'web-application.fqdn)))
 
-(defmethod/cc2 parse-request ((server http-server) (stream core-stream))
+(defmethod register ((self http-server) (app root-http-application-mixin))
+  (setf (slot-value self 'root-application) app))
+
+(defmethod unregister ((self http-server) (app root-http-application-mixin))
+  (setf (slot-value self 'root-application) nil))
+
+;; -------------------------------------------------------------------------
+;; Parse Request
+;; -------------------------------------------------------------------------
+(defvar +default-encoding+ :utf-8 "NOTE: Browser should supply this but does not")
+(defmethod parse-request ((server http-server) (stream core-stream))
   "Returns a fresh RFC 2616 HTTP Request object parsing from 'stream',
 nil if stream data is invalid"
-  (multiple-value-bind (peer-type method uri version general-headers
-				  request-headers entity-headers unknown-headers)
+  (multiple-value-bind (peer-type method uri version general-headers request-headers
+				  entity-headers unknown-headers)
       (http-request-headers? stream)
-    (if method
-	(let ((request (make-instance 'http-request :stream stream)))
-	  (let ((content-type (cadr (assoc 'content-type entity-headers)))
-		(content-length (cadr (assoc 'content-length entity-headers))))
-	    (flet ((do-process (stream)
-		     (cond
-		       ;; content-type = '("multipart" "form-data")
-		       ((and (string-equal "multipart" (car content-type))
-			     (string-equal "form-data" (cadr content-type))
-			     (> content-length 0))
-			;; eat lineer whayt spaces.
-			(lwsp? stream)
+    (when (null method)
+      (log-me server 'error (format nil  "Request with null method ~A" uri))
+      (return-from parse-request nil))
+    
+    (let ((request (make-http-request :stream stream :method method
+				      :uri uri :version version
+				      :general-headers general-headers
+				      :entity-headers entity-headers
+				      :unknown-headers unknown-headers
+				      :headers request-headers)))
+      (let* ((content-type (http-request.content-type request))
+	     (content-length (http-request.content-length request))
+	     (stream (if (and content-length (> content-length 0))
+			 (make-bounded-stream stream content-length)
+			 stream)))
+	(flet ((process-multipart ()
+		 ;; content-type = '("multipart" "form-data")
+		 (lwsp? stream)
+		 (let* ((boundary (cdr (assoc "boundary" (caddr content-type)
+					      :test #'string=)))
+			(entities (rfc2388-mimes? stream boundary)))
+		   (setf (http-message.entities request) entities)
 
-			(setf (http-message.entities request)
-			      (rfc2388-mimes?
-			       stream
-			       (cdr
-				(assoc "boundary" (caddr content-type) :test #'string=))))
-		 
-			(setf (uri.queries uri)
-			      (append (uri.queries uri)
-				      (reduce0 (lambda (acc media)						     
-						 (cond
-						   ((mime.filename media)
-						    (cons (cons (mime.name media) media)
-							  acc))
-						   ((mime.name media)
-						    (cons (cons (mime.name media)
-								(octets-to-string (mime.data media)
-										  +default-encoding-for-remote-mimes+))
-							  acc))
-						   (t
-						    (warn "Unkown media received:~A" media)
-						    acc)))
-					       (filter (lambda (a)
-							 (typep a 'top-level-media))
-						       (http-message.entities request))))))
-		       ((and (string-equal "text" (car content-type))
-			     (string-equal "json" (cadr content-type)))
-			(let ((hash-table (json? stream)))
-			  (if (typep hash-table 'hash-table)
-			      (setf (uri.queries uri) (append (uri.queries uri)
-							      (hash-to-alist hash-table))))))
-		       ;; content-type = '("application" "x-www-form-urlencoded")
-		       ((and (string-equal "application" (car content-type))
-			     (string-equal "x-www-form-urlencoded" (cadr content-type))
-			     (>  content-length 0))
-			;; eat lineer whayt spaces.
-			(lwsp? stream)
-			(setf (uri.queries uri) (append (uri.queries uri)					       
-							(x-www-form-urlencoded? stream)))))))
-	      (do-process (if (and content-length (> content-length 0))
-			      (make-bounded-stream stream content-length)
-			      stream))))
-	  (setf (http-message.general-headers request) general-headers
-		(http-message.unknown-headers request) unknown-headers
-		(http-request.headers request) request-headers
-		(http-request.entity-headers request) entity-headers
-		(http-request.uri request) uri
-		(http-request.method request) method
-		(http-message.version request) version
-		(http-request.peer-type request) peer-type)
-	  request))))
+		   (flet ((process-media (acc media)
+			    (cond
+			      ((mime.filename media)
+			       (cons (cons (mime.name media) media) acc))
+			      ((mime.name media)
+			       (cons
+				(cons (mime.name media)
+				      (octets-to-string (mime.data media)
+							+default-encoding+))
+				acc))
+			      (t
+			       (let ((message (format nil "Unkown media received, uri:~A, media:~A"
+						      uri media)))
+				 (log-me server 'warn message)
+				 acc)))))
+		     (let ((media (reduce0 #'process-media
+					   (filter (lambda (a)
+						     (typep a 'top-level-media))
+						   entities))))
+		       (setf (uri.queries uri)
+			     (append (uri.queries uri) media))))))
+	       (process-json ()
+		 (let ((hash-table (json? stream)))
+		   (if (typep hash-table 'hash-table)
+		       (let ((data (hash-to-alist hash-table)))
+			 (setf (uri.queries uri)
+			       (append (uri.queries uri) data))))))
+	       (process-urlencoded ()
+		 (lwsp? stream)
+		 (let ((data (x-www-form-urlencoded? stream)))
+		   (setf (uri.queries uri)
+			 (append (uri.queries uri) data)))))
+	  (cond
+	    ;; content-type = '("multipart" "form-data")
+	    ((and (string-equal "multipart" (car content-type))
+		  (string-equal "form-data" (cadr content-type))
+		  (> content-length 0))
+	     (process-multipart))
+	    ;; content-type = '("application" "json")
+	    ((and (string-equal "text" (car content-type))
+		  (string-equal "json" (cadr content-type)))
+	     (process-json))
+	    ;; content-type = '("application" "x-www-form-urlencoded")
+	    ((and (string-equal "application" (car content-type))
+		  (string-equal "x-www-form-urlencoded" (cadr content-type))
+		  (>  content-length 0))
+	     (process-urlencoded)))))
+      request)))
 
+;; -------------------------------------------------------------------------
+;; Eval Request & Return Response
+;; -------------------------------------------------------------------------
+(defmethod eval-request ((server http-server) (request http-request))
+  (let* ((host (car (http-request.header request 'host)))
+	 (app-name (caar (uri.paths (http-request.uri request))))
+	 (application (or (aif (find-application server app-name)
+			       (prog1 it
+				 (pop (uri.paths (http-request.uri request)))))
+			  (find-application server host)
+			  (slot-value server 'root-application))))
+    (let ((response (if application (dispatch application request))))
+      (if response
+	  response
+	  (let ((m (format nil "request uri: ~A" (http-request.uri request))))
+	    (log-me server 'eval-request m)
+	    (make-404-response request))))))
 
-(defmethod/cc2 render-404 ((server http-server) (request http-request) (response http-response))
-  (setf (http-response.status-code response) (make-status-code 404))
-  (rewind-stream (http-response.stream response))
-  (checkpoint-stream (http-response.stream response))
-  (with-html-output (http-response.stream response)
-    (<:html
-     (<:body
-      "Core-serveR - URL Not Found")))
-  response)
-
-(defun make-response (&optional (stream (make-core-stream "")))
+;; -------------------------------------------------------------------------
+;; Make Response
+;; -------------------------------------------------------------------------
+(defun make-response (&optional (stream (make-core-list-output-stream)))
   "Returns an empty HTTP Response object"
-  (let ((response (make-instance 'http-response :stream stream)))
+  (let ((response (make-http-response :stream stream)))
     (setf (http-message.general-headers response)
 	  (list (cons 'date (get-universal-time))
 		;; (list 'pragma 'no-cache)
@@ -112,129 +152,109 @@ nil if stream data is invalid"
 	  (list (cons 'server  "Core-serveR - www.core.gen.tr")))
     response))
 
-(defmethod/cc2 eval-request ((server http-server) (request http-request))
-  (let* ((stream (http-request.stream request))
-	 (response (make-response (make-core-stream
-				   (slot-value stream '%stream))))
-	 (host (caadr (assoc 'HOST (http-request.headers request))))
-	 (app-name (caar (uri.paths (http-request.uri request)))))
-
-    (checkpoint-stream (http-response.stream response))
-    (prog1
-	(cond
-	  ;; dispatch by app-name like http://servername/app-fqdn/js.core
-	  ((any #'(lambda (app)
-		    (when (string= app-name (web-application.fqdn app)) 
-		      (pop (uri.paths (http-request.uri request)))
-		      (dispatch app request response)))
-		(server.applications server))
-	   response)
-	  ;; dispatch by hostname like http://servername/js.core
-	  ((and (stringp host)
-		(any #'(lambda (app)
-			 (when (string= host (web-application.fqdn app)) 
-			   (dispatch app request response)))
-		     (server.applications server)))
-	   response)
-	  ((and (slot-value server 'root-application)
-		(dispatch (slot-value server 'root-application)
-			  request response))
-	   response)
-	  ;; catch-all via 404
-	  (t
-	   (progn
-	     (log-me server 'eval-request
-		     (format nil "request uri: ~A" (http-request.uri request)))
-	     (render-404 server request response)))))))
-
-(defmethod/cc2 render-error ((self http-server) stream)
-  "Renders a generic server error response to 'stream'"
+(defun make-404-response (&optional (stream (make-core-list-output-stream)))
   (let ((response (make-response stream)))
-    (checkpoint-stream stream)
+    (setf (http-response.status-code response) (make-status-code 404))
+    (with-html-output stream
+      (<:html (<:body (<:h1 "URL Not found")
+		      (<:h2 "[Core-serveR]"))))
+    response))
+
+(defun make-error-response (&optional (stream (make-core-list-output-stream)))
+  (let ((response (make-response stream)))
     (setf (http-response.status-code response) (make-status-code 500))
-    (http-response-headers! stream response)
-    (char! stream #\Newline)
-    (with-html-output stream (<:html (<:body "An error condition occured and ignored.")))
-    (commit-stream stream)))
+    (with-html-output stream
+      (<:html (<:body
+	       (<:h1 "Sorry, an error occured ")
+	       (<:h2 "[Core-serveR]"))))
+    response))
 
-(defmethod/cc2 render-response ((self http-server) response request)
+(defmethod render-response ((self http-server) (response http-response)
+			    (request http-request))
   "Renders HTTP 'response' to 'stream'"
-  (let ((accept-encoding (http-request.header request 'accept-encoding))
-	(stream (http-response.stream response)))
+  (let ((stream (http-request.stream request))
+	(entities (http-response.entities response))
+	(compressed-p (and (member "gzip"
+				   (http-request.header request 'accept-encoding)
+				   :key #'car :test #'string=) t)))
     (assert (eq 0 (current-checkpoint stream)))
-    (flet ((write-headers ()
-	     (let ((header-stream
-		    (make-core-stream
-		     (slot-value (http-request.stream request) '%stream))))
-	       (checkpoint-stream header-stream)
-	       (http-response-headers! header-stream response)
-	       (char! header-stream #\Newline)
-	       (commit-stream header-stream))))
-      
-      
+    (labels ((write-headers ()
+	       (let ((stream (make-core-stream (slot-value stream '%stream))))
+		 (checkpoint-stream stream)
+		 (http-response-headers! stream response)
+		 (char! stream #\Newline)
+		 (commit-stream stream)))
+	     (get-content ()
+	       (let ((content-type (http-response.get-content-type response)))
+		 (if (and (cdr content-type)
+			  (string= "javascript" (cadr content-type)))
+		     (let* ((stream (make-core-stream (make-accumulator :byte)))
+			    (stream2 (if (server.debug self)
+					 (make-indented-stream stream)
+					 (make-compressed-stream stream))))
+		       (serialize-to (http-response.stream response) stream2)
+		       (return-stream stream2))
+		     (let ((stream (make-instance 'core-vector-io-stream)))
+		       (serialize-to (http-response.stream response) stream)
+		       (return-stream stream)))))
+	     (do-finish-compression (stream)
+	       (let ((content-length (length (slot-value stream '%write-buffer))))
+		 (http-response.add-entity-header response 'content-length
+						  content-length)
+		    
+		 (write-headers)
+		 (commit-stream stream)))
+	     (compression-callback (stream)
+	       (lambda (buffer end)
+		 (write-stream stream (subseq buffer 0 end)))))
       (cond
-	((member "gzip" accept-encoding :key #'car :test #'string=)
-	 (let* ((content (slot-value stream '%write-buffer))
-		(content-length (length content)))
-	   (rewind-stream stream)
-	   (labels ((do-finish ()
-		      (let ((content-length (length (slot-value stream '%write-buffer))))
-			(http-response.add-entity-header response 'content-length
-							 content-length))		      
-		      (http-response.add-entity-header response 'content-encoding 'gzip)
-		      (write-headers)
-		      (commit-stream stream))
-		    (callback (stream)
-		      (lambda (buffer end)
-			(cond
-			  ((< end (length buffer))
-			    (write-stream stream (subseq buffer 0 end))
-			   (do-finish))
-			  (t
-			   (write-stream stream buffer))))))
-	     (with-compressor (compressor 'gzip-compressor :callback (callback stream))
-	       (checkpoint-stream stream)
-	       (compress-octet-vector (make-array content-length
-						  :initial-contents content 
-						  :element-type '(unsigned-byte 8))
-				      compressor)))))
+	((and compressed-p (pathnamep (car entities)))
+	 (let ((path (car entities))
+	       (callback (compression-callback stream)))
+	   (with-input-from-file (input path :element-type '(unsigned-byte 8))
+	     (http-response.set-content-type response (split "/" (mime-type path)))
+	     (http-response.add-entity-header response 'content-encoding 'gzip)
+	     (checkpoint-stream stream)
+	     (let ((seq (make-array 4096 :element-type '(unsigned-byte 8))))
+	       (with-compressor (compressor 'gzip-compressor :callback callback)
+		 (do ((len (read-sequence seq input)
+			   (read-sequence seq input)))
+		     ((<= len 0) nil) 
+		   (compress-octet-vector seq compressor :end len :start 0)))
+	       (do-finish-compression stream)))))
+	((pathnamep (car entities))
+	 (let ((path (car entities)))
+	   (with-open-file (input path :element-type '(unsigned-byte 8)
+				  :direction :input)
+	     (http-response.add-entity-header response 'content-length
+					      (file-length input))
+	     (http-response.set-content-type response (split "/" (mime-type path)))
+	     (write-headers)
+	     (let ((seq (make-array 4096 :element-type '(unsigned-byte 8))))
+	       (do ((len (read-sequence seq input) (read-sequence seq input)))
+		   ((<= len 0) nil)
+		 (write-stream stream (subseq seq 0 len)))))))
+	(compressed-p
+	 (http-response.add-entity-header response 'content-encoding 'gzip)
+	 (checkpoint-stream stream)
+	 (let ((content (get-content)))
+	   (with-compressor (compressor 'gzip-compressor
+					:callback (compression-callback stream))
+	     (compress-octet-vector (make-array (length content)
+						:initial-contents content 
+						:element-type '(unsigned-byte 8))
+				    compressor))
+	   (do-finish-compression stream)))
 	(t
-	 (http-response.add-entity-header response 'content-length
-					  (length
-					   (slot-value stream '%write-buffer)))
-	 (write-headers)
-	 (commit-stream stream))))))
-      
+	 (let ((data (get-content)))
+	   (http-response.add-entity-header response 'content-length (length data))
+	   (write-headers)
+	   (write-stream stream data))))
+      (close-stream stream))))
 
-;;--------------------------------------------------------------------------
-;; Server Protocol Implementation
-;;--------------------------------------------------------------------------
-(defmethod register ((self http-server) (app http-application))
-  (setf (server.applications self)
-	(sort (cons app
-		    (remove (web-application.fqdn app)
-			    (server.applications self)
-			    :test #'equal :key #'web-application.fqdn))
-	      #'> :key (lambda (app) (length (web-application.fqdn app)))))
-  (setf (application.server app) self))
-
-(defmethod register ((self http-server) (app root-http-application-mixin))
-  (setf (slot-value self 'root-application) app)
-  self)
-
-(defmethod unregister ((self http-server) (app http-application))
-  (setf (server.applications self)
-	(remove (web-application.fqdn app)
-		(server.applications self)
-		:test #'equal :key #'web-application.fqdn)))
-
-(defmethod unregister ((self http-server) (app root-http-application-mixin))
-  (setf (slot-value self 'root-application) nil)
-  self)
-
-(defmethod find-application ((self http-server) fqdn)
-  (find fqdn (server.applications self)
-	:key #'web-application.fqdn :test #'equal))
+(defmethod render-error ((self http-server) (stream core-stream) error)
+  (render-response self (make-error-response)
+		   (make-http-request :stream stream)))
 
 ;; +-------------------------------------------------------------------------
 ;; | HTTP Unit
@@ -245,7 +265,8 @@ nil if stream data is invalid"
   (:documentation "HTTP Peer - This peer handles HTTP requests and
 evaulates to a HTTP response. Its' server is an instance of http-server"))
 
-(defmethod/unit handle-stream :async-no-return ((peer http-unit) (stream core-stream) address)
+(defmethod/unit handle-stream :async-no-return ((peer http-unit)
+						(stream core-stream) address)
   (flet ((handle-error (condition)
 	   (if (typep condition 'sb-int::simple-stream-error)    
 	       (return-from handle-stream nil))
@@ -253,7 +274,7 @@ evaulates to a HTTP response. Its' server is an instance of http-server"))
 		    (declare (ignore unit))
 		    (log-me (peer.server peer) 'error
 			    (format nil "~A" condition))
-		    (render-error (peer.server peer) stream)
+		    (render-error (peer.server peer) stream condition)
 		    (close-stream stream))
 		  (retry-error (unit)
 		    (do ((i (current-checkpoint stream)
@@ -277,8 +298,38 @@ evaulates to a HTTP response. Its' server is an instance of http-server"))
 		 (close-stream (http-response.stream response)))
 		(t
 		 (close-stream stream))))
-	    (close-stream stream))))))
+	    (progn (render-error (peer.server peer) stream nil)
+		   (close-stream stream)))))))
 
+(deftrace http-server
+    '(handle-stream dispatch parse-request eval-request make-response
+      render-response eval-request parse-request))
+
+;; Core Server: Web Application Server
+
+;; Copyright (C) 2006-2008  Metin Evrim Ulu, Aycan iRiCAN
+
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+
+
+
+
+;; -------------------------------------------------------------------------
+;; Garbage
+;; -------------------------------------------------------------------------
 ;; (defclass http-cps-unit (local-unit peer)
 ;;   ((%max-events :initarg :max-events :initform 100)
 ;;    (%timeout :initarg :timeout :initform 10)
@@ -291,13 +342,13 @@ evaulates to a HTTP response. Its' server is an instance of http-server"))
 ;; (defmethod start ((self http-cps-unit))
 ;;   (setf (s-v '%epoll-fd) (core-ffi::epoll-create (s-v '%epoll-size))))
 
-(defmethod start ((self http-server))
-;; ;;   (thread-kill (s-v '%socket-thread))
-;; ;;   (setf (s-v '%socket-thread) nil)
-;;   (let ((listenfd (socket-file-descriptor (s-v '%socket))))
-;;     (core-ffi::set-nonblock listenfd)
-;;     (handle-accept (car (s-v '%peers)) listenfd (s-v '%peers)))
-  )
+;; (defmethod start ((self http-server))
+;; ;; ;;   (thread-kill (s-v '%socket-thread))
+;; ;; ;;   (setf (s-v '%socket-thread) nil)
+;; ;;   (let ((listenfd (socket-file-descriptor (s-v '%socket))))
+;; ;;     (core-ffi::set-nonblock listenfd)
+;; ;;     (handle-accept (car (s-v '%peers)) listenfd (s-v '%peers)))
+;;   )
 
 ;; (defmethod/unit add-fd ((self http-cps-unit) fd modes k)
 ;;   (setf (gethash fd (s-v '%continuations)) k)
@@ -438,30 +489,7 @@ evaulates to a HTTP response. Its' server is an instance of http-server"))
 ;;       (add-fd (car peers) listenfd (list core-ffi::epollin #.(ash 1 31)) #'kont)
 ;;       (setf (s-v '%receive-messages) nil))))
 
-(deftrace http-server
-    '(handle-stream dispatch render-error render-response eval-request parse-request
-      handle-stream4 run add-fd del-fd ;; receive-messages
-      receive-events
-    ;;   render-headers
-      make-response;;  render-http-headers
-      ))
 
-;; Core Server: Web Application Server
-
-;; Copyright (C) 2006-2008  Metin Evrim Ulu, Aycan iRiCAN
-
-;; This program is free software: you can redistribute it and/or modify
-;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or
-;; (at your option) any later version.
-
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
-
-;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 ;;; (mapcar #'(lambda (mime)
@@ -509,3 +537,81 @@ evaulates to a HTTP response. Its' server is an instance of http-server"))
 ;;     ;;   )
 ;;     ;; (describe stream)
 ;;     ))
+
+;; (defclass nio-custom-http-peer (nio-http-peer-mixin custom-http-peer)
+;;   ())
+
+;; (defclass+ nio-http-server (web-server nio-socket-server logger-server)
+;;   ()
+;;   (:default-initargs :peer-class '(nio-custom-http-peer)))
+
+
+
+;; (defmethod render-404 ((server http-server) (request http-request) (response http-response))
+;;   (setf (http-response.status-code response) (make-status-code 404))
+;;   (rewind-stream (http-response.stream response))
+;;   (checkpoint-stream (http-response.stream response))
+;;   (with-html-output (http-response.stream response)
+;;     (<:html
+;;      (<:body
+;;       "Core-serveR - URL Not Found")))
+;;   response)
+
+;; (defmethod/cc2 render-error ((self http-server) stream)
+;;   "Renders a generic server error response to 'stream'"
+;;   (let ((response (make-response stream)))
+;;     (checkpoint-stream stream)
+;;     (setf (http-response.status-code response) (make-status-code 500))
+;;     (http-response-headers! stream response)
+;;     (char! stream #\Newline)
+;;     (with-html-output stream (<:html (<:body "An error condition occured and ignored.")))
+;;     (commit-stream stream)))
+
+;; (defmethod/cc2 render-response ((self http-server) response request)
+;;   "Renders HTTP 'response' to 'stream'"
+;;   (let ((accept-encoding (http-request.header request 'accept-encoding))
+;; 	(stream (http-response.stream response)))
+;;     (assert (eq 0 (current-checkpoint stream)))
+;;     (flet ((write-headers ()
+;; 	     (let ((header-stream
+;; 		    (make-core-stream
+;; 		     (slot-value (http-request.stream request) '%stream))))
+;; 	       (checkpoint-stream header-stream)
+;; 	       (http-response-headers! header-stream response)
+;; 	       (char! header-stream #\Newline)
+;; 	       (commit-stream header-stream))))
+      
+      
+;;       (cond
+;; 	((member "gzip" accept-encoding :key #'car :test #'string=)
+;; 	 (let* ((content (slot-value stream '%write-buffer))
+;; 		(content-length (length content)))
+;; 	   (rewind-stream stream)
+;; 	   (labels ((do-finish ()
+;; 		      (let ((content-length (length (slot-value stream '%write-buffer))))
+;; 			(http-response.add-entity-header response 'content-length
+;; 							 content-length))		      
+;; 		      (http-response.add-entity-header response 'content-encoding 'gzip)
+;; 		      (write-headers)
+;; 		      (commit-stream stream))
+;; 		    (callback (stream)
+;; 		      (lambda (buffer end)
+;; 			(cond
+;; 			  ((< end (length buffer))
+;; 			    (write-stream stream (subseq buffer 0 end))
+;; 			   (do-finish))
+;; 			  (t
+;; 			   (write-stream stream buffer))))))
+;; 	     (with-compressor (compressor 'gzip-compressor :callback (callback stream))
+;; 	       (checkpoint-stream stream)
+;; 	       (compress-octet-vector (make-array content-length
+;; 						  :initial-contents content 
+;; 						  :element-type '(unsigned-byte 8))
+;; 				      compressor)))))
+;; 	(t
+;; 	 (http-response.add-entity-header response 'content-length
+;; 					  (length
+;; 					   (slot-value stream '%write-buffer)))
+;; 	 (write-headers)
+;; 	 (commit-stream stream))))))
+      

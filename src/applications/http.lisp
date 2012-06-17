@@ -46,8 +46,7 @@
 		  :initform (make-hash-table :test #'equal :synchronized t)) 
    (timestamp :accessor session.timestamp :initform (get-universal-time))
    (data :accessor session.data
-	 :initform (make-hash-table :test #'equal
-				    :synchronized t))))
+	 :initform (make-hash-table :test #'equal :synchronized t))))
 
 (defprint-object (self http-session :identity t :type t)
   (format t "~A" (session.id self)))
@@ -67,11 +66,11 @@
   (aif (gethash id (session.continuations session))
        (return-from find-continuation (values it session))))
 
-(defmacro update-session (key val &optional (session '(context.session +context+)))
+(defmacro update-session (key val &optional (session `(context.session +context+)))
   "Update a session variable."
   `(setf (gethash ,key (session.data ,session)) ,val))
 
-(defmacro query-session (key &optional (session '(context.session +context+)))
+(defmacro query-session (key &optional (session `(context.session +context+)))
   "Query a session variable."
   `(gethash ,key (session.data ,session)))
 
@@ -83,46 +82,48 @@
    (response :accessor context.response :initarg :response :initform nil)
    (session :accessor context.session :initarg :session :initform nil)
    (application :accessor context.application :initarg :application :initform nil)
-   (continuation :accessor context.continuation :initform nil)
-   (returns :accessor context.returns :initform nil)))
+   (continuation :accessor context.continuation :initform nil
+		 :initarg :continuation)
+   (returns :accessor context.returns :initform nil :initarg :returns)))
 
-(defun make-new-context (application request response session)
+(defun make-new-context (application request response session
+			 &optional continuation returns)
   "Returns a new HTTP context having parameters provided"
   (make-instance 'http-context :application application :request request
-		 :response response :session session))
+		 :response response :session session
+		 ;; :input (http-request.stream request)
+		 ;; :output (http-response.stream response)
+		 :continuation continuation
+		 :returns returns))
 
 (defmethod copy-context ((self http-context))
   "Returns a copy of the HTTP context 'self'"
-  (let ((s (make-instance 'http-context)))
-    (setf (slot-value s 'application) (s-v 'application)
- 	  (slot-value s 'session) (s-v 'session)
- 	  (slot-value s 'continuation) (s-v 'continuation))
-     s))
+  (with-slots (application session continuation returns) self
+    (make-new-context application nil nil session continuation
+		      returns)))
 
 (defmethod context.session ((self http-context))
   "Returns the session of the HTTP context 'self', creates if none exists"
-  (acond
-   ((slot-value self 'session)
-    (setf (session.timestamp it) (get-universal-time))
-    it)
-   (t
-    (let ((session (make-new-session)))
-      (setf (context.session self) session)      
-      (setf (gethash (session.id session)
-		     (http-application.sessions (context.application self)))
-	    session)
-      session))))
+  (aif (slot-value self 'session)
+       ;; Session exists, update access timestamp
+       (prog1 it (setf (session.timestamp it) (get-universal-time)))
+       ;; Insert this session to applications session table.
+       (let ((new-session (make-new-session))
+	     (application (context.application self)))
+	 (setf (gethash (session.id new-session)
+			(http-application.sessions application))
+	       new-session
+	       (context.session self) new-session)
+	 new-session)))
 
-(defmethod context.remove-action ((self http-context) k-url)
-  (remhash k-url (session.continuations (context.session self))))
-
-(defmethod context.remove-current-action ((self http-context))
-  (context.remove-action +context+
-			 (http-request.query (context.request self)
-					     +continuation-query-name+)))
+;; FIXME: r these necessary?
+(defmethod context.remove-action ((self http-context) &optional k-url)
+  (let ((k-url (or k-url (http-request.query (context.request self)
+					     +continuation-query-name+))))
+    (remhash k-url (session.continuations (context.session self)))))
 
 ;; --------------------------------------------------------------------------
-;; Methods that add "Session" Cookie to Response
+;; Method that deletes "Session ID" Cookie
 ;; --------------------------------------------------------------------------
 (defmethod (setf context.session) :after ((session t) (self http-context))
   (prog1 session
@@ -131,57 +132,47 @@
 					   :comment "Core Server Session Cookie"
 					   :max-age 0))))
 
+;; --------------------------------------------------------------------------
+;; Methods that add "Session" Cookie to Response
+;; --------------------------------------------------------------------------
 (defmethod (setf context.session) :after ((session http-session) (self http-context))
   (prog1 session
     (http-response.add-cookie (context.response self)
 			      (make-cookie +session-query-name+ (session.id session)
 					   :comment "Core Server Session Cookie"))))
 
-
 ;;+--------------------------------------------------------------------------
 ;;| HTTP Application Metaclass
 ;;+--------------------------------------------------------------------------
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defclass http-application+ (class+)
-    ((handlers :initarg :handlers :accessor http-application+.handlers
-	       :initform nil
-	       :documentation "A list that contains URLs that this application handles")
-     (scanner-cache :initform (make-hash-table))))
+    ((handlers :initarg :handlers
+	       :accessor http-application+.handlers :initform nil
+	       :documentation "A list that contains URLs that this
+	       application handles"))
+    (:documentation "HTTP Application Metaclass"))
 
   (defmethod validate-superclass ((class http-application+) (super standard-class)) t)
   (defmethod validate-superclass ((class standard-class) (super http-application+)) nil)
 
   (defmethod http-application+.handlers ((self http-application+))
-    ;; (let ((cache (slot-value self 'scanner-cache)))
-    ;;   (mapcar (lambda (handler)
-    ;; 		(aif (gethash (car handler) cache)
-    ;; 		     (cons (car handler) it)
-    ;; 		     (cons (car handler)
-    ;; 			   (setf (gethash (car handler) cache)
-    ;; 				 (cl-ppcre:create-scanner (cdr handler))))))
-    ;; 	      (uniq (nreverse
-    ;; 		     (reduce #'append
-    ;; 			     (mapcar (rcurry #'slot-value 'handlers)
-    ;; 				     (filter (lambda (a) (if (typep a 'http-application+) a))
-    ;; 					     (class-superclasses self)))))
-    ;; 		    :key #'car)))
     (uniq (nreverse
 	   (copy-list
 	    (reduce #'append
 		    (mapcar (rcurry #'slot-value 'handlers)
-			    (filter (lambda (a) (if (typep a 'http-application+) a))
+			    (filter (lambda (a)
+				      (if (typep a 'http-application+) a))
 				    (class-superclasses self))))))
 	  :key #'car))
 
   (defmethod add-handler ((application+ http-application+) method-name url)
     (setf (slot-value application+ 'handlers)
-	  (cons (cons method-name url)
+	  (cons (list method-name url (cl-ppcre:create-scanner url))
 		(remove-handler application+ method-name))))
 
   (defmethod remove-handler ((application+ http-application+) method-name)
-    (prog1 (setf (slot-value application+ 'handlers)
-		 (remove method-name (slot-value application+ 'handlers) :key #'car))
-      (remhash method-name (slot-value application+ 'scanner-cache))))
+    (setf (slot-value application+ 'handlers)
+	  (remove method-name (slot-value application+ 'handlers) :key #'car)))
 
   (defmethod class+.ctor ((application+ http-application+))
     nil))
@@ -192,10 +183,8 @@
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defclass http-application (web-application)
     ((sessions :accessor http-application.sessions
-	       :initform (make-hash-table :test #'equal
-					  :synchronized t)
+	       :initform (make-hash-table :test #'equal :synchronized t)
 	       :documentation "A hash-table that holds sessions"))
-    ;; (:default-initargs :directory nil)
     (:documentation "HTTP Application Class")
     (:metaclass http-application+)))
 
@@ -217,33 +206,6 @@
 (defmethod reset-sessions ((self http-application))
   (clrhash (slot-value self 'sessions)))
 
-;; +-------------------------------------------------------------------------
-;; | Root Http Application (App to serve at /)
-;; +-------------------------------------------------------------------------
-(defclass+ root-http-application-mixin ()
-  ())
-
-;; --------------------------------------------------------------------------
-;; defapplication Macro: Just adds http-application+ metaclass
-;; --------------------------------------------------------------------------
-(defmacro defapplication (name supers slots &rest rest)
-  (let ((dispatchers (reduce #'append
-                             (mapcar (rcurry #'slot-value 'handlers)
-                                     (filter
-				      (lambda (a)
-					(if (typep a 'http-application+)
-					    a))
-				      (mapcar #'find-class supers))))))
-    `(defclass+ ,name ,supers
-       ,slots
-       ,@rest
-       (:metaclass http-application+)
-       ;; (:handlers ,@dispatchers)
-       )))
-
-;; +-------------------------------------------------------------------------
-;; | HTTP Application Interface
-;; +-------------------------------------------------------------------------
 (defmethod web-application.serve-url ((self http-application) (req t))
   (format nil "/~A/TESTREQUEST" (web-application.fqdn self)))
 
@@ -264,25 +226,35 @@
 		  (core-server::uri.paths (http-request.uri req)))	    
 	    (return-stream s))))
 
+;; +-------------------------------------------------------------------------
+;; | Root Http Application (App to serve at /)
+;; +-------------------------------------------------------------------------
+(defclass+ root-http-application-mixin ()
+  ())
+
+;; --------------------------------------------------------------------------
+;; defapplication Macro: Adds http-application+ metaclass
+;; --------------------------------------------------------------------------
+(defmacro defapplication (name supers slots &rest rest)
+  `(defclass+ ,name ,supers
+     ,slots ,@rest
+     (:metaclass http-application+)))
+
+;; +-------------------------------------------------------------------------
+;; | HTTP Application Interface
+;; +-------------------------------------------------------------------------
 (defmethod find-session ((application http-application) id)
   "Returns the session associated with 'id'"
   (aif (gethash id (http-application.sessions application))
        (values it application)))
 
 (defmethod map-session (lambda (application http-application))
-  (mapcar (lambda (k v)
-	    (funcall lambda k v))
+  (mapcar (lambda (k v) (funcall lambda k v))
 	  (hash-table-keys (slot-value application 'sessions))
 	  (hash-table-values (slot-value application 'sessions))))
 
-(defmethod render-404 ((application http-application)
-		       (request http-request) (response http-response))
-  "Override this method to have custom 404 page for your application."
-  (render-404 (application.server application) request response))
-
-(defmethod render-file ((application http-application)
-			(request http-request) (response http-response))
-  "Default directory handler which serves static files"
+(defmethod find-file-to-serve ((application http-application)
+			       (request http-request))
   (let ((htdocs-path (web-application.htdocs-pathname application))
 	(paths (let ((tmp (or (uri.paths (http-request.uri request))
 			      '(("")))))
@@ -292,82 +264,19 @@
 
     ;; HTDOCS Not found
     (if (or (null htdocs-path) (not (probe-file htdocs-path)))
-	(return-from render-file nil))
+	(return-from find-file-to-serve nil))
     
     (let* ((file-and-ext (pathname (caar (last paths))))
-	   (path (append '(:relative) (mapcar #'car (butlast paths))))
-	   (output (http-response.stream response))
+	   (path (append '(:relative) (mapcar #'car (butlast paths)))) 
 	   (abs-path (merge-pathnames
 		      (merge-pathnames (make-pathname :directory path)
 				       file-and-ext)
-		      htdocs-path))
-	   (mime-type (mime-type abs-path)))
+		      htdocs-path)))
 
-      ;; File Not Found
-      (if (not (probe-file abs-path))
-	  (return-from render-file nil))
-
-      ;; Directory Request, we do not serve it, yet. 
-      (if (cl-fad:directory-exists-p abs-path)
-	  (return-from render-file nil))
-
-      (http-response.set-content-type response (split "/" mime-type))
-      
-      (with-open-file (input abs-path :element-type '(unsigned-byte 8)
-			     :direction :input)
-	(let ((seq (make-array (file-length input)
-			       :element-type 'unsigned-byte)))
-	  (read-sequence seq input)
-	  (write-stream output seq)))
-      t)))
-
-(defmethod dispatch ((self http-application) (request http-request)
-		     (response http-response))
-  "Dispatch 'request' to 'self' application with empty 'response'"
-  (let ((session (gethash (find-session-id request)
-			  (http-application.sessions self)))
-	(k-arg (uri.query (http-request.uri request)
-			  +continuation-query-name+)))
-    (acond
-     ((and session (gethash k-arg (session.continuations session)))
-      (log-me (application.server self) 'http-application	
-	      (format nil "fqdn: ~A, k-url: ~A"
-		      (web-application.fqdn self)
-		      (uri.query (http-request.uri request)
-				 +continuation-query-name+)))
-      (or (funcall it request response) t))
-     ((and session k-arg)
-      (log-me (application.server self) 'http-application
-	      (format nil "fqdn: ~A, invalid k-url: ~A"
-		      (web-application.fqdn self)
-		      (http-request.uri request)))
-      (render-404 self request response))
-     ((any #'(lambda (handler)
-	       (aif (caar (uri.paths (http-request.uri request)))
-		    (let ((uri (make-uri :paths
-					 (uri.paths
-					  (http-request.uri request)))))
-		      (and (cl-ppcre:scan-to-strings
-			    (cl-ppcre:create-scanner (cdr handler))
-			    (with-core-stream (s "")
-			      (uri! s uri)
-			      (return-stream s)))
-			   (car handler)))))
-	   (reverse (http-application+.handlers (class-of self))))
-      (log-me (application.server self) 'http-application
-	      (format nil "fqdn: ~A, static-handler:: ~A"
-		      (web-application.fqdn self)
-		      (http-request.uri request)))
-      (or (funcall it self (make-new-context self request response session))
-	  t))
-     ((render-file self request response)
-      (log-me (application.server self) 'http-application
-	      (format nil "fqdn: ~A, static-url: ~A"
-		      (web-application.fqdn self)
-		      (http-request.uri request)))
-      t)
-     (t
-      (render-404 self request response)))))
+      ;; File Not Found or Directory Request, we do not serve it, yet. 
+      (if (or (not (probe-file abs-path)) (cl-fad:directory-exists-p abs-path))
+	  nil
+	  abs-path))))
 
 (defmethod gc ((self http-application))
   "Garbage collector for HTTP application, removes expired sessions/continuations"
@@ -382,12 +291,59 @@
 		     sessions)
 	    expired))))
 
-(defmethod dispatch :around ((application http-application)
-			     (request http-request) (response http-response))
-  (when (> (random 100) 40)
-    (gc application))
-  
-  (call-next-method))
+(defmethod dispatch :around ((application http-application) (request http-request))
+  (when (> (random 100) 40) (gc application))
+  (call-next-method application request))
+
+(defmethod dispatch ((self http-application) (request http-request))
+  "Dispatch 'request' to 'self' application with empty 'response'"
+  (let ((session (gethash (find-session-id request)
+			  (http-application.sessions self)))
+	(k-arg (uri.query (http-request.uri request)
+			  +continuation-query-name+)))
+    (acond
+     ((and session (gethash k-arg (session.continuations session)))
+      (log-me (application.server self) 'http-application	
+	      (format nil "fqdn: ~A, k-url: ~A"
+		      (web-application.fqdn self)
+		      (uri.query (http-request.uri request)
+				 +continuation-query-name+)))
+      (let ((response (make-response)))
+	(funcall it request response)
+	response))
+     ((and session k-arg)
+      (log-me (application.server self) 'http-application
+	      (format nil "fqdn: ~A, invalid k-url: ~A"
+		      (web-application.fqdn self)
+		      (http-request.uri request)))
+      (make-404-response))
+     ((any #'(lambda (handler)
+	       (destructuring-bind (method url scanner) handler
+		 (declare (ignore url))
+		 (aif (caar (uri.paths (http-request.uri request)))
+		      (let ((uri (uri->string
+				  (make-uri :paths
+					    (uri.paths
+					     (http-request.uri request))))))
+			(and (cl-ppcre:scan-to-strings scanner uri)
+			     method)))))
+	   (reverse (http-application+.handlers (class-of self))))
+      (log-me (application.server self) 'http-application
+	      (format nil "fqdn: ~A, static-handler:: ~A"
+		      (web-application.fqdn self)
+		      (http-request.uri request)))
+      (let ((response (make-response)))
+	(funcall it self (make-new-context self request response session))
+	response))
+     ((find-file-to-serve self request)
+      (log-me (application.server self) 'http-application
+	      (format nil "fqdn: ~A, static-url: ~A, serving file:~A"
+		      (web-application.fqdn self)
+		      (http-request.uri request) it))
+      (let ((response (make-response)))
+	(http-response.add-entity response it)	
+	response))
+     (t (make-404-response)))))
 
 ;; --------------------------------------------------------------------------
 ;; Overriden get-directory method: This allows us to use default
@@ -613,12 +569,13 @@ application/javascript"
 				  '("application" "javascript" ("charset" "UTF-8")))
   (send/suspend
     (prog1 nil
-      (funcall lambda
-	       (if (application.debug (context.application +context+))
-		   (make-indented-stream
-		    (http-response.stream (context.response +context+)))
-		   (make-compressed-stream
-		    (http-response.stream (context.response +context+))))))))
+      (funcall lambda (http-response.stream (context.response +context+))
+	       ;; (if (application.debug (context.application +context+))
+	       ;; 	   (make-indented-stream
+	       ;; 	    (http-response.stream (context.response +context+)))
+	       ;; 	   (make-compressed-stream
+	       ;; 	    (http-response.stream (context.response +context+))))
+	       ))))
 
 (defmacro json/suspend (&body body)
   "Json version of send/suspend, sets content-type to text/json"
@@ -939,3 +896,44 @@ provide query parameters inside URL as key=value"
 ;;    #:kontinue
 ;;    #:test-url
    
+
+;; (defmethod render-file ((application http-application)
+;; 			(request http-request) (response http-response))
+;;   "Default directory handler which serves static files"
+;;   (let ((htdocs-path (web-application.htdocs-pathname application))
+;; 	(paths (let ((tmp (or (uri.paths (http-request.uri request))
+;; 			      '(("")))))
+;; 		 (if (equal (caar tmp) "")
+;; 		     '(("index.html"))
+;; 		     tmp))))
+
+;;     ;; HTDOCS Not found
+;;     (if (or (null htdocs-path) (not (probe-file htdocs-path)))
+;; 	(return-from render-file nil))
+    
+;;     (let* ((file-and-ext (pathname (caar (last paths))))
+;; 	   (path (append '(:relative) (mapcar #'car (butlast paths))))
+;; 	   (output (http-response.stream response))
+;; 	   (abs-path (merge-pathnames
+;; 		      (merge-pathnames (make-pathname :directory path)
+;; 				       file-and-ext)
+;; 		      htdocs-path))
+;; 	   (mime-type (mime-type abs-path)))
+
+;;       ;; File Not Found
+;;       (if (not (probe-file abs-path))
+;; 	  (return-from render-file nil))
+
+;;       ;; Directory Request, we do not serve it, yet. 
+;;       (if (cl-fad:directory-exists-p abs-path)
+;; 	  (return-from render-file nil))
+
+;;       (http-response.set-content-type response (split "/" mime-type))
+      
+;;       (with-open-file (input abs-path :element-type '(unsigned-byte 8)
+;; 			     :direction :input)
+;; 	(let ((seq (make-array (file-length input)
+;; 			       :element-type 'unsigned-byte)))
+;; 	  (read-sequence seq input)
+;; 	  (write-stream output seq)))
+;;       t)))
