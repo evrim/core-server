@@ -89,7 +89,7 @@
   "IP address of the mail exchanger")
 
 ;;---------------------------------------------------------------------------
-;; SCm Specific Variables
+;; SCM Specific Variables
 ;;---------------------------------------------------------------------------
 (defvar +darcs+ (whereis "darcs") "darcs Pathname")
 (defvar +git+ #P"/usr/bin/git" "git Pathname") ;; can't be found on all
