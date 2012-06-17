@@ -644,16 +644,6 @@ provide query parameters inside URL as key=value"
 		(http-response.add-response-header response 'etag (cons (calculate-etag) nil))
 		(http-response.add-entity-header response 'expires (+ (get-universal-time) 50000))
 		(http-response.add-entity-header response 'last-modified timestamp)
-		;; (let* ((agent (http-request.header request 'user-agent))
-		;; 	 (str (cdr (assoc 'string agent)))
-		;; 	 (msie (if (search "MSIE" str) t)))
-		;;   (if msie
-		;; 	(http-response.add-general-header response 'cache-control
-		;; 					  (list ;; 'public 'must-revalidate 'no-transform (cons 'max-age 0)
-		;; 					   'no-cache))
-		;; 	(http-response.add-general-header response 'cache-control
-		;; 					  (list ;; 'private 'must-revalidate 'no-transform
-		;; 					   (cons 'max-age 50000)))))
 		(http-response.add-general-header response 'cache-control
 						  (list 'public ;; 'must-revalidate 'no-transform
 							(cons 'max-age 50000))))
@@ -665,7 +655,7 @@ provide query parameters inside URL as key=value"
        (let* ((date (http-request.header request 'if-modified-since))
 	      (etag (http-request.header request 'if-none-match)))
 	 (cond
-	   ((null (application.debug (context.application +context+)))
+	   ((application.debug (context.application +context+))
 	    ,@body)
 	   ((and timestamp (> timestamp 0) etag)
 	    (if (equal (calculate-etag) (caar etag))
