@@ -194,7 +194,7 @@ nil if stream data is invalid"
 					 (make-compressed-stream stream))))
 		       (serialize-to (http-response.stream response) stream2)
 		       (return-stream stream2))
-		     (let ((stream (make-instance 'core-vector-io-stream)))
+		     (let ((stream (make-core-stream (make-accumulator :byte))))
 		       (serialize-to (http-response.stream response) stream)
 		       (return-stream stream)))))
 	     (do-finish-compression (stream)
