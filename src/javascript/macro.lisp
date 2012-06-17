@@ -160,11 +160,20 @@
 (defmacro/js lifte (fun &rest args)
   (if (atom fun)
       `(event (e)
-	 (try (with-call/cc (call/cc ,fun ,@args)) (:catch (e) (_debug e)))	      
+	 (try (with-call/cc (call/cc ,fun ,@args)) (:catch (e) (_debug e)))
 	 false)
       `(event (e)
 	 (try (with-call/cc ,fun) (:catch (e) (_debug e)))
 	 false)))
+
+(defmacro/js lifte2 (fun &rest args)
+  (if (atom fun)
+      `(event (e)
+	 (try (with-call/cc (call/cc ,fun ,@args)) (:catch (e) (_debug e)))
+	 true)
+      `(event (e)
+	 (try (with-call/cc ,fun) (:catch (e) (_debug e)))
+	 true)))
 
 ;; -------------------------------------------------------------------------
 ;; Method Macro
