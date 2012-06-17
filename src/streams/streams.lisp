@@ -464,7 +464,7 @@
    (%buffer :initform '()))) ;; checkpoint buffer
 
 (defmethod return-stream ((self core-list-io-stream))
-  (s-v '%list))
+  (nreverse (s-v '%list)))
 
 (defmethod close-stream ((self core-list-io-stream))
   (setf (s-v '%list) nil (s-v '%index) 0 (s-v '%buffer) 0
@@ -535,6 +535,52 @@
 		(s-v '%buffer) (cadr previous-checkpoint))
 	  (setf (s-v '%current) -1
 		(s-v '%buffer) '())))))
+
+;; -------------------------------------------------------------------------
+;; Core List Output Stream (faster version for output)
+;; -------------------------------------------------------------------------
+(defclass core-list-output-stream (core-list-io-stream)
+  ())
+
+(defmethod peek-stream ((self core-list-output-stream))
+  (error "Use core-list-io-stream"))
+
+(defmethod read-stream ((self core-list-output-stream))
+  (error "Use core-list-io-stream"))
+
+(defmethod return-stream ((self core-list-output-stream))
+  (nreverse (s-v '%list)))
+
+(defmethod write-stream ((self core-list-output-stream) (list list))
+  (mapcar (curry #'write-stream self) list))
+
+(defmethod increase-indent ((self core-list-output-stream) &optional n)
+  (declare (ignore n))
+  (write-stream self 'increase-indent-magic))
+
+(defmethod decrease-indent ((self core-list-output-stream) &optional n)
+  (declare (ignore n))
+  (write-stream self 'decrease-indent-magic))
+
+(defmethod write-stream ((self core-list-output-stream) atom)
+  (if (transactionalp self)
+      (setf (s-v '%buffer) (cons atom (s-v '%buffer)))
+      (setf (s-v '%list) (cons atom (s-v '%list))))
+  self)
+
+(defmethod serialize-to ((self core-list-io-stream) stream)
+  (return-stream
+   (reduce (lambda (stream data)
+	     (cond
+	       ((eq data 'increase-indent-magic)
+		(increase-indent stream))
+	       ((eq data 'decrease-indent-magic)
+		(decrease-indent stream))
+	       (t (write-stream stream data))))
+	   (return-stream self) :initial-value stream)))
+
+(defun make-core-list-output-stream (&optional (initial (list)))
+  (make-instance 'core-list-output-stream :list initial))
 
 ;;;--------------------------------------------------------------------------
 ;;; Object Stream
@@ -645,6 +691,35 @@
 (defmethod return-stream ((stream wrapping-stream))
   (return-stream (slot-value stream '%stream)))
 
+;; +-------------------------------------------------------------------------
+;; | Gzip Stream (there is another one, see make-core-stream)
+;; +-------------------------------------------------------------------------
+(defclass gzip-stream (wrapping-stream)
+  ((compressor :accessor gzip-stream.compressor)))
+
+(defun make-gzip-stream (stream)
+  (let ((stream (make-instance 'gzip-stream :stream stream)))
+    (setf (gzip-stream.compressor stream)
+	  (make-instance 'gzip-compressor
+			 :callback (lambda (buffer end)
+				     (describe buffer)
+				     (write-stream (slot-value stream '%stream)
+						   (if (< end (length buffer))
+						       (subseq buffer 0 end)
+						       buffer)))))
+    stream))
+
+(defmethod write-stream ((self gzip-stream) (object string))
+  (write-stream self (string-to-octets object :utf-8)))
+
+(defmethod write-stream ((self gzip-stream) (object vector))
+  (with-slots (compressor) self
+    (compress-octet-vector (make-array (length object)
+				       :initial-contents object
+				       :element-type '(unsigned-byte 8))
+			   compressor)
+    (finish-compression compressor)
+    self))
 ;; -------------------------------------------------------------------------
 ;; Bounded Stream - A Maximum Read Length Bounded Stream
 ;; -------------------------------------------------------------------------
