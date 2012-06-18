@@ -214,7 +214,6 @@
 				   (:file "mime-types")
 				   (:file "tags")
 				   (:file "component")
-				   (:file "service")
 				   (:file "jquery")
 				   (:file "form")
 				   (:file "dialog")
