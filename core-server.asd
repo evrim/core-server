@@ -210,8 +210,7 @@
                          (:module :web
                                   :serial t
                                   :components
-                                  ((:file "macros")
-                                   (:file "json")
+                                  ((:file "json")
 				   (:file "mime-types")
 				   (:file "tags")
 				   (:file "component")
