@@ -164,6 +164,7 @@
 				   (:file "dom")
 				   (:file "html")
 				   (:file "css")
+				   ;; (:file "json")
 				   (:file "core-server")
 				   ;; (:file "rss")
 				   (:file "atom")

@@ -151,6 +151,14 @@ for traceing a closed system"
   (let ((l (length lst)))
     (subseq lst 0 (min l n))))
 
+(defun remove-if-member (members target &key (key #'identity) (test #'eq))
+  (nreverse
+   (reduce (lambda (acc atom)
+	     (if (member (funcall key atom) members :test test)
+		 acc
+		 (cons atom acc)))
+	   target :initial-value nil)))
+
 (defmacro with-package (package &body body)
   "Executes body while setting current package to 'package'"
   `(let ((*package* (find-package ,package)))

@@ -608,6 +608,16 @@
       (extend properties element)
       element))
 
+  (defun make-object-to-extend (dom-tag to-extend)
+    (if dom-tag
+	(cond
+	  ((null to-extend) (document.create-element dom-tag))
+	  ((null (slot-value to-extend 'node-name))
+	   (extend to-extend (document.create-element dom-tag)))
+	  (to-extend to-extend)
+	  (t (new (*object))))
+	(or to-extend (new (*object)))))
+
   (defun get-cookie (name)
     (let* ((cookies (mapcar (lambda (a) (.split a "="))
 			    (.split document.cookie ";")))

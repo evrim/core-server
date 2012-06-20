@@ -277,11 +277,8 @@
 
 (defmethod json! ((stream core-stream) (element xml))
   (typecase element
-    (component
-     (with-call/cc (component! (make-indented-stream stream)
-			       element)))
-    (t
-     (string! stream (js* (dom2js element))))))
+    (component (with-call/cc (component! stream element)))
+    (t (write-stream stream (js* (dom2js element))))))
 
 (defmethod json! ((stream core-stream) (closure arnesi::closure/cc))
   (let* ((frees (find-free-variables (slot-value closure 'code)))
@@ -336,13 +333,3 @@
 
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
-
-	 ;; (cons :class-name
-	 ;;       (cons (string-downcase (class-name class))
-	 ;; 	     (reduce0 (lambda (acc slot)
-	 ;; 			(cons (make-keyword (slot-definition-name slot))
-	 ;; 			      (cons (slot->jobject slot)
-	 ;; 				    acc)))
-	 ;; 		      (class+.remote-slots class))))

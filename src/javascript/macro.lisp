@@ -93,10 +93,10 @@
   `(call/cc ,ctor (jobject ,@args)))
 
 (defmacro/js delete-slots (self &rest slots)
-  `(remove-slots ,self (list ,@(mapcar (lambda (a) (symbol-to-js (cadr a)))
-				       ;; cadr is for (quote somesymbol)
-				       ;; -evrim.
-				       slots))))
+  `(remove-slots ,self (array ,@(mapcar (lambda (a) (symbol-to-js (cadr a)))
+					;; cadr is for (quote somesymbol)
+					;; -evrim.
+					slots))))
 
 (defmacro/js delete-slot (self slot)
   `(delete-slots ,self ,slot))
