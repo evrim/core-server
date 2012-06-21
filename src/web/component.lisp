@@ -89,7 +89,8 @@
 		  (cdr it))))
       (apply (car method) self
 	     (mapcar (lambda (arg)
-		       (json-deserialize (find-argument arg)))
+		       (component.deserialize self
+			(json-deserialize (find-argument arg))))
 		     (mapcar (compose #'car #'ensure-list)
 			     (cdddr method)))))))
 
@@ -100,7 +101,22 @@
 (defmethod component.serialize-slot ((self component) (slot-name symbol))
   (component.serialize self (slot-value self slot-name)))
 (defmethod component.deserialize ((self component) (object t)) object)
-(defmethod component.deserialize ((self component) (object jobject)) object)
+
+;; -------------------------------------------------------------------------
+;; component/suspend
+;; -------------------------------------------------------------------------
+(defmacro component/suspend (lambda)
+  `(javascript/suspend
+    (lambda (stream)
+      (let ((hash (json-deserialize
+		   (http-request.query (context.request +context+) "__hash"))))
+	(if hash
+	    (with-js (hash ,@(find-free-variables (walk-form lambda))) stream
+	      (with-call/cc
+		(apply (slot-value window hash) window
+		       (list ,lambda))))
+	    (with-js (hash ,@(find-free-variables (walk-form lambda))) stream
+	      (with-call/cc ,lambda)))))))
 
 ;; -------------------------------------------------------------------------
 ;; Remote & Local Morphism Interface
@@ -124,7 +140,10 @@
     (let* ((class-name (class-name class))
 	   (metaclass (class-name (class-of class)))
 	   (morphism (component+.morphism-function-name class name))
-	   (remote (component+.codomain-function-name class name)))
+	   (remote (component+.codomain-function-name class name))
+	   (stub-p (any (lambda (a) (and (listp a) (find-class (cadr a))))
+			args))
+	   (arg-names (extract-argument-names args :allow-specializers t)))
       `(progn
 	 (class+.add-method (find-class+ ',class-name) ',name 'local
 			    '((,self ,class-name) ,@args))
@@ -133,7 +152,7 @@
 		 (gethash ',remote +javascript-cps-functions+) t)
 	   (defjsmacro ,name (&rest args) `(,',remote ,@args)))
 	 (defmethod ,morphism ((self ,metaclass))
-	   `(method ,',args
+	   `(method ,',arg-names
 	      (with-slots (session-id instance-id) self
 		(funkall self (+ "?s:" session-id
 				 "$k:" instance-id
@@ -145,15 +164,15 @@
 				  (cons arg (cons (make-keyword arg) acc)))
 				(extract-argument-names args
 							:allow-specializers t))))))))
-	 ;; (defmethod/cc ,name ((,self ,class-name)
-	 ;; 		      ,@(mapcar (lambda (arg)
-	 ;; 				  `(,(car (ensure-list arg)) t))
-	 ;; 				args))
-	 ;;   (lambda (self)
-	 ;;     (throw
-	 ;;       (new
-	 ;; 	(*error
-	 ;; 	 ,(format nil "Type signature failure for method ~A" name))))))
+	 ,(when stub-p
+	    `(defmethod/cc ,name ((,self ,class-name)
+				  ,@(mapcar (lambda (arg)
+					      (if (listp arg)
+						  (list (car arg) 't)
+						  arg))
+					    args))
+	       (error "Signature failed: (~A~{ ~A~})" ',name
+		      ,@(mapcar (compose #'car #'ensure-list) arg-names))))
 	 (defmethod/cc ,name ((,self ,class-name) ,@args)
 	   (let ((application (component.application ,self)))
 	     ,@body))))))
@@ -187,38 +206,25 @@
 	   ,(if call-next-method-p
 		`(let ((next-method (call-next-method self)))
 		   `(method ,',args
-		       (let ((call-next-method
-			      (lambda (,',self ,@(cadr next-method))
-		   		,@(cddr next-method))))
-		   	,@',body)))
+			    (let ((call-next-method
+				   (lambda (,',self ,@(cadr next-method))
+				     ,@(cddr next-method))))
+			      ,@',body)))
 		``(method ,',args
 			  (let ((,',self self))
 			    ,@',body))))
-	 ,(unless (eq name 'destroy)
-	    `(defmethod/cc ,name ((,self ,class-name) ,@args)
-	       (let (,@(mapcar (lambda (arg)
-				 `(,arg (component.serialize ,self ,arg)))
-			       (extract-argument-names args
-						       :allow-specializers t)))
-		 (with-query ((hash "__hash")) (context.request +context+)
-		   (let ((hash (json-deserialize hash)))
-		     (javascript/suspend
-		      (lambda (stream)
-			(let ((result (action/url ((result "result"))
-					(context.remove-current-action +context+)
-					(answer (component.deserialize ,self result)))))
-			  (if hash
-			      (with-js (result hash ,@args) stream
-				(with-call/cc
-				  (apply (slot-value window hash) window
-					 (list (lambda (self)
-						 (funkall self result
-							  (create :result (,name self ,@args))))))))
-			      (with-js (result ,@args) stream
-				(with-call/cc
-				  (lambda (self)
-				    (funkall self result
-					     (create :result (,name self ,@args)))))))))))))))))))
+	 (defmethod/cc ,name ((,self ,class-name) ,@args)
+	   (let (,@(mapcar (lambda (arg)
+			     `(,arg (component.serialize ,self ,arg)))
+			   (extract-argument-names args
+						   :allow-specializers t))
+		 (result (action/url ((result "result"))
+			   (context.remove-current-action +context+)
+			   (answer (component.deserialize ,self result)))))
+	     (component/suspend
+	       (lambda (self)
+		 (funkall self result
+			  (create :result (,name self ,@args)))))))))))
 
 (defmacro defmethod/remote (name ((self class-name) &rest args) &body body)
   (component+.remote-morphism (find-class class-name) name self args body))
@@ -339,31 +345,17 @@
   (let ((+context+ context)
 	(k (context.continuation context))
 	(+action-hash-override+ (component.instance-id component)))
-    (action/url ((method-name "method") (hash "__hash"))
-      (let* ((args (uri.queries
-		    (http-request.uri
-		     (context.request +context+))))
-	     (result (component.method-call component method-name
-					    args))
-	     (hash (json-deserialize hash)))
+    (action/url ((method-name "method"))
+      (let* ((args (uri.queries (http-request.uri (context.request +context+))))
+	     (result (component.method-call component method-name args)))
 	(kall k context
-	      (javascript/suspend
-	       (lambda (stream)
-		 (if hash
-		     (with-js (result hash) stream
-		       (with-call/cc
-			 (apply (slot-value window hash) window
-				(list (lambda (self) result)))))
-		     (with-js (result) stream
-		       (with-call/cc
-			 (lambda (self) result)))))))))))
+	      (component/suspend (lambda (self) result)))))))
 
 (defmethod component.compile ((component component))
   (let* ((class (class-of component)))
     (format *standard-output* "Compiling constructor for ~A.~%" (class-name class))
     (eval (component.ctor component))
     (setf (slot-value class '%ctor-timestamp) (get-universal-time))))
-
 
 ;; (component-instance-id (component.instance-id component))
 ;; (server-session-id (session.id component))
@@ -556,8 +548,6 @@
 		     (aif (slot-value component-cache class-name)
 			  (call/cc it to-extend)
 			  (let ((ctor (funcall-cc (+ loader-uri "?")
-						  ;; (+ loader-uri "?component="
-					  ;; (encode-u-r-i-component class-name) "&")
 						  (jobject :component class-name
 							   :package package-name
 							   :__hash (+ "__" class-name)))))
@@ -630,29 +620,19 @@
 	    (class+.subclasses (find-class 'component)))))
 
 (defhandler "component\.core" ((self http-application) (component "component")
-			       (package "package") (hash "__hash"))
+			       (package "package"))
   (let ((class (find-component-class (json-deserialize component)
-				     (json-deserialize package)))
-	(hash (json-deserialize hash)))
+				     (json-deserialize package))))
     (assert (not (null class)))
     (assert (not (null component)))
     (flet ((foo () (slot-value class '%cached-ctor-timestamp)))
-      (with-cache (foo)
-    	(javascript/suspend
-    	 (lambda (stream)
-	   (with-js (class hash) stream
-	     (apply (slot-value window hash) window
-		    (list class)))))))))
+      (with-cache (foo) (component/suspend class)))))
 
 (defhandler "destroy.core" ((self http-application) (objects "objects")
 			    (hash "__hash"))
   (mapcar (lambda (object) (context.remove-action +context+ object))
 	  (ensure-list (json-deserialize objects)))
-  (javascript/suspend
-   (lambda (stream)
-     (string! stream "apply(window[\"")
-     (string! stream (json-deserialize hash))
-     (string! stream "\"], window, [null],window.k);"))))
+  (component/suspend nil))
 
 ;; --------------------------------------------------------------------------
 ;; Default Funkall Method for Components
@@ -685,37 +665,14 @@
   ;; (describe (list 'destroy self))
   (context.remove-action +context+ (component.instance-id self)))
 
-(defmethod/cc call-component ((component component))    
-  (javascript/suspend
-   (lambda (stream)
-     (let ((hash (http-request.query (context.request +context+) "__hash")))
-       (if hash
-	   (with-js (hash component) stream
-	     (with-call/cc
-	       (apply (slot-value window hash) window
-		      (list (lambda (self) component))))) 
-	   (with-js (component) stream
-	     ((lambda ()
-		(let ((component component))
-		  (component null window.k))))))))))
+(defmethod/cc call-component ((component component))
+  (component/suspend (lambda (self) component)))
 
 (defmethod/cc answer-component ((self component) arg)
   (answer arg))
 
 (defmethod/cc continue-component ((component component) &optional value)
-  (javascript/suspend
-   (lambda (stream)
-     (let ((hash (json-deserialize
-		  (http-request.query (context.request +context+)
-				      "__hash"))))
-       (if hash
-	   (with-js (value hash component) stream
-	     (with-call/cc
-	       (apply (slot-value window hash) window
-		      (list (lambda (self) value)))))	   
-	   (with-js (component) stream
-	     (with-call/cc
-	       (lambda (self) value))))))))
+  (component/suspend (lambda (self) value)))
 
 (defun/cc continue/js (value)
   (javascript/suspend
@@ -797,19 +754,8 @@
     (setf (slot-value self 'k) k1)
     (suspend)))
 
-(defmethod/cc call-component ((component callable-component))    
-  (javascript/suspend
-   (lambda (stream)
-     (let ((hash (http-request.query (context.request +context+) "__hash")))
-       (if hash
-	   (with-js (hash component) stream
-	     (with-call/cc
-	       (apply (slot-value window hash) window
-		      (list (lambda (self) component))))) 
-	   (with-js (component) stream
-	     ((lambda ()
-		(let ((component component))
-		  (component null window.k))))))))))
+(defmethod/cc call-component ((component callable-component))
+  (component/suspend (lambda (self) component)))
 
 ;; -------------------------------------------------------------------------
 ;; Singleton Component Mixin
@@ -820,25 +766,18 @@
 (defmethod component.instance-id ((self singleton-component-mixin))
   (or (slot-value self 'instance-id)
       (setf (slot-value self 'instance-id)
-	    (format nil "~A"
-		    (symbol-to-js
-		     (string-replace-all
-		      "/" "-"
-		      (format nil "~A" (class-name (class-of self)))))))))
-
-(defmethod/remote destroy ((self singleton-component-mixin))
-  (call-next-method self))
-
-(defmethod/remote init ((self singleton-component-mixin))
-  (call-next-method self))
+	    (symbol-to-js
+	     (string-replace-all "/" "-"
+				 (string (class-name (class-of self))))))))
 
 ;; -------------------------------------------------------------------------
 ;; Remote Reference Class
 ;; -------------------------------------------------------------------------
 (defcomponent remote-reference (component)
-  ())
+  ((_reference-p :host remote :initform t)))
 
 (defmethod component.serialize ((self component) (object remote-reference))
+  (describe (list 'moo object))
   (if (null (gethash (component.instance-id object)
 		     (session.data (component.session self))))
       (setf (gethash (component.instance-id object)
@@ -846,8 +785,11 @@
 	    object))
   object)
 
-;; (defmethod component.deserialize ((self component) object)
-;;   (json-deserialize object))
+(defmethod component.deserialize ((self component) (object jobject))
+  (aif (get-attribute object :_reference)
+       (progn (describe (list 'foo (gethash it (session.data (component.session self)))))
+	      (gethash it (session.data (component.session self))))
+       (call-next-method self object)))
 
 ;; ;; FIXME: -evrim.
 ;; (defmethod component.serialize-slot ((self component) slot-name)
@@ -1208,3 +1150,25 @@
 ;; 					   'to-extend)))		       
 ;; 		       (apply (make-method ,(funcall 'init/js class+)) to-extend null)		     		       
 ;; 		       to-extend)))))))))))
+
+
+;; old local morphism
+;; (with-query ((hash "__hash")) (context.request +context+)
+;;   (let ((hash (json-deserialize hash)))
+;;     (javascript/suspend
+;;      (lambda (stream)
+;;        (let ((result (action/url ((result "result"))
+;; 		       (context.remove-current-action +context+)
+;; 		       (answer (component.deserialize ,self result)))))
+;; 	 (if hash
+;; 	     (with-js (result hash ,@args) stream
+;; 	       (with-call/cc
+;; 		 (apply (slot-value window hash) window
+;; 			(list (lambda (self)
+;; 				(funkall self result
+;; 					 (create :result (,name self ,@args))))))))
+;; 	     (with-js (result ,@args) stream
+;; 	       (with-call/cc
+;; 		 (lambda (self)
+;; 		   (funkall self result
+;; 			    (create :result (,name self ,@args))))))))))))

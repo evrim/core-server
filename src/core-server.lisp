@@ -303,6 +303,7 @@
    #:funcall-cc
    #:funcall2-cc
    #:singleton-component-mixin
+   #:remote-reference
    
    ;; [RFC 2109]
    #:cookie

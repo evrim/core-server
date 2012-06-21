@@ -397,6 +397,8 @@
 		      "[]"))
 		 ((typep (slot-value object 'get-time) 'function)
 		  (serialize (.get-time object)))
+		 ((and (typep object 'object) (slot-value object '_reference-p))
+		  (serialize (jobject :_reference (slot-value object 'instance-id))))
 		 ((typep object 'object)
 		  (let ((result "{")
 			(keys))
