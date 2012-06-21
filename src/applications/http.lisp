@@ -42,6 +42,8 @@
 ;; --------------------------------------------------------------------------
 (defclass http-session ()
   ((id :reader session.id :initarg :id :initform (random-string 8))
+   (application :reader session.application :initarg :application
+		:initform (error "Please specify :application"))
    (continuations :reader session.continuations
 		  :initform (make-hash-table :test #'equal :synchronized t)) 
    (timestamp :accessor session.timestamp :initform (get-universal-time))
@@ -51,9 +53,9 @@
 (defprint-object (self http-session :identity t :type t)
   (format t "~A" (session.id self)))
 
-(defun make-new-session (&optional (id (random-string 8)))
+(defun make-new-session (application &optional (id (random-string 8)))
   "HTTP Session Constructor"
-  (make-instance 'http-session :id id))
+  (make-instance 'http-session :id id :application application))
 
 (defmethod find-session-id ((request http-request))
   "Returns session id string provided in request query or by cookie that has set before"
@@ -108,7 +110,7 @@
        ;; Session exists, update access timestamp
        (prog1 it (setf (session.timestamp it) (get-universal-time)))
        ;; Insert this session to applications session table.
-       (let ((new-session (make-new-session))
+       (let ((new-session (make-new-session (context.application self)))
 	     (application (context.application self)))
 	 (setf (gethash (session.id new-session)
 			(http-application.sessions application))
@@ -657,13 +659,11 @@ provide query parameters inside URL as key=value"
 	 (cond
 	   ((application.debug (context.application +context+))
 	    ,@body)
-	   ((and timestamp (> timestamp 0) etag)
-	    (if (equal (calculate-etag) (caar etag))
-		(prog1 nil
-		  (add-cache-headers)
-		  (setf (http-response.status-code response)
-			(core-server::make-status-code 304)))
-		(render-response)))
+	   ((and timestamp (> timestamp 0) etag (equal (calculate-etag) (caar etag)))
+	    (prog1 nil
+	      (add-cache-headers)
+	      (setf (http-response.status-code response)
+		    (core-server::make-status-code 304))))
 	   (t (render-response)))))))
 
 (defparameter +library.core-timestamp+ (get-universal-time))
