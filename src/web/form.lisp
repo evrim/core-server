@@ -374,22 +374,26 @@
 		 (cond
 		   ((atom data)
 		    (setf (slot-value (_value-cache self) hash) data)
-		    (<:div (<:input :type "checkbox"
-				    :checked (call/cc equal-fun
-						      (current-value self)
-						      data)
-				    :value hash)
-			   (_ data)))
+		    (<:label :class "block" :for hash
+			     (<:input :type "checkbox"
+				      :checked (call/cc equal-fun
+							(current-value self)
+							data)
+				      :value hash
+				      :id hash)
+			     (_ data)))
 		   (t
 		    (destructuring-bind (name value) data
 		      ;; (_debug (list 2 "name" name "value" value))
 		      (setf (slot-value (_value-cache self) hash) value)
-		      (<:div (<:input :type "checkbox"
-				      :checked (call/cc equal-fun
-							(current-value self)
-							value)
-				      :value hash)
-			     (_ name)))))))
+		      (<:label :for hash :class "block"
+			       (<:input :type "checkbox"
+					:id hash
+					:checked (call/cc equal-fun
+							  (current-value self)
+							  value)
+					:value hash)
+			       (_ name)))))))
 	     (mapcar2 (lambda (a b) (list b a))
 		      (option-values self)
 		      hash-list)))))
