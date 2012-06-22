@@ -163,7 +163,7 @@
 				      :title "delete"
 				      :message (+ "Do you really want to"
 						  " delete this item?")))
-      (answer-component self (list "delete"))))
+      (answer-component self (list "delete" (instance self)))))
 
 (defmethod/remote edit-template ((self <core:crud))
   (<:div :class "crud"
