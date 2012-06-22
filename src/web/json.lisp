@@ -112,23 +112,15 @@
 	   string
 	   :initial-value "")))
 
-(defrule json-object? (key value (object (make-hash-table)))
+(defrule json-object? (key value lst)
   (:lwsp?) #\{ (:lwsp?)
   (:zom (:not #\})
 	(:lwsp?) (:json-key? key) (:lwsp?)
 	(:or (:and (:seq "null") (:do (setq value nil))) ;;fixme -evrim
 	     (:json? value)) (:lwsp?)
 	(:checkpoint #\, (:commit)) (:lwsp?)
-	(:do (setf (gethash key object) value)))
-  (:return (let ((result))
-	     (maphash (lambda (k v)
-			(setf result
-			      (append result
-				      (list (js-to-keyword k)
-					    v)))
-			nil)
-		      object)
-	     result)))
+	(:do (setf lst (cons (list (js-to-keyword key) value) lst))))
+  (:return (apply #'jobject (flatten1 lst))))
 
 (defmethod json! ((stream core-stream) (hash-table hash-table))
   (prog1 stream
@@ -284,21 +276,22 @@
   (let* ((frees (find-free-variables (slot-value closure 'code)))
 	 (frees (filter (lambda (arg) (member (cadr arg) frees))
 			(slot-value closure 'arnesi::env))))
-    (string! stream (js* `((lambda ,(mapcar
-				     (lambda (arg)
-				       (case (car arg)
-					 (:let (cadr arg))
-					 (t (prog1 nil
-					      (warn "Fixme: serialize closure to json: ~A" arg)))))
-				     frees)
-			     (return
-			       ,(unwalk-form (slot-value closure 'arnesi::code))))
-			   ,@(mapcar (lambda (arg)
-				       (case (car arg)
-					 (:let (cddr arg))
-					 (t (prog1 nil
-					      (warn "Fixme: serialize closure to json: ~A" arg)))))
-				     frees))))))
+    (string! stream
+	     (js* `((lambda ,(mapcar
+			      (lambda (arg)
+				(case (car arg)
+				  (:let (cadr arg))
+				  (t (prog1 nil
+				       (warn "Fixme: serialize closure to json: ~A" arg)))))
+			      frees)
+		      (return
+			,(unwalk-form (slot-value closure 'arnesi::code))))
+		    ,@(mapcar (lambda (arg)
+				(case (car arg)
+				  (:let (cddr arg))
+				  (t (prog1 nil
+				       (warn "Fixme: serialize closure to json: ~A" arg)))))
+			      frees))))))
 
 (defun json-serialize (object)
   (let ((s (make-core-stream "")))
