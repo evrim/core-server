@@ -9,7 +9,7 @@
    (title :host remote :initform "message")
    (css-url :host remote :initform "/style/dialog/dialog.css")
    (_scroll :host remote :initform (list 0 0)))
-  (:default-initargs :class "coretal coretal-dialog"))
+  (:default-initargs :class "core core-dialog"))
 
 (defmacro/js message (self) `(get-message ,self))
 (defmethod/remote get-message ((self dialog))
@@ -75,7 +75,7 @@
 
 (defmethod/remote init ((self dialog))
   (.append-child self (template self))
-  (setf (overlay self) (<:div :class "coretal-dialog-overlay")))
+  (setf (overlay self) (<:div :class "core-dialog-overlay")))
 
 ;; -------------------------------------------------------------------------
 ;; Supply Dialog Mixin
@@ -269,7 +269,7 @@
 (defcomponent big-dialog (dialog)
   ()
   (:default-initargs
-    :class "coretal-big-dialog coretal-dialog"
+    :class "core core-big-dialog core-dialog"
     :title "Dialog"))
 
 (defmethod/remote dialog-buttons ((self big-dialog))
@@ -293,7 +293,7 @@
 ;; -------------------------------------------------------------------------
 (defcomponent fullscreen-dialog (dialog)
   ()
-  (:default-initargs :class "coretal-fullscreen-dialog" :title ""))
+  (:default-initargs :class "core core-fullscreen-dialog" :title ""))
 
 (defmethod/remote template ((self fullscreen-dialog))
   (<:div :class "center text-center"	 
