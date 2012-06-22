@@ -32,7 +32,8 @@
    (instance-id :host both :print t :documentation "Unique instance id")
    (session-id :host both :export nil :documentation "Session Id")
    (destroy-uri :host both :documentation "Destroy URL")
-   (remote-slots :host remote))
+   (remote-slots :host remote)
+   (object-cache :host none :initform nil))
   (:metaclass component+)
   (:documentation "Base component class"))
 
@@ -51,6 +52,12 @@
 		(mapcar #'symbol-to-js
 			(remove-if-member +markup-slots+ slots))))))
   self)
+
+(defmethod component.object-cache ((self component))
+  (with-slots (object-cache) self
+    (if object-cache
+	object-cache
+	(setf object-cache (make-hash-table :test #'equal :synchronized t)))))
 
 (defmethod component.instance-id ((self component))
   "Return, set the instance ID"
@@ -98,6 +105,12 @@
 ;; Serialization Interface
 ;; -------------------------------------------------------------------------
 (defmethod component.serialize ((self component) (object t)) object)
+(defmethod component.serialize ((self component) (object cons))
+  (cons (component.serialize self (car object))
+	(component.serialize self (cdr object))))
+
+(defmethod component.serialize ((self component) (object list))
+  (mapcar (curry #'component.serialize self) object))
 (defmethod component.serialize-slot ((self component) (slot-name symbol))
   (component.serialize self (slot-value self slot-name)))
 (defmethod component.deserialize ((self component) (object t)) object)
@@ -347,7 +360,8 @@
 	(+action-hash-override+ (component.instance-id component)))
     (action/url ((method-name "method"))
       (let* ((args (uri.queries (http-request.uri (context.request +context+))))
-	     (result (component.method-call component method-name args)))
+	     (result (component.serialize component
+		       (component.method-call component method-name args))))
 	(kall k context
 	      (component/suspend (lambda (self) result)))))))
 
@@ -777,18 +791,20 @@
   ((_reference-p :host remote :initform t)))
 
 (defmethod component.serialize ((self component) (object remote-reference))
-  (describe (list 'moo object))
-  (if (null (gethash (component.instance-id object)
-		     (session.data (component.session self))))
-      (setf (gethash (component.instance-id object)
-		     (session.data (component.session self)))
-	    object))
+  (let ((cache (component.object-cache self)
+	  ;; (session.data (component.session self))
+	  )
+	(instance-id (component.instance-id object)))
+    (if (null (gethash instance-id cache))
+	(setf (gethash instance-id cache) object)))
   object)
 
 (defmethod component.deserialize ((self component) (object jobject))
   (aif (get-attribute object :_reference)
-       (progn (describe (list 'foo (gethash it (session.data (component.session self)))))
-	      (gethash it (session.data (component.session self))))
+       (aif (gethash it (component.object-cache self))
+	    it
+	    (error "Cannot find reference to ~A"
+		   (get-attribute object :_reference)))
        (call-next-method self object)))
 
 ;; ;; FIXME: -evrim.
