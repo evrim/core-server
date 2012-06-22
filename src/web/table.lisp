@@ -208,7 +208,9 @@
 
       (if (null (instances self))
 	  (replace-node (aref (.get-elements-by-tag-name self "TBODY") 0)
-			(tbody self))))
+			(tbody self)))
+
+      (resize-thead self))
 
     ;; (setf (slot-value (slot-value self 'parent-node) 'scroll-top) "0")
     instance))
