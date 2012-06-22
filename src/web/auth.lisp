@@ -41,7 +41,11 @@
 	       (<:input :type "submit" :class "button"
 			:value "login" :disabled t))))))
 
+(defmethod/remote destroy ((self login-box))
+  (remove-class self "core"))
+
 (defmethod/remote init ((self login-box))
+  (add-class self "core")
   (mapcar (lambda (a) (.append-child self a)) (template self)))
 
 ;; -------------------------------------------------------------------------

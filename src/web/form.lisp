@@ -97,12 +97,15 @@
     (t
      (slot-value self 'value))))
 
-(defmethod/remote init ((self <core:validating-input))
+(defmethod/remote init ((self <core:validating-input))  
   (flet ((do-validate (f)
 	   (if (slot-value self 'form)
 	       (run-validator self)
 	       (make-web-thread (lambda () (f f))))))
-    (do-validate do-validate)))
+    (do-validate do-validate))
+  
+  (when (slot-value self 'type)
+    (setf (slot-value self 'type) "text")))
 
 ;; +-------------------------------------------------------------------------
 ;; | Default Value HTML Input
@@ -189,6 +192,11 @@
     (if (typep result 'string)
 	result
 	(validate-password self))))
+
+(defmethod/remote init ((self <core:password-input))
+  (call-next-method self)
+  (setf (slot-value self 'type) "password")
+  self)
 
 ;; +-------------------------------------------------------------------------
 ;; | Required Input
