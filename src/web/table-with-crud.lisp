@@ -19,8 +19,13 @@
 (defmethod/local add-instance ((self <core:table-with-crud) key)
   (error "Please implement add-instance method."))
 
-(defmethod/local delete-instance ((self <core:table-with-crud) key)
+(defmethod/local delete-instance ((self <core:table-with-crud)
+				  (instance remote-reference))
   (error "Please implement delete-instance method."))
+
+(defmethod/local update-instance ((self <core:table-with-crud)
+				  (instance remote-reference) args)
+  (error "Please implement update-instance method."))
 
 (defmethod/remote make-table ((self <core:table-with-crud))
   (let ((_instances (mapcar-cc (lambda (a) (if (typep a 'function)
@@ -46,8 +51,7 @@
 			 (+ _value "")
 			 (reset-input-value val)
 			 (do-add-instance self _value)))
-	    _span
-	    val
+	    _span val
 	    (<:input :type "submit" :disabled t :value "Add"))))
 
 (defmethod/remote destroy ((self <core:table-with-crud))
@@ -67,17 +71,23 @@
     (append self crud)
     (make-web-thread
      (lambda ()
-       (let* ((result (call-component table))
-	      (new-crud (make-component (crud self) :instance result)))
+       (let* ((instance (call-component table))
+	      (new-crud (make-component (crud self) :instance instance)))
 	 (setf (_crud self) (replace-node (_crud self) new-crud))
 	 (make-web-thread
 	  (lambda ()
 	    (destructuring-bind (action &rest args) (call-component new-crud)
 	      (cond
 		((eq "delete" action)
-		 (delete-instance self result)
-		 (setf (_crud self) (replace-node (_crud self) (<:div)))
-		 (remove-instance (_table self) result))
+		 (when (delete-instance self instance)
+		   (setf (_crud self) (replace-node (_crud self) (<:div)))
+		   (destroy new-crud)
+		   (remove-instance (_table self) instance)))
+		((eq "update" action)
+		 (let ((updates (update-instance self instance args)))
+		   (remove-instance (_table self) instance)
+		   (extend updates instance)
+		   (add-instance (_table self) instance)))
 		(t
 		 (_debug (list "crud" "action" action "args" args))
 		 nil))))))))))
