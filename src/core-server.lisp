@@ -1195,6 +1195,20 @@
   (:nicknames :io)
   (:use :cl :core-server :cffi))
 
+;; ----------------------------------------------------------------------------
+;; Serialization Codomain Package
+;; ----------------------------------------------------------------------------
+(defpackage :tr.gen.core.tags.db
+  (:nicknames :<db)
+  (:export #:null #:true #:symbol #:character #:integer #:string
+	   #:ratio #:complex #:float #:vector #:cons #:hash-table
+	   #:hash-table-entry #:hash-table-key #:hash-table-value
+	   #:slot #:struct #:class #:instance #:ref #:object-with-id
+	   #:transaction #:pathname))
+
+;; -------------------------------------------------------------------------
+;; HTML Codomain
+;; -------------------------------------------------------------------------
 (defpackage :tr.gen.core.server.html
   (:nicknames :< :<html :core-server.html)
   (:use :core-server)
@@ -1208,6 +1222,15 @@
 	   #:select #:small #:span #:strike #:strong #:style #:sub #:sup
 	   #:table #:tbody #:td #:textarea #:tfoot #:th #:thead
 	   #:title #:tr #:tt #:u #:ul #:var #:embed #:foo #:bar))
+
+;; -------------------------------------------------------------------------
+;; JSON Codomain
+;; -------------------------------------------------------------------------
+(defpackage :tr.gen.core.server.json
+  (:nicknames :<json :core-server.json)
+  (:export #:string #:number #:boolean #:array #:true #:false #:nil
+	   #:object #:closure #:hash-table #:undefined #:symbol
+	   #:instance #:json))
 
 (defpackage :tr.gen.core.server.markup
   (:nicknames :<core-server :core-server.markup)

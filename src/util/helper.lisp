@@ -43,6 +43,13 @@
     "Returns keyword for the symbol 'sym'"
     (intern (symbol-name sym) :keyword))
 
+  (defun symbol->string (symbol)
+    "Returns the string representation of the 'symbol'"
+    (let* ((package (symbol-package symbol)))
+      (if package
+	  (format nil "~A::~A" (package-name package) (symbol-name symbol))
+	  (symbol-name symbol))))
+
   (defun reduce0 (lambda list)
     (reduce lambda list :initial-value nil))
 

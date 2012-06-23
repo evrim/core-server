@@ -3,23 +3,6 @@
 ;; ----------------------------------------------------------------------------
 (in-package :core-server)
 
-(defun symbol->string (symbol)
-  (let* ((package (symbol-package symbol)))
-    (if package
-	(format nil "~A::~A" (package-name package) (symbol-name symbol))
-	(symbol-name symbol))))
-
-;; ----------------------------------------------------------------------------
-;; Serialization Codomain Package
-;; ----------------------------------------------------------------------------
-(defpackage :tr.gen.core.tags.db
-  (:nicknames :<db)
-  (:export #:null #:true #:symbol #:character #:integer #:string
-	   #:ratio #:complex #:float #:vector #:cons #:hash-table
-	   #:hash-table-entry #:hash-table-key #:hash-table-value
-	   #:slot #:struct #:class #:instance #:ref #:object-with-id
-	   #:transaction #:pathname))
-
 ;; --------------------------------------------------------------------------
 ;; Lisp->XML
 ;; --------------------------------------------------------------------------
