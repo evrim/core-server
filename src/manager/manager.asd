@@ -18,9 +18,7 @@
 	    :components
 	    ((:file "packages")
 	     (:file "model" :depends-on ("packages"))
-	     (:file "tx" :depends-on ("model"))
-	     (:file "application" :depends-on ("packages" "model" "tx"))
-	     (:file "interfaces" :depends-on ("application"))
+	     (:file "application" :depends-on ("packages" "model")) 
 	     (:module :ui
 		      :serial t
 		      :components
