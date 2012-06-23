@@ -1502,10 +1502,10 @@
   (cadr (assoc key (http-response.response-headers self))))
 
 (defmethod http-response.get-content-type ((self http-response))
-  (http-response.get-entity-header self 'content-type))
+  (car (http-response.get-entity-header self 'content-type)))
 
 (defmethod http-response.get-content-length ((self http-response))
-  (http-response.get-entity-header self 'content-length))
+  (car (http-response.get-entity-header self 'content-length)))
 
 (defmethod http-response.add-cookie ((self http-response) (cookie cookie))
   (setf (slot-value self 'response-headers)

@@ -124,7 +124,7 @@
 	     (:and (:sci "version=") (:rfc2109-quoted-value? version))
 	     (:and (:sci "comment=") (:rfc2109-quoted-value? comment))
 	     (:and (:sci "secure=") (:rfc2109-quoted-value? secure)))
-	#\; (:lwsp?))
+	(:lwsp?))
   (:return (make-cookie key value :version version 
 			:domain domain 
 			:path path
