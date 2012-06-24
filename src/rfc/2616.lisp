@@ -1352,8 +1352,7 @@
 		  (slot-value self 'unknown-headers))))
 
 (defmethod http-request.header ((request http-request) key)
-  (cadr
-   (assoc key (http-request.headers request) :test #'string=)))
+  (cdr (assoc key (http-request.headers request) :test #'string=)))
 
 (defmethod http-request.referrer ((request http-request))
   (aif (http-request.header request 'referer)
@@ -1406,7 +1405,7 @@
 			    (:sci ,(format nil "~A:" (symbol-name atom)))
 			    (:zom (:type space?))
 			    (,(intern (format nil format atom) :keyword) stub)
-			    (:return (list ',atom stub)))
+			    (:return (cons ',atom stub)))
 			  acc))
 		     (eval header-list) :initial-value nil)))))
 
@@ -1502,10 +1501,10 @@
   (cadr (assoc key (http-response.response-headers self))))
 
 (defmethod http-response.get-content-type ((self http-response))
-  (car (http-response.get-entity-header self 'content-type)))
+  (http-response.get-entity-header self 'content-type))
 
 (defmethod http-response.get-content-length ((self http-response))
-  (car (http-response.get-entity-header self 'content-length)))
+  (http-response.get-entity-header self 'content-length))
 
 (defmethod http-response.add-cookie ((self http-response) (cookie cookie))
   (setf (slot-value self 'response-headers)
