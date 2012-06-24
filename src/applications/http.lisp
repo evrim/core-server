@@ -167,6 +167,9 @@
 				    (class-superclasses self))))))
 	  :key #'car))
 
+  (defmethod find-handler ((self http-application+) method-name)
+    (find method-name (http-application+.handlers self) :key #'car))
+  
   (defmethod add-handler ((application+ http-application+) method-name url)
     (setf (slot-value application+ 'handlers)
 	  (cons (list method-name url (cl-ppcre:create-scanner url))
@@ -377,13 +380,28 @@
        (declare (special +context+))
        ,@body)))
 
+(defmethod %scan-uri ((application http-application) (handler-name symbol)
+		      (context http-context))
+  (let* ((handler (find-handler (class-of application) handler-name))
+	 (scanner (if handler (caddr handler)))
+	 (request (context.request context))
+	 (uri (uri->string (make-uri :paths
+				     (uri.paths (http-request.uri request))))))
+    (if scanner
+	(multiple-value-bind (ignore1 result) (scan-to-strings scanner uri)
+	  (declare (ignore ignore1))
+	  (if result
+	      (ensure-list (reduce #'cons result)))))))
+
 ;; --------------------------------------------------------------------------
 ;; defhandler Macro: Defines a static url handler
 ;; --------------------------------------------------------------------------
 (defmacro defhandler (url ((application application-class) &rest queries)
 		      &body body)
   "Defines an entry point/url handler to the application-class"
-  (let ((handler-symbol (intern (string-upcase url))))
+  (let* ((url-arguments (if (listp url) (cdr url)))
+	 (url (if (listp url) (car url) url))
+	 (handler-symbol (intern (string-upcase url))))
     (assert (stringp url))
     (with-unique-names (context)
       (setf context (intern (symbol-name context)))
@@ -391,13 +409,18 @@
 	 (eval-when (:load-toplevel :compile-toplevel :execute)
 	   (add-handler (find-class ',application-class)
 			',handler-symbol ,url))
-	 (defmethod ,handler-symbol
-	     ((,application ,application-class) (,context http-context))
+	 (defmethod ,handler-symbol ((,application ,application-class)
+				     (,context http-context))
 	   (prog1 (with-context ,context
 		    (with-html-output (http-response.stream
 				       (context.response +context+))
 		      (with-query ,queries (context.request ,context)
-			,@body)))
+			,(if url-arguments
+			     (with-unique-names (result)
+			       `(let ((,result (%scan-uri ,application ',handler-symbol +context+)))
+				  (destructuring-bind ,url-arguments ,result 
+				    ,@body)))
+			     `(progn ,@body)))))
 	     (setf (context.request ,context) nil
 		   (context.response ,context) nil)))))))
 
