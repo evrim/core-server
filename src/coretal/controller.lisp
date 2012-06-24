@@ -41,6 +41,7 @@
    (pages :host local :lift t :export nil :authorize t :type abstract-page*)
    (default-page :host remote :lift t)
    (constants :host remote :lift t :authorize t)
+   (core-css :host remote :initform "style/core.css")
    (_page :host remote)))
 
 (defmethod/remote destroy ((self simple-controller/anonymous))
@@ -86,6 +87,7 @@
 	(load-page self anchor))))
 
 (defmethod/remote init ((self simple-controller/anonymous))
+  (load-css (core-css self))
   (setf (constants self)
   	(mapcar-cc (lambda (a) (make-component a)) (constants self)))
   (load-page self (or (get-parameter "page") (default-page self)))
