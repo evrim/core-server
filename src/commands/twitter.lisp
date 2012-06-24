@@ -16,4 +16,4 @@
   (http.add-query self "screen_name" (s-v 'username))
   (let ((result (call-next-method self)))
     (awhen result
-      (getf (json-deserialize (octets-to-string result :utf-8)) :lists))))
+      (getf (jobject.attributes (json-deserialize (octets-to-string result :utf-8))) :lists))))
