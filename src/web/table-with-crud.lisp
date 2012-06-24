@@ -73,6 +73,10 @@
      (lambda ()
        (let* ((instance (call-component table))
 	      (new-crud (make-component (crud self) :instance instance)))
+
+	 (if (and (_crud self) (slot-value (_crud self) 'destroy))
+	     (destroy (_crud self)))
+	 
 	 (setf (_crud self) (replace-node (_crud self) new-crud))
 	 (make-web-thread
 	  (lambda ()
