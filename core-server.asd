@@ -160,9 +160,11 @@
 			 (:module :markup
 				  :serial t
 				  :components
-				  ((:file "xml")
+				  ((:file "xml")				   
 				   (:file "dom")
 				   (:file "html")
+				   (:file "schema")
+				   (:file "wsdl")
 				   (:file "css")
 				   ;; (:file "json")
 				   (:file "core-server")

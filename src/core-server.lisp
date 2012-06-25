@@ -1224,6 +1224,17 @@
 	   #:title #:tr #:tt #:u #:ul #:var #:embed #:foo #:bar))
 
 ;; -------------------------------------------------------------------------
+;; XML Schema CoDomain
+;; -------------------------------------------------------------------------
+(defpackage :tr.gen.core.server.xml-schema
+  (:nicknames :<xs :core-server.xml-schema)
+  (:export #:schema #:element #:complex-type #:sequence #:any
+	   #:any-attribute #:annotation #:documentation #:complex-content
+	   #:extension #:unique #:selector #:field #:choice #:attribute
+	   #:simple-type #:list #:union #:restriction #:enumeration
+	   #:simple-content #:import :attribute-group #:pattern))
+
+;; -------------------------------------------------------------------------
 ;; JSON Codomain
 ;; -------------------------------------------------------------------------
 (defpackage :tr.gen.core.server.json

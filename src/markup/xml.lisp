@@ -314,7 +314,7 @@
 		   ;; (:debug)
 		   (:or
 		    (:and #\<
-			  (:or (:and #\!
+			  (:or (:and #\! 
 				     (:or (:xml-cdata? child)
 					  (:xml-comment? child))
 				     (:do (push child children)))
@@ -341,13 +341,15 @@
 	     (:return (values tag namespace (nreverse attrs)
 			      (nreverse children))))))
 
-(defparser xml-lexer? (tag namespace attrs children)
+(defparser xml-lexer? (tag namespace attrs children child)
   (:lwsp?)
   (:checkpoint (:seq "<?xml")
 	       (:zom (:not #\>) (:type octet?)) (:lwsp?) (:commit))
   (:checkpoint (:seq "<!DOCTYPE")
 	       (:zom (:not #\>) (:type octet?)) (:lwsp?) (:commit))
   #\<
+  (:optional #\! (:or (:xml-cdata? child) (:xml-comment? child))
+	     (:lwsp?) #\<)
   (:%xml-lexer? tag namespace attrs children)
   (:return (list* tag namespace attrs children)))
 
@@ -355,6 +357,7 @@
 (defparameter +xml-namespaces-table+
   (list (cons "http://labs.core.gen.tr/2011/DB" (find-package :<db))
 	(cons "http://labs.core.gen.tr/2011/API" (find-package :<core-server))
+	(cons "http://www.w3.org/2001/XMLSchema" (find-package :<xs))
 	(cons "http://www.w3.org/2005/Atom" (find-package :<atom))
 	(cons "http://schemas.google.com/photos/2007" (find-package :<gphoto))
 	(cons "http://search.yahoo.com/mrss/" (find-package :<media))
@@ -364,6 +367,13 @@
 	(cons "http://purl.org/rss/1.0/modules/content/" (find-package :<content))
 	(cons "http://purl.org/dc/elements/1.1/" (find-package :<dc))
 	(cons "http://wordpress.org/export/1.0/excerpt/" (find-package :<excerpt))))
+
+(defun register-xml-namespace (namespace package)
+  (let ((package (find-package package)))
+    (assert (not (null package)))
+    (setf +xml-namespaces-table+
+	  (cons (cons namespace package)
+		(remove namespace +xml-namespaces-table+ :key #'car :test #'equal)))))
 
 (declaim (inline xml->symbol))
 (defun xml->symbol (name &optional package)
@@ -383,19 +393,7 @@
 	(intern (string-upcase a) (find-package :<)))))
 
 (defun parse-xml (xml &optional default-namespace)
-  (labels ((property->keyword (property)
-	     (if (position #\- property)
-		 (make-keyword
-		  (reduce (lambda (acc a)
-			    (cond
-			      ((eq #\- a)
-			       (push-atom #\- acc)
-			       (push-atom #\- acc))
-			      (t (push-atom a acc)))
-			    acc)
-			  property :initial-value (make-accumulator)))
-		 (make-keyword property)))
-	   (make-generic-element (tag namespace attributes children)
+  (labels ((make-generic-element (tag namespace attributes children)
 	     (warn "<~A:~A> tag not found, using generic xml element."
 		   namespace tag)
 	     (apply #'xml tag namespace
@@ -404,7 +402,7 @@
 	     (apply symbol 
 		    (append
 		     (reduce0 (lambda (acc attr)
-				(cons (property->keyword (car attr))
+				(cons (js->keyword (car attr))
 				      (cons (cdr attr) acc)))
 			      attributes)
 		     (mapcar #'parse-xml children)))))
