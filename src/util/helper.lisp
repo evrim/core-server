@@ -50,6 +50,20 @@
 	  (format nil "~A::~A" (package-name package) (symbol-name symbol))
 	  (symbol-name symbol))))
 
+  (defun js->keyword (string)
+    (make-keyword
+     (reduce (lambda (acc atom)
+	       (cond
+		 ((typep atom 'upper-case?)
+		  (push-atom #\- acc)
+		  (push-atom atom acc))
+		 ((eq #\- atom)
+		  (push-atom #\- acc)
+		  (push-atom #\- acc))
+		 (t (push-atom atom acc)))
+	       acc)
+	     string :initial-value (make-accumulator))))
+
   (defun reduce0 (lambda list)
     (reduce lambda list :initial-value nil))
 
