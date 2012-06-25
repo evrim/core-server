@@ -456,7 +456,7 @@
 (defmacro defclass+ (name supers slots &rest rest)
   `(progn
      (eval-when (:compile-toplevel :load-toplevel :execute)
-       (deftype ,(intern (format nil "~A*" name)) ()
+       (deftype ,(intern (format nil "~A*" name) (symbol-package name)) ()
 	 '(or null cons))
        (defclass ,name (,@(remove 'class+-object supers) class+-instance)
 	 (,@(mapcar (lambda (slot) (%fix-slot-definition name slot)) slots)
