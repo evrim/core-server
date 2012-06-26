@@ -206,7 +206,7 @@
 		(remove-security-handler application+ method-name))))
 
   (defmethod remove-security-handler ((application+ http-application+) method-name)
-    (setf (slot-value application+ 'handlers)
+    (setf (slot-value application+ 'security-handlers)
 	  (remove method-name (slot-value application+ 'security-handlers)
 		  :key #'car)))
 
@@ -346,7 +346,7 @@
 						  (cons 'basic (list (cons "realm" realm))))
 	       response)))
     (let ((authorization (http-request.header request 'authorization)))
-      (if (and authorization (eq type 'basic))
+      (if authorization
 	  (destructuring-bind (scheme &rest parameters) authorization
 	    (if (eq 'basic scheme)
 		(destructuring-bind (username password) parameters
@@ -391,7 +391,7 @@
 		       (ha2 (md5 (concat method ":" uri))))
 		   (md5 (concat ha1 ":" nonce ":" ha2))))))
       (let ((authorization (http-request.header request 'authorization)))
-	(if (and authorization (eq type 'digest))
+	(if authorization
 	    (destructuring-bind (scheme &rest parameters) authorization
 	      (flet ((get-param (name) (cdr (assoc name parameters :test #'equal))))
 		(if (eq 'digest scheme)
@@ -409,7 +409,7 @@
 				    (calc-auth-response username uri nonce nc qop cnonce))
 			     (funcall kontinue application request)
 			     (make-response)))
-			 ;; Not supported.
+			;; Not supported.
 			((equal qop "auth-int") (make-response))
 			(t (if (equal response (calc-response username uri nonce))
 			       (funcall kontinue application request)
