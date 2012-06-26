@@ -60,7 +60,7 @@
   (:if (eq scheme 'basic)
        (:and (:do (setq param (make-accumulator :byte)))
 	     (:oom (:type visible-char? c) (:collect c param))
-	     (:return (list scheme
+	     (:return (cons scheme
 			    (split ":"
 				   (octets-to-string (base64? (make-core-stream param))
 						     :us-ascii)))))
