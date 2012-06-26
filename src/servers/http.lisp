@@ -134,7 +134,7 @@ nil if stream data is invalid"
 	  response
 	  (let ((m (format nil "request uri: ~A" (http-request.uri request))))
 	    (log-me server 'eval-request m)
-	    (make-404-response request))))))
+	    (make-404-response))))))
 
 ;; -------------------------------------------------------------------------
 ;; Make Response
