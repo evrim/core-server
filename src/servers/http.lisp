@@ -160,6 +160,13 @@ nil if stream data is invalid"
 		      (<:h2 "[Core-serveR]"))))
     response))
 
+(defun make-401-response (&optional (stream (make-core-list-output-stream)))
+  (let ((response (make-response stream)))
+    (setf (http-response.status-code response) (make-status-code 401))
+    (with-html-output stream
+      (<:html (<:body (<:h1 "Unauthorized.") (<:h2 "[Core-serveR]"))))
+    response))
+
 (defun make-error-response (&optional (stream (make-core-list-output-stream)))
   (let ((response (make-response stream)))
     (setf (http-response.status-code response) (make-status-code 500))

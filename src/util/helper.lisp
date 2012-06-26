@@ -406,3 +406,8 @@ to redistribute it under certain conditions; type
   				algo)))
     (crypto::update-hmac hash (string-to-octets str encoding))
     (crypto:byte-array-to-hex-string (crypto:hmac-digest hash))))
+
+(defun md5 (str &optional (encoding :utf-8))
+  (let ((hash (crypto:make-digest :md5)))
+    (crypto::update-digest hash (string-to-octets str encoding))
+    (crypto:byte-array-to-hex-string (crypto:produce-digest hash))))

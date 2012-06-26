@@ -198,12 +198,11 @@
 	       0)))
     (let ((v1 (inverse byte1)) (v2 (inverse byte2))
 	  (v3 (inverse byte3)) (v4 (inverse byte4)))
-      (apply #'values
-	     (list (logior (ash v1 2) (ash v2 -4))
-		   (if byte3
-		       (logior (ash (logand v2 #B1111) 4) (ash v3 -2)))
-		   (if (and byte3 byte4)
-		       (logior (ash (logand v3 #B11) 6) v4)))))))
+      (values (logior (ash v1 2) (ash v2 -4))
+	      (if byte3
+		  (logior (ash (logand v2 #B1111) 4) (ash v3 -2)))
+	      (if (and byte3 byte4)
+		  (logior (ash (logand v3 #B11) 6) v4))))))
 
 (defatom base64-char? ()
   (or (alphanum? c) (eq c #.(char-code #\+)) (eq c #.(char-code #\/))))
@@ -211,19 +210,17 @@
 (defrule base64-block? (c1 c2 c3 c4)
  (:type base64-char? c1)
  (:type base64-char? c2)
- (:or (:type base64-char? c3)
-      (:and #\= (:do (setq c3 nil))))
- (:or (:type base64-char? c4)
-      (:and #\= (:do (setq c4 nil))))
+ (:or #\= (:type base64-char? c3))
+ (:or #\= (:type base64-char? c4))
  (:return (base64-decode c1 c2 c3 c4)))
 
 (defrule base64? (v1 v2 v3 (acc (make-accumulator :byte)))
-  (:zom (:base64-block? v1 v2 v3)
+  (:oom (:base64-block? v1 v2 v3)
 	(:if v1 (:collect v1 acc))
 	(:if v2 (:collect v2 acc))
-	(:if v3 (:collect v3 acc))
-	(:lwsp?)
-	(:if (null v3) (:return acc)))
+	(:if v3
+	     (:and (:collect v3 acc) (:lwsp?))
+	     (:return acc)))
   (:return acc))
 
 (defun base64-encode (byte1 byte2 byte3)  

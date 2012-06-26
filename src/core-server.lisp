@@ -830,6 +830,10 @@
    ;; Macros
    #:with-query
    #:with-context
+   #:defauth
+   #:basic
+   #:digest
+   #:http-application.password-of
    #:defhandler
    #:defhandler/js
    #:defurl

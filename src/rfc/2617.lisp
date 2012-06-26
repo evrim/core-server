@@ -26,11 +26,16 @@
 ;; credentials = auth-scheme #auth-param
 
 ;; http-auth-scheme? :: stream -> string
+(defatom http-auth-scheme-type? ()
+  (and (not (eq c #.(char-code #\,))) (alphanum? c)))
+
 (defrule http-auth-scheme? (c (acc (make-accumulator)))
-  (:type alpha? c)
-  (:collect c acc)
-  (:zom (:type alpha? c) (:collect c acc))
-  (:return acc))
+  (:or (:and (:sci "basic") (:return 'basic))
+       (:and (:sci "digest") (:return 'digest))
+       (:and (:type http-auth-scheme-type? c)
+	     (:collect c acc)
+	     (:zom (:type http-auth-scheme-type? c) (:collect c acc))
+	     (:return acc))))
 
 ;; http-auth-scheme! :: stream -> string -> string
 (defun http-auth-scheme! (stream scheme)
@@ -40,8 +45,7 @@
 (defrule http-auth-param? (attr val)
   (:http-auth-scheme? attr)
   #\=
-  (:or (:quoted? val)
-       (:http-auth-scheme? val))
+  (:or (:quoted? val) (:http-auth-scheme? val))
   (:return (cons attr val)))
 
 (defun http-auth-param! (stream acons)
@@ -50,19 +54,26 @@
   (quoted! stream (cdr acons)))
 
 ;; http-challenge? :: stream -> (cons string ((attrstr . valstr) ...))
-(defrule http-challenge? (scheme params param)
+(defrule http-challenge? (scheme params c param)
   (:http-auth-scheme? scheme)
   (:lwsp?)
-  (:http-auth-param? param)
-  (:do (push param params))
-  (:zom #\, (:lwsp?)
-	(:http-auth-param? param)
-	(:do (push param params)))
-  (:return (cons scheme params)))
+  (:if (eq scheme 'basic)
+       (:and (:do (setq param (make-accumulator :byte)))
+	     (:oom (:type visible-char? c) (:collect c param))
+	     (:return (list scheme
+			    (split ":"
+				   (octets-to-string (base64? (make-core-stream param))
+						     :us-ascii)))))
+       (:and (:http-auth-param? param)
+	     (:do (push param params))
+	     (:zom #\, (:lwsp?)
+		   (:http-auth-param? param)
+		   (:do (push param params)))
+	     (:return (cons scheme (nreverse params))))))
 
 ;; http-challenge! :: stream (cons string ((attrstr . val) ...))
 (defun http-challenge! (stream challenge)
-  (string! stream (car challenge))
+  (symbol! stream (car challenge))
   (char! stream #\ )
   (let ((params (cdr challenge)))
     (when params
@@ -72,7 +83,7 @@
       (if (cdr params)
 	  (reduce #'(lambda (acc item)
 		      (char! stream #\,)
-		      (char! stream #\Newline)
+		      ;; (char! stream #\Newline)
 		      (string! stream (car item))
 		      (char! stream #\=)
 		      (quoted! stream (cdr item)))

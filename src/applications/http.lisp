@@ -151,7 +151,12 @@
     ((handlers :initarg :handlers
 	       :accessor http-application+.handlers :initform nil
 	       :documentation "A list that contains URLs that this
-	       application handles"))
+	       application handles")
+     (security-handlers :initarg :security-handlers
+			:accessor http-application+.security-handlers
+			:initform nil
+			:documentation "A list of URLs that
+			need to be authenticated."))
     (:documentation "HTTP Application Metaclass"))
 
   (defmethod validate-superclass ((class http-application+) (super standard-class)) t)
@@ -178,6 +183,32 @@
   (defmethod remove-handler ((application+ http-application+) method-name)
     (setf (slot-value application+ 'handlers)
 	  (remove method-name (slot-value application+ 'handlers) :key #'car)))
+
+  (defmethod http-application+.security-handlers ((self http-application+))
+    (uniq (nreverse
+	   (copy-list
+	    (reduce #'append
+		    (mapcar (rcurry #'slot-value 'security-handlers)
+			    (filter (lambda (a)
+				      (if (typep a 'http-application+) a))
+				    (class-superclasses self))))))
+	  :key #'car))
+
+  (defmethod find-security-handler ((self http-application+) method-name)
+    (find method-name (http-application+.security-handlers self) :key #'car))
+  
+  (defmethod add-security-handler ((application+ http-application+)
+				   (method-name symbol) (url string) (type symbol))
+    (assert (member type '(basic digest))
+	    nil "Authentication type can be: basic or digest, not ~A" type)
+    (setf (slot-value application+ 'security-handlers)
+	  (cons (list method-name url (cl-ppcre:create-scanner url) type)
+		(remove-security-handler application+ method-name))))
+
+  (defmethod remove-security-handler ((application+ http-application+) method-name)
+    (setf (slot-value application+ 'handlers)
+	  (remove method-name (slot-value application+ 'security-handlers)
+		  :key #'car)))
 
   (defmethod class+.ctor ((application+ http-application+))
     nil))
@@ -296,9 +327,109 @@
 		     sessions)
 	    expired))))
 
+(defmethod http-application.realm ((application http-application))
+  (concat (web-application.fqdn application) " Security Zone"))
+
+(defmethod http-application.password-of ((application http-application) (username string))
+  (error "Please implement (http-appliaction.password-of http-application username)"))
+
+(defmacro defauth (url application-class &optional (method 'digest))
+  (let ((handler (intern (string-upcase url))))
+    `(add-security-handler (find-class ',application-class) ',handler ,url ',method)))
+
+(defmethod http-application.authorize ((application http-application) (request http-request)
+				       (type (eql 'basic)) (kontinue function))
+  (labels ((make-response ()
+	     (let ((response (make-401-response))
+		   (realm (http-application.realm application)))
+	       (http-response.add-response-header response 'www-authenticate
+						  (cons 'basic (list (cons "realm" realm))))
+	       response)))
+    (let ((authorization (http-request.header request 'authorization)))
+      (if (and authorization (eq type 'basic))
+	  (destructuring-bind (scheme &rest parameters) authorization
+	    (if (eq 'basic scheme)
+		(destructuring-bind (username password) parameters
+		  (if (and username password
+			   (equal password
+				  (http-application.password-of application username)))
+		      (funcall kontinue application request)
+		      (make-response)))
+		(make-response)))
+	  (make-response)))))
+
+(defvar +nonce-key+ (random-string))
+(defmethod http-application.authorize ((application http-application) (request http-request)
+				       (type (eql 'digest)) (kontinue function))
+  (let ((realm (http-application.realm application)))
+    (labels ((get-nonce ()
+	       (md5 (concat +nonce-key+
+			    (princ-to-string (truncate (get-universal-time) 1000))
+			    "000")))
+	     (make-response (&optional (stale nil))
+	       (let* ((response (make-401-response))
+		      (opaque (random-string))
+		      (nonce (get-nonce))
+		      (attrs (list (cons "realm" realm)
+				   (cons "qop" "auth")
+				   (cons "nonce" nonce)
+				   (cons "opaque" opaque)
+				   (cons "stale" (if stale "true" "false")))))
+		 (http-response.add-response-header response 'www-authenticate
+						    (cons 'digest attrs))
+		 response))
+	     (calc-auth-response (username uri nonce nc qop cnonce)
+	       (let ((password (http-application.password-of application username))
+		     (method (symbol-name (http-request.method request))))
+		 (let ((ha1 (md5 (concat username ":" realm ":" password)))
+		       (ha2 (md5 (concat method ":" uri))))
+		   (md5 (concat ha1 ":" nonce ":" nc ":" cnonce ":" qop ":" ha2)))))
+	     (calc-response (username uri nonce)
+	       (let ((password (http-application.password-of application username))
+		     (method (symbol-name (http-request.method request))))
+		 (let ((ha1 (md5 (concat username ":" realm ":" password)))
+		       (ha2 (md5 (concat method ":" uri))))
+		   (md5 (concat ha1 ":" nonce ":" ha2))))))
+      (let ((authorization (http-request.header request 'authorization)))
+	(if (and authorization (eq type 'digest))
+	    (destructuring-bind (scheme &rest parameters) authorization
+	      (flet ((get-param (name) (cdr (assoc name parameters :test #'equal))))
+		(if (eq 'digest scheme)
+		    (let ((username (get-param "username"))
+			  (qop (get-param "qop"))
+			  (response (get-param "response"))
+			  (uri (get-param "uri"))
+			  (nonce (get-param "nonce"))
+			  (nc (get-param "nc"))
+			  (cnonce (get-param "cnonce")))
+		      (cond
+			((not (equal nonce (get-nonce))) (make-response t))
+			((equal qop "auth")
+			 (if (equal response
+				    (calc-auth-response username uri nonce nc qop cnonce))
+			     (funcall kontinue application request)
+			     (make-response)))
+			 ;; Not supported.
+			((equal qop "auth-int") (make-response))
+			(t (if (equal response (calc-response username uri nonce))
+			       (funcall kontinue application request)
+			       (make-response))))))))
+	    (make-response))))))
+
 (defmethod dispatch :around ((application http-application) (request http-request))
   (when (> (random 100) 40) (gc application))
-  (call-next-method application request))
+  (let ((handlers (http-application+.security-handlers (class-of application))))
+    (aif (any #'(lambda (handler)
+		  (destructuring-bind (method url scanner type) handler
+		    (declare (ignore url method))
+		    (let ((uri (uri->string (make-uri :paths
+						      (uri.paths
+						       (http-request.uri request))))))
+		      (if (cl-ppcre:scan-to-strings scanner uri)
+			  type))))
+	      handlers)
+	 (http-application.authorize application request it #'call-next-method)
+	 (call-next-method application request))))
 
 (defmethod dispatch ((self http-application) (request http-request))
   "Dispatch 'request' to 'self' application with empty 'response'"
