@@ -335,7 +335,9 @@
 
 (defmacro defauth (url application-class &optional (method 'digest))
   (let ((handler (intern (string-upcase url))))
-    `(add-security-handler (find-class ',application-class) ',handler ,url ',method)))
+    `(eval-when (:compile-toplevel :load-toplevel :execute)
+       (add-security-handler (find-class ',application-class)
+			     ',handler ,url ',method))))
 
 (defmethod http-application.authorize ((application http-application) (request http-request)
 				       (type (eql 'basic)) (kontinue function))
