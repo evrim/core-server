@@ -1,15 +1,27 @@
 (in-package :core-server)
 
+;; -------------------------------------------------------------------------
+;; HTTP Client
+;; -------------------------------------------------------------------------
+
 (defvar +http-cache+
   (make-hash-table :test #'equal :synchronized t))
 
 (defcommand http ()
   ((method :host local :initform 'get)
    (url :host local :initform (error "Please provide :url"))
+   (username :host local :initform nil)
+   (password :host local :initform nil)
    (post-data :host local :initform nil) 
    (parse-p :host local :initform t)
    (debug :host local :initform nil)
-   (cache-p :host local :initform nil)))
+   (cache-p :host local :initform nil)
+   (recurse :host local :initform t)
+   (request-headers :host local :initform nil)))
+
+(defmethod http.%debug ((self http) &rest args)
+  (if (s-v 'debug)
+      (format *standard-output* "HTTP:~{ ~A~}~%" args)))
 
 (defparser read-everything? (c (acc (make-accumulator :byte)))
   (:oom (:type octet? c) (:collect c acc))
@@ -20,10 +32,11 @@
     (make-http-request
      :method method
      :uri url
-     :headers (list (cons 'user-agent +x-http-client+)
-		    (cons 'host (cons (uri.server url)
-				      (uri.port url)))
-		    (cons 'accept (list "*" "*")))
+     :headers (append (list (cons 'user-agent +x-http-client+)
+			    (cons 'host (cons (uri.server url)
+					      (uri.port url)))
+			    (cons 'accept (list "*" "*")))
+		      (s-v 'request-headers))
      :entity-headers (if (s-v 'post-data)
 			 (list (cons 'content-length
 				     (length (s-v 'post-data)))
@@ -63,7 +76,7 @@
     (http-request! stream request)
     (if (s-v 'debug) (describe request))
     (awhen (s-v 'post-data)
-      (if (s-v 'debug) (describe (list 'post-data (s-v 'post-data))))
+      (http.%debug self 'post-data (s-v 'post-data))
       (string! stream it))
 
     (commit-stream stream)
@@ -119,24 +132,128 @@
 		     stream)))
     (let ((request (http.send-request self stream)))
       (if (http.parse-p self)
-	  (let ((response (http.parse-response self stream)))
+	  (let* ((response (http.parse-response self stream))
+		 (status-code (http-response.status-code response)))
 	    (cond
-	      ((and (or (eq (http-response.status-code response) 301)
-			(eq (http-response.status-code response) 302)
-			(eq (http-response.status-code response) 303)
-			(eq (http-response.status-code response) 307))
+	      ((eq 401 status-code)
+	       (http.%debug self 'unauthorized (uri->string (s-v 'url)))
+	       (with-slots (username password) self
+		 (if (and username password (s-v 'recurse))
+		     (let ((authenticate (http-response.response-header response
+									'www-authenticate)))
+		       (destructuring-bind (scheme &rest parameters) authenticate
+			 (cond
+			   ((eq scheme 'basic) ;; Basic Auth
+			    (let ((authorization (with-core-stream (s "")
+						   (base64! s (concat username ":" password))
+						   (return-stream s))))
+			      (http :method (s-v 'method)
+				    :post-data (s-v 'post-data)
+				    :url (s-v 'url)
+				    :cache-p (s-v 'cache-p)
+				    :parse-p (s-v 'parse-p)
+				    :debug (s-v 'debug)
+				    :username (s-v 'username)
+				    :password (s-v 'password)
+				    :recurse nil
+				    :request-headers (list
+				    		      (cons 'authorization
+				    			    (cons 'basic authorization))))))
+			   ((eq scheme 'digest)
+			    (flet ((get-param (name) (cdr (assoc name parameters :test #'equal)))
+				   (calc-auth-response (realm username password uri nonce nc qop cnonce)
+				     (let ((method (symbol-name (s-v 'method))))
+				       (let ((ha1 (md5 (concat username ":" realm ":" password)))
+					     (ha2 (md5 (concat method ":" uri))))
+					 (md5 (concat ha1 ":" nonce ":" nc ":" cnonce ":" qop ":" ha2)))))
+				   (calc-response (realm username password uri nonce)
+				     (let ((method (symbol-name (s-v 'method))))
+				       (let ((ha1 (md5 (concat username ":" realm ":" password)))
+					     (ha2 (md5 (concat method ":" uri))))
+					 (md5 (concat ha1 ":" nonce ":" ha2)))))
+				   (recall (params)
+				     (http :method (s-v 'method)
+					   :post-data (s-v 'post-data)
+					   :url (s-v 'url)
+					   :cache-p (s-v 'cache-p)
+					   :parse-p (s-v 'parse-p)
+					   :debug (s-v 'debug)
+					   :username (s-v 'username)
+					   :password (s-v 'password)
+					   :recurse nil
+					   :request-headers (list
+							     (cons 'authorization
+								   (cons 'digest params))))))
+			      (let ((realm (get-param "realm"))
+				    (nonce (get-param "nonce"))
+				    (opaque (get-param "opaque"))
+				    (stale (get-param "stale"))
+				    (qop (split "," (get-param "qop"))))
+				(cond
+				  ((equal stale "true")
+				   (setf (s-v 'request-headers) nil)
+				   (fetch-url self))
+				  ((member "auth" qop :test #'equal)
+				   (let ((uri (uri->string
+					       (make-uri :paths (uri.paths (s-v 'url))
+							 :queries (uri.queries (s-v 'url)))))
+					 (cnonce (random-string))
+					 (nc "000001")
+					 (qop "auth"))
+				     (recall (list (cons "username" (s-v 'username))
+						   (cons "qop" qop)
+						   (cons "uri" uri)
+						   (cons "nc" nc)
+						   (cons "cnonce" cnonce)
+						   (cons "nonce" nonce)
+						   (cons "opaque" opaque)
+						   (cons "realm" realm)
+						   (cons "response"
+							 (calc-auth-response realm username
+									     password uri
+									     nonce nc
+									     qop cnonce))))))
+				  ((null qop)
+				   (let ((uri (uri->string
+					       (make-uri :paths (uri.paths (s-v 'uri))
+							 :queries (uri.queries (s-v 'uri)))))
+					 (cnonce (random-string))
+					 (nc "000001")
+					 (qop "auth"))
+				     (recall (list (cons "username" (s-v 'username))
+						   (cons "qop" qop)
+						   (cons "nc" nc)
+						   (cons "cnonce" cnonce)
+						   (cons "nonce" nonce)
+						   (cons "opaque" opaque)
+						   (cons "realm" realm)
+						   (cons "response"
+							 (calc-response realm username
+									password
+									uri nonce))))))
+				  (t
+				   (http.%debug self "Unsupported digest qop" qop)
+				   (values nil response))))))
+			   (t (http.%debug self "Unknown authorization scheme" scheme)
+			      (values nil response)))))
+		     (values nil response))))
+	      ((and (member status-code '(301 302 303 307))
 		    (http-response.get-response-header response 'location)
-		    (not (equal (uri->string (http-response.get-response-header response 'location))
+		    (not (equal (uri->string
+				 (http-response.get-response-header response 'location))
 				(uri->string (s-v 'url)))))
 	       (let ((location (http-response.get-response-header response 'location)))
-		 (if (s-v 'debug)
-		     (describe (list 'redirecting-to location)))
-		 (http :method (s-v 'method)
-		       :post-data (s-v 'post-data)
-		       :url (uri->string location)
-		       :cache-p (s-v 'cache-p)
-		       :parse-p (s-v 'parse-p)
-		       :debug (s-v 'debug))))
+		 (http.%debug self 'redirecting-to location)
+		 (if (s-v 'recurse)
+		     (http :method (s-v 'method)
+			   :post-data (s-v 'post-data)
+			   :url (uri->string location)
+			   :cache-p (s-v 'cache-p)
+			   :parse-p (s-v 'parse-p)
+			   :debug (s-v 'debug)
+			   :username (s-v 'username)
+			   :password (s-v 'password)
+			   :recurse nil))))
 	      ((not (eq (http-response.status-code response) 200))
 	       (http.raise-error self request response)))
 	    (close-stream stream)
