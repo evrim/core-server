@@ -636,8 +636,7 @@
 
 (defrule relaxed-xml-attribute? (name value)
   (:relaxed-xml-attribute-name? name)
-  #\=
-  (:relaxed-xml-attribute-value? value)
+  (:optional #\= (:relaxed-xml-attribute-value? value))
   (:return (cons name value)))
 
 (defrule relaxed-xml-tag-name? (tag namespace)
@@ -710,7 +709,7 @@
   (:lwsp?)
   (:checkpoint (:seq "<?xml")
 	       (:zom (:not #\>) (:type octet?)) (:lwsp?) (:commit))
-  (:checkpoint (:seq "<!DOCTYPE")
+  (:checkpoint (:sci "<!DOCTYPE")
 	       (:zom (:not #\>) (:type octet?)) (:lwsp?) (:commit))
   (:zom (:lwsp?)
 	(:relaxed-xml-comment? child)
