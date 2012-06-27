@@ -1528,7 +1528,7 @@
   (cdr (assoc key (http-response.entity-headers self))))
 
 (defmethod http-response.get-response-header ((self http-response) key)
-  (cadr (assoc key (http-response.response-headers self))))
+  (cdr (assoc key (http-response.response-headers self))))
 
 (defmethod http-response.get-content-type ((self http-response))
   (http-response.get-entity-header self 'content-type))
