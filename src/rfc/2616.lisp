@@ -6,7 +6,7 @@
 ;;;-----------------------------------------------------------------------------
 ;;; HTTP METHOD/PROTOCOL
 ;;;-----------------------------------------------------------------------------
-(defrule http-protocol? (version)
+(defparser http-protocol? (version)
   (:seq "HTTP/") (:version? version)
   (:return (list 'HTTP version)))
 
@@ -14,7 +14,7 @@
   (defvar +http-request-methods+
     '(options get head post put delete trace connect)))
 
-(defrule http-method? (c (val (make-accumulator)))
+(defparser http-method? (c (val (make-accumulator)))
   (:zom (:type alpha? c) (:collect c val))  
   (:return (car (member (string-upcase val) +http-request-methods+
 			:test #'string=))))
@@ -42,20 +42,20 @@
   (and (not (separator? c))
        (not (control? c))))
 
-(defrule token? (c (acc (make-accumulator)))
+(defparser token? (c (acc (make-accumulator)))
   (:type tokenatom? c)
   (:collect c acc)
   (:zom (:type tokenatom? c)
 	(:collect c acc))
   (:return acc))
 
-(defrule http-field-name? (c)
+(defparser http-field-name? (c)
   (:token? c)
   (:return c))
 
 ;; Ex: ;asd=asd or ;asd="asd"
 ;; header-parameter? :: stream -> (attr . val)
-(defrule header-parameter? (attr val)
+(defparser header-parameter? (attr val)
   (:and #\; (:lwsp?)
 	(:token? attr)
 	#\=
@@ -69,11 +69,11 @@
 ;; 3.8 product tokens
 ;; product         = token [ "/" product-version]
 ;; product-version = token
-(defrule product-version? (c)
+(defparser product-version? (c)
   (:token? c)
   (:return c))
 
-(defrule product? (prod ver)
+(defparser product? (prod ver)
   (:token? prod)
   (:zom #\/
 	(:product-version? ver))
@@ -115,7 +115,7 @@
 (defvar +http-cache-request-directives+
   '(no-cache no-store max-age max-stale min-fresh no-transform only-if-cached))
 
-(defrule http-cache-control? (result val)
+(defparser http-cache-control? (result val)
   (:oom (:or (:and (:seq "no-cache")
 		   (:do (push (cons 'no-cache nil) result)))
 	     (:and (:seq "no-store")
@@ -189,7 +189,7 @@
 ;; 14.10 Connection
 ;; Connection = "Connection" ":" 1#(connection-token)
 ;; connection-token  = token
-(defrule http-connection? (tokens c)
+(defparser http-connection? (tokens c)
   (:token? c)
   (:do (push c tokens))
   (:zom #\, (:lwsp?)
@@ -243,7 +243,7 @@
 				  "Aug" "Sep" "Oct" "Nov" "Dec")))
 
 ;; Sun, 06 Nov 1994 08:49:37 GmT  ; RFC 822, updated by RFC 1123
-(defrule rfc1123-date? ((acc (make-accumulator)) c
+(defparser rfc1123-date? ((acc (make-accumulator)) c
 			day month year hour minute second gmt)
   (:zom (:type visible-char?)) (:lwsp?)
   (:fixnum? day) (:lwsp?)
@@ -259,7 +259,7 @@
   (:return (encode-universal-time second minute hour day month year gmt)))
 
 ;; Sunday, 06-Nov-94 08:49:37 GmT ; RFC 850, obsoleted by RFC 1036
-(defrule rfc850-date? (day month year hour minute second
+(defparser rfc850-date? (day month year hour minute second
 			   (acc (make-accumulator)) c (gmt 0))
   (:zom (:type visible-char?))
   (:lwsp?)
@@ -277,7 +277,7 @@
   (:return (encode-universal-time second minute hour day month year gmt)))
 
 ;;        Sun Nov  6 08:49:37 1994       ; ANSI C's asctime() format
-(defrule asctime-date? ((acc (make-accumulator)) c
+(defparser asctime-date? ((acc (make-accumulator)) c
 			day month year hour minute second)
   (:zom (:type visible-char?))
   (:lwsp?)
@@ -289,7 +289,7 @@
   (:fixnum? year)
   (:return (encode-universal-time second minute hour day month year 0)))
 
-(defrule http-date? (timestamp)
+(defparser http-date? (timestamp)
   (:or (:rfc1123-date? timestamp)   
        (:rfc850-date? timestamp)
        (:asctime-date? timestamp))
@@ -310,14 +310,14 @@
 ;; Pragma            = "Pragma" ":" 1#pragma-directive
 ;; pragma-directive  = "no-cache" | extension-pragma
 ;; extension-pragma  = token [ "=" ( token | quoted-string ) ]
-(defrule extension-pragma? ((attr (make-accumulator)) val)
+(defparser extension-pragma? ((attr (make-accumulator)) val)
   (:lwsp?)
   (:http-field-name? attr)
   #\=
   (:quoted? val)
   (:return (cons attr val)))
 
-(defrule http-pragma? (pragma)
+(defparser http-pragma? (pragma)
   (:or (:and (:seq "no-cache") (:do (setq pragma (cons 'no-cache nil))))
        (:extension-pragma? pragma))
   (:return pragma))
@@ -334,7 +334,7 @@
 ;; 14.40 Trailer
 ;;
 ;; Trailer  = "Trailer" ":" 1#field-name
-(defrule http-trailer? (fields c)
+(defparser http-trailer? (fields c)
   (:http-field-name? c)
   (:do (push c fields))
   (:zom #\, (:lwsp?)
@@ -357,7 +357,7 @@
 ;; Transfer-Encoding       = "Transfer-Encoding" ":" 1#transfer-coding
 ;; Transfer-Encoding: chunked (see 3.6)
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defrule http-transfer-extension? (tok param params)
+  (defparser http-transfer-extension? (tok param params)
     (:token? tok)
     (:zom (:header-parameter? param)
 	  (:do (push param params)))
@@ -374,7 +374,7 @@
 	    (cdr te) :initial-value nil)))
 
 ;; http-transfer-encoding? :: stream -> (token . (attr . val))
-(defrule http-transfer-encoding? (encs c)
+(defparser http-transfer-encoding? (encs c)
   (:http-transfer-extension? c)
   (:do (push c encs))
   (:zom #\, (:lwsp?)
@@ -390,7 +390,7 @@
 ;; 14.42 Upgrade
 ;; Upgrade        = "Upgrade" ":" 1#product
 ;; Upgrade: HTTP/2.0, SHTTP/1.3, IRC/6.9, RTA/x11
-(defrule http-upgrade? (c products)
+(defparser http-upgrade? (c products)
   (:product? c)
   (:do (push c products))
   (:zom #\, (:lwsp?)
@@ -414,12 +414,12 @@
 ;; Via: 1.0 fred, 1.1 nowhere.com (Apache/1.1)
 ;; Via: 1.0 ricky, 1.1 ethel, 1.1 fred, 1.0 lucy
 ;; Via: 1.0 ricky, 1.1 mertz, 1.0 lucy
-(defrule via-received-by? (c)
+(defparser via-received-by? (c)
   (:or (:hostport? c)
        (:token? c))
   (:return c))
 
-(defrule via-received-protocol? (pname pver)
+(defparser via-received-protocol? (pname pver)
   (:token? pname)
   (:or (:and #\/
 	     (:token? pver)
@@ -427,7 +427,7 @@
        (:return (cons nil pname))))
 
 ;; ex: (("HTTP" . "1.1") ("core.gen.tr" . 80) "core server site")
-(defrule http-via? (prot by comment vias)
+(defparser http-via? (prot by comment vias)
   (:via-received-protocol? prot)
   (:lwsp?)
   (:via-received-by? by)
@@ -468,20 +468,20 @@
 ;;           ; the Warning header, for use in debugging
 ;; warn-text  = quoted-string
 ;; warn-date  = <"> HTTP-date <">
-(defrule warn-agent? (agent)
+(defparser warn-agent? (agent)
   (:or (:hostport? agent)
        (:token? agent))
   (:return agent))
 
-(defrule warn-code? (c)
+(defparser warn-code? (c)
   (:fixnum? c)
   (:return c))
 
-(defrule warn-date? (d)
+(defparser warn-date? (d)
   #\" (:http-date? d) #\"
   (:return d))
 
-(defrule warning-value? (code agent text date)
+(defparser warning-value? (code agent text date)
   (:warn-code? code)
   (:lwsp?)
   (:warn-agent? agent)
@@ -491,7 +491,7 @@
   (:warn-date? date)
   (:return (list code agent text date)))
 
-(defrule http-warning? (c acc)
+(defparser http-warning? (c acc)
   (:warning-value? c)
   (:do (push c acc))
   (:zom (:warning-value? c)
@@ -543,7 +543,7 @@
 ;; 3.9 Quality Values
 ;; qvalue         = ( "0" [ "." 0*3DIGIT  ])
 ;;                | ( "1" [ "." 0*3("0") ] )
-(defrule quality-value? ((val (make-accumulator)) c)
+(defparser quality-value? ((val (make-accumulator)) c)
   (:or (:and #\0 (:collect #\0 val)
 	     (:or (:and #\. (:collect #\. val)
 			(:zom (:type digit? c) (:collect c val)))
@@ -553,13 +553,13 @@
   (:return (parse-float val)))
 
 ;; quality-parameter? :: stream -> ("q" . float)
-(defrule quality-parameter? (val)
+(defparser quality-parameter? (val)
   (:and #\; (:lwsp?) #\q #\=
 	(:quality-value? val))
   (:return (cons "q" val)))
 
 ;; http-media-range? :: stream -> (values type subtype ((attr .val) ...))
-(defrule http-media-range? ((type (make-accumulator))
+(defparser http-media-range? ((type (make-accumulator))
 			    (subtype (make-accumulator))
 			    param params c)
   (:zom (:type http-media-type? c) (:collect c type))
@@ -573,7 +573,7 @@
   (:return (values type subtype params)))
 
 ;; http-accept? :: stream -> ((type subtype ((attr . val) ...)) ...)
-(defrule http-accept? (type subtype params accept)
+(defparser http-accept? (type subtype params accept)
   (:oom (:and (:http-media-range? type subtype params)
 	      (:do (push (list type subtype params) accept))
 	      (:zom (:not #\,) (:type http-header-name?))) 
@@ -603,7 +603,7 @@
        (visible-char? c)))
 
 ;; http-language? :: stream -> (language . quality)
-(defrule http-language? (c (lang (make-accumulator)) quality)
+(defparser http-language? (c (lang (make-accumulator)) quality)
   (:type http-language-type? c) (:collect c lang)
   (:zom (:type http-language-type? c) (:collect c lang))
   (:or (:and (:quality-parameter? quality)
@@ -619,7 +619,7 @@
 ;; 14.2 Accept Charset
 ;; Accept-Charset = "Accept-Charset" ":" 1#( ( charset | "*" )[ ";" "q" "=" qvalue ] )
 ;; Accept-Charset: iso-8859-5, unicode-1-1;q=0.8
-(defrule http-accept-charset? (e e*)
+(defparser http-accept-charset? (e e*)
   (:zom (:and (:http-language? e)
 	      (:do (push e e*))
 	      (:zom (:not #\,) (:type http-header-name?)))
@@ -636,7 +636,7 @@
 ;; 14.3 Accept Encoding
 ;; Accept-Encoding  = "Accept-Encoding" ":" 1#( codings [ ";" "q" "=" qvalue ])
 ;; codings          = ( content-coding | "*" )
-(defrule http-accept-encoding? (e e*)
+(defparser http-accept-encoding? (e e*)
   (:zom (:and (:http-language? e)
 	      (:do (push e e*))
 	      (:zom (:not #\,) (:type http-header-name?)))
@@ -650,7 +650,7 @@
 ;; Accept-Language = "Accept-Language" ":" 1#( language-range [ ";" "q" "=" qvalue ])
 ;; language-range  = ( ( 1*8ALPHA * ( "-" 1*8ALPHA)) | "*" )
 ;; Accept-Language: da, en-gb;q=0.8, en;q=0.7
-(defrule http-accept-language? (langs lang)
+(defparser http-accept-language? (langs lang)
   (:zom (:and (:http-language? lang)
 	      (:do (push lang langs))
 	      (:zom (:not #\,) (:type http-header-name?)))
@@ -662,18 +662,36 @@
 
 ;; 14.8 Authorization
 ;; Authorization  = "Authorization" ":" credentials
-(defrule http-authorization? (challenge)
+(defparser http-authorization? (challenge)
   (:http-challenge? challenge)
   (:return challenge))
 
 (defmethod http-authorization! ((stream core-stream) challenge)
-  (http-challenge! stream challenge))
+  (let ((scheme (car challenge)))
+    (symbol! stream scheme)
+    (char! stream #\ )
+    (prog1 stream
+      (if (eq 'basic scheme)
+	  (string! stream (cdr challenge))
+	  (let ((params (cdr challenge)))
+	    (when params
+	      (string! stream (caar params))
+	      (char! stream #\=)
+	      (quoted! stream (cdar params))
+	      (if (cdr params)
+		  (reduce #'(lambda (acc item)
+			      (char! stream #\,)
+			      ;; (char! stream #\Newline)
+			      (string! stream (car item))
+			      (char! stream #\=)
+			      (quoted! stream (cdr item)))
+			  (cdr params) :initial-value nil))))))))
 
 ;; 14.20 Expect
 ;; expectation-extension =  token [ "=" ( token | quoted-string )
 ;;                         *expect-params ]
 ;; expect-params =  ";" token [ "=" ( token | quoted-string ) ]
-(defrule expectation-extension? ((attr (make-accumulator))
+(defparser expectation-extension? ((attr (make-accumulator))
 				 (val (make-accumulator)) c)
   (:and (:lwsp?)
 	(:zom (:type alphanum? c) (:collect c attr))
@@ -685,7 +703,7 @@
 ;; Expect       =  "Expect" ":" 1#expectation
 ;; expectation  =  "100-continue" | expectation-extension
 ;; FIXmE: implement extensions.
-(defrule http-expect? (expectation param params)
+(defparser http-expect? (expectation param params)
   (:or (:and (:seq "100-continue")
 	     (:return '100-continue))
        (:and (:expectation-extension? expectation)
@@ -706,7 +724,7 @@
 
 ;; 14.22 From
 ;; From   = "From" ":" mailbox
-(defrule http-from? (mbox)
+(defparser http-from? (mbox)
   (:mailbox? mbox)
   (:return mbox))
 
@@ -717,7 +735,7 @@
 
 ;; 14.23 Host
 ;; Host = "Host" ":" host [ ":" port ] ; Section 3.2.2
-(defrule http-host? (hp)
+(defparser http-host? (hp)
   (:hostport? hp) (:return hp))
 
 (defmethod http-host! ((stream core-stream) hostport)
@@ -732,7 +750,7 @@
 ;;
 ;; http-etag? :: stream -> (tagstr . weak?)
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defrule http-etag? (tagstr weak?)
+  (defparser http-etag? (tagstr weak?)
     (:checkpoint
      #\W #\/ (:do (setq weak? t)) (:commit))
     (:quoted? tagstr)
@@ -743,7 +761,7 @@
 ;; If-Match: "xyzzy"
 ;; If-Match: "xyzzy", "r2d2xxxx", "c3piozzzz"
 ;; If-Match: *
-(defrule http-if-match? (tag (etags '()))
+(defparser http-if-match? (tag (etags '()))
   (:or (:and #\* (:return (cons '* nil)))
        (:and (:http-etag? tag)
 	     (:do (push tag etags))
@@ -761,7 +779,7 @@
 ;; 14.25 If-Modified-Since
 ;; If-Modified-Since = "If-Modified-Since" ":" HTTP-date
 ;; If-Modified-Since: Sat, 29 Oct 1994 19:43:31 GMT
-(defrule http-if-modified-since? (date)
+(defparser http-if-modified-since? (date)
   (:http-date? date)
   (:return date))
 
@@ -775,7 +793,7 @@
 ;; If-None-Match: "xyzzy", "r2d2xxxx", "c3piozzzz"
 ;; If-None-Match: W/"xyzzy", W/"r2d2xxxx", W/"c3piozzzz"
 ;; If-None-Match: *
-(defrule http-if-none-match? (res)
+(defparser http-if-none-match? (res)
   (:http-if-match? res)
   (:return res))
 
@@ -785,7 +803,7 @@
 ;; 14.27 If-Range
 ;; If-Range = "If-Range" ":" ( entity-tag | HTTP-date )
 ;; FIXmE: Implement me.
-(defrule http-if-range? (range)
+(defparser http-if-range? (range)
   (:or (:http-date? range)
        (:http-etag? range))
   (:return range))
@@ -798,7 +816,7 @@
 ;; 14.28 If-Unmodified-Since
 ;; If-Unmodified-Since = "If-Unmodified-Since" ":" HTTP-date
 ;; If-Unmodified-Since: Sat, 29 Oct 1994 19:43:31 GMT
-(defrule http-if-unmodified-since? (date)
+(defparser http-if-unmodified-since? (date)
   (:http-date? date)
   (:return date))
 
@@ -807,7 +825,7 @@
 
 ;; 14.31 Max-Forwards
 ;; Max-Forwards   = "Max-Forwards" ":" 1*DIGIT
-(defrule http-max-forwards? (num)
+(defparser http-max-forwards? (num)
   (:fixnum? num) (:return num))
 
 (defmethod http-max-forwards! ((stream core-stream) max-forwards)
@@ -815,7 +833,7 @@
 
 ;; 14.34 Proxy-Authorization
 ;; Proxy-Authorization     = "Proxy-Authorization" ":" credentials
-(defrule http-proxy-authorization? (creds)
+(defparser http-proxy-authorization? (creds)
   (:http-credentials? creds)
   (:return creds))
 
@@ -833,12 +851,12 @@
 ;; last-byte-pos   = 1*DIGIT
 ;; suffix-byte-range-spec = \"-\" suffix-length
 ;; suffix-length = 1*DIGIT
-(defrule http-bytes-unit? (c (unit (make-accumulator)))
+(defparser http-bytes-unit? (c (unit (make-accumulator)))
   (:zom (:type alpha? c)
 	(:collect c unit))
   (:return unit))
 
-(defrule http-byte-range-set? (c l r)
+(defparser http-byte-range-set? (c l r)
   (:or (:and #\- (:fixnum? r) (:do (push (cons nil r) c)))        
        (:and
 	(:fixnum? l) #\-       
@@ -856,13 +874,13 @@
 	      (:do (push (cons l r) c)))))
   (:return c))
 
-(defrule http-byte-ranges-specifier? (bytes-unit ranges)
+(defparser http-byte-ranges-specifier? (bytes-unit ranges)
   (:http-bytes-unit? bytes-unit)
   #\=
   (:http-byte-range-set? ranges)
   (:return (cons bytes-unit ranges)))
 
-(defrule http-ranges-specifier? (c)
+(defparser http-ranges-specifier? (c)
   (:http-byte-ranges-specifier? c)
   (:return c))
 
@@ -876,7 +894,7 @@
 ;; last-byte-pos   = 1*DIGIT
 ;; suffix-byte-range-spec = "-" suffix-length
 ;; suffix-length = 1*DIGIT
-(defrule http-range? (c)
+(defparser http-range? (c)
   (:http-ranges-specifier? c)
   (:return c))
 
@@ -899,7 +917,7 @@
 ;; 14.36 Referer
 ;; Referer        = "Referer" ":" ( absoluteURI | relativeURI )
 ;; Referer: http://www.w3.org/hypertext/DataSources/Overview.html
-(defrule http-referer? (uri)
+(defparser http-referer? (uri)
   (:uri? uri) (:return uri))
 
 (defmethod http-referer! ((stream core-stream) referer)
@@ -911,7 +929,7 @@
 ;; TE: deflate
 ;; TE:
 ;; TE: trailers, deflate;q=0.5
-(defrule http-te? (te acc)
+(defparser http-te? (te acc)
   (:http-transfer-extension? te)
   (:do (push te acc))
   (:zom #\, (:lwsp?)
@@ -932,7 +950,7 @@
 ;; http://en.wikipedia.org/wiki/User_agent
 ;; Mozilla/MozVer (compatible; MSIE IEVer[; Provider]; Platform[; Extension]*) [Addition]
 ;; Mozilla/MozVer (Platform; Security; SubPlatform; Language; rv:Revision[; Extension]*) Gecko/GeckVer [Product/ProdVer]
-(defrule user-agent-token? ((token (make-accumulator)) c)
+(defparser user-agent-token? ((token (make-accumulator)) c)
   (:zom (:and (:not #\;)
 	      (:checkpoint
 	       #\)
@@ -946,7 +964,7 @@
 
 ;; ie:     Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.1.4322; .NET CLR 2.0.50727)
 ;; => ((BROWSER . IE) (MOZ-VER (4 0)) (VERSION (6 0)) (OS . "Windows NT 5.1"))
-(defrule ie-user-agent? (moz-ver version os token)
+(defparser ie-user-agent? (moz-ver version os token)
   (:seq "Mozilla/") (:version? moz-ver) (:lwsp?) #\(
   (:checkpoint
    (:seq "compatible;") (:lwsp?) (:seq "MSIE") (:lwsp?)
@@ -968,7 +986,7 @@
 ;; => ((BROWSER . MOZILLA) (MOZ-VER (5 0)) (OS . "Linux i686") (REVISION (1 7 13)))
 ;; iceweasel: Mozilla/5.0 (X11; U; Linux x86_64; en-US; rv:1.8.1.8) Gecko/20071004 Iceweasel/2.0.0.8 (Debian-2.0.0.8-1)
 ;; =>
-(defrule gecko-user-agent? (moz-ver version os c browser revision)
+(defparser gecko-user-agent? (moz-ver version os c browser revision)
   (:seq "Mozilla/") (:version? moz-ver) (:lwsp?) #\(
   (:checkpoint
     (:user-agent-token?) (:user-agent-token?) 
@@ -995,7 +1013,7 @@
 ;; opera:  Opera/9.21 (X11; Linux i686; U; en-us)
 ;;         Opera/9.51 (Windows NT 5.1; U; en)
 ;; => ((BROWSER . OPERA) (VERSION (9 21)) (OS "X11" "Linux i686") (LANG . "en-us"))
-(defrule opera-user-agent? (version os lang tok)
+(defparser opera-user-agent? (version os lang tok)
   (:seq "Opera/")
   (:version? version)
   (:lwsp?) #\(
@@ -1010,13 +1028,13 @@
 		 (cons 'os (reverse os))
 		 (cons 'lang lang))))
 
-(defrule unparsed-user-agent? (c (str (make-accumulator)))
+(defparser unparsed-user-agent? (c (str (make-accumulator)))
   (:zom (:or (:type (or visible-char? white-space?) c))
 	(:collect c str))
   (:return (list (cons 'browser 'unknown)
 		 (cons 'string str))))
 
-(defrule http-user-agent? (agent)  
+(defparser http-user-agent? (agent)  
   ;; (:or (:ie-user-agent? agent)
   ;;      (:gecko-user-agent? agent)
   ;;      (:opera-user-agent? agent))
@@ -1029,7 +1047,7 @@
   (string! self (format nil "~A" agent)))
 
 ;; RFC 2109 Cookie - rfc/2109.lisp
-(defrule http-cookie? (cookie)
+(defparser http-cookie? (cookie)
   (:cookies? cookie) (:return cookie))
 
 (defmethod http-cookie! ((stream core-stream) cookie)
@@ -1040,8 +1058,8 @@
 ;;;-----------------------------------------------------------------------------
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defvar +http-response-headers+
-    '(ACCEPT-RANGES AGE ETAG LOCATION PROXY-AUTHENTICATE RETRY-AFTER SERVER
-      VARY WWW-AUTHENTICATE SET-COOKIE))) ;; len=9
+    '(ACCEPT-RANGES AGE ETAG LOCATION PROXY-AUTHENTICATE
+      RETRY-AFTER SERVER VARY WWW-AUTHENTICATE SET-COOKIE))) ;; len=9
 
 ;; 14.5 Accept Ranges
 ;; Accept-Ranges     = "Accept-Ranges" ":" acceptable-ranges
@@ -1143,8 +1161,11 @@
 ;; 14.47 WWW-Authenticate
 ;; WWW-Authenticate  = "WWW-Authenticate" ":" 1#challenge
 ;; FIXME -evrim.
-(defparser http-www-authenticate? ()
-  (:return nil))
+(defparser http-www-authenticate? (scheme param params)
+  (:http-auth-scheme? scheme) (:lwsp?)
+  (:http-auth-param? param) (:do (push param params))
+  (:zom #\, (:lwsp?) (:http-auth-param? param) (:do (push param params)))
+  (:return (cons scheme (nreverse params))))
 
 (defun http-www-authenticate! (stream challenge)
   (http-challenge! stream challenge))
@@ -1167,7 +1188,7 @@
 ;; 14.7 Allow
 ;; Allow   = "Allow" ":" #method
 ;; Allow: GET, HEAD, PUT
-(defrule http-allow? (method methods)
+(defparser http-allow? (method methods)
   (:zom (:and (:http-method? method)
 	      (:do (push method methods))
 	      #\,
@@ -1185,7 +1206,7 @@
 ;; 14.11 Content-Encoding
 ;; Content-Encoding  = "Content-Encoding" ":" 1#content-coding
 ;; Content-Encoding: gzip
-(defrule http-content-encoding? ((acc (make-accumulator)) c)
+(defparser http-content-encoding? ((acc (make-accumulator)) c)
   (:type http-header-name? c) (:collect c acc)
   (:zom (:type http-header-name? c) (:collect c acc))
   (:return acc))
@@ -1201,7 +1222,7 @@
 ;; 14.12 Content-Language
 ;; Content-Language  = "Content-Language" ":" 1#language-tag
 ;; Content-Language: mi, en
-(defrule http-content-language? (c (acc (make-accumulator)) (langs '()))
+(defparser http-content-language? (c (acc (make-accumulator)) (langs '()))
   (:zom (:zom (:type alpha? c) (:collect c acc))
 	(:do (push acc langs)
 	     (setq acc (make-accumulator)))
@@ -1224,7 +1245,7 @@
 ;; 14.13 Content-Length
 ;; Content-Length    = "Content-Length" ":" 1*DIGIT
 ;; Content-Length: 3495
-(defrule http-content-length? (num)
+(defparser http-content-length? (num)
   (:fixnum? num) (:return num))
 
 (defun/cc2 http-content-length! (stream length)
@@ -1232,7 +1253,7 @@
 
 ;; 14.14 Content-Location
 ;; Content-Location = "Content-Location" ":" ( absoluteURI | relativeURI )
-(defrule http-content-location? (uri)
+(defparser http-content-location? (uri)
   (:uri? uri) (:return uri))
 
 (defun http-content-location! (stream uri)
@@ -1241,7 +1262,7 @@
 ;; 14.15 Content-MD5
 ;; Content-MD5   = "Content-MD5" ":" md5-digest
 ;; md5-digest   = <base64 of 128 bit MD5 digest as per RFC 1864>
-(defrule http-content-md5? (c (acc (make-accumulator)))
+(defparser http-content-md5? (c (acc (make-accumulator)))
   (:type alpha? c) (:collect c acc)  
   (:zom (:type alpha? c) (:collect c acc))
   (:return acc))
@@ -1258,7 +1279,7 @@
 ;; byte-range-resp-spec = (first-byte-pos "-" last-byte-pos) | "*"
 ;; instance-length           = 1*DIGIT
 ;; FIXmE: implement me.
-(defrule http-content-range? (c (acc (make-accumulator)))
+(defparser http-content-range? (c (acc (make-accumulator)))
   (:type http-header-value? c) (:collect c acc)
   (:zom (:type http-header-value? c) (:collect c acc))
   (:return acc))
@@ -1269,7 +1290,7 @@
 ;; 14.17 Content-Type
 ;; Content-Type   = "Content-Type" ":" media-type
 ;; Content-Type: text/html; charset=ISO-8859-4
-(defrule http-content-type? (type subtype params)
+(defparser http-content-type? (type subtype params)
   (:http-media-range? type subtype params)
   (:return (if params
 	       (list type subtype params)
@@ -1295,7 +1316,7 @@
 ;; 14.21 Expires
 ;; Expires = "Expires" ":" HTTP-date
 ;; Expires: Thu, 01 Dec 1994 16:00:00 GMT
-(defrule http-expires? (date)
+(defparser http-expires? (date)
   (:http-date? date) (:return date))
 
 (defun http-expires! (stream timestamp)
@@ -1304,7 +1325,7 @@
 ;; 14.29 Last-Modified
 ;; Last-Modified  = "Last-Modified" ":" HTTP-date
 ;; Last-Modified: Tue, 15 Nov 1994 12:45:26 GMT
-(defrule http-last-modified? (date)
+(defparser http-last-modified? (date)
   (:http-date? date) (:return date))
 
 (defun http-last-modified! (stream timestamp)
@@ -1333,6 +1354,9 @@
 		   :initarg :entity-headers)
    (peer-type :accessor http-request.peer-type :initform 'http)
    (stream :accessor http-request.stream :initform nil :initarg :stream)))
+
+(defprint-object (self http-request :identity t)
+  (format t "~A ~A" (s-v 'method) (s-v 'uri)))
 
 (defun make-http-request (&rest args)
   (apply #'make-instance 'http-request args))
@@ -1391,12 +1415,12 @@
     ;; (char! stream #\Newline)
     ))
 
-(defrule http-request-first-line? (method uri proto)
+(defparser http-request-first-line? (method uri proto)
   (:http-method? method) (:lwsp?) (:uri? uri) (:lwsp?)
   (:http-protocol? proto) (:return (values method uri (cadr proto))))
 
 (defmacro defhttp-header-parser (name format header-list)
-  `(defrule ,name (stub)
+  `(defparser ,name (stub)
      (:not #\Newline)
      (:or ,@(nreverse
 	     (reduce #'(lambda (acc atom)
@@ -1413,14 +1437,14 @@
 (defhttp-header-parser http-request-header? "HTTP-~A?" +http-request-headers+)
 (defhttp-header-parser http-entity-header? "HTTP-~A?" +http-entity-headers+)
 
-(defrule http-unknown-header? ((key (make-accumulator))
+(defparser http-unknown-header? ((key (make-accumulator))
 			       (value (make-accumulator :byte)) c)
   (:oom (:type http-header-name? c) (:collect c key))
   #\: (:zom (:type space?))
   (:oom (:type http-header-value? c) (:collect c value))
   (:return (cons key value)))
 
-(defrule rfc2616-request-headers? (c method uri version key value header gh rh eh uh)
+(defparser rfc2616-request-headers? (c method uri version key value header gh rh eh uh)
   (:http-request-first-line? method uri version)
   (:lwsp?)
   (:zom	(:or (:and (:http-general-header? header) (:do (push header gh)))
@@ -1431,11 +1455,11 @@
   (:return (values method uri version (nreverse gh)
 		   (nreverse rh) (nreverse eh) (nreverse uh))))
 
-(defrule http-request-headers? (method uri version gh rh eh uh)
+(defparser http-request-headers? (method uri version gh rh eh uh)
   (:rfc2616-request-headers? method uri version gh rh eh uh)
   (:return (values 'http method uri version gh rh eh uh)))
 
-(defrule x-www-form-urlencoded? (query)  
+(defparser x-www-form-urlencoded? (query)  
   (:query? query)
   (:return query))
 
@@ -1455,12 +1479,18 @@
    (entities :accessor http-response.entities :initform nil
 	     :initarg :entities)))
 
+(defprint-object (self http-response :identity t)
+  (format t "~A" (s-v 'status-code)))
+
 (defun make-http-response (&rest args)
   (apply #'make-instance 'http-response args))
 
 (defmethod http-response.add-entity ((self http-response) entity)
   (with-slots (entities) self
     (setf entities (cons entity entities))))
+
+(defmethod http-response.response-header ((self http-response) key)
+  (cdr (assoc key (http-response.response-headers self) :test #'string=)))
 
 (defmethod http-response.add-entity-header ((self http-response) key val)
   (setf (slot-value self 'entity-headers)
@@ -1658,10 +1688,15 @@
     (append (list 'http-request-first-line? 'rfc2616-request-headers?
 		  'http-unknown-header? 'http-general-header? 'http-request-header?
 		  'http-entity-header? 'http-request! 'http-response?
-		  'http-response-headers?)
-	    (mapcar (lambda (header) (intern (format nil "HTTP-~A?" header)))
-		    (append +http-general-headers+ +http-request-headers+
-			    +http-entity-headers+))))
+		  'http-response-headers? 'http-challenge?
+		  'status-code! 'http-response-headers!
+		  'http-request-first-line!)
+	    (flatten1
+	     (mapcar (lambda (header)
+		       (list (intern (format nil "HTTP-~A?" header))
+			     (intern (format nil "HTTP-~A!" header))))
+		     (append +http-general-headers+ +http-request-headers+
+			     +http-entity-headers+ +http-response-headers+)))))
 
 ;; Core Server: Web Application Server
 
