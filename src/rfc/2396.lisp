@@ -336,7 +336,8 @@
   (with-slots (scheme username password server
 		      port paths queries fragments) self
     (format *standard-output* "~A://~A:~A@~A:~A~{/~A~}?~{~A&~}#~{~A&~}"
-	    scheme username password server port paths (ensure-list queries) (ensure-list fragments))))
+	    scheme username password server port paths
+	    (ensure-list queries) (ensure-list fragments))))
 
 (defgeneric urip (uri)
   (:method ((uri uri)) t)

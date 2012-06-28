@@ -1481,7 +1481,7 @@
 	     :initarg :entities)))
 
 (defprint-object (self http-response :identity t)
-  (format t "~A" (s-v 'status-code)))
+  (format t "~A" (assoc (s-v 'status-code) *status-codes*)))
 
 (defun make-http-response (&rest args)
   (apply #'make-instance 'http-response args))
