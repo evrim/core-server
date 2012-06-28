@@ -210,6 +210,11 @@
                                   ((:file "whois")
                                    (:file "mail")
                                    (:file "filesystem")))
+			 (:module :security
+				  :components
+				  ((:file "authenticate")
+				   (:file "authorize"))
+				  :serial t)
                          (:module :web
                                   :serial t
                                   :components
@@ -235,9 +240,7 @@
 			 (:module :coretal
 				  :serial t
 				  :components
-				  ((:file "authenticate")
-				   (:file "authorize")
-				   (:file "map")
+				  ((:file "map")
 				   (:file "page")
 				   (:file "widget")
 				   (:file "controller")))

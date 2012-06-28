@@ -9,14 +9,14 @@
 ;; -------------------------------------------------------------------------
 ;; Abstract Group
 ;; -------------------------------------------------------------------------
-(defcomponent abstract-group ()
+(defclass+ abstract-group ()
   ()
   (:ctor %make-abstract-group))
 
 ;; -------------------------------------------------------------------------
 ;; Simple Group
 ;; -------------------------------------------------------------------------
-(defcomponent simple-group ()
+(defclass+ simple-group ()
   ((name :accessor group.name :initform (error "Provide :name")
 	 :initarg :name :host local :index t :export t :print t)
    (users :host local :export nil :accessor group.users :relation groups
@@ -26,14 +26,14 @@
 ;; -------------------------------------------------------------------------
 ;; Abstract User
 ;; -------------------------------------------------------------------------
-(defcomponent abstract-user ()
+(defclass+ abstract-user ()
   ()
   (:ctor %make-abtract-user))
 
 ;; -------------------------------------------------------------------------
 ;; Simple User
 ;; -------------------------------------------------------------------------
-(defcomponent simple-user (abstract-user)
+(defclass+ simple-user (abstract-user)
   ((name :accessor user.name :initform nil
 	 :initarg :name :host both :index t :print t)
    (groups :accessor user.groups :host local :type simple-group*
@@ -52,7 +52,7 @@
 ;; -------------------------------------------------------------------------
 ;; Anonymous User
 ;; -------------------------------------------------------------------------
-(defcomponent anonymous-user (abstract-user)
+(defclass+ anonymous-user (abstract-user)
   ()
   (:ctor make-anonymous-user))
 

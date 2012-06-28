@@ -11,7 +11,7 @@
 (defparameter +umask+
   '((owner . 1) (group . 0) (other . 0) (anonymous . 0) (unauthorized . -1)))
 
-(defcomponent secure-object ()
+(defclass+ secure-object ()
   ((owner :host local :type abstract-user :export nil :reader owner
 	  :initarg :owner :initform (error "Provide :owner"))
    (group :host local :type abstract-group :export nil :reader group
@@ -25,7 +25,7 @@
   (:ctor make-secure-object))
 
 (defcrud secure-object)
-(defcomponent secure-object/authorized ()
+(defclass+ secure-object/authorized ()
   ((secure-object :host lift :type secure-object)
    (owner :lift t :host local :export nil :type abstract-user)
    (group :lift t :host local :export nil :type abstract-group)
@@ -38,7 +38,7 @@
 (defmethod component.application ((self secure-object/authorized))
   (current-application self))
 
-(defcomponent secure-object/unauthorized ()
+(defclass+ secure-object/unauthorized ()
   ((secure-object :host lift :type secure-object)
    (current-application :host local :export nil
 			:initform (error "Provide :current-application")
