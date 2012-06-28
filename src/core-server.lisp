@@ -1318,7 +1318,12 @@
 (defpackage :tr.gen.core.server.facebook
   (:nicknames :<fb)
   (:use :cl)
-  (:export #:me #:authenticate))
+  (:export #:exception #:exception.code #:exception.type
+	   #:exception.message #:funkall #:fetch
+	   #:me #:friends #:home #:feed #:likes #:movies #:music #:books
+	   #:notes #:permissions #:photos #:albums #:videos #:events
+	   #:groups #:checkins #:videos-uploaded
+	   #:authenticate))
 
 (defpackage :tr.gen.core.server.openid
   (:nicknames :<openid)
