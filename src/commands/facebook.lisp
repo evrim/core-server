@@ -49,12 +49,14 @@
 ;; Facebook Me Command
 ;; -------------------------------------------------------------------------
 ;; + Access to current user resources
-(defcommand <fb:me (http)
+(defcommand <fb:me (<fb:funkall)
   ()
   (:default-initargs :url +fb-me+))
 
-(defvar +fb-me-commands+ '(friends home feed likes movies music books
-  notes permissions photos albums videos events groups checkins))
+(eval-when (:load-toplevel :compile-toplevel :execute)
+  (defvar +fb-me-commands+ '(friends home feed likes movies music
+			     books notes permissions photos albums
+			     videos events groups checkins)))
 
 (defmacro deffb-me-commands (lst)
   (let ((lst (if (listp lst) lst (eval lst))))
@@ -83,7 +85,7 @@
     uri))
 
 (defun <fb:authenticate (token)
-  (let ((user (<fb:me :access_token token)))
+  (let ((user (<fb:me :token token)))
     (list :email (format nil "~A@facebook.com"
 			 (get-attribute user :username))
 	  :name (get-attribute user :name))))
