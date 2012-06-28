@@ -103,15 +103,6 @@
 (defmethod json-key! ((stream core-stream) (key symbol))
   (json-key! stream (symbol-to-js key)))
 
-(defun js-to-keyword (string)
-  (make-keyword
-   (reduce (lambda (acc atom)
-	     (if (typep atom 'upper-case?)
-		 (format nil "~A-~A" acc (char-downcase atom))
-		 (format nil "~A~A" acc atom)))
-	   string
-	   :initial-value "")))
-
 (defrule json-object? (key value lst)
   (:lwsp?) #\{ (:lwsp?)
   (:zom (:not #\})
@@ -119,7 +110,7 @@
 	(:or (:and (:seq "null") (:do (setq value nil))) ;;fixme -evrim
 	     (:json? value)) (:lwsp?)
 	(:checkpoint #\, (:commit)) (:lwsp?)
-	(:do (setf lst (cons (list (js-to-keyword key) value) lst))))
+	(:do (setf lst (cons (list (js->keyword key) value) lst))))
   (:return (apply #'jobject (flatten1 lst))))
 
 (defmethod json! ((stream core-stream) (hash-table hash-table))
