@@ -87,7 +87,7 @@
 			     (caar (http-response.get-response-header
 				    response 'transfer-encoding)))
 		    (core-server::make-chunked-stream stream))
-		   ((and content-length (> content-length 0))
+		   ((and content-length (>= content-length 0))
 		    (make-bounded-stream stream content-length))
 		   (t stream))))
     (if (s-v 'debug) (describe response))
@@ -292,3 +292,6 @@
 	    (values entity response)))))
       (t
        (http.fetch self)))))
+
+(deftrace http-client
+    '(run http.fetch http.authorize http.send-request http.parse-response))
