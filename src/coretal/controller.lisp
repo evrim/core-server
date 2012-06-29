@@ -52,7 +52,7 @@
 
 (defmethod/local get-page ((self simple-controller/anonymous) name)
   (aif (find name (pages self) :key #'name :test #'string=)
-       (authorize (current-application self) (user self) it)))
+       (authorize (secure.application self) (secure.user self) it)))
 
 (defmethod/remote load-page ((self simple-controller/anonymous) name)
   (let ((ctor (get-page self name)))
