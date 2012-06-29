@@ -109,5 +109,5 @@
 	  (update (class+.update-function source+ prefix)))
       `(progn
 	 (defmethod/lift ,update ((server abstract-database) (instance ,target-class)
-				  &key ,@(class+.ctor-lambda-list source+ t)))
+				  &key ,@(class+.ctor-query-lambda-list source+ t)))
 	 (defmethod/lift ,delete ((server abstract-database) (instance ,target-class)))))))
