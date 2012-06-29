@@ -24,7 +24,7 @@
 ;; This file contains javascript library functions.
 ;;
 
-(defrender/js core-library! ()
+(defrender/js core-library! (&optional (loading-gif +loading-gif+))
   (defun atom (a)
     (cond
       ((null a) t)
@@ -574,9 +574,8 @@
 			  (.get-time (new (*date)))
 			  (.substr (.concat "" (*math.random 10)) 3 5)))))
 	(let ((img (make-dom-element "IMG"
-				     (jobject :class-name "coretal-loading"
-					      :src (+ "http://www.coretal.net/style/"
-						      "login/loading.gif"))
+				     (jobject :class-name "core-loading"
+					      :src loading-gif)
 				     nil)))
 	  (setf (slot-value args (or callback-name "__hash")) hash)
 	  (let* ((a (serialize-to-uri args))
