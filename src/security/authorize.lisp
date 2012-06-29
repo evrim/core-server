@@ -49,20 +49,19 @@
 ;; -------------------------------------------------------------------------
 ;; Authorization Helpers
 ;; -------------------------------------------------------------------------
-(defmethod level->constructor ((self secure-object) (level integer))
-  (let ((levels (levels self)))
+(defmethod level->constructor ((self secure-object) (level integer) &optional levels)
+  (let ((levels (or levels (secure.levels self))))
     (cond
-      ((>= level (length levels))
-       (car (reverse levels)))
-      ((< level 0)
-       (car levels))
+      ((>= level (length levels)) (car (reverse levels)))
+      ((< level 0) (car levels))
       (t (nth level levels)))))
 
 (defmethod %secure-constructor ((self secure-object) (user anonymous-user)
 				&optional levels)
-  (let ((levels (or levels (levels self)))
-	(level (cdr (assoc 'anonymous (permissions self)))))
-    (level->constructor self level)))
+  (let ((level (or (cdr (assoc 'anonymous (secure.permissions self)))
+		   (cdr (assoc 'unauthorized (secure.permissions self)))
+		   -1)))
+    (level->constructor self level levels)))
 
 (defmethod %secure-constructor ((self secure-object) (user abstract-user)
 				&optional levels)
@@ -80,8 +79,7 @@
 			 :key #'group.name :test #'equal)
 		   (cdr (assoc 'group (secure.permissions self))))
 		  ;; Default Permission
-		  (t
-		   (cdr (assoc 'other (secure.permissions self)))))))
+		  (t (cdr (assoc 'other (secure.permissions self)))))))
     (level->constructor self level)))
 
 ;; -------------------------------------------------------------------------
@@ -110,4 +108,6 @@
 (defmethod authorize ((application application)
 		      (user abstract-user) (object secure-object))
   (apply (%secure-constructor object user)
-	 (list :secure-object object :user user :current-application application)))
+	 (list :secure-object object :user user :current-application application
+	       :owner (secure.owner object)
+	       :group (secure.group object))))
