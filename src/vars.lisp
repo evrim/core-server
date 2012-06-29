@@ -100,6 +100,7 @@
 ;;---------------------------------------------------------------------------
 ;; Web Specific Variables
 ;;---------------------------------------------------------------------------
+(defvar +loading-gif+ "style/images/loading.gif")
 (defvar +default-extension+ ".core" "Web application default extension")
 (defvar +dojo-path+ "/dojo/" "Dojo Pathname")
 (defvar +fckeditor-path+ "/js/ckeditor/"

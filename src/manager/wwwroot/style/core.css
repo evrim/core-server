@@ -108,3 +108,4 @@
 .core span.invalid { color:#8A0000; }
 .core h2 { font-size:17px; font-weight:bold; }
 .twitter a.twtr-join-conv {font-size:12px !important;}
+img.core-loading { position:absolute; top:10px; right:5px; }
