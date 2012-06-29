@@ -339,6 +339,14 @@
 	      (member (car slot) local-slots :test #'string=))
 	    (class+.ctor-lambda-list self include-supplied-p))))
 
+(defmethod class+.ctor-query-lambda-list ((self class+) &optional
+					  (include-supplied-p nil))
+  (mapcar (lambda (arg)
+	    (if include-supplied-p
+		`(,(car arg) nil ,(caddr arg))
+		`(,(car arg) nil)))
+	  (class+.ctor-lambda-list self include-supplied-p)))
+
 (defmethod class+.ctor-arguments ((self class+) &optional lambda-list)      
   (reduce0 (lambda (acc slot)
 	     (with-slotdef (initarg) slot
