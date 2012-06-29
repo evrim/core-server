@@ -277,10 +277,12 @@
 			    nil "Cant find slot ~A to lift" name)
 		    (with-slotdef (reader writer) lifted-slot
 		      `(progn
-			 (defmethod/lift ,reader ((self ,class-name))
-			   ,reader1)
-			 (defmethod/lift ,writer (value (self ,class-name))
-			   ,writer1)))))))
+			 ,(if reader
+			      `(defmethod/lift ,reader ((self ,class-name))
+				 ,reader1))
+			 ,(if writer
+			      `(defmethod/lift ,writer (value (self ,class-name))
+				 ,writer1))))))))
 	    (filter (lambda (slot) (slot-definition-lift slot))
 		    (class+.slots class)))))))
 
