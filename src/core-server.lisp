@@ -1175,24 +1175,43 @@
    #:simple-widget
    #:make-simple-widget
 
-   #:authorize
-   #:simple-user
-   #:make-simple-user   
+   [[Security]]
+   #:group.name
+   #:group.users
+   #:user.name
+   #:user.groups
+   #:user.has-group
+   #:secure-object
+   #:owner
+   #:group
+   #:other
+   #:anonymous
+   #:unauthorized
+   #:secure.owner
+   #:secure.group
+   #:secure.user
+   #:secure.application
+   #:secure.levels
+   #:secure.permissions
    #:simple-group
    #:make-simple-group
-   #:user.has-group
-   #:simple-user.add
-   #:simple-user.delete
-   #:simple-user.find
-   #:simple-user.list
-   #:simple-user.query
-   #:simple-user.update
    #:simple-group.add
    #:simple-group.delete
    #:simple-group.find
    #:simple-group.list
    #:simple-group.query
    #:simple-group.update
+   #:simple-user
+   #:make-simple-user
+   #:simple-user.add
+   #:simple-user.delete
+   #:simple-user.find
+   #:simple-user.list
+   #:simple-user.query
+   #:simple-user.update
+   #:init-authentication
+   #:anonymous-user
+   #:make-anonymous-user
    ))
 
 (defpackage :tr.gen.core.server.io

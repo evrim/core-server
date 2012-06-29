@@ -12,37 +12,36 @@
   '((owner . 1) (group . 0) (other . 0) (anonymous . 0) (unauthorized . -1)))
 
 (defclass+ secure-object ()
-  ((owner :host local :type abstract-user :export nil :reader owner
+  ((owner :host local :type abstract-user :export nil :reader secure.owner
 	  :initarg :owner :initform (error "Provide :owner"))
-   (group :host local :type abstract-group :export nil :reader group
+   (group :host local :type abstract-group :export nil :reader secure.group
 	  :initarg :group :initform (error "Provide :group"))
-   (levels :host local :export nil
-	   :initform '(secure-object/authorized secure-object/unauthorized)
-	   ;; (error "Provide :levels")
-	   :reader levels)
-   (permissions :host local :export nil :reader permissions
+   (levels :host local :export nil :reader secure.levels
+	   :initform '(secure-object/authorized secure-object/unauthorized))
+   (permissions :host local :export nil :reader secure.permissions
 		:initform +umask+))
   (:ctor make-secure-object))
 
-(defcrud secure-object)
 (defclass+ secure-object/authorized ()
-  ((secure-object :host lift :type secure-object)
-   (owner :lift t :host local :export nil :type abstract-user)
-   (group :lift t :host local :export nil :type abstract-group)
+  ((secure-object :host lift :type secure-object :reader secure-object)
+   (owner :lift t :host local :export nil :type abstract-user :reader secure.owner)
+   (group :lift t :host local :export nil :type abstract-group :reader secure.group)
    (user :host local :export nil :initform (error "Provide :user")
-	 :type abstract-user)
+	 :type abstract-user :reader secure.user)
    (current-application :host local :export nil
 			:initform (error "Provide :current-application")
-			:type application)))
+			:type application
+			:reader secure.application)))
 
 (defmethod component.application ((self secure-object/authorized))
-  (current-application self))
+  (secure.application self))
 
 (defclass+ secure-object/unauthorized ()
   ((secure-object :host lift :type secure-object)
    (current-application :host local :export nil
 			:initform (error "Provide :current-application")
-			:type application)))
+			:type application
+			:reader secure.application)))
 
 (defmethod component.application ((self secure-object/unauthorized))
   (current-application self))
@@ -65,23 +64,24 @@
 	(level (cdr (assoc 'anonymous (permissions self)))))
     (level->constructor self level)))
 
-(defmethod %secure-constructor ((self secure-object) (user simple-user)
+(defmethod %secure-constructor ((self secure-object) (user abstract-user)
 				&optional levels)
-  (let* ((levels (or levels (levels self)))
+  (let* ((levels (or levels (secure.levels self)))
 	 (level (cond
 		  ;; Grant Maximum Permission
-		  ((or (has-group user "editor") (has-group user "admin"))
-		   (- (length (permissions self)) 1))
+		  ((or (user.has-group user "editor")
+		       (user.has-group user "admin"))
+		   (- (length (secure.permissions self)) 1))
 		  ;; Owner Match
-		  ((eq user (owner self))
-		   (cdr (assoc 'owner (permissions self))))
+		  ((eq user (secure.owner self))
+		   (cdr (assoc 'owner (secure.permissions self))))
 		  ;; Group Match
-		  ((find (group.name (group self)) (user.groups user)
+		  ((find (group.name (secure.group self)) (user.groups user)
 			 :key #'group.name :test #'equal)
-		   (cdr (assoc 'group (permissions self))))
+		   (cdr (assoc 'group (secure.permissions self))))
 		  ;; Default Permission
 		  (t
-		   (cdr (assoc 'other (permissions self)))))))
+		   (cdr (assoc 'other (secure.permissions self)))))))
     (level->constructor self level)))
 
 ;; -------------------------------------------------------------------------
@@ -90,13 +90,13 @@
 (defmethod copy-lifted-slot ((self secure-object/authorized)
 			     (slot standard-slot-definition) value)
   (if (slot-definition-authorize slot)
-      (authorize (current-application self) (user self) value)
+      (authorize (secure.application self) (secure.user self) value)
       value))
 
 (defmethod copy-lifted-slot ((self secure-object/unauthorized)
 			     (slot standard-slot-definition) value)
   (if (slot-definition-authorize slot)
-      (authorize (current-application self) (make-anonymous-user) value)
+      (authorize (secure.application self) (make-anonymous-user) value)
       value))
 
 (defmethod authorize ((application application) (user abstract-user)

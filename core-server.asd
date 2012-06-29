@@ -212,8 +212,9 @@
                                    (:file "filesystem")))
 			 (:module :security
 				  :components
-				  ((:file "authenticate")
-				   (:file "authorize"))
+				  ((:file "class")
+				   (:file "authorize")
+				   (:file "authenticate"))
 				  :serial t)
                          (:module :web
                                   :serial t
