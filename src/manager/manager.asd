@@ -20,11 +20,11 @@
 	     (:file "model" :depends-on ("packages"))
 	     (:file "application" :depends-on ("packages" "model")) 
 	     (:module :ui
-		      :serial t
-		      :components
-		      ((:file "sites")
-		       (:file "users")
-		       (:file "main"))))))
+	     	      :serial t
+	     	      :components
+	     	      ((:file "sites")
+	     	       (:file "users")
+	     	       (:file "main"))))))
   :depends-on (:arnesi :core-server)
   :serial t)
 

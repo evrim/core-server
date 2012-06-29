@@ -30,14 +30,16 @@
   (:default-initargs :default-page "info")
   (:ctor make-manager-controller))
 
-(defparameter +pages+
+(defun make-pages ()
   (list (list "info" "Info" "Information regarding to the current instance"
 	      (info-component))
 	(list "aanda" "A & A" "Authentication & Authorization"
 	      (sites-component))
-	(list "users" "Manager Users" "Accounts that manage this server instance"
-	      (manager-users-component))
-	(list "settings" "Settings" "Settings related to the current instance"
+	(list "users" "Administrators"
+	      "Administrative accounts that manage this server instance"
+	      (administrators-component))
+	(list "settings" "Settings"
+	      "Settings related to the current server instance"
 	      (settings-component))))
 
 (defun make-controller (application user)
@@ -60,10 +62,11 @@
 	      :items (mapcar (lambda (pages)
 			       (cons (cadr pages) (car pages)))
 			     pages))))
-    (let ((pages (mapcar (curry #'apply #'make-page) +pages+))
-	  (constants (list
-		      (make-map "clock" (<core:simple-clock))
-		      (make-map "menu" (make-menu +pages+)))))
+    (let* ((pagesX (make-pages))
+	   (pages (mapcar (curry #'apply #'make-page) pagesX))
+	   (constants (list
+		       (make-map "clock" (<core:simple-clock))
+		       (make-map "menu" (make-menu pagesX)))))
       (authorize application user
 		 (make-manager-controller :pages pages :constants constants)))))
 

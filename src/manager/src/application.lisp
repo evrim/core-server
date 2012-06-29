@@ -30,15 +30,21 @@
 
 (defvar *app* (make-instance 'manager-application))
 
-(deftransaction init-database ((self manager-application))
+(defmethod http-application.password-of ((self manager-application) (username string))
+  (aif (admin.find self :username username)
+       (admin.password it)))
+
+(defmethod init-database ((self manager-application))
   (assert (null (database.get self 'initialized)))
   (setf (database.get self 'api-secret) (random-string))
-  (manager-user.add self :name "Root User" :username "root" :password "core-server")
+  (let ((group (simple-group.add self :name "admin")))
+    (admin.add self :name "Root User" :username "root" :password "core-server"
+	       :owner nil :group group))
   (setf (database.get self 'initialized) t)
-  t)
+  self)
 
 (defmethod start ((self manager-application))
-  (if (null (database.get self 'initialized))
+  (if (not (database.get self 'initialized))
       (prog1 t (init-database self))
       nil))
 
@@ -48,6 +54,13 @@
 
 (defun unregister-me (&optional (server *server*))
   (unregister server *app*))
+
+(defun hostname ()
+  #+sbcl (sb-unix:unix-gethostname)
+  #-sbcl "N/A")
+
+(defun core-server-version ()
+  (slot-value (asdf::find-system "core-server") 'asdf::version))
 
 ;; -------------------------------------------------------------------------
 ;; Index Loop
@@ -67,9 +80,9 @@
 			(lambda (result)
 			  (cl (document.get-element-by-id "clock" window.k)))))))))))
     (continue/js
-     (let ((admin (manager-user.find self :username username)))
+     (let ((admin (admin.find self :username username)))
        (cond
-	 ((and admin (equal (manager-user.password admin) password))
+	 ((and admin (equal (admin.password admin) password))
 	  (prog1 (lambda (self k) (k (setf window.location "manager.html")))
 	    (update-session :user admin)))
 	 (t nil))))))
@@ -105,7 +118,7 @@
 			  (fqdn (error "Provide :fqdn"))
 			  (api-key (make-api-key self fqdn))
 			  (api-password (make-api-password self fqdn))
-			  (owner (manager-user.find self :username "root"))
+			  (owner (admin.find self :username "root"))
 			  (timestamp (get-universal-time)))
   (assert (not (null owner)))
   (call-next-method self :fqdn fqdn :api-key api-key
