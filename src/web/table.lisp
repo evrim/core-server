@@ -181,11 +181,11 @@
     
       (if (null instances)
 	  (.remove-child tbody (slot-value tbody 'first-child)))
-    
+
       (setf (instances self) (cons instance instances))
       (update-tfoot self)
 
-      (if (eq 1 (mod (slot-value instances 'length) 2))
+      (if (eq 1 (mod (slot-value (instances self) 'length) 2))
 	  (add-class row (hilight-class self)))
     
       (prepend tbody row)
