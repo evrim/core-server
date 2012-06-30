@@ -1182,6 +1182,8 @@
    #:user.groups
    #:user.has-group
    #:secure-object
+   #:secure-object/authorized
+   #:secure-object/unauthorized
    #:owner
    #:group
    #:other

@@ -24,8 +24,10 @@
 
 (defclass+ secure-object/authorized ()
   ((secure-object :host lift :type secure-object :reader secure-object)
-   (owner :lift t :host local :export nil :type abstract-user :reader secure.owner)
-   (group :lift t :host local :export nil :type abstract-group :reader secure.group)
+   (owner :lift t :host local :export nil :type abstract-user
+	  :reader secure.owner)
+   (group :lift t :host local :export nil :type abstract-group
+	  :reader secure.group)
    (user :host local :export nil :initform (error "Provide :user")
 	 :type abstract-user :reader secure.user)
    (current-application :host local :export nil
@@ -104,6 +106,14 @@
 (defmethod authorize ((application application) (user abstract-user)
 		      (object list))
   (mapcar (curry #'authorize application user) object))
+
+(defmethod authorize ((application application) (user abstract-user)
+		      (object secure-object/authorized))
+  object)
+
+(defmethod authorize ((application application) (user abstract-user)
+		      (object secure-object/unauthorized))
+  object)
 
 (defmethod authorize ((application application)
 		      (user abstract-user) (object secure-object))
