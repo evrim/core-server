@@ -23,7 +23,7 @@
 	     	      :serial t
 	     	      :components
 	     	      ((:file "sites")
-	     	       (:file "users")
+	     	       (:file "admin")
 	     	       (:file "main"))))))
   :depends-on (:arnesi :core-server)
   :serial t)
