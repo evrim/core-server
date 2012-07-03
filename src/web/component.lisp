@@ -73,10 +73,16 @@
 
 (defmethod component.application ((self component))
   "Returns application associated to this component."
-  (session.application (component.session self)))
+  (if (component.session self)
+      (session.application (component.session self))
+      (session.application (context.session +context+))))
 
 (defmethod component.action-hash ((self component) method)
   (format nil "~A-act~A" method (component.instance-id self)))
+
+(defmethod component.find-local-method ((self component) (name symbol))
+  "Returns the local method type signature"
+  (find name (class+.local-methods (class-of self)) :key #'car))
 
 (defmethod component.find-local-method ((self component) (name string))
   "Returns the local method type signature"
@@ -84,22 +90,31 @@
 	:test #'string= :key #'car))
 
 (defmethod/cc component.method-call ((self component) method-name args)
-  "Dynamic application of method method-name w/ args to the component"
+  "Dynamic application of method method-name w/ args to the component"  
   (let ((method (component.find-local-method self method-name)))
     (when (null method)
-      (warn "Method not found ~A.~A"
-	    (component.instance-id component) method-name)
+      (warn "Method (~A ~A) not found on instance: ~A"
+	    method-name (class-name (class-of self))
+	    (component.instance-id self))
       (return-from component.method-call nil))
 
     (flet ((find-argument (name)
 	     (aif (find (symbol-to-js name) args :key #'car :test #'string=)
-		  (cdr it))))
-      (apply (car method) self
-	     (mapcar (lambda (arg)
-		       (component.deserialize self
-			(json-deserialize (find-argument arg))))
-		     (mapcar (compose #'car #'ensure-list)
-			     (cdddr method)))))))
+		  (component.deserialize self (json-deserialize (cdr it))))))
+      (let* ((arguments (walk-lambda-list (cdddr method) nil nil
+					  :allow-specializers t))
+	     (arguments (reduce (lambda (acc arg)
+				  (with-slots (name) arg
+				    (typecase arg
+				      (keyword-function-argument-form
+				       (cons (make-keyword name)
+					     (cons (find-argument name) acc)))
+				      (specialized-function-argument-form
+				       (cons (find-argument name) acc))
+				      (rest-function-argument-form
+				       (append (find-argument name) acc)))))
+				(nreverse arguments) :initial-value nil)))
+	(apply (car method) self arguments)))))
 
 ;; -------------------------------------------------------------------------
 ;; Serialization Interface
@@ -150,45 +165,54 @@
 ;; +-------------------------------------------------------------------------
 (eval-when (:compile-toplevel :load-toplevel)
   (defmethod component+.local-morphism ((class component+) name self args body)
-    (let* ((class-name (class-name class))
-	   (metaclass (class-name (class-of class)))
-	   (morphism (component+.morphism-function-name class name))
-	   (remote (component+.codomain-function-name class name))
-	   (stub-p (any (lambda (a) (and (listp a) (find-class (cadr a))))
-			args))
-	   (arg-names (extract-argument-names args :allow-specializers t)))
-      `(progn
-	 (class+.add-method (find-class+ ',class-name) ',name 'local
-			    '((,self ,class-name) ,@args))
-	 (eval-when (:load-toplevel :compile-toplevel :execute)
-	   (setf (gethash ',name +javascript-cps-functions+) t
-		 (gethash ',remote +javascript-cps-functions+) t)
-	   (defjsmacro ,name (&rest args) `(,',remote ,@args)))
-	 (defmethod ,morphism ((self ,metaclass))
-	   `(method ,',arg-names
-	      (with-slots (session-id instance-id) self
-		(funkall self (+ "?s:" session-id
-				 "$k:" instance-id
-				 "$method:" ,',(symbol-name name))
-			 (create
-			  ,@',(nreverse
-			       (reduce0
-				(lambda (acc arg)
-				  (cons arg (cons (make-keyword arg) acc)))
-				(extract-argument-names args
-							:allow-specializers t))))))))
-	 ,(when stub-p
-	    `(defmethod/cc ,name ((,self ,class-name)
-				  ,@(mapcar (lambda (arg)
-					      (if (listp arg)
-						  (list (car arg) 't)
-						  arg))
-					    args))
-	       (error "Signature failed: (~A~{ ~A~})" ',name
-		      ,@(mapcar (compose #'car #'ensure-list) arg-names))))
-	 (defmethod/cc ,name ((,self ,class-name) ,@args)
-	   (let ((application (component.application ,self)))
-	     ,@body))))))
+    (flet ((stub-predicate (arguments)
+	     (let* ((args (filter (lambda (a)
+				    (typep a 'specialized-function-argument-form))
+				  arguments))
+		    (specializers (mapcar #'arnesi::specializer args)))
+	       (remove-if (curry #'eq t) specializers)))
+	   (stub-arguments ()
+	     (let ((arguments (walk-lambda-list args nil nil
+						:allow-specializers t)))
+	       (mapcar (lambda (arg)
+			 (typecase arg
+			   (specialized-function-argument-form
+			    (setf (arnesi::specializer arg) t))))
+		       arguments)
+	       (unwalk-lambda-list arguments))))
+      (let* ((class-name (class-name class))
+	     (metaclass (class-name (class-of class)))
+	     (morphism (component+.morphism-function-name class name))
+	     (remote (component+.codomain-function-name class name))
+	     (arguments (walk-lambda-list args nil nil :allow-specializers t))
+	     (stub-p (stub-predicate arguments))	     
+	     (arg-names (extract-argument-names args :allow-specializers t)))
+	`(progn
+	   (class+.add-method (find-class+ ',class-name) ',name 'local
+			      '((,self ,class-name) ,@args))
+	   (eval-when (:load-toplevel :compile-toplevel :execute)
+	     (setf (gethash ',name +javascript-cps-functions+) t
+		   (gethash ',remote +javascript-cps-functions+) t)
+	     (defjsmacro ,name (&rest args) `(,',remote ,@args)))
+	   (defmethod ,morphism ((self ,metaclass))
+	     `(method ,',arg-names
+		      (with-slots (session-id instance-id) self
+			(funkall self (+ "?s:" session-id
+					 "$k:" instance-id
+					 "$method:" ,',(symbol-name name))
+				 (create
+				  ,@',(nreverse
+				       (reduce0
+					(lambda (acc arg)
+					  (cons arg (cons (make-keyword arg) acc)))
+					arg-names)))))))
+	   ,(when stub-p
+	     `(defmethod/cc ,name ((self ,class-name) ,@(stub-arguments))
+		(error "Signature failed: (~A~{ ~A~})" ',name
+		       ,@(mapcar (compose #'car #'ensure-list) arg-names))))
+	   (defmethod/cc ,name ((,self ,class-name) ,@args)
+	     (let ((application (component.application ,self)))
+	       ,@body)))))))
 
 (defmacro defmethod/local (name ((self class-name) &rest args) &body body)
   (component+.local-morphism (find-class class-name) name self args body))
