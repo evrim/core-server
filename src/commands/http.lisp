@@ -60,7 +60,8 @@
 	  (eh (if (s-v 'post-data)
 		  (list (cons 'content-length (length (s-v 'post-data)))
 			(cons 'content-type
-			      (list "application" "x-www-form-urlencoded"))))))
+			      (list "application"
+				    "x-www-form-urlencoded"))))))
       (make-http-request :method method
 			 :uri url
 			 :headers (append gh (s-v 'request-headers))
@@ -101,8 +102,9 @@
        (let ((entity (read-stream (make-relaxed-xml-stream stream))))
 	 (if entity
 	     (setf (http-response.entities response) (list entity)))))
-      ((or (and (string= "text" (car content-type))
-		(string= "javascript" (cadr content-type))))
+      ((and (string= "javascript" (cadr content-type))
+	    (or (string= "text" (car content-type))
+		(string= "application" (car content-type))))
        (let ((entity (json? stream)))
 	 (if entity
 	     (setf (http-response.entities response) (list entity)))))
@@ -227,8 +229,8 @@
 	       (if (or (not username) (not password))
 		   (return-from http.fetch (return-response)))
 	       
-	       (let ((authenticate (http-response.response-header response
-								  'www-authenticate)))
+	       (let ((authenticate (http-response.response-header
+				    response 'www-authenticate)))
 		 (destructuring-bind (scheme &rest parameters) authenticate
 		   (cond
 		     ((eq scheme 'basic) ;; Basic Auth
@@ -237,7 +239,8 @@
 		     ((eq scheme 'digest)
 		      (cond
 			;; Stale nonce, retry
-			((equal "true" (cdr (assoc "stale" parameters :test #'equal)))
+			((equal "true" (cdr (assoc "stale" parameters
+						   :test #'equal)))
 			 (http.fetch self))
 			(t
 			 (http.authorize self 'digest parameters)
@@ -248,9 +251,11 @@
 	    ((and (member status-code '(301 302 303 307))
 		  (http-response.get-response-header response 'location)
 		  (not (equal (uri->string
-			       (http-response.get-response-header response 'location))
+			       (http-response.get-response-header
+				response 'location))
 			      (uri->string (s-v 'url)))))
-	     (let ((location (http-response.get-response-header response 'location)))
+	     (let ((location (http-response.get-response-header
+			      response 'location)))
 	       (http.%debug self 'redirecting-to location)
 	       (cond
 		 (recurse
@@ -280,18 +285,22 @@
 	      (http :url url-string :post-data (s-v 'post-data)
 		    :method 'head)
 	    (declare (ignore entity))
-	    (let ((last-modified (http-response.get-entity-header response 'last-modified)))
-	      (destructuring-bind (entity . response) (gethash url-string +http-cache+) 
+	    (let ((last-modified (http-response.get-entity-header
+				  response 'last-modified)))
+	      (destructuring-bind (entity . response)
+		  (gethash url-string +http-cache+) 
 		(cond
-		  ((> last-modified (http-response.get-entity-header response 'last-modified))
+		  ((> last-modified (http-response.get-entity-header
+				     response 'last-modified))
 		   (remhash url-string +http-cache+)
 		   (run self))
 		  (t (values entity response)))))))
 	 (t
-	  (destructuring-bind (entity . response) (gethash url-string +http-cache+)
+	  (destructuring-bind (entity . response)
+	      (gethash url-string +http-cache+)
 	    (values entity response)))))
       (t
        (http.fetch self)))))
 
-(deftrace http-client
-    '(run http.fetch http.authorize http.send-request http.parse-response))
+(deftrace http-client '(run http.fetch http.authorize
+			http.send-request http.parse-response))
