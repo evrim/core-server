@@ -39,12 +39,15 @@
 ;; -------------------------------------------------------------------------
 ;; Parse Request
 ;; -------------------------------------------------------------------------
-(defvar +default-encoding+ :utf-8 "NOTE: Browser should supply this but does not")
+(defvar +default-encoding+ :utf-8
+  "NOTE: Browser should supply this but does not")
+
 (defmethod parse-request ((server http-server) (stream core-stream))
   "Returns a fresh RFC 2616 HTTP Request object parsing from 'stream',
 nil if stream data is invalid"
-  (multiple-value-bind (peer-type method uri version general-headers request-headers
-				  entity-headers unknown-headers)
+  (multiple-value-bind (peer-type method uri version general-headers
+				  request-headers entity-headers
+				  unknown-headers)
       (http-request-headers? stream)
     (when (null method)
       (log-me server 'error (format nil  "Request with null method ~A" uri))
@@ -59,11 +62,11 @@ nil if stream data is invalid"
       (let* ((content-type (http-request.content-type request))
 	     (content-length (http-request.content-length request))
 	     (stream (if (and content-length (> content-length 0))
-			 (make-bounded-stream stream content-length)
+			 (progn (lwsp? stream)
+				(make-bounded-stream stream content-length))
 			 stream)))
 	(flet ((process-multipart ()
 		 ;; content-type = '("multipart" "form-data")
-		 (lwsp? stream)
 		 (let* ((boundary (cdr (assoc "boundary" (caddr content-type)
 					      :test #'string=)))
 			(entities (rfc2388-mimes? stream boundary)))
@@ -97,7 +100,6 @@ nil if stream data is invalid"
 			 (setf (uri.queries uri)
 			       (append (uri.queries uri) data))))))
 	       (process-urlencoded ()
-		 (lwsp? stream)
 		 (let ((data (x-www-form-urlencoded? stream)))
 		   (setf (uri.queries uri)
 			 (append (uri.queries uri) data)))))
