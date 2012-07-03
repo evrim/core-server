@@ -35,4 +35,13 @@
 ;; -------------------------------------------------------------------------
 (defclass+ anonymous-user (abstract-user)
   ()
-  (:ctor make-anonymous-user))
+  (:ctor make-anonymous-user)
+  (:default-initargs :name "Anonymous User"))
+
+;; -------------------------------------------------------------------------
+;; Anonymous Group
+;; -------------------------------------------------------------------------
+(defclass+ anonymous-group (abstract-group)
+  ()
+  (:ctor make-anonymous-group)
+  (:default-initargs :name "Anonymous Group"))
