@@ -1,11 +1,11 @@
-;;;-----------------------------------------------------------------------------
+;;;---------------------------------------------------------------------------
 ;;; RFC 2616 - Hypertext Transfer Protocol -- HTTP/1.1
-;;;-----------------------------------------------------------------------------
+;;;---------------------------------------------------------------------------
 (in-package :tr.gen.core.server)
 
-;;;-----------------------------------------------------------------------------
+;;;---------------------------------------------------------------------------
 ;;; HTTP METHOD/PROTOCOL
-;;;-----------------------------------------------------------------------------
+;;;---------------------------------------------------------------------------
 (defparser http-protocol? (version)
   (:seq "HTTP/") (:version? version)
   (:return (list 'HTTP version)))
@@ -22,9 +22,9 @@
 (defrender http-method! (method)
   (:symbol! method))
 
-;;;-----------------------------------------------------------------------------
+;;;---------------------------------------------------------------------------
 ;;; HTTP HEADER TYPES
-;;;-----------------------------------------------------------------------------
+;;;---------------------------------------------------------------------------
 (defatom http-header-name? ()
   (and (visible-char? c) (not (eq c #.(char-code #\:)))))
 
@@ -79,13 +79,13 @@
 	(:product-version? ver))
   (:return (cons prod ver)))
 
-;;;-----------------------------------------------------------------------------
+;;;---------------------------------------------------------------------------
 ;;; 4.5 HTTP GENERAL HEADERS
-;;;-----------------------------------------------------------------------------
+;;;---------------------------------------------------------------------------
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defvar +http-general-headers+
-    '(CACHE-CONTROL CONNECTION DATE PRAGMA TRAILER TRANSFER-ENCODING UPGRADE VIA 
-      WARNING))) ;; len=9
+    '(CACHE-CONTROL CONNECTION DATE PRAGMA TRAILER TRANSFER-ENCODING
+      UPGRADE VIA WARNING))) ;; len=9
 
 ;; 14.9 Cache-Control
 ;;     Cache-Control   = "Cache-Control" ":" 1#cache-directive
@@ -113,7 +113,8 @@
 ;;     cache-extension = token [ "=" ( token | quoted-string ) ]
 ;; FIXmE: Implement cache-extension
 (defvar +http-cache-request-directives+
-  '(no-cache no-store max-age max-stale min-fresh no-transform only-if-cached))
+  '(no-cache no-store max-age max-stale min-fresh
+    no-transform only-if-cached))
 
 (defparser http-cache-control? (result val)
   (:oom (:or (:and (:seq "no-cache")
@@ -204,9 +205,9 @@
 
 ;; 14.18 Date
 ;; Date  = "Date" ":" HTTP-date
-;;;-----------------------------------------------------------------------------
+;;;---------------------------------------------------------------------------
 ;;; DATE TImE FORmATS (see 3.3.1)
-;;;-----------------------------------------------------------------------------
+;;;---------------------------------------------------------------------------
 ;;
 ;;        Sun, 06 Nov 1994 08:49:37 GmT  ; RFC 822, updated by RFC 1123
 ;;        Sunday, 06-Nov-94 08:49:37 GmT ; RFC 850, obsoleted by RFC 1036
@@ -232,9 +233,9 @@
 ;;                     | "May" | "Jun" | "Jul" | "Aug"
 ;;                     | "Sep" | "Oct" | "Nov" | "Dec"
 (defun find-rfc1123-month (str)
-  (aif (position (string-downcase str) '("jan" "feb" "mar" "apr" "may" "jun" "jul"
-					"aug" "sep" "oct" "nov" "dec")
-		:test #'equal)
+  (aif (position (string-downcase str)
+		 '("jan" "feb" "mar" "apr" "may" "jun" "jul"
+		   "aug" "sep" "oct" "nov" "dec") :test #'equal)
        (1+ it)))
 
 (eval-when (:load-toplevel :compile-toplevel :execute)
@@ -513,9 +514,9 @@
     (http-date! stream (cadddr i))
     (char! stream #\")))
 
-;;;-----------------------------------------------------------------------------
+;;;---------------------------------------------------------------------------
 ;;; 5.3 HTTP REQUEST HEADERS
-;;;-----------------------------------------------------------------------------
+;;;---------------------------------------------------------------------------
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defvar +http-request-headers+
     '(ACCEPT ACCEPT-CHARSET ACCEPT-ENCODING ACCEPT-LANGUAGE AUTHORIZATION
@@ -1053,9 +1054,9 @@
 (defmethod http-cookie! ((stream core-stream) cookie)
   (cookie! stream cookie))
 
-;;;-----------------------------------------------------------------------------
+;;;---------------------------------------------------------------------------
 ;;; 5.3 HTTP RESPONSE HEADERS
-;;;-----------------------------------------------------------------------------
+;;;---------------------------------------------------------------------------
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defvar +http-response-headers+
     '(ACCEPT-RANGES AGE ETAG LOCATION PROXY-AUTHENTICATE
@@ -1177,9 +1178,9 @@
 (defun http-set-cookie! (stream cookie)
   (cookie! stream cookie))
 
-;;;-----------------------------------------------------------------------------
+;;;---------------------------------------------------------------------------
 ;;; 7.1 HTTP ENTITY HEADERS
-;;;-----------------------------------------------------------------------------
+;;;---------------------------------------------------------------------------
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defvar +http-entity-headers+ 
     '(ALLOW CONTENT-ENCODING CONTENT-LANGUAGE CONTENT-LENGTH CONTENT-LOCATION
@@ -1331,9 +1332,9 @@
 (defun http-last-modified! (stream timestamp)
   (http-date! stream timestamp))
 
-;;;-----------------------------------------------------------------------------
+;;;---------------------------------------------------------------------------
 ;;; HTTP mESSAGE
-;;;-----------------------------------------------------------------------------
+;;;---------------------------------------------------------------------------
 (defclass http-message ()
   ((version :accessor http-message.version :initform '(1 1)
 	    :initarg :version)
@@ -1341,7 +1342,8 @@
 		    :initarg :general-headers :initform '())
    (unknown-headers :accessor http-message.unknown-headers :initform '()
 		    :initarg :unknown-headers)
-   (entities :accessor http-message.entities :initarg :entities :initform '())))
+   (entities :accessor http-message.entities :initarg :entities
+	     :initform '())))
 
 ;;;--------------------------------------------------------------------------
 ;;; HTTP REQUEST
@@ -1363,11 +1365,11 @@
 
 (defmethod http-request.content-type ((self http-request))
   (aif (assoc 'content-type (http-request.entity-headers self))
-       (cadr it)))
+       (cdr it)))
 
 (defmethod http-request.content-length ((self http-request))
   (aif (assoc 'content-length (http-request.entity-headers self))
-       (cadr it)))
+       (cdr it)))
 
 (defmethod http-request.headers ((self http-request))
   (append (slot-value self 'headers)
@@ -1445,13 +1447,14 @@
   (:oom (:type http-header-value? c) (:collect c value))
   (:return (cons key value)))
 
-(defparser rfc2616-request-headers? (c method uri version key value header gh rh eh uh)
+(defparser rfc2616-request-headers? (c method uri version key value header
+				       gh rh eh uh)
   (:http-request-first-line? method uri version)
   (:lwsp?)
   (:zom	(:or (:and (:http-general-header? header) (:do (push header gh)))
 	     (:and (:http-request-header? header) (:do (push header rh)))
 	     (:and (:http-entity-header? header) (:do (push header eh)))
-	     (:and (:http-unknown-header? header) (:do (push header uh))))	
+	     (:and (:http-unknown-header? header) (:do (push header uh))))
 	(:crlf?))
   (:return (values method uri version (nreverse gh)
 		   (nreverse rh) (nreverse eh) (nreverse uh))))
@@ -1460,13 +1463,12 @@
   (:rfc2616-request-headers? method uri version gh rh eh uh)
   (:return (values 'http method uri version gh rh eh uh)))
 
-(defparser x-www-form-urlencoded? (query)  
-  (:query? query)
-  (:return query))
+(defparser x-www-form-urlencoded? (query)
+  (:query? query) (:return query))
 
-;;;-----------------------------------------------------------------------------
+;;;---------------------------------------------------------------------------
 ;;; HTTP RESPONSE
-;;;-----------------------------------------------------------------------------
+;;;---------------------------------------------------------------------------
 (defclass http-response (http-message)
   ((response-headers :accessor http-response.response-headers
 		     :initarg :response-headers :initform '())
@@ -1542,7 +1544,8 @@
 	(cons (cons 'set-cookie cookie)
 	      (remove-if #'(lambda (a)
 			     (and (typep (cdr a) 'cookie)
-				  (string= (cookie.name (cdr a)) (cookie.name cookie))))
+				  (string= (cookie.name (cdr a))
+					   (cookie.name cookie))))
 			 (slot-value self 'response-headers)))))
 
 (defmacro defhttp-header-render (name format header-list) 
@@ -1556,7 +1559,8 @@
 			     (string! stream (symbol-name ',h))
 			     (char! stream #\:)
 			     (char! stream #\ ) 
-			     (,(intern (format nil format h)) stream (cdr hdr)))))
+			     (,(intern (format nil format h))
+			       stream (cdr hdr)))))
 		     (eval header-list))
 	   (t (error (format nil "Unknown header name: ~A" (car hdr)))))) 
        (char! stream #\Newline))))
@@ -1687,8 +1691,9 @@
 ;; -------------------------------------------------------------------------
 (deftrace http-headers
     (append (list 'http-request-first-line? 'rfc2616-request-headers?
-		  'http-unknown-header? 'http-general-header? 'http-request-header?
-		  'http-entity-header? 'http-request! 'http-response?
+		  'http-unknown-header? 'http-general-header?
+		  'http-request-header? 'http-entity-header?
+		  'http-request! 'http-response?
 		  'http-response-headers? 'http-challenge?
 		  'status-code! 'http-response-headers!
 		  'http-request-first-line!)
@@ -1696,8 +1701,10 @@
 	     (mapcar (lambda (header)
 		       (list (intern (format nil "HTTP-~A?" header))
 			     (intern (format nil "HTTP-~A!" header))))
-		     (append +http-general-headers+ +http-request-headers+
-			     +http-entity-headers+ +http-response-headers+)))))
+		     (append +http-general-headers+
+			     +http-request-headers+
+			     +http-entity-headers+
+			     +http-response-headers+)))))
 
 ;; Core Server: Web Application Server
 
