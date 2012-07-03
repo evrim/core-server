@@ -906,6 +906,15 @@
    #:on-select
    #:defwebcrud
 
+   ;; [Rest]
+   #:defrest
+   #:abstract-rest
+   #:rest.find
+   #:rest.list
+   #:rest.add
+   #:rest.update
+   #:rest.delete
+   
    ;; [ Web Component Stacks ]
    #:dojo
    #:jquery
@@ -1395,3 +1404,10 @@
   (:nicknames :<excerpt)
   (:use :cl)
   (:export #:encoded))
+
+;; -------------------------------------------------------------------------
+;; Rest Codomain
+;; -------------------------------------------------------------------------
+(defpackage :tr.gen.core.server.rest
+  (:nicknames :<rest :core-server.rest)
+  (:export #:find #:list #:add #:update #:delete))
