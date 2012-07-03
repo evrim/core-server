@@ -295,6 +295,14 @@
 (defmethod class+.update-function ((self class+) &optional prefix)
   (intern (format nil "~A.UPDATE" (or prefix (class-name self)))))
 
+(defmethod class+.crud-functions ((self class+) &optional prefix)
+  (list (class+.list-function self prefix)
+	(class+.find-function self prefix)
+	(class+.query-function self prefix)
+	(class+.add-function self prefix)
+	(class+.update-function self prefix)
+	(class+.delete-function self prefix)))
+
 ;; -------------------------------------------------------------------------
 ;; Traces
 ;; -------------------------------------------------------------------------
@@ -357,11 +365,23 @@
 		(filter (lambda (slot)
 			  (with-slotdef (name) slot
 			    (member name it)))
-			 (class+.slots self))
-		(reverse
-		 (filter (lambda (slot)
-			   (not (string= 'none (slot-definition-host slot))))
-			 (class+.slots self))))))
+			(class+.slots self))
+		(filter (lambda (slot)
+			  (not (string= 'none (slot-definition-host slot))))
+			(class+.slots self)))))
+
+(defmethod class+.ctor-keyword-arguments ((self class+) &optional lambda-list)
+  (let ((arguments (or lambda-list (class+.ctor-lambda-list self t))))
+    `(nreverse
+      (reduce0 (lambda (acc atom)
+		 (destructuring-bind (keyword value supplied-p) atom
+		   (if supplied-p
+		       (cons value (cons keyword acc))
+		       acc)))
+	       (list ,@(mapcar (lambda (arg)
+				 `(list ,(make-keyword (car arg))
+					,(car arg) ,@(cddr arg)))
+			       arguments))))))
 
 (defmethod class+.ctor-name ((self class+))
   (with-slots (ctor) self
@@ -458,7 +478,7 @@
 
 (defclass object-with-id ()
   ((database-id :host both :index t :reader get-database-id :initform -1
-		:initarg :database-id :print t))
+		:initarg :database-id :print t :export nil))
   (:metaclass class+))
 
 (defmacro defclass+ (name supers slots &rest rest)
