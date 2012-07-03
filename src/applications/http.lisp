@@ -137,7 +137,8 @@
 ;; --------------------------------------------------------------------------
 ;; Methods that add "Session" Cookie to Response
 ;; --------------------------------------------------------------------------
-(defmethod (setf context.session) :after ((session http-session) (self http-context))
+(defmethod (setf context.session) :after ((session http-session)
+					  (self http-context))
   (prog1 session
     (http-response.add-cookie (context.response self)
 			      (make-cookie +session-query-name+ (session.id session)
@@ -159,8 +160,10 @@
 			need to be authenticated."))
     (:documentation "HTTP Application Metaclass"))
 
-  (defmethod validate-superclass ((class http-application+) (super standard-class)) t)
-  (defmethod validate-superclass ((class standard-class) (super http-application+)) nil)
+  (defmethod validate-superclass ((class http-application+) (super standard-class))
+    t)
+  (defmethod validate-superclass ((class standard-class) (super http-application+))
+    nil)
 
   (defmethod http-application+.handlers ((self http-application+))
     (uniq (nreverse
@@ -330,8 +333,9 @@
 (defmethod http-application.realm ((application http-application))
   (concat (web-application.fqdn application) " Security Zone"))
 
-(defmethod http-application.password-of ((application http-application) (username string))
-  (error "Please implement (http-appliaction.password-of http-application username)"))
+(defmethod http-application.password-of ((application http-application)
+					 (username string))
+  (error "Implement (http-appliaction.password-of http-application username)"))
 
 (defmacro defauth (url application-class &optional (method 'digest))
   (let ((handler (intern (string-upcase url))))
@@ -339,13 +343,15 @@
        (add-security-handler (find-class ',application-class)
 			     ',handler ,url ',method))))
 
-(defmethod http-application.authorize ((application http-application) (request http-request)
+(defmethod http-application.authorize ((application http-application)
+				       (request http-request)
 				       (type (eql 'basic)) (kontinue function))
   (labels ((make-response ()
 	     (let ((response (make-401-response))
 		   (realm (http-application.realm application)))
 	       (http-response.add-response-header response 'www-authenticate
-						  (cons 'basic (list (cons "realm" realm))))
+						  (cons 'basic (list (cons "realm"
+									   realm))))
 	       response)))
     (let ((authorization (http-request.header request 'authorization)))
       (if authorization
@@ -354,14 +360,16 @@
 		(destructuring-bind (username password) parameters
 		  (if (and username password
 			   (equal password
-				  (http-application.password-of application username)))
+				  (http-application.password-of application
+								username)))
 		      (funcall kontinue application request)
 		      (make-response)))
 		(make-response)))
 	  (make-response)))))
 
 (defvar +nonce-key+ (random-string))
-(defmethod http-application.authorize ((application http-application) (request http-request)
+(defmethod http-application.authorize ((application http-application)
+				       (request http-request)
 				       (type (eql 'digest)) (kontinue function))
   (let ((realm (http-application.realm application)))
     (labels ((get-nonce ()
@@ -408,7 +416,8 @@
 			((not (equal nonce (get-nonce))) (make-response t))
 			((equal qop "auth")
 			 (if (equal response
-				    (calc-auth-response username uri nonce nc qop cnonce))
+				    (calc-auth-response username uri nonce
+							nc qop cnonce))
 			     (funcall kontinue application request)
 			     (make-response)))
 			;; Not supported.
@@ -424,9 +433,10 @@
     (aif (any #'(lambda (handler)
 		  (destructuring-bind (method url scanner type) handler
 		    (declare (ignore url method))
-		    (let ((uri (uri->string (make-uri :paths
-						      (uri.paths
-						       (http-request.uri request))))))
+		    (let ((uri (uri->string
+				(make-uri :paths
+					  (uri.paths
+					   (http-request.uri request))))))
 		      (if (cl-ppcre:scan-to-strings scanner uri)
 			  type))))
 	      handlers)
