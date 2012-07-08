@@ -1355,6 +1355,8 @@
    (entity-headers :accessor http-request.entity-headers :initform '()
 		   :initarg :entity-headers)
    (peer-type :accessor http-request.peer-type :initform 'http)
+   (authenticated-p :accessor http-request.authenticated-p :initform nil)
+   (authenticated-user :accessor http-request.authenticated-user :initform nil)
    (stream :accessor http-request.stream :initform nil :initarg :stream)))
 
 (defprint-object (self http-request :identity t)
