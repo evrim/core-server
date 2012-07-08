@@ -16,16 +16,34 @@
 (defmethod/local get-instances ((self <core:table-with-crud))
   (error "Please implement get-instances method."))
 
+(defmethod/cc get-instances :around ((self <core:table-with-crud))
+  (authorize (component.application self) (query-session :user)
+	     (call-next-method self)))
+
 (defmethod/local add-instance ((self <core:table-with-crud) key)
   (error "Please implement add-instance method."))
+
+(defmethod/cc add-instance :around ((self <core:table-with-crud) key)
+  (authorize (component.application self) (query-session :user)
+	     (call-next-method self key)))
 
 (defmethod/local delete-instance ((self <core:table-with-crud)
 				  (instance remote-reference))
   (error "Please implement delete-instance method."))
 
+(defmethod/cc delete-instance :around ((self <core:table-with-crud)
+				       (instance remote-reference))
+  (authorize (component.application self) (query-session :user)
+	     (call-next-method self instance)))
+
 (defmethod/local update-instance ((self <core:table-with-crud)
 				  (instance remote-reference) args)
   (error "Please implement update-instance method."))
+
+(defmethod/cc update-instance :around ((self <core:table-with-crud)
+				       (instance remote-reference) args)
+  (authorize (component.application self) (query-session :user)
+	     (call-next-method self instance args)))
 
 (defmethod/remote make-table ((self <core:table-with-crud))
   (let ((_instances (mapcar-cc (lambda (a) (if (typep a 'function)
