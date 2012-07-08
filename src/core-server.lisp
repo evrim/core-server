@@ -834,6 +834,7 @@
    #:basic
    #:digest
    #:http-application.password-of
+   #:http-application.find-user
    #:defhandler
    #:defhandler/js
    #:defurl
@@ -1189,10 +1190,12 @@
    #:group.users
    #:user.name
    #:user.groups
+   #:user.group
    #:user.has-group
    #:secure-object
    #:secure-object/authorized
    #:secure-object/unauthorized
+   #:authorize
    #:owner
    #:group
    #:other
