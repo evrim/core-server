@@ -16,12 +16,6 @@
   (append self (<:p "Memory: " (_memory self) " bytes")))
 
 ;; -------------------------------------------------------------------------
-;; Settings Component
-;; -------------------------------------------------------------------------
-(defcomponent settings-component (<widget:simple-widget)
-  ())
-
-;; -------------------------------------------------------------------------
 ;; Manager Component
 ;; -------------------------------------------------------------------------
 (defcomponent manager-controller (simple-controller)
@@ -40,7 +34,7 @@
 	      (administrators-component))
 	(list "settings" "Settings"
 	      "Settings related to the current server instance"
-	      (settings-component))))
+	      (<manager:settings))))
 
 (defun make-controller (application user)
   (labels ((make-heading (title subtitle)

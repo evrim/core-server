@@ -1,5 +1,14 @@
 (in-package :manager)
 
+(defcomponent site/authorized (secure-object/authorized
+			       site remote-reference)
+  ((secure-object :host lift :type site)
+   (fqdn :host remote :lift t)
+   (owner :host remote :lift t)
+   (creation-timestamp :host remote :lift t)))
+
+(defcrud/lift site/authorized site)
+
 ;; -------------------------------------------------------------------------
 ;; Sites Table
 ;; -------------------------------------------------------------------------
@@ -7,15 +16,8 @@
   ((fqdn :label "FQDN")   
    (owner :label "Owner"
 	  :reader (with-call/cc
-		    (lambda (a) 
-		      (slot-value (slot-value a 'owner) 'name))))
-   (timestamp :label "Timestamp"
-	      :reader (with-call/cc
-			(lambda (a)
-			  (take 10
-				(date-to-string
-				 (lisp-date-to-javascript
-				  (slot-value a 'timestamp)))))))))
+		    (lambda (a) (slot-value (slot-value a 'owner) 'name))))
+   (timestamp :label "Timestamp" :remote-type timestamp)))
 
 ;; -------------------------------------------------------------------------
 ;; Site Crud
@@ -30,13 +32,7 @@
 		      (let ((owner (slot-value a 'owner)))
 			(with-slots (name username) owner
 			  (+ name " (" username ")"))))))
-   (timestamp :label "Creation Timestamp"
-	      :reader (with-call/cc
-			(lambda (a)
-			  (take 10
-				(date-to-string
-				 (lisp-date-to-javascript
-				  (slot-value a 'timestamp))))))))
+   (timestamp :label "Creation Timestamp" :remote-type timestamp))
   (:default-initargs :title "Site" :editable-p nil :deletable-p t))
 
 ;; -------------------------------------------------------------------------
@@ -44,7 +40,8 @@
 ;; -------------------------------------------------------------------------
 (defcomponent sites-component (<core:table-with-crud <widget:simple-widget)
   ()
-  (:default-initargs :table-title "Sites" :table (sites-table) :crud (site-crud)
+  (:default-initargs
+    :table-title "Sites" :table (sites-table) :crud (site-crud)
     :input-element (<core:default-value-input
 		       :default-value "Enter site name (ie www.core.gen.tr)")))
 

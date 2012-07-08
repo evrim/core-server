@@ -6,7 +6,8 @@
 (defclass+ admin (secure-object simple-user)
   ((username :host local :print t :index t :documentation "Admin Username")
    (password :host local :documentation "Admin Password")
-   (creation-timestamp :host local :type integer :initform (get-universal-time)))
+   (creation-timestamp :host local :type integer
+		       :initform (get-universal-time)))
   (:ctor make-admin)
   (:default-initargs
     :permissions '((owner . 0) (group . 0) (other . 0) (unauthorized . -1))
@@ -15,13 +16,15 @@
 ;; +-------------------------------------------------------------------------
 ;; | Site Definition
 ;; +-------------------------------------------------------------------------
-(defclass+ site (object-with-id)
+(defclass+ site (secure-object object-with-id)
   ((fqdn :host local :index t :print t :documentation "FQDN" :type string)
-   (owner :host both :type admin :initform (error "Provide :owner")
-	  :documentation "Owner")
-   (creation-timestamp :host both :type integer :documentation "Creation timestamp"
+   (creation-timestamp :host both :type integer
+		       :documentation "Creation timestamp"
 		       :initform (get-universal-time)))
-  (:ctor make-site))
+  (:ctor make-site)
+  (:default-initargs
+    :permissions '((owner .0) (group .0) (other .0) (unauthorized . -1))
+    :levels '(site/authorized)))
 
 ;; -------------------------------------------------------------------------
 ;; User Definition
@@ -50,7 +53,8 @@
 ;; External Account Definition
 ;; -------------------------------------------------------------------------
 (defclass+ abstract-external-account (abstract-account)
-  ((username :host local :print t :index t :documentation "Username associated")
+  ((username :host local :print t :index t
+	     :documentation "Username associated")
    (token :host local :documentation "Token associated")
    (token-timestamp :host local :documentation "Token timestamp"))
   (:ctor %make-abstract-external-account))

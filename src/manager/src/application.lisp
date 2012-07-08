@@ -34,6 +34,9 @@
   (aif (admin.find self :username username)
        (admin.password it)))
 
+(defmethod http-application.find-user ((self manager-application) (username string))
+  (admin.find self :username username))
+
 (defmethod init-database ((self manager-application))
   (assert (null (database.get self 'initialized)))
   (setf (database.get self 'api-secret) (random-string))
@@ -102,30 +105,6 @@
 	  (with-js () stream
 	    (setf window.location "index.html"))))))
 
-
-;; -------------------------------------------------------------------------
-;; Interface
-;; -------------------------------------------------------------------------
-(deftransaction make-api-key ((self manager-application) fqdn)
-  (let ((secret (ironclad::ascii-string-to-byte-array (database.get self 'api-secret))))
-    (core-server::hmac secret (format nil "~A-api-key" fqdn))))
-
-(deftransaction make-api-password ((self manager-application) fqdn)
-  (let ((secret (ironclad::ascii-string-to-byte-array (database.get self 'api-secret))))
-    (core-server::hmac secret (format nil "~A-api-password" fqdn))))
-
-(deftransaction site.add ((self manager-application) &key
-			  (fqdn (error "Provide :fqdn"))
-			  (api-key (make-api-key self fqdn))
-			  (api-password (make-api-password self fqdn))
-			  (owner (admin.find self :username "root"))
-			  (timestamp (get-universal-time)))
-  (assert (not (null owner)))
-  (call-next-method self :fqdn fqdn :api-key api-key
-		    :api-password api-password :owner owner
-		    :timestamp timestamp))
-
-
 (defhandler "auth\.core" ((self manager-application) (reply-to "reply-to")
 			(action "action") (mode "mode"))
   (<:html
@@ -142,3 +121,26 @@
 	   (<:div :class "max-width center text-center"
 		  (core-server::login-box)
 		  "foo"))))
+
+
+;; ;; -------------------------------------------------------------------------
+;; ;; Interface
+;; ;; -------------------------------------------------------------------------
+;; (deftransaction make-api-key ((self manager-application) fqdn)
+;;   (let ((secret (ironclad::ascii-string-to-byte-array (database.get self 'api-secret))))
+;;     (core-server::hmac secret (format nil "~A-api-key" fqdn))))
+
+;; (deftransaction make-api-password ((self manager-application) fqdn)
+;;   (let ((secret (ironclad::ascii-string-to-byte-array (database.get self 'api-secret))))
+;;     (core-server::hmac secret (format nil "~A-api-password" fqdn))))
+
+;; (deftransaction site.add ((self manager-application) &key
+;; 			  (fqdn (error "Provide :fqdn"))
+;; 			  (api-key (make-api-key self fqdn))
+;; 			  (api-password (make-api-password self fqdn))
+;; 			  (owner (admin.find self :username "root"))
+;; 			  (timestamp (get-universal-time)))
+;;   (assert (not (null owner)))
+;;   (call-next-method self :fqdn fqdn :api-key api-key
+;; 		    :api-password api-password :owner owner
+;; 		    :timestamp timestamp))
