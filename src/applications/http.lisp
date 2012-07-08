@@ -58,7 +58,8 @@
   (make-instance 'http-session :id id :application application))
 
 (defmethod find-session-id ((request http-request))
-  "Returns session id string provided in request query or by cookie that has set before"
+  "Returns session id string provided in request query or by cookie
+that has set before"
   (or (uri.query (http-request.uri request) +session-query-name+)
       (aif (http-request.cookie request +session-query-name+)
 	   (cookie.value it))))
@@ -337,6 +338,10 @@
 					 (username string))
   (error "Implement (http-appliaction.password-of http-application username)"))
 
+(defmethod http-application.find-user ((application http-application)
+				       (username string))
+  (error "Implement (http-application.find-user http-application username)" ))
+
 (defmacro defauth (url application-class &optional (method 'digest))
   (let ((handler (intern (string-upcase url))))
     `(eval-when (:compile-toplevel :load-toplevel :execute)
@@ -352,7 +357,11 @@
 	       (http-response.add-response-header response 'www-authenticate
 						  (cons 'basic (list (cons "realm"
 									   realm))))
-	       response)))
+	       response))
+	   (do-kontinue (username)
+	     (setf (http-request.authenticated-p request) t
+		   (http-request.authenticated-user request) username)
+	     (funcall kontinue application request)))
     (let ((authorization (http-request.header request 'authorization)))
       (if authorization
 	  (destructuring-bind (scheme &rest parameters) authorization
@@ -362,7 +371,7 @@
 			   (equal password
 				  (http-application.password-of application
 								username)))
-		      (funcall kontinue application request)
+		      (do-kontinue username)
 		      (make-response)))
 		(make-response)))
 	  (make-response)))))
@@ -399,7 +408,11 @@
 		     (method (symbol-name (http-request.method request))))
 		 (let ((ha1 (md5 (concat username ":" realm ":" password)))
 		       (ha2 (md5 (concat method ":" uri))))
-		   (md5 (concat ha1 ":" nonce ":" ha2))))))
+		   (md5 (concat ha1 ":" nonce ":" ha2)))))
+	     (do-kontinue (username)
+	       (setf (http-request.authenticated-p request) t
+		     (http-request.authenticated-user request) username)
+	       (funcall kontinue application request)))
       (let ((authorization (http-request.header request 'authorization)))
 	(if authorization
 	    (destructuring-bind (scheme &rest parameters) authorization
@@ -418,12 +431,12 @@
 			 (if (equal response
 				    (calc-auth-response username uri nonce
 							nc qop cnonce))
-			     (funcall kontinue application request)
+			     (do-kontinue username)
 			     (make-response)))
 			;; Not supported.
 			((equal qop "auth-int") (make-response))
 			(t (if (equal response (calc-response username uri nonce))
-			       (funcall kontinue application request)
+			       (do-kontinue username)
 			       (make-response))))))))
 	    (make-response))))))
 
@@ -560,7 +573,9 @@
 		      (with-query ,queries (context.request ,context)
 			,(if url-arguments
 			     (with-unique-names (result)
-			       `(let ((,result (%scan-uri ,application ',handler-symbol +context+)))
+			       `(let ((,result (%scan-uri ,application
+							  ',handler-symbol
+							  +context+)))
 				  (destructuring-bind ,url-arguments ,result 
 				    ,@body)))
 			     `(progn ,@body)))))
