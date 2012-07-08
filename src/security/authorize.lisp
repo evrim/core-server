@@ -17,7 +17,7 @@
    (group :host local :type abstract-group :export nil :reader secure.group
 	  :initarg :group :initform (error "Provide :group"))
    (levels :host local :export nil :reader secure.levels
-	   :initform '(secure-object/authorized secure-object/unauthorized))
+	   :initform '(secure-object/unauthorized secure-object/authorized))
    (permissions :host local :export nil :reader secure.permissions
 		:initform +umask+))
   (:ctor make-secure-object))

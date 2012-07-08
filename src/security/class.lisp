@@ -20,23 +20,18 @@
 (defclass+ abstract-user ()
   ((name :accessor user.name :initform nil :initarg :name :host both
 	 :index t :print t)
+   (group :accessor user.group :initform nil :initarg :group :host both
+	  :print t)
    (groups :accessor user.groups :host local :type abstract-group*
 	   :relation users :export nil))
   (:ctor %make-abtract-user))
 
-(defmethod user.has-group ((user abstract-user) (group string))
-  (find group (user.groups user) :key #'group.name))
-
 (defmethod user.has-group ((user abstract-user) (group abstract-group))
-  (user.has-group user (group.name group)))
+  (find group (cons (user.group user) (user.groups user))))
 
-;; -------------------------------------------------------------------------
-;; Anonymous User
-;; -------------------------------------------------------------------------
-(defclass+ anonymous-user (abstract-user)
-  ()
-  (:ctor make-anonymous-user)
-  (:default-initargs :name "Anonymous User"))
+(defmethod user.has-group ((user abstract-user) (group string))
+  (find group (cons (user.group user) (user.groups user)) :key #'group.name
+	:test #'equal))
 
 ;; -------------------------------------------------------------------------
 ;; Anonymous Group
@@ -45,3 +40,12 @@
   ()
   (:ctor make-anonymous-group)
   (:default-initargs :name "Anonymous Group"))
+
+;; -------------------------------------------------------------------------
+;; Anonymous User
+;; -------------------------------------------------------------------------
+(defclass+ anonymous-user (abstract-user)
+  ()
+  (:ctor make-anonymous-user)
+  (:default-initargs :name "Anonymous User" :group (make-anonymous-group)))
+
