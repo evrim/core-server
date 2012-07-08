@@ -103,9 +103,21 @@
   (filter (lambda (m) (eq 'local (cadr m)))
 	  (class+.methods class)))
 
+(defmethod class+.find-local-method ((class class+) (name symbol))
+  (find name (class+.local-methods class) :key #'car))
+
+(defmethod class+.find-local-method ((class class+) (name string))
+  (find name (class+.local-methods class) :key #'car :test #'string=))
+
 (defmethod class+.remote-methods ((class class+))
   (filter (lambda (m) (eq 'remote (cadr m)))
 	  (class+.methods class)))
+
+(defmethod class+.find-remote-method ((class class+) (name symbol))
+  (find name (class+.remote-methods class) :key #'car))
+
+(defmethod class+.find-remote-method ((class class+) (name string))
+  (find name (class+.remote-methods class) :key #'car :test #'string=))
 
 (defun class+.slot-boundp (object slot)
   (and (slot-exists-p object slot) (slot-boundp object slot)))
