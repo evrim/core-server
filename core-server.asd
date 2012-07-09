@@ -223,6 +223,7 @@
 				   (:file "mime-types")
 				   (:file "tags")
 				   (:file "component")
+				   (:file "rest")
 				   (:file "jquery")
 				   (:file "form")
 				   (:file "dialog")
@@ -249,7 +250,8 @@
 				  :serial t
 				  :components
 				  ((:file "menu")
-				   (:file "content"))))))
+				   (:file "content")
+				   (:file "tab"))))))
   
   :depends-on (:swank :bordeaux-threads ;; :cl-prevalence
 		      :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad :cffi
