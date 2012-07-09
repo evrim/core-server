@@ -1,34 +1,51 @@
-;; Hello World Web Example
-;;
-;; load the file with C-c C-l and visit, 
-;; http://localhost:8080/hello
+;; -------------------------------------------------------------------------
+;; [Core-serveR] Hello World Web Example
+;; -------------------------------------------------------------------------
+;; Load the file with C-c C-l and visit, 
+;; http://localhost:8080/hello/
 
-;; defining a new namespace
+;; -------------------------------------------------------------------------
+;; Define a new namespace
+;; -------------------------------------------------------------------------
 (defpackage :hello
   (:use :cl :core-server :arnesi))
 
+;; -------------------------------------------------------------------------
 ;; Switch to new namespace
+;; -------------------------------------------------------------------------
 (in-package :hello)
 
-(defapplication hello-app (http-application)
+;; -------------------------------------------------------------------------
+;; Hello Application Definition
+;; -------------------------------------------------------------------------
+(defapplication hello-application (http-application)
   ()
-  (:default-initargs :fqdn "localhost"
-    :admin-email "aycan@core.gen.tr"))
+  (:default-initargs :fqdn "hello" :admin-email "aycan@core.gen.tr"))
 
-;; Create application object
-(defparameter *hello*
-  (make-instance 'hello-app))
-
-;; Our page is a function which gets body as a parameter
+;; -------------------------------------------------------------------------
+;; Define 'page' function which gets body as a parameter
+;; -------------------------------------------------------------------------
 (defun/cc page (body)
   (<:html
-   (<:body
-    body)))
+   (<:head (<:title "Core Server - Hello Example"))
+   (<:body body)))
 
-;; Create a handler
-(defhandler "hello" ((self hello-app))
-  (page
-   (<:p "Hello, World!")))
+;; -------------------------------------------------------------------------
+;; Create a handler via defhandler
+;; -------------------------------------------------------------------------
+(defhandler "index" ((self hello-application))
+  (page (<:h1 "Hello, World!")))
 
-;; Register application
+;; -------------------------------------------------------------------------
+;; Create an application instance
+;; -------------------------------------------------------------------------
+(defparameter *hello* (make-instance 'hello-application))
+
+;; -------------------------------------------------------------------------
+;; Register application to [core-serveR]
+;; -------------------------------------------------------------------------
 (register *server* *hello*)
+
+;; -------------------------------------------------------------------------
+;; This example is less then 15 LoC.
+;; -------------------------------------------------------------------------

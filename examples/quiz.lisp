@@ -1,39 +1,65 @@
+;; -------------------------------------------------------------------------
+;; [Core-serveR] Quiz Example
+;; -------------------------------------------------------------------------
+;; Load the file with C-c C-l and visit, 
+;; http://localhost:8080/quiz/
+
+;; -------------------------------------------------------------------------
+;; Define a new namespace
+;; -------------------------------------------------------------------------
 (defpackage :quiz
   (:use :cl :core-server :arnesi))
 
+;; -------------------------------------------------------------------------
+;; Switch to new namespace
+;; -------------------------------------------------------------------------
 (in-package :quiz)
 
-;; Create an application
-(defparameter *quiz-app*
-  (make-instance 'http-application
-		 :fqdn "quiz"
-		 :admin-email "aycan@core.gen.tr"))
+;; -------------------------------------------------------------------------
+;; Quiz Application Definition
+;; -------------------------------------------------------------------------
+(defapplication quiz-application (http-application)
+  ()
+  (:default-initargs :fqdn "quiz" :admin-email "aycan@core.gen.tr"))
 
-(defparameter *questions* '(("First Question?" ("1" "2" "3" "4" "5") 2)
-			    ("Second Question?" ("1" "2" "3" "4" "5") 3)
-			    ("Third Question?" ("1" "2" "3" "4" "5") 4)
-			    ("Fourth Question?" ("1" "2" "3" "4" "5") 1)))
+;; -------------------------------------------------------------------------
+;; Question Data as Lists
+;; -------------------------------------------------------------------------
+(defparameter *questions*
+  '(("First Question?" ("1" "2" "3" "4" "5") 2)
+    ("Second Question?" ("1" "2" "3" "4" "5") 3)
+    ("Third Question?" ("1" "2" "3" "4" "5") 4)))
 
+;; -------------------------------------------------------------------------
+;; Question Data Accessors
+;; -------------------------------------------------------------------------
 (defun text (question)
   (car question))
+
 (defun options (question)
   (cadr question))
+
 (defun answer-index (question)
   (last1 question))
+
 (defun right-option (question)
   (nth (- (answer-index question) 1) (options question)))
+
 (defun right? (question answer)
   (equal (right-option question) answer))
 
-;; Render a page
+;; -------------------------------------------------------------------------
+;; Define 'page' function which gets body as a parameter
+;; -------------------------------------------------------------------------
 (defun/cc page (body)
-  (<:html
-   (<:head
-    (<:meta :http--equiv "Content-Type" :content "text/html; charset=utf-8"))
-   (<:body
-    body)))
+  (<:html (<:head
+	   (<:meta :http--equiv "Content-Type" :content "text/html; charset=utf-8")
+	   (<:title "Core Server - Quiz Example"))
+	  (<:body body)))
 
+;; -------------------------------------------------------------------------
 ;; Display the result
+;; -------------------------------------------------------------------------
 (defun/cc send-result (wrongs)
   (send/forward
    (page
@@ -50,8 +76,10 @@
 	 (<:p "Congrats!"))
      (<:a :href "begin" "Restart")))))
 
-;; Read an integer
-(defun/cc send-question (question)
+;; -------------------------------------------------------------------------
+;; Ask a single Question
+;; -------------------------------------------------------------------------
+(defun/cc ask-question (question)
   (send/suspend
    (page
     (<:form :method "POST"
@@ -64,14 +92,20 @@
 	    (<:br)
 	    (<:input :type "submit" :value "Next")))))
 
+;; -------------------------------------------------------------------------
+;; Ask Questions
+;; -------------------------------------------------------------------------
 (defun/cc ask-questions (questions)
   (let ((answers))
     (dolist (q questions)
-      (let ((ans (send-question q)))
+      (let ((ans (ask-question q)))
 	(unless (right? q ans)
 	  (push (list q ans) answers))))
     answers))
 
+;; -------------------------------------------------------------------------
+;; Begin Quiz
+;; -------------------------------------------------------------------------
 (defun/cc begin-quiz ()
   (send/suspend
     (page
@@ -82,11 +116,22 @@
 			(answer nil))
 	      (<:input :type "submit" :value "Begin"))))))
 
+;; -------------------------------------------------------------------------
 ;; Register a handler
-(defhandler "begin" ((self http-application))
+;; -------------------------------------------------------------------------
+(defhandler "index" ((self quiz-application))
   (begin-quiz)
   (let ((wrongs (reverse (ask-questions *questions*))))
     (send-result wrongs)))
 
+;; -------------------------------------------------------------------------
+;; Create an application instance
+;; -------------------------------------------------------------------------
+(defparameter *quiz* (make-instance 'quiz-application))
+
+;; -------------------------------------------------------------------------
 ;; Register our application to the server
-(register *server* *quiz-app*)
+;; -------------------------------------------------------------------------
+(register *server* *quiz*)
+
+;; EoF

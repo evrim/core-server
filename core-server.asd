@@ -259,6 +259,12 @@
 (defmethod perform :after ((o load-op) (c (eql (find-system :core-server))))
   (in-package :core-server))
 
+(defsystem :core-server.examples
+  :components ((:module :examples
+			:serial t
+			:components ((:file "hello")
+				     (:file "quiz")))))
+
 (defsystem :core-server.test
   :components ((:module :t
                         :serial t
@@ -291,6 +297,8 @@
 				     (:file "javascript")
 				     (:file "component"))))
   :depends-on (:core-server :rt))
+
+
 
 ;; (defmethod perform ((op asdf::load-op) (system (eql (find-system :core-server.test))))
 ;;   (core-server::with-package (find-package :core-server.test)
