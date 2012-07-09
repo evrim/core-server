@@ -55,7 +55,9 @@
   (<:html (<:head
 	   (<:meta :http--equiv "Content-Type" :content "text/html; charset=utf-8")
 	   (<:title "Core Server - Quiz Example"))
-	  (<:body body)))
+	  (<:body
+	   (<:h1 "[Core-serveR] - Quiz Example")
+	   body)))
 
 ;; -------------------------------------------------------------------------
 ;; Display the result
@@ -74,10 +76,10 @@
 		       (<:p "You answered: " (cadr w))))
 		  wrongs))
 	 (<:p "Congrats!"))
-     (<:a :href "begin" "Restart")))))
+     (<:a :href "index" "Restart")))))
 
 ;; -------------------------------------------------------------------------
-;; Ask a single Question
+;; Ask a single question
 ;; -------------------------------------------------------------------------
 (defun/cc ask-question (question)
   (send/suspend
@@ -90,7 +92,7 @@
 			(<:span (<:input :type "radio" :name "ans" :value o) o))
 		    (options question))
 	    (<:br)
-	    (<:input :type "submit" :value "Next")))))
+	    (<:p (<:input :type "submit" :value "Next"))))))
 
 ;; -------------------------------------------------------------------------
 ;; Ask Questions
@@ -111,6 +113,7 @@
     (page
      (<:div
       (<:p "Welcome to the Quiz Example.")
+      (<:p "Click to start your quiz.")
       (<:form :method "POST"
 	      :action (action/url ()
 			(answer nil))

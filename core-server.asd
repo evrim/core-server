@@ -265,6 +265,7 @@
   :components ((:module :examples
 			:serial t
 			:components ((:file "hello")
+				     (:file "websum")
 				     (:file "quiz")))))
 
 (defsystem :core-server.test
