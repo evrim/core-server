@@ -129,6 +129,8 @@
 (defvar +jquery-date-time-picker-uri+ "/js/jquery-ui-timepicker-addon.js")
 (defvar +jquery-date-time-picker-css+ "/js/jquery-ui-timepicker-addon.css")
 
+(defvar +tab-css+ "style/tab.css")
+
 ;; -------------------------------------------------------------------------
 ;; Picasa Variables
 ;; -------------------------------------------------------------------------
