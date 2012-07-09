@@ -7,4 +7,4 @@
 
 (defpackage :tr.gen.core.manager.widget
   (:nicknames :<manager)
-  (:export #:settings))
+  (:export #:settings #:applications #:applications-table #:application-crud))

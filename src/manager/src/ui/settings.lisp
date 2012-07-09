@@ -69,7 +69,7 @@
 	   ((eq action "delete")
 	    (delete-config self tab)))
 	 (show-tab self tab))))
-    _crud))))
+    _crud))
 
 (defmethod/remote show-tab ((self <manager:settings) tab)
   (let ((_tab (make-tab self tab)))

@@ -22,7 +22,9 @@
 	     (:module :ui
 	     	      :serial t
 	     	      :components
-	     	      ((:file "sites")
+	     	      ((:file "applications")
+		       (:file "settings")
+		       (:file "sites")
 	     	       (:file "admin")
 	     	       (:file "main"))))))
   :depends-on (:arnesi :core-server)
