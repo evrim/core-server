@@ -347,6 +347,23 @@
   (call-next-method self))
 
 ;; -------------------------------------------------------------------------
+;; Checkbox
+;; -------------------------------------------------------------------------
+(defcomponent <core:checkbox (<:input)
+  ()
+  (:default-initargs :type "checkbox"))
+
+(defmethod/remote get-input-value ((self <core:checkbox))
+  (if (slot-value self 'checked)
+      t
+      nil))
+
+(defmethod/remote init ((self <core:checkbox))
+  (call-next-method self)
+  (setf (slot-value self 'type) "password")
+  self)
+
+;; -------------------------------------------------------------------------
 ;; Multiple Checkbox
 ;; -------------------------------------------------------------------------
 (defcomponent <core:multiple-checkbox (<:div)
