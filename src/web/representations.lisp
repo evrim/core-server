@@ -18,6 +18,8 @@
 	 (take 10 (date-to-string (lisp-date-to-javascript _value))))
 	((and _value (eq "timestamp" remote-type))
 	 (date-to-string (lisp-date-to-javascript _value)))
+	((eq remote-type "checkbox")
+	 (<:input :type "checkbox" :checked (if _value t nil) :disabled t))
 	((eq "html" remote-type)
 	 (cond
 	   ((null _value) nil)
@@ -32,23 +34,19 @@
 	 (reduce-cc (lambda (acc atom) (+ acc ", " atom))
 		    (cdr _value) (car _value)))	
 	((null _value) "Not set")
-	(t
-	 _value)))))
+	(t _value)))))
 
 (defmethod %get-slot-editor ((self slot-representations) remote-type)
   (cond
-    ((equal "password" remote-type)
-     (<core:password-input))
-    ((equal "number" remote-type)
-     (<core:number-value-input))
-    ((equal "email" remote-type)
-     (<core:email-input))
+    ((equal "password" remote-type) (<core:password-input))
+    ((equal "number" remote-type) (<core:number-value-input))
+    ((equal "email" remote-type) (<core:email-input))
+    ((equal "checkbox" remote-type) (<core:checkbox))
     ((or (equal "date" remote-type) (equal "timestamp" remote-type))
      (<core:date-time-input))
     ((equal "html" remote-type)
      (<core:ckeditor :config core-server::+ckeditor-simple-config+))
-    ((equal "select" remote-type)
-     (<core:select-input)) 
+    ((equal "select" remote-type) (<core:select-input))
     ((or (equal "multiple-select" remote-type)
 	 (equal "multipleSelect" remote-type))
      (<core:multiple-select-input))
@@ -62,7 +60,7 @@
 ;; -------------------------------------------------------------------------
 (defparameter +remote-types+
   '(nil password number email date timestamp html select
-    multiple-select multiple-checkbox))
+    multiple-select multiple-checkbox checkbox))
 
 (eval-when (:compile-toplevel :execute :load-toplevel)
   (defun %generate-template-class (slots)

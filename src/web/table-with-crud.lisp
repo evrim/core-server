@@ -76,6 +76,22 @@
   (remove-class self "core")
   (call-next-method self))
 
+(defmethod/remote handle-crud ((self <core:table-with-crud) instance
+			       action args)
+  (cond
+    ((eq "delete" action)
+     (when (delete-instance self instance)
+       (with-slots (_crud) self
+	 (destroy _crud)
+	 (setf (_crud self) (replace-node _crud (<:div)))
+	 (remove-instance (_table self) instance))))
+    ((eq "update" action)
+     (let ((updates (update-instance self instance args)))
+       (remove-instance (_table self) instance)
+       (extend updates instance)
+       (add-instance (_table self) instance)))
+    (t (_debug (list "crud" "action" action "args" args)))))
+
 (defmethod/remote init ((self <core:table-with-crud))
   (add-class self "core")
   (call-next-method self)
@@ -99,17 +115,4 @@
 	 (make-web-thread
 	  (lambda ()
 	    (destructuring-bind (action &rest args) (call-component new-crud)
-	      (cond
-		((eq "delete" action)
-		 (when (delete-instance self instance)
-		   (setf (_crud self) (replace-node (_crud self) (<:div)))
-		   (destroy new-crud)
-		   (remove-instance (_table self) instance)))
-		((eq "update" action)
-		 (let ((updates (update-instance self instance args)))
-		   (remove-instance (_table self) instance)
-		   (extend updates instance)
-		   (add-instance (_table self) instance)))
-		(t
-		 (_debug (list "crud" "action" action "args" args))
-		 nil))))))))))
+	      (handle-crud self instance action args)))))))))

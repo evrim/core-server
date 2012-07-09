@@ -904,9 +904,13 @@
    #:instances
    #:remove-instance
    #:add-instance
+   #:handle-crud
+   #:handle-crud/js
    #:on-select
    #:defwebcrud
-
+   #:view-buttons
+   #:view-buttons/js
+   
    ;; [Rest]
    #:defrest
    #:abstract-rest
@@ -1184,7 +1188,9 @@
    #:abstract-widget
    #:simple-widget
    #:make-simple-widget
-
+   #:show-tab
+   #:show-tab/js
+   
    [[Security]]
    #:group.name
    #:group.users
@@ -1288,7 +1294,8 @@
 (defpackage :tr.gen.core.server.widget
   (:nicknames :<widget :core-server.widget)
   (:use :core-server)
-  (:export #:simple-widget #:simple-content-widget #:simple-menu-widget))
+  (:export #:simple-widget #:simple-content-widget #:simple-menu-widget
+	   #:tab))
 
 (defpackage :tr.gen.core.server.rss
   (:nicknames :<rss :core-server.rss)
@@ -1305,7 +1312,7 @@
 	   #:auth #:core #:ckeditor #:lazy-ckeditor
 	   #:select-input #:multiple-select-input
 	   #:radio-group #:simple-clock #:table-with-crud
-	   #:multiple-checkbox))
+	   #:multiple-checkbox #:checkbox))
 
 (defpackage :tr.gen.core.server.atom
   (:nicknames :<atom)

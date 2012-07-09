@@ -89,6 +89,8 @@
 	      (set-ret
 	       (make-component slot-editor :value _value
 			       :validation-span-id _id)))
+	     ((eq remote-type "checkbox")
+	      (set-ret (make-component slot-editor :value _value)))
 	     ((eq remote-type "date")
 	      (set-ret
 	       (make-component slot-editor :value _value :show-time nil
@@ -132,21 +134,36 @@
   (let ((_template (_template self)))
     (setf (_template self) (replace-node _template (edit-template self)))))
 
+
+(defmethod/remote get-label ((self <core:crud) label)
+  (if (eq "?" (car (reverse label)))
+      label
+      (+ label ":")))
+
+(defmethod/remote view-buttons ((self <core:crud))
+  (let ((_edit (<:input :type "button" :value "Edit"
+			:title "Edit this instance"
+			:onclick (lifte (do-edit self))))
+	(_delete (<:input :type "button" :value "Delete"
+			  :title "Delete this instance"
+			  :onclick (lifte (do-delete1 self)))))
+    (with-slots (editable-p deletable-p) self
+      (cond
+	((and editable-p deletable-p)
+	 (list _edit _delete))
+	(editable-p
+	 (list _edit))
+	(deletable-p
+	 (list _delete))))))
+
 (defmethod/remote view-template ((self <core:crud))
   (<:div :class "crud"
-	 (<:form
-	  (mapcar-cc
-	   (lambda (slot)
-	     (with-slots (name label read-only) slot	       
-	       (with-field (+ label ":") (view-me self slot))))
-	   (reverse (reverse (get-template-class self))))
-	  (<:p :class "buttons"
-	       (if (editable-p self)
-		   (<:input :type "button" :value "Edit"
-			    :onclick (lifte (do-edit self))))
-	       (if (deletable-p self)
-		   (<:input :type "button" :value "Delete"
-			    :onclick (lifte (do-delete1 self))))))))
+	 (<:form (mapcar-cc
+		  (lambda (slot)
+		    (with-slots (name label read-only) slot	       
+		      (with-field (get-label self label) (view-me self slot))))
+		  (reverse (reverse (get-template-class self))))
+	  (<:p :class "buttons" (view-buttons self)))))
 
 (defmethod/remote do-cancel ((self <core:crud))
   (let ((_template (_template self)))
@@ -173,7 +190,7 @@
 		    (with-slots (name label read-only) slot
 		      (cond
 			(read-only
-			 (with-field (+ label ": ")
+			 (with-field (get-label self label)
 			   (<:div :class "value-view" (view-me self slot))))
 			(t
 			 (destructuring-bind (editor span) (edit-me self slot)
@@ -196,9 +213,6 @@
   (remove-css (crud-css self))
   (remove-class self "crud")
   (remove-child-nodes self)
-  (delete-slots self 'instance 'template-class 'crud-css 'title
-  		'deletable-p 'editable-p 'yes-no-dialog-ctor '_ckeditor
-  		'_template '_result)
   (call-next-method self))
 
 (defmethod/remote init ((self <core:crud))
