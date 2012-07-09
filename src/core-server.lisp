@@ -1312,7 +1312,7 @@
 	   #:auth #:core #:ckeditor #:lazy-ckeditor
 	   #:select-input #:multiple-select-input
 	   #:radio-group #:simple-clock #:table-with-crud
-	   #:multiple-checkbox #:checkbox))
+	   #:multiple-checkbox #:checkbox #:fqdn-input))
 
 (defpackage :tr.gen.core.server.atom
   (:nicknames :<atom)

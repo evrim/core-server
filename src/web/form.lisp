@@ -174,6 +174,25 @@
 	(validate-email self))))
 
 ;; +-------------------------------------------------------------------------
+;; | FQDN Input
+;; +-------------------------------------------------------------------------
+(defcomponent <core:fqdn-input (<core:default-value-input)
+  ()
+  (:default-initargs :default-value "Enter FQDN"))
+
+(defmethod/remote validate-fqdn ((self <core:fqdn-input))
+  (let ((expression (regex "/^([a-zA-Z0-9-]+\.)+[a-zA-Z0-9-]{2,8}$/")))
+    (if (.test expression self.value)
+	t
+	(_"Your FQDN is invalid."))))
+
+(defmethod/remote validate ((self <core:fqdn-input))
+  (let ((result (call-next-method self)))
+    (if (typep result 'string)
+	result
+	(validate-fqdn self))))
+
+;; +-------------------------------------------------------------------------
 ;; | Password HTML Component
 ;; +-------------------------------------------------------------------------
 (defcomponent <core:password-input (<core:default-value-input)
