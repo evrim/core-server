@@ -221,7 +221,7 @@ that has set before"
 ;;| HTTP Application
 ;;+--------------------------------------------------------------------------
 (eval-when (:load-toplevel :compile-toplevel :execute)
-  (defclass http-application (web-application)
+  (defclass http-application (web-application persistent-application)
     ((sessions :accessor http-application.sessions
 	       :initform (make-hash-table :test #'equal :synchronized t)
 	       :documentation "A hash-table that holds sessions"))

@@ -194,6 +194,7 @@
                                    (:file "git" :depends-on ("serializable-application"))
 				   (:file "apache" :depends-on ("web"))
                                    (:file "http")
+				   (:file "persistent")
 				   (:file "postfix" :depends-on ("mail"))))
                          (:module :servers
                                   :components
@@ -204,7 +205,8 @@
                                    (:file "logger")
                                    ;; (:file "ticket")
                                    (:file "socket")
-                                   (:file "http" :depends-on ("socket" "logger"))))
+                                   (:file "http" :depends-on ("socket" "logger"))
+				   (:file "persistent-http" :depends-on ("http"))))
                          (:module :services
                                   :components
                                   ((:file "whois")
