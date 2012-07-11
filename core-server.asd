@@ -253,7 +253,8 @@
 				  :components
 				  ((:file "menu")
 				   (:file "content")
-				   (:file "tab"))))))
+				   (:file "tab")))
+			 (:file "quicklisp"))))
   
   :depends-on (:swank :bordeaux-threads ;; :cl-prevalence
 		      :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad :cffi
