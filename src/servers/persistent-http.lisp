@@ -20,16 +20,36 @@
 				    "db"))
     (bootstrap::home))))
 
+(deftransaction register-to-database ((self persistent-http-server)
+				      (application web-application))
+  (setf (database.get self 'applications)
+	(cons application (unregister-from-database self application))))
 
-(defmethod register ((self http-server) (application persistent-application))
-  (warn "Registering a peristent application to a htt-server, changel server-class
-to peristent-httpserver to fix."))
+(deftransaction unregister-from-database ((self persistent-http-server)
+					  (application web-application)) 
+  (setf (database.get self 'applications)
+	(remove (web-application.fqdn application) 
+		(database.get self 'applications)
+		:test #'equal :key #'web-application.fqdn)))
 
 (defmethod register ((self persistent-http-server)
-		     (application persistent-application))
-  (setf (database.get self 'applications)
-	(cons (cons (class-name (class-of self))
-		    (slot-value self 'initialization-arguments))
-	      (remove application (database.get self 'applications)
-		      :key #'web-application.fqdn
-		      :test #'equal))))
+		     (application web-application))
+  (when (web-application.persistent application)
+    (register-to-database self application)))
+
+(defmethod start ((self persistent-http-server))
+  (mapcar (lambda (application) (register self application))
+  	  (filter (lambda (app)
+		    (not (find-application self (web-application.fqdn app))))
+		  (database.get self 'applications))))
+
+(defmethod stop ((self persistent-http-server))
+  (mapcar (lambda (application) (unregister self application))
+	  (filter (lambda (app)
+		    (find-application self (web-application.fqdn app)))
+		  (database.get self 'applications))))
+
+;; (defparameter *persistent-application*
+;;   (make-instance 'http-application :fqdn "persistent-application"
+;; 		 :admin-email "evrim@core.gen.tr"
+;; 		 :persistent t))
