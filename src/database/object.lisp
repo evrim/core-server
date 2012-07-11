@@ -133,8 +133,8 @@
 	  (<db:ref :id (format nil "~D" id))
 	  (let ((counter (incf counter)))
 	    (setf (gethash object cache) counter)
-	    (<db:instance :class (symbol->string (class-name (class-of object)))
-			  :id counter
+	    (<db:instance :id counter
+			  (funcall k (class-of object) k) 
 			  (mapcar (lambda (slot)
 				    (let ((slot (slot-definition-name slot)))
 				      (<db:slot :name (symbol->string slot)

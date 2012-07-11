@@ -116,7 +116,8 @@
 ;; -------------------------------------------------------------------------
 (defxml <db:ref id)
 
-(defmethod database.deserialize ((self abstract-database) (object <db:ref) &optional k)
+(defmethod database.deserialize ((self abstract-database) (object <db:ref)
+				 &optional k)
   (declare (ignore k))
   (with-slots (id) object
     (let ((id (read-from-string id)))
@@ -125,29 +126,43 @@
 	  (if foundp
 	      object
 	      (prog1 nil
-		(warn "reference to id ~A is not found, relations are broken now." id))))))))
+		(warn "reference to id ~A is not found, relations are
+		broken now." id))))))))
 
 ;; -------------------------------------------------------------------------
 ;; Instance Serialization Override
 ;; -------------------------------------------------------------------------
-(defmethod database.deserialize ((self abstract-database) (xml <db:instance) &optional k)
-  (let ((k (or k (curry #'database.deserialize self))))
-    (with-slots (class children id) xml
-      (let ((instance (allocate-instance (find-class (read-from-string class))))
-	    (id (read-from-string id)))
-	(with-slots (cache counter) (database.cache self)
-	  (setf (gethash id cache) instance counter (max counter id))
-	  (apply #'initialize-instance instance
-		 (flatten1
-		  (append
-		   (mapcar (lambda (slot)
-			     (multiple-value-bind (name value) (funcall k slot k)
-			       (if (slot-exists-p instance name)
-				   (list (make-keyword name) value))))
-			   children)
-		   (mapcar (lambda (a) (list (car a) (cadr a)))
-			   (class-default-initarg-values
-			    (class-of instance)))))))))))
+(defmethod database.deserialize ((self abstract-database)
+				 (xml <db:instance)
+				 &optional (k #'database.deserialize))
+  (with-slots (class children id) xml
+    (let* ((class (or (and class (find-class (read-from-string class)))
+		      (aif (any (lambda (a)
+				  (if (or (typep a '<db:class)
+					  (typep a '<db:dynamic-class))
+				      a))
+				children)
+			   (funcall k it k)
+			   (error "Class not found ~A" xml))))
+	   (instance (allocate-instance class))
+	   (id (read-from-string id)))
+      (describe class)
+      (with-slots (cache counter) (database.cache self)
+	(setf (gethash id cache) instance counter (max counter id))
+	(apply #'initialize-instance instance
+	       (flatten1
+		(append
+		 (mapcar (lambda (slot)
+			   (multiple-value-bind (name value) (funcall k slot k)
+			     (if (slot-exists-p instance name)
+				 (list (make-keyword name) value))))
+			 (filter (lambda (a)
+				   (or (not (typep a '<db:class))
+				       (not (typep a '<db:dynamic-class))))
+				 children))
+		 (mapcar (lambda (a) (list (car a) (cadr a)))
+			 (class-default-initarg-values
+			  (class-of instance))))))))))
 
 (defmethod database.serialize ((self abstract-database) (object standard-object)
 			       &optional (k (curry #'database.serialize self)))
@@ -157,12 +172,13 @@
 	  (<db:ref :id (format nil "~D" id))
 	  (let ((counter (incf counter)))
 	    (setf (gethash object cache) counter)
-	    (<db:instance :class (symbol->string (class-name (class-of object)))
-			  :id counter
-			  (mapcar (lambda (slot)
-				    (<db:slot :name (symbol->string slot)
-					      (funcall k (slot-value object slot) k)))
-				  (slots-of object))))))))
+	    (<db:instance :id counter
+			  (funcall k (class-of object) k)
+			  (mapcar
+			   (lambda (slot)
+			     (<db:slot :name (symbol->string slot)
+				       (funcall k (slot-value object slot) k)))
+			   (slots-of object))))))))
 
 
 ;; -------------------------------------------------------------------------

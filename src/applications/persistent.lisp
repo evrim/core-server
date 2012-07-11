@@ -1,14 +1,15 @@
 (in-package :core-server)
 
-
 ;; -------------------------------------------------------------------------
 ;; Persistent Application
 ;; -------------------------------------------------------------------------
-(defclass+ persistent-application ()
-  ((initialization-arguments))
-  (:ctor make-persistent-application))
+;; By default every web-application is persistent if :persist slot is t
 
-(defmethod shared-initialize :after ((self persistent-application) slots
-				     &rest initargs)
-  ;; Save Initialization Arguments
-  (prog1 self (setf (s-v 'initialization-arguments) initargs)))
+
+;; -------------------------------------------------------------------------
+;; Persistent HTTP Application Metaclass
+;; -------------------------------------------------------------------------
+;; This application metaclass is for the use manager-application.
+(defclass+ persistent-http-application+ (dynamic-class+ http-application+)
+  ())
+

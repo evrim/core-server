@@ -1247,7 +1247,7 @@
 	   #:ratio #:complex #:float #:vector #:cons #:hash-table
 	   #:hash-table-entry #:hash-table-key #:hash-table-value
 	   #:slot #:struct #:class #:instance #:ref #:object-with-id
-	   #:transaction #:pathname))
+	   #:transaction #:pathname #:dynamic-class))
 
 ;; -------------------------------------------------------------------------
 ;; HTML Codomain

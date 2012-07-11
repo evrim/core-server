@@ -37,6 +37,11 @@
   (when (web-application.persistent application)
     (register-to-database self application)))
 
+(defmethod unregister ((self persistent-http-server)
+		       (application web-application))
+  (when (web-application.persistent application)
+    (unregister-from-database self application)))
+
 (defmethod start ((self persistent-http-server))
   (mapcar (lambda (application) (register self application))
   	  (filter (lambda (app)
@@ -44,12 +49,18 @@
 		  (database.get self 'applications))))
 
 (defmethod stop ((self persistent-http-server))
-  (mapcar (lambda (application) (unregister self application))
-	  (filter (lambda (app)
-		    (find-application self (web-application.fqdn app)))
-		  (database.get self 'applications))))
+  ;; (mapcar (lambda (application) (unregister self application))
+  ;; 	  (filter (lambda (app)
+  ;; 		    (find-application self (web-application.fqdn app)))
+  ;; 		  (database.get self 'applications)))
+  )
+
+;; (defclass+ sample-persistent-application (http-application)
+;;   ()
+;;   (:metaclass persistent-http-application+))
 
 ;; (defparameter *persistent-application*
-;;   (make-instance 'http-application :fqdn "persistent-application"
+;;   (make-instance 'sample-persistent-application
+;; 		 :fqdn "persistent-application"
 ;; 		 :admin-email "evrim@core.gen.tr"
 ;; 		 :persistent t))
