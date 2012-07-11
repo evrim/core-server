@@ -38,7 +38,7 @@
 	   (specializers (methods)
 	     (mapcar #'(lambda (m) (cons (specializer m) m)) methods))
 	   (sort-by-specializers (methods)
-	     (mapcar #'cdr (sort (specializers methods) #'equal :key #'car)))
+	     (mapcar #'cdr (specializers methods)))
 	   (status-method (method)
 	     (find-method #'status '() (list (specializer method)) nil))
 	   (call-methods (methods)
