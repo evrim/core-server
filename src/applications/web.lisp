@@ -21,19 +21,23 @@
 ;; | Web Application
 ;; +-------------------------------------------------------------------------
 (defclass+ web-application (application)
-  ((fqdn :reader web-application.fqdn :initarg :fqdn :initform (error "Fqdn must be supplied.")
+  ((fqdn :reader web-application.fqdn :initarg :fqdn :host local
+	 :initform (error "Fqdn must be supplied.")
 	 :documentation "Fully qualified domain name of this application")
    (admin-email :accessor web-application.admin-email :initarg :admin-email
-		:initform (error "Admin email must be supplied.")
+		:host local :initform (error "Admin email must be supplied.")
 		:documentation "Administrators' email address")
    (project-name :accessor web-application.project-name
-		 :initarg :project-name :initform nil
+		 :host local :initarg :project-name :initform nil
 		 :documentation "Name/Symbol of the project")
    (project-pathname :accessor web-application.project-pathname
 		     :initarg :project-pathname :initform nil
-		     :documentation "Pathname of the project")
+		     :host local :documentation "Pathname of the project")
    (htdocs-pathname :accessor web-application.htdocs-pathname
 		    :initarg :htdocs-pathname :initform nil
-		    :documentation "Htdocs pathname of the project,
-		    used for serving static files"))
+		    :host local :documentation "Htdocs pathname of the project,
+		    used for serving static files")
+   (persistent :accessor web-application.persistent :initarg :persistent
+	       :initform nil :host local
+	       :documentation "Persistent Application Switch"))
   (:documentation "Base Web Application Class"))
