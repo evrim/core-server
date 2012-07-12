@@ -823,12 +823,22 @@ provide query parameters inside URL as key=value"
 		(http-response.remove-header response 'pragma)
 		(http-response.remove-header response 'cache-control)
 		(http-response.remove-header response 'expires)
-		(http-response.add-general-header response 'date (get-universal-time))
-		(http-response.add-response-header response 'etag (cons (calculate-etag) nil))
-		(http-response.add-entity-header response 'expires (+ (get-universal-time) 50000))
-		(http-response.add-entity-header response 'last-modified timestamp)
-		(http-response.add-general-header response 'cache-control
-						  (list 'public ;; 'must-revalidate 'no-transform
+		(http-response.add-general-header response
+						  'date (get-universal-time))
+		(http-response.add-response-header response
+						   'etag (cons (calculate-etag)
+							       nil))
+		(http-response.add-entity-header response
+						 'expires
+						 (+ (get-universal-time)
+						    50000))
+		(http-response.add-entity-header response
+						 'last-modified timestamp)
+		(http-response.add-general-header response
+						  'cache-control
+						  (list 'public
+							;; 'must-revalidate
+							;; 'no-transform
 							(cons 'max-age 50000))))
 	      (render-response ()
 		(add-cache-headers)
@@ -840,13 +850,17 @@ provide query parameters inside URL as key=value"
 	 (cond
 	   ((application.debug (context.application +context+))
 	    ,@body)
-	   ((and timestamp (> timestamp 0) etag (equal (calculate-etag) (caar etag)))
+	   ((and timestamp (> timestamp 0) etag (equal (calculate-etag)
+						       (caar etag)))
 	    (prog1 nil
 	      (add-cache-headers)
 	      (setf (http-response.status-code response)
 		    (core-server::make-status-code 304))))
 	   (t (render-response)))))))
 
+;; -------------------------------------------------------------------------
+;; Library.core - Javascript Library
+;; -------------------------------------------------------------------------
 (defparameter +library.core-timestamp+ (get-universal-time))
 (defhandler "library.core" ((self http-application))
   (javascript/suspend
@@ -890,16 +904,24 @@ provide query parameters inside URL as key=value"
 			   (cond
 			     (commit (commit hash +context+))
 			     (t
-			      (write-stream stream (subseq data 1 (- (length data) 1)))
+			      (write-stream stream
+					    (subseq data 1 (- (length data) 1)))
 			      (multipart-action (json-deserialize hash)))))))
 		    (with-js (k-url hash) s
 		      (apply (slot-value window hash) this (list k-url))))))))
       (multipart-action (json-deserialize hash)))))
 
+(defmacro defhandler/static (pathname url &optional application-class)
+  (let ((xml (read-stream (make-html-stream (make-core-stream pathname)))))
+    `(defhandler ,url ((self ,(or application-class 'http-application)))
+       (send/suspend ,(dom->lisp xml)))))
+
+;; (defhandler/static #P"~/core-server/src/manager/wwwroot/index.html"
+;;   "myproject.core")
 
 ;; (defapplication test1 (http-application)
 ;;   ()
-;;   (:default-initargs :fqdn "eben.core.gen.tr" :admin-email "zoo"))
+;;   (:default-initargs :fqdn "en.core.gen.tr" :admin-email "zoo"))
 
 ;; (defhandler "index.core" ((app test1) (context http-context) (abc "abc") (def "def"))
 ;;   (<:div abc def))
