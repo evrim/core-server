@@ -92,9 +92,14 @@
 	 (remove-instance (_table self) instance))))
     ((eq "update" action)
      (let ((updates (update-instance self instance args)))
-       (remove-instance (_table self) instance)
-       (extend updates instance)
-       (add-instance (_table self) instance)))
+       (cond
+	 ((typep updates 'function)
+	  (remove-instance (_table self) instance)
+	  (add-instance (_table self) (make-component updates)))
+	 (t
+	  (remove-instance (_table self) instance)
+	  (extend updates instance)
+	  (add-instance (_table self) instance)))))
     (t (_debug (list "crud" "action" action "args" args)))))
 
 (defmethod/remote _make-crud-component ((self <core:table-with-crud)
