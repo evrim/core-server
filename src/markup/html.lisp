@@ -445,6 +445,31 @@
   (read-stream (make-safe-html-stream
 		(make-core-stream (format nil "<div>~A</div>" text)))))
 
+
+;; -------------------------------------------------------------------------
+;; Dom2Lisp, see defhandler/static
+;; -------------------------------------------------------------------------
+(defgeneric dom->lisp (html-element &optional k)
+  (:documentation "Html to Javascript transformator"))
+(defmethod dom->lisp ((element t) &optional (k #'dom2lisp))
+  (declare (ignore k))
+  nil)
+
+
+(defmethod dom->lisp ((element xml) &optional (k #'dom->lisp))
+  (let* ((ctor (class+.ctor-name (class-of element)))
+	 (name (symbol-name ctor))
+	 (package (aif (package-nicknames (symbol-package ctor))
+		       (car (reverse it))
+		       ctor)))
+    `(,(intern name package)
+      ,@(reduce0 (lambda (acc slot)
+		   (with-slotdef (name initarg) slot
+		     (cons initarg (cons (slot-value element name) acc))))
+		 (class+.remote-slots (class-of element)))
+      ,@(mapcar (rcurry k (curry #'funcall k)) (xml.children element)))))
+
+
 ;; Core Server: Web Application Server
 
 ;; Copyright (C) 2006-2008  Metin Evrim Ulu, Aycan iRiCAN
