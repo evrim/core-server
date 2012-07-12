@@ -255,6 +255,7 @@
    ;; [Javascript]
    #:js
    #:js*
+   #:symbol->js
    #:with-js
    #:jambda
    #:defrender/js

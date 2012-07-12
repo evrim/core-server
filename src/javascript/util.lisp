@@ -85,7 +85,7 @@
   (and (> (length string) 1)
        (char= #\: (char string 0))))
 
-(defun symbol-to-js (symbol)
+(defun symbol->js (symbol)
   (when (symbolp symbol)
     (setf symbol (symbol-name symbol)))
   (let ((symbols (string-split symbol '(#\.))))
@@ -126,3 +126,6 @@
 		     (t (reschar c))))))
 	     (coerce (nreverse res) 'string)))
 	  (t (string-join (mapcar #'symbol-to-js symbols) ".")))))
+
+(defun symbol-to-js (symbol)
+  (symbol->js symbol))
