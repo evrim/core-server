@@ -27,7 +27,7 @@
 (defun make-pages ()
   (list (list "info" "Info" "Information regarding to the current instance"
 	      (info-component))
-	(list "apps" "Applications" "Application currently deployed on this server"
+	(list "apps" "Applications" "Applications currently deployed on this server"
 	      (<manager:applications))
 	(list "aanda" "A & A" "Authentication & Authorization"
 	      (sites-component))

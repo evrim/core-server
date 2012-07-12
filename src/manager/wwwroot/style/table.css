@@ -35,6 +35,10 @@ table.core-table td {
   background-color:#EEEEEE;
   text-align:center;
   font-size:12px;
+  border-top:1px solid #AAA;
+  border-left:1px solid #AAA;
+  border-bottom:1px solid #999;
+  border-right:1px solid #999;
 }
 table.core-table tr.hilighted td {
   background-color:#CCCCCC;

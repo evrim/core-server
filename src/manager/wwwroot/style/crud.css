@@ -2,6 +2,11 @@
   clear:both;
   margin-top:2px !important;
   margin-bottom:2px !important;
+  border-top:1px solid #AAA;
+  border-left:1px solid #AAA;
+  border-right:1px solid #999;
+  border-bottom:1px solid #999;
+  background:#EEE;
 }
 .crud b {font-weight:bold;}
 .crud p {margin:0;}
