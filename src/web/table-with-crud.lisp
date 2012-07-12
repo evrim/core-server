@@ -74,6 +74,11 @@
 
 (defmethod/remote destroy ((self <core:table-with-crud))
   (remove-class self "core")
+  (if (and (_crud self) (slot-value (_crud self) 'destroy))
+      (destroy (_crud self)))
+  (if (and (_table self) (slot-value (_table self) 'destroy))
+      (destroy (_table self)))
+  
   (call-next-method self))
 
 (defmethod/remote handle-crud ((self <core:table-with-crud) instance
@@ -92,6 +97,10 @@
        (add-instance (_table self) instance)))
     (t (_debug (list "crud" "action" action "args" args)))))
 
+(defmethod/remote _make-crud-component ((self <core:table-with-crud)
+					instance)
+  (make-component (crud self) :instance instance))
+
 (defmethod/remote init ((self <core:table-with-crud))
   (add-class self "core")
   (call-next-method self)
@@ -106,8 +115,7 @@
     (make-web-thread
      (lambda ()
        (let* ((instance (call-component table))
-	      (new-crud (make-component (crud self) :instance instance)))
-
+	      (new-crud (_make-crud-component self instance)))
 	 (if (and (_crud self) (slot-value (_crud self) 'destroy))
 	     (destroy (_crud self)))
 	 
