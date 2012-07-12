@@ -266,26 +266,21 @@
   (declare (ignore k))
   (<db:class (symbol->string (class-name object))))
 
-(defxml <db:dynamic-class id name)
-(defclass+ dynamic-class+ (class+)
-  ())
-
+(defxml <db:dynamic-class class id name)
 (defmethod xml-deserialize ((xml <db:dynamic-class) &optional
 			    (k #'xml-deserialize))
-  (with-slots (name children) xml    
+  (with-slots (name class children) xml    
     (let* ((supers (mapcar (rcurry k (curry #'funcall k))
 			   (filter (lambda (a) (typep a '<db:class))
-				   children)))
-	   (name (read-from-string name))
-	   (c (make-instance name
-			     :name name
-			     :direct-superclasses supers)))
-      (describe (list 'foo name children))
-      c)))
+				   children))))
+      (make-instance (find-class (read-from-string class))
+		     :name (read-from-string name)
+		     :direct-superclasses supers))))
 
 (defmethod xml-serialize ((object dynamic-class+)
 			  &optional (k #'xml-serialize))
-  (<db:dynamic-class :name (symbol->string (class-name (class-of object)))
+  (<db:dynamic-class :name (symbol->string (class-name object))
+		     :class (symbol->string (class-name (class-of object)))
 		     (mapcar (rcurry k (curry #'funcall k))
 			     (filter (lambda (a)
 				       (not (typep a 'dynamic-class+)))

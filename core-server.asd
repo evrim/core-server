@@ -56,6 +56,7 @@
 				  ((:file "protocol")
 				   (:file "class+")
 				   (:file "lift")
+				   (:file "dyna")
 				   (:file "command")))
                          (:module :compat
                                   :serial t
