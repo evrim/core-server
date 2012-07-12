@@ -691,7 +691,7 @@
     (if destroy-uri
 	(add-to-gc (lambda () (array (+ destroy-uri "?s:" session-id) instance-id))))
     (if remote-slots
-    	(remove-slots self (cons "destroy" remote-slots))
+    	(remove-slots self (reverse (cons "destroy" remote-slots)))
     	(delete-slot self 'destroy))
     self))
 
