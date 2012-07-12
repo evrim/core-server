@@ -257,7 +257,7 @@
 			 (:file "quicklisp"))))
   
   :depends-on (:swank :bordeaux-threads ;; :cl-prevalence
-		      :sb-bsd-sockets :arnesi :cl-ppcre :cl-fad :cffi
+		      :sb-bsd-sockets :arnesi+ :cl-ppcre :cl-fad :cffi
 		      :salza2 :ironclad)
   :serial t)
 

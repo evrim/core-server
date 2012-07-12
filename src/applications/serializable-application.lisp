@@ -60,7 +60,7 @@
    (use :accessor serializable-web-application.use :initarg :use
 	:initform (list :common-lisp :core-server :arnesi))
    (depends-on :accessor serializable-web-application.depends-on :initarg :depends-on
-	       :initform (list :arnesi :core-server)))
+	       :initform (list :arnesi+ :core-server)))
   (:documentation "Base class for template application - This class is
 used to create a new application. See
 src/applications/serializable-application.lisp for implementation"))

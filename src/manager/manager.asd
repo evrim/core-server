@@ -27,7 +27,7 @@
 		       (:file "sites")
 	     	       (:file "admin")
 	     	       (:file "main"))))))
-  :depends-on (:arnesi :core-server)
+  :depends-on (:arnesi+ :core-server)
   :serial t)
 
 (defsystem :manager.test
