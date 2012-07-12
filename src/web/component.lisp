@@ -209,7 +209,8 @@
 	   ,(when stub-p
 	     `(defmethod/cc ,name ((self ,class-name) ,@(stub-arguments))
 		(error "Signature failed: (~A~{ ~A~})" ',name
-		       ,@(mapcar (compose #'car #'ensure-list) arg-names))))
+		       (list
+			,@(mapcar (compose #'car #'ensure-list) arg-names)))))
 	   (defmethod/cc ,name ((,self ,class-name) ,@args)
 	     (let ((application (component.application ,self)))
 	       ,@body)))))))
