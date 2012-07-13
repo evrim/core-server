@@ -157,8 +157,7 @@
 	 (list _delete))))))
 
 (defmethod/remote view-template ((self <core:crud))
-  (<:div :class "crud"
-	 (<:form (mapcar-cc
+  (<:div (<:form (mapcar-cc
 		  (lambda (slot)
 		    (with-slots (name label read-only) slot	       
 		      (with-field (get-label self label) (view-me self slot))))
@@ -171,9 +170,10 @@
 
 (defmethod/remote do-save1 ((self <core:crud))
   ;; (_debug (list "result" (_result self)))
-  (answer-component self (list "update"
-			       (mapobject (lambda (k v) (get-input-value v))
-					  (_result self)))))
+  (let ((_result (mapobject (lambda (k v) (get-input-value v))
+			    (_result self))))
+    ;; (_debug (list "crud result" _result))
+    (answer-component self (list "update" _result))))
 
 (defmethod/remote do-delete1 ((self <core:crud))
   (if (call-component (make-component (make-yes-no-dialog self)
@@ -183,8 +183,7 @@
       (answer-component self (list "delete" (instance self)))))
 
 (defmethod/remote edit-template ((self <core:crud))
-  (<:div :class "crud"
-	 (<:form :onsubmit (lifte (do-save1 self))
+  (<:div (<:form :onsubmit (lifte (do-save1 self))
 		 (mapcar-cc
 		  (lambda (slot)
 		    (with-slots (name label read-only) slot

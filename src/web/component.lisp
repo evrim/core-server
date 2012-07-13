@@ -23,6 +23,7 @@
   (any #'xml+.tag
        (reverse (filter (lambda (class) (if (typep class 'xml+) class))
 			(cdr (class+.superclasses self))))))
+
 ;; +-------------------------------------------------------------------------
 ;; | Component Class
 ;; +-------------------------------------------------------------------------

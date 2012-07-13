@@ -407,40 +407,49 @@
 
 (defmethod/remote init ((self <core:multiple-checkbox))
   (setf (_value-cache self) (jobject))
-  (let ((equal-fun (or (item-equal-p self) (lambda (a b) (eq a b))))
-	(hash-list (mapcar (lambda (a) (random-string))
-			   (seq (slot-value (option-values self) 'length)))))
-    (mapcar (lambda (a) (append self a))
-	    (mapcar
-	     (lambda (a)
-	       (destructuring-bind (hash data) a
-		 ;; (_debug (list "a" a "hash" hash "data" data))
-		 (cond
-		   ((atom data)
-		    (setf (slot-value (_value-cache self) hash) data)
-		    (<:label :class "block" :for hash
-			     (<:input :type "checkbox"
-				      :checked (call/cc equal-fun
-							(current-value self)
-							data)
-				      :value hash
-				      :id hash)
-			     (_ data)))
-		   (t
-		    (destructuring-bind (name value) data
-		      ;; (_debug (list 2 "name" name "value" value))
-		      (setf (slot-value (_value-cache self) hash) value)
-		      (<:label :for hash :class "block"
+  (let* ((equal-fun (or (item-equal-p self) (lambda (a b) (eq a b))))
+	 (hash-list (mapcar (lambda (a) (random-string))
+			    (seq (slot-value (option-values self) 'length)))))
+
+    (flet ((checked-p (current-value data)
+	     (reduce0-cc (lambda (acc a)
+			   (if (call/cc equal-fun a data)
+			       t
+			       acc))
+			 (if (atom current-value)
+			     (list current-value)
+			     current-value))))
+      (mapcar (lambda (a) (append self a))
+	      (mapcar
+	       (lambda (a)
+		 (destructuring-bind (hash data) a
+		   ;; (_debug (list "a" a "hash" hash "data" data))
+		   (cond
+		     ((atom data)
+		      (setf (slot-value (_value-cache self) hash) data)
+		      (<:label :class "block" :for hash
 			       (<:input :type "checkbox"
-					:id hash
-					:checked (call/cc equal-fun
+					:checked (call/cc checked-p
 							  (current-value self)
-							  value)
-					:value hash)
-			       (_ name)))))))
-	     (mapcar2 (lambda (a b) (list b a))
-		      (option-values self)
-		      hash-list)))))
+							  data)
+					:value hash
+					:id hash)
+			       (_ data)))
+		     (t
+		      (destructuring-bind (name value) data
+			;; (_debug (list 2 "name" name "value" value))
+			(setf (slot-value (_value-cache self) hash) value)
+			(<:label :for hash :class "block"
+				 (<:input :type "checkbox"
+					  :id hash
+					  :checked (call/cc checked-p
+							    (current-value self)
+							    value)
+					  :value hash)
+				 (_ name)))))))
+	       (mapcar2 (lambda (a b) (list b a))
+			(option-values self)
+			hash-list))))))
 
 ;; -------------------------------------------------------------------------
 ;; Radio Group

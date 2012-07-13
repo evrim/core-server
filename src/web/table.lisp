@@ -14,7 +14,8 @@
    (selected :initform nil :host remote)
    (_sorted-slot :host remote)
    (_head :host remote)
-   (_foot :host remote)))
+   (_foot :host remote)
+   (_resize-thread :host remote)))
 
 (defmethod/remote get-template-class ((self <core:table))
   (with-slots (instances) self
@@ -149,7 +150,12 @@
 		 (by-tag-name self "TD"))))))
 
 (defmethod/remote remove-child-nodes ((self <core:table))
-  (mapcar-cc (lambda (a) (.remove-child self a)) (slot-value self 'child-nodes)))
+  (mapcar-cc (lambda (a) (.remove-child self a))
+	     (slot-value self 'child-nodes)))
+
+(defmethod/remote destroy ((self <core:table))
+  (clear-interval (_resize-thread self))
+  (call-next-method self))
 
 (defmethod/remote init ((self <core:table))
   (add-class self "core-table")
@@ -172,8 +178,9 @@
 		   (append div head)
 		   (append div (<:div :class "core-table-overflow" self))
 		   (append div foot)
-		   (set-timeout (event () (resize-thead self window.k))
-				300)))))
+		   (setf (_resize-thread self)
+			 (set-interval (event () (resize-thead self window.k))
+				       300))))))
       (do-when-parent (lambda () (wrap-me head foot))))))
 
 (defmethod/remote add-instance ((self <core:table) instance)
