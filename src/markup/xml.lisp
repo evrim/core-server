@@ -461,6 +461,9 @@
   (parse-xml (xml-lexer? (slot-value stream '%stream))
 	     (namespace stream)))
 
+(defmethod write-stream ((stream xml-stream) (list list))
+  (reduce #'write-stream list :initial-value stream))
+
 (defmethod write-stream ((stream xml-stream) (string string))
   (prog1 stream
     (with-slots (%stream) stream
