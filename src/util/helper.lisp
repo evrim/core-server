@@ -116,7 +116,9 @@ for traceing a closed system"
      (flatten (car lst) (flatten (cdr lst) acc)))))
 
 (defun flatten1 (lst)
-  (reduce0 #'append lst))
+  (if (atom lst)
+      (list lst)
+      (reduce0 #'append lst)))
 
 (defun any (lambda list)
   "Returns any non-null result when lambda is applied to the any element of list"
