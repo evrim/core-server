@@ -1183,8 +1183,9 @@
    #:simple-controller
    #:make-simple-controller
    #:abstract-page
-   #:simple-page
-   #:make-simple-page
+   ;; #:simple-page
+   ;; #:make-simple-page
+
    #:abstract-widget-map
    #:simple-widget-map
    #:make-simple-widget-map
@@ -1297,7 +1298,7 @@
 (defpackage :tr.gen.core.server.widget
   (:nicknames :<widget :core-server.widget)
   (:use :core-server)
-  (:export #:simple-widget #:simple-content-widget #:simple-menu-widget
+  (:export #:simple #:simple-content #:simple-menu
 	   #:tab))
 
 (defpackage :tr.gen.core.server.rss
@@ -1315,7 +1316,10 @@
 	   #:auth #:core #:ckeditor #:lazy-ckeditor
 	   #:select-input #:multiple-select-input
 	   #:radio-group #:simple-clock #:table-with-crud
-	   #:multiple-checkbox #:checkbox #:fqdn-input))
+	   #:multiple-checkbox #:checkbox #:fqdn-input
+	   #:simple-page #:simple-page/unauthorized
+	   #:simple-page/anonymous #:simple-page/registered
+	   #:simple-widget-map #:simple-widget-map/anonymous))
 
 (defpackage :tr.gen.core.server.atom
   (:nicknames :<atom)

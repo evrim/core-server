@@ -3,5 +3,5 @@
 ;; -------------------------------------------------------------------------
 ;; Tab Widget
 ;; -------------------------------------------------------------------------
-(defcomponent <widget:tab (<core:tab <widget:simple-widget)
+(defcomponent <widget:tab (<core:tab <widget:simple)
   ())
