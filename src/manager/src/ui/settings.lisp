@@ -10,7 +10,6 @@
    (app-secret :label "Application Secret"))
   (:default-initargs :title "Facebook Application Configuration"))
 
-
 (defclass+ google-credentials ()
   ((client-id :host both)
    (client-secret :host both))

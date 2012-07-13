@@ -16,7 +16,7 @@
    (is-running :label "Is running?" :remote-type checkbox :read-only t)
    (is-registered :label "Is registered?" :remote-type checkbox :read-only t))
   (:default-initargs :title "Application"
-    :editable-p t :deletable-p t))
+    :editable-p nil :deletable-p nil))
 
 (defmethod/remote register-button ((self <manager:web-application-crud))
   (with-slots (instance) self
@@ -50,8 +50,7 @@
 ;; -------------------------------------------------------------------------
 ;; Manager Created Application Crud
 ;; -------------------------------------------------------------------------
-(defparameter +superclasses+ '(http-application database-server))
-(defwebcrud <manager:dynamic-application-crud (<manager:web-application-crud)
+(defwebcrud <manager::%dynamic-application-crud (<manager:web-application-crud)
   ((fqdn :label "Domain Name")
    (application-class :label "Application Class" :read-only t)
    (application-superclasses :label "Superclasses"
@@ -62,6 +61,26 @@
    (is-registered :label "Is registered?" :remote-type checkbox :read-only t))
   (:default-initargs :title "Application"
     :editable-p t :deletable-p t))
+
+
+(defcomponent <manager:dynamic-application-crud (<manager::%dynamic-application-crud)
+  ((_tab :host remote :initform (<core:tab))))
+
+(defmethod/local get-tab ((self <manager:dynamic-application-crud) tab)
+  (cond
+    ((equal tab "httpApplication")
+     ))
+  nil)
+
+(defmethod/remote init ((self <manager:dynamic-application-crud))
+  (call-next-method self)
+  (with-slots (instance) self
+    (with-slots (applicationSuperclasses) instance
+      (make-component (_tab self)
+		      :tabs (mapcar (lambda (super-class)
+				      (cons super-class
+					    (get-tab self super-class)))
+				    applicationSuperclasses)))))
 
 ;; -------------------------------------------------------------------------
 ;; Web Application View
@@ -95,6 +114,10 @@
   (:ctor %make-dynamic-application/view))
 
 (defcrud/lift dynamic-application/view dynamic-application)
+(defmethod/lift dynamic-application.change-class ((self persistent-http-server)
+						  (instance dynamic-application/view)
+						  new-superclasses))
+
 (defun make-dynamic-application/view (&key web-application)
   (let ((class (symbol->js (class-name (class-of web-application))))
 	(registered-p (if (application.server web-application)
@@ -177,11 +200,18 @@
 
 (defmethod/local update-instance ((self <manager:applications)
 				  (instance web-application/view) args)
+  (jobject))
+
+(defmethod/local update-instance ((self <manager:applications)
+				  (instance dynamic-application/view) args)
   (let* ((attributes (core-server::plist-to-alist (jobject.attributes args)))
-	 (attributes (remove 'application-superclasses attributes :key #'car))
-	 (object (apply #'dynamic-application.update
-			(application.server application)
-			(cons instance (core-server::alist-to-plist attributes)))))
-    (make-view self object)))
-
-
+	 (supers (find 'core-server::application-superclasses attributes
+		       :key #'car))
+	 (attributes (remove 'core-server::application-superclasses attributes
+			     :key #'car)))
+    (dynamic-application.change-class (application.server application)
+				      instance (cdr supers))
+    (make-view self (apply #'dynamic-application.update
+			   (application.server application)
+			   (cons instance
+				 (core-server::alist-to-plist attributes))))))
