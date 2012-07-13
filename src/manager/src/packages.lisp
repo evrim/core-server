@@ -9,4 +9,5 @@
   (:nicknames :<manager)
   (:export #:settings #:applications #:applications-table #:application-crud
 	   #:dynamic-application-crud
-	   #:web-application-crud #:server #:server-info))
+	   #:web-application-crud #:server #:server-info
+	   #:controller))

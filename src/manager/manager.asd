@@ -24,7 +24,7 @@
 	     	      :components
 	     	      ((:file "info")
 		       (:file "server")
-		       (:file "applications")
+		       (:file "application")
 		       (:module :applications
 				:serial t
 				:components

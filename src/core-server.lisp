@@ -1179,19 +1179,20 @@
    #:+ckeditor-css+
 
    ;; [Coretal]
-   #:abstract-controller
-   #:simple-controller
-   #:make-simple-controller
-   #:abstract-page
+   ;; #:abstract-controller
+   ;; #:simple-controller
+   ;; #:make-simple-controller
+   ;; #:abstract-page
    ;; #:simple-page
    ;; #:make-simple-page
 
-   #:abstract-widget-map
-   #:simple-widget-map
-   #:make-simple-widget-map
-   #:abstract-widget
-   #:simple-widget
-   #:make-simple-widget
+   ;; #:abstract-widget-map
+   ;; #:simple-widget-map
+   ;; #:make-simple-widget-map
+   ;; #:abstract-widget
+   ;; #:simple-widget
+   ;; #:make-simple-widget
+
    #:show-tab
    #:show-tab/js
    
@@ -1319,7 +1320,10 @@
 	   #:multiple-checkbox #:checkbox #:fqdn-input
 	   #:simple-page #:simple-page/unauthorized
 	   #:simple-page/anonymous #:simple-page/registered
-	   #:simple-widget-map #:simple-widget-map/anonymous))
+	   #:simple-widget-map #:simple-widget-map/anonymous
+	   #:simple-controller #:simple-controller/unauthorized
+	   #:simple-controller/anonymous
+	   #:simple-controller/authorized))
 
 (defpackage :tr.gen.core.server.atom
   (:nicknames :<atom)

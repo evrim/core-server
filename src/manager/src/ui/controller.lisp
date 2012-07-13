@@ -23,15 +23,6 @@
   "Simple Page & Widget Definitions")
 
 ;; -------------------------------------------------------------------------
-;; Manager Component
-;; -------------------------------------------------------------------------
-(defcomponent manager-controller (simple-controller)
-  ((_menu :host remote)
-   (_content :host remote))
-  (:default-initargs :default-page "info")
-  (:ctor make-manager-controller))
-
-;; -------------------------------------------------------------------------
 ;; Make Page
 ;; -------------------------------------------------------------------------
 (defun make-page (name title description &rest widgets)
@@ -69,11 +60,19 @@
   (<core:simple-widget-map :selector "clock"
 			   :widget (<core:simple-clock)))
 
+
+;; -------------------------------------------------------------------------
+;; Manager Controller
+;; -------------------------------------------------------------------------
+(defcomponent <manager:controller (<core:simple-controller)
+  ()
+  (:default-initargs :default-page "info"))
+
 ;; -------------------------------------------------------------------------
 ;; Make Controller
 ;; -------------------------------------------------------------------------
 (defun make-controller (application user)
   (authorize application user
-	     (make-manager-controller :pages (make-pages +pages+)
-				      :constants (list (make-menu +pages+)
-						       (make-clock)))))
+	     (<manager:controller :constants (list (make-menu +pages+)
+						   (make-clock))
+				  (make-pages +pages+))))
