@@ -554,6 +554,7 @@
    #:web-application
    #:server
    #:web-server
+   #:persistent-http-server
    ;; Accessors
    #:application.server
    #:application.debug
