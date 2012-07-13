@@ -330,7 +330,7 @@
 ;; +-------------------------------------------------------------------------
 (defmacro defcomponent (name supers slots &rest rest)
   (let* ((metaclass1 (cadr (assoc :metaclass rest)))
-	 (metaclass (intern (format nil "~A+" name)))
+	 (metaclass (intern (format nil "~A+" name) (symbol-package name)))
 	 (metasupers (remove 'class+
 			     (uniq (append
 				    (mapcar (compose #'class-name #'class-of
