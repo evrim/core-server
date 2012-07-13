@@ -1,3 +1,4 @@
+.crud { margin:2px }
 .crud .field {
   clear:both;
   margin-top:2px !important;
@@ -69,7 +70,8 @@
     border-right:2px solid #B94E4E;
 }
 .crud form .field span.invalid { color:#8A0000; }
-.crud h2 { font-size:17px; padding:15px; padding-bottom:5px; padding-left:0px;}
+
+/* .crud h2 { font-size:17px; padding:15px; padding-bottom:5px; padding-left:0px;} */
 
 /* .crud .field .value > a, .crud .field .value > a:link, .crud .field .value a:visited, .crud .field .value span { */
 /*   text-decoration:underline; */

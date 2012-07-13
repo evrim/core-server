@@ -5,7 +5,10 @@
 ;; -------------------------------------------------------------------------
 (deftable <manager:applications-table ()
   ((fqdn :label "FQDN")
-   (application-class :label "Application Class")))
+   (application-class :label "Application Class")
+   ;; (application-superclasses :label "SuperClasses"
+   ;; 			     :remote-type multiple-checkbox)
+   ))
 
 ;; -------------------------------------------------------------------------
 ;; Web Application CRUD
@@ -63,24 +66,9 @@
     :editable-p t :deletable-p t))
 
 
-(defcomponent <manager:dynamic-application-crud (<manager::%dynamic-application-crud)
-  ((_tab :host remote :initform (<core:tab))))
-
-(defmethod/local get-tab ((self <manager:dynamic-application-crud) tab)
-  (cond
-    ((equal tab "httpApplication")
-     ))
-  nil)
-
-(defmethod/remote init ((self <manager:dynamic-application-crud))
-  (call-next-method self)
-  (with-slots (instance) self
-    (with-slots (applicationSuperclasses) instance
-      (make-component (_tab self)
-		      :tabs (mapcar (lambda (super-class)
-				      (cons super-class
-					    (get-tab self super-class)))
-				    applicationSuperclasses)))))
+(defcomponent <manager:dynamic-application-crud (singleton-component-mixin
+						 <manager::%dynamic-application-crud)
+  ())
 
 ;; -------------------------------------------------------------------------
 ;; Web Application View
@@ -117,17 +105,13 @@
 (defmethod/lift dynamic-application.change-class ((self persistent-http-server)
 						  (instance dynamic-application/view)
 						  new-superclasses))
+(defmethod/lift dynamic-application.superclasses ((self dynamic-application/view)))
 
 (defun make-dynamic-application/view (&key web-application)
   (let ((class (symbol->js (class-name (class-of web-application))))
 	(registered-p (if (application.server web-application)
 			  t))
-	(supers (reduce0 (lambda (acc atom)
-			   (if (member (class-name atom) +superclasses+)
-			       (cons (symbol->js (class-name atom)) acc)
-			       acc))
-			 (reverse
-			  (class+.superclasses (class-of web-application))))))
+	(supers (dynamic-application.superclasses web-application)))
     (%make-dynamic-application/view
      :web-application web-application
      :application-class class
@@ -138,9 +122,8 @@
 ;; -------------------------------------------------------------------------
 ;; Applications Component
 ;; -------------------------------------------------------------------------
-(defcomponent <manager:applications (<core:table-with-crud
-				     <widget:simple-widget)
-  ()
+(defcomponent <manager:applications (<core:table-with-crud <widget:simple)
+  ((_tab :host remote :initform (<core:tab)))
   (:default-initargs :table-title "Applications"
     :table (<manager:applications-table)
     :crud (list (<manager:web-application-crud)
@@ -174,11 +157,46 @@
 (defmethod/cc make-view ((self <manager:applications) (app web-application))
   (_make-view self app (class-of app)))
 
+(defmethod/local get-tabs ((self <manager:applications)
+			   (instance web-application/view))
+  nil)
+
+(defmethod/local get-tabs ((self <manager:applications)
+			   (instance dynamic-application/view))
+  (let ((app (%web-application instance)))
+    (reduce0 (lambda (acc tab)
+	       (cond
+		 ((equal tab "httpApplication")
+		  (cons (cons tab
+			      (make-http-application/view
+			       :http-application (%%web-application instance)))
+			acc))
+		 ((equal tab "databaseServer")
+		  (cons (cons tab
+			      (make-database-server/view
+			       :database-server (%%web-application instance)))
+			acc))
+		 (t acc)))
+	     (dynamic-application.superclasses instance))))
+
 (defmethod/remote core-server::_make-crud-component ((self <manager:applications)
 						     instance)
-  (if (slot-value instance 'type-name)
-      (make-component (car (cdr (core-server::crud self))) :instance instance)
-      (make-component (car (core-server::crud self)) :instance instance)))
+  (let* ((_crud (if (slot-value instance 'type-name)
+		    (car (cdr (core-server::crud self)))
+		    (car (core-server::crud self))))
+	 (_crud (make-component _crud :instance instance))
+	 (_tabs (get-tabs self instance)))
+    (when _tabs
+      (let ((_tab (make-component (_tab self)
+				  :tabs (mapcar-cc
+					 (lambda (tab)
+					   (destructuring-bind (name c) tab
+					     (cons name (make-component c))))
+					 _tabs)
+				  :tab-title "Configuration")))
+	(add-class _tab "pad5")
+	(append _crud _tab)))
+    _crud))
 
 (defmethod/local get-instances ((self <manager:applications))
   (mapcar (lambda (app) (make-view self app))
@@ -205,13 +223,12 @@
 (defmethod/local update-instance ((self <manager:applications)
 				  (instance dynamic-application/view) args)
   (let* ((attributes (core-server::plist-to-alist (jobject.attributes args)))
-	 (supers (find 'core-server::application-superclasses attributes
-		       :key #'car))
-	 (attributes (remove 'core-server::application-superclasses attributes
-			     :key #'car)))
+	 (supers (cdr (find 'application-superclasses attributes :key #'car)))
+	 (attributes (core-server::alist-to-plist
+		      (remove 'application-superclasses attributes
+			      :key #'car))))
     (dynamic-application.change-class (application.server application)
-				      instance (cdr supers))
+				      instance supers)
     (make-view self (apply #'dynamic-application.update
 			   (application.server application)
-			   (cons instance
-				 (core-server::alist-to-plist attributes))))))
+			   (cons instance attributes)))))

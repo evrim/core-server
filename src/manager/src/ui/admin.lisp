@@ -36,8 +36,7 @@
 ;; -------------------------------------------------------------------------
 ;; Sites Component 
 ;; -------------------------------------------------------------------------
-(defcomponent administrators-component (<core:table-with-crud
-					<widget:simple-widget)
+(defcomponent administrators-component (<core:table-with-crud <widget:simple)
   ()
   (:default-initargs :table-title "Administrators"
     :table (admin-table)

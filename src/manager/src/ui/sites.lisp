@@ -38,7 +38,7 @@
 ;; -------------------------------------------------------------------------
 ;; Sites Component 
 ;; -------------------------------------------------------------------------
-(defcomponent sites-component (<core:table-with-crud <widget:simple-widget)
+(defcomponent sites-component (<core:table-with-crud <widget:simple)
   ()
   (:default-initargs
     :table-title "Sites" :table (sites-table) :crud (site-crud)

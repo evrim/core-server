@@ -22,11 +22,18 @@
 	     (:module :ui
 	     	      :serial t
 	     	      :components
-	     	      ((:file "applications")
+	     	      ((:file "info")
+		       (:file "server")
+		       (:file "applications")
+		       (:module :applications
+				:serial t
+				:components
+				((:file "http")
+				 (:file "database")))
 		       (:file "settings")
 		       (:file "sites")
 	     	       (:file "admin")
-	     	       (:file "main"))))))
+	     	       (:file "controller"))))))
   :depends-on (:arnesi+ :core-server)
   :serial t)
 

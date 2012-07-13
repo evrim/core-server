@@ -103,7 +103,8 @@
    (lambda (stream)
      (aif (query-session :user)
 	  (let ((manager (or (query-session :manager)
-			     (update-session :manager (make-controller self it)))))
+			     (update-session :manager
+					     (make-controller self it)))))
 	    (with-js (manager) stream
 	      (let ((ctor manager))
 		(add-on-load (lambda () (ctor null window.k))))))
@@ -139,6 +140,14 @@
 (defprint-object (self dynamic-application :identity t)
   (format t "~A" (web-application.fqdn self)))
 
+(defparameter +superclasses+ '(http-application database-server))
+(defmethod dynamic-application.superclasses ((self dynamic-application))
+  (reduce0 (lambda (acc atom)
+	     (if (member (class-name atom) +superclasses+)
+		 (cons (symbol->js (class-name atom)) acc)
+		 acc))
+	   (reverse (class+.superclasses (class-of self)))))
+
 (defmethod core-server::database.directory ((application dynamic-application))
   (ensure-directories-exist
    (merge-pathnames
@@ -147,7 +156,6 @@
     (bootstrap::home))))
 
 (defcrud dynamic-application)
-(defparameter +superclasses+ '(http-application database-server))
 (defmethod dynamic-application.find-class ((self persistent-http-server)
 					   class)
   (find-class (find class +superclasses+ :key #'symbol->js :test #'equal)))
@@ -155,10 +163,9 @@
 (deftransaction dynamic-application.change-class ((self persistent-http-server)
 						  (instance dynamic-application)
 						  new-superclasses)
-  (let* ((supers (cons
-		  (find-class 'dynamic-application)
-		  (mapcar (curry #'dynamic-application.find-class self)
-			  new-superclasses)))
+  (let* ((supers (cons (find-class 'dynamic-application)
+		       (mapcar (curry #'dynamic-application.find-class self)
+			       new-superclasses)))
 	 (args (reduce0 (lambda (acc slot)
 			  (core-server::with-slotdef (initarg name) slot
 			    (cons initarg
