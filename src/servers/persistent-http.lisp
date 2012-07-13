@@ -34,7 +34,6 @@
 
 (defmethod register ((self persistent-http-server)
 		     (application web-application))
-  (describe application)
   (when (web-application.persistent application)
     (register-to-database self application)))
 
