@@ -612,6 +612,7 @@
    ;; Classes
    #:database-server
    #:database
+   #:database.directory
 
    ;; Interface
    #:serialization-cache
