@@ -839,6 +839,7 @@
    #:http-application.password-of
    #:http-application.find-user
    #:defhandler
+   #:defhandler/static
    #:defhandler/js
    #:defurl
 
