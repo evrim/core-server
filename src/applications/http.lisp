@@ -914,7 +914,7 @@ provide query parameters inside URL as key=value"
 (defmacro defhandler/static (pathname url &optional application-class)
   (let ((xml (read-stream (make-html-stream (make-core-stream pathname)))))
     `(defhandler ,url ((self ,(or application-class 'http-application)))
-       (send/suspend ,(dom->lisp xml)))))
+       ,(dom->lisp xml))))
 
 ;; (defhandler/static #P"~/core-server/src/manager/wwwroot/index.html"
 ;;   "myproject.core")
