@@ -116,11 +116,12 @@
 (defatom lower-case? ()
   (and (> c 96) (< c 123)))
 
-;;;-----------------------------------------------------------------------------
+;;;---------------------------------------------------------------------------
 ;;; Parser
-;;;-----------------------------------------------------------------------------
+;;;---------------------------------------------------------------------------
 (eval-when (:compile-toplevel :execute :load-toplevel)
-  (defgeneric expand-parser (form expander stream &optional continue checkpoint)
+  (defgeneric expand-parser (form expander stream &optional continue
+				  checkpoint)
     (:documentation "special dsl for parsing"))
 
   (defmethod expand-parser ((form t) (expander function) (stream symbol)
@@ -131,13 +132,15 @@
 					  form))
        (read-stream ,stream)))
 
-  (defmethod expand-parser ((form operator) (expander function) (stream symbol)
-			      &optional (continue nil) (checkpoint nil))
+  (defmethod expand-parser ((form operator) (expander function)
+			    (stream symbol)
+			    &optional (continue nil) (checkpoint nil))
     (expand-grammar form expander stream continue checkpoint)))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defmacro defparser (name args &rest body)
-    "Parser rule defining macro that provides a common lexical environment for rules."
+    "Parser rule defining macro that provides a common lexical
+environment for rules."
     (with-unique-names (stream)
       (flet ((rule-args ()
 	       (if args
@@ -147,7 +150,8 @@
 	   (block rule-block
 	     (let ((cp (current-checkpoint ,stream)))
 	       (declare (ignorable cp))
-	       ,(expand-parser (walk-grammar `(:checkpoint ,@body)) #'expand-parser stream)
+	       ,(expand-parser (walk-grammar `(:checkpoint ,@body))
+			       #'expand-parser stream)
 	       nil)))))))
 
 (defmacalias defparser defrule)
@@ -227,8 +231,7 @@
     (:sci "%u")    
     (:type hex? f1)  (:type hex? f2) (:type hex? f3) (:type hex? f4)
     (:do (describe (list f1 f2 f3 f4)))
-    (:return 
-      ;;	     (+ (- f1 48) (* 8 (- f2 48)) (* 16 (- f3 48)) (* 32 (- f4 48)))
+    (:return ;;(+ (- f1 48) (* 8 (- f2 48)) (* 16 (- f3 48)) (* 32 (- f4 48)))
       (with-input-from-string (s (format nil "#x~C~C~C~C"
 					 (code-char f1) (code-char f2)
 					 (code-char f3) (code-char f4)))
@@ -241,67 +244,45 @@
 	       (octets-to-string acc :utf-8)
 	       acc)))
 
-;; (defparser quoted? ((value (make-accumulator :byte)) c b)
-;;   (:or
-;;    (:and
-;;     #\"
-;;     (:zom (:or
-;; 	   (:checkpoint
-;; 	    (:and #\\ #\"
-;; 		  (:do (push-atom #\" value))
-;; 		  (:commit)))
-;; 	   (:and #\" (:return (octets-to-string value :utf-8)))
-;; 	   (:and (:or ;;		  (:and (:utf-escaped? b c) (:collect b value))
-;; 		  ;;		  (:escaped? c)
-;; 		  (:type (or visible-char? space?) c))
-;; 		 (:collect c value)))))
-;;    (:and (:zom (:or ;;		(:and (:utf-escaped? b c) (:collect b value))
-;; 		(:escaped? c)
-;; 		(:type (or visible-char? space?) c))
-;; 	       (:collect c value))
-;; 	 (:return (octets-to-string value :utf-8)))))
-(defparser quoted? (c (acc (make-accumulator :byte)))
-  (:or (:and #\'
-	     (:zom (:or (:and (:seq "\\\'") (:do (setq c #.(char-code #\'))))
-			(:and (:not #\')
-			      (:or (:escaped? c)
-				   (:type octet? c)
-;;  				   (:type (or visible-char?
-;; 					      white-space?
-;; 					      carriage-return?
-;; 					      linefeed?)
-;; 					  c)
-				   )))
+(defparser quoted? (c acc identifier)
+  (:or (:and #\' (:do (setq identifier #.(char-code #\'))))
+       (:and #\" (:do (setq identifier #.(char-code #\")))))
+  (:or (:and (:if (eq identifier #.(char-code #\'))
+		  #\'
+		  #\")
+	     (:return ""))
+       (:and (:do (setq acc (make-accumulator :byte)))
+	     (:oom (:if (eq identifier #.(char-code #\'))
+			(:not #\')
+			(:not #\"))
+		   (:or (:and #\\ (:type octet? c))
+			(:escaped? c)
+			(:type octet? c))
 		   (:collect c acc))
-	     (:return (octets-to-string acc :utf-8)))
-       (:and #\"
-	     (:zom (:or (:and (:seq "\\\"") (:do (setq c #.(char-code #\"))))
-			(:and (:not #\")
-			      (:or (:escaped? c)
-				   (:type octet? c)
-;; 				   (:type (or visible-char?
-;; 					      white-space?
-;; 					      carriage-return?
-;; 					      linefeed?)
-;; 					  c)
-				   )))
-		   (:collect c acc))
-	     (:return (octets-to-string acc :utf-8)))
-       ;; (:and (:zom (:or (:escaped? c)
-;; 			(:type ;; (or visible-char?
-;; ;; 				   white-space?
-;; ;; 				   carriage-return?
-;; ;; 				   linefeed?)
-;; 			 octet?
-;; 			       c))
+	     (:return (octets-to-string acc :utf-8))))
+
+;; (defparser quoted? (c (acc (make-accumulator :byte)))
+;;   (:or (:and #\'
+;; 	     (:zom (:or (:and (:seq "\\\'") (:do (setq c #.(char-code #\'))))
+;; 			(:and (:not #\')
+;; 			      (:or (:escaped? c)
+;; 				   (:type octet? c))))
 ;; 		   (:collect c acc))
 ;; 	     (:return (octets-to-string acc :utf-8)))
-       ))
+;;        (:and #\"
+;; 	     (:zom
+;; 	      (:or
+;; 	       (:and (:seq "\\\"") (:do (setq c #.(char-code #\"))))
+;; 	       (:and (:not #\")
+;; 		     (:or (:escaped? c)
+;; 			  (:type octet? c))))
+;; 	      (:collect c acc))
+;; 	     (:return (octets-to-string acc :utf-8)))))
 
-(defparser parse-line? (c (acc (make-accumulator)))
-  (:zom (:or (:and #\Newline (:return acc))
-	     (:and (:type octet? c) (:collect c acc))))
-  (:return acc))
+  (defparser parse-line? (c (acc (make-accumulator)))
+    (:zom (:or (:and #\Newline (:return acc))
+	       (:and (:type octet? c) (:collect c acc))))
+    (:return acc)))
 
 (defparser lines? (c (acc (make-accumulator)) lst)
   (:zom (:or (:and #\Newline (:do (push acc lst)
