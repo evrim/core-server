@@ -1323,7 +1323,8 @@
 	   #:simple-widget-map #:simple-widget-map/anonymous
 	   #:simple-controller #:simple-controller/unauthorized
 	   #:simple-controller/anonymous
-	   #:simple-controller/authorized))
+	   #:simple-controller/authorized
+	   #:login))
 
 (defpackage :<atom
   (:nicknames :tr.gen.core.server.atom)

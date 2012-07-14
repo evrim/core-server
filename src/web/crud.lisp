@@ -211,12 +211,14 @@
 (defmethod/remote destroy ((self <core:crud))
   (remove-css (crud-css self))
   (remove-class self "crud")
+  (remove-class self "core")
   (remove-child-nodes self)
   (call-next-method self))
 
 (defmethod/remote init ((self <core:crud))
   (load-css (crud-css self))
   (add-class self "crud")
+  (add-class self "core")
   (append self (<:h2 (title self)))
   (append self (setf (_template self) (view-template self))))
 

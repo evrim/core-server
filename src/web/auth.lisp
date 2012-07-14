@@ -6,16 +6,16 @@
 ;; --------------------------------------------------------------------------
 ;; Login Box
 ;; --------------------------------------------------------------------------
-(defcomponent login-box (<:div callable-component)
+(defcomponent <core:login (<:div callable-component)
   ((_password-input :host remote
 		    :initform (<core:password-input  :min-length 5))
    (_username-input :host remote :initform (<core:required-value-input)))
   (:default-initargs :id "loginBox"))
 
-(defmethod/local answer-component ((self login-box) arg)
+(defmethod/local answer-component ((self <core:login) arg)
   (answer arg))
 
-(defmethod/remote template ((self login-box))
+(defmethod/remote template ((self <core:login))
   (let ((_username (make-component (_username-input self)
 				   :class-name "text"
 				   :type "text" :name "username"
@@ -27,10 +27,10 @@
 				    :type "password" :name "password"
 				    :validation-span-id "password-validation")))
     (list
-     (<:form :onsubmit
-	     (lifte (answer-component self
-				      (cons (get-input-value _username)
-					    (get-input-value _password))))
+     (<:form :onsubmit (lifte
+			(answer-component self (cons
+						(get-input-value _username)
+						(get-input-value _password))))
 	     (with-field _username
 	       (<:span :class "validation"
 		       :id "username-validation" "Enter your username"))
@@ -41,10 +41,10 @@
 	       (<:input :type "submit" :class "button"
 			:value "login" :disabled t))))))
 
-(defmethod/remote destroy ((self login-box))
+(defmethod/remote destroy ((self <core:login))
   (remove-class self "core"))
 
-(defmethod/remote init ((self login-box))
+(defmethod/remote init ((self <core:login))
   (add-class self "core")
   (mapcar (lambda (a) (.append-child self a)) (template self)))
 
