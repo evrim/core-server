@@ -1246,8 +1246,8 @@
 ;; ----------------------------------------------------------------------------
 ;; Serialization Codomain Package
 ;; ----------------------------------------------------------------------------
-(defpackage :tr.gen.core.tags.db
-  (:nicknames :<db)
+(defpackage :<db
+  (:nicknames :tr.gen.core.tags.db)
   (:export #:null #:true #:symbol #:character #:integer #:string
 	   #:ratio #:complex #:float #:vector #:cons #:hash-table
 	   #:hash-table-entry #:hash-table-key #:hash-table-value
@@ -1257,8 +1257,8 @@
 ;; -------------------------------------------------------------------------
 ;; HTML Codomain
 ;; -------------------------------------------------------------------------
-(defpackage :tr.gen.core.server.html
-  (:nicknames :< :<html :core-server.html)
+(defpackage :<
+  (:nicknames :tr.gen.core.server.html :<html :core-server.html)
   (:use :core-server)
   (:export #:a #:abbr #:acronym #:address #:area #:b #:base #:bdo #:big
 	   #:blockquote #:body #:br #:button #:caption #:cite #:code #:col
@@ -1274,8 +1274,8 @@
 ;; -------------------------------------------------------------------------
 ;; XML Schema CoDomain
 ;; -------------------------------------------------------------------------
-(defpackage :tr.gen.core.server.xml-schema
-  (:nicknames :<xs :core-server.xml-schema)
+(defpackage :<xs
+  (:nicknames :tr.gen.core.server.xml-schema :core-server.xml-schema)
   (:export #:schema #:element #:complex-type #:sequence #:any
 	   #:any-attribute #:annotation #:documentation #:complex-content
 	   #:extension #:unique #:selector #:field #:choice #:attribute
@@ -1285,29 +1285,29 @@
 ;; -------------------------------------------------------------------------
 ;; JSON Codomain
 ;; -------------------------------------------------------------------------
-(defpackage :tr.gen.core.server.json
-  (:nicknames :<json :core-server.json)
+(defpackage :<json
+  (:nicknames :tr.gen.core.server.json :core-server.json)
   (:export #:string #:number #:boolean #:array #:true #:false #:nil
 	   #:object #:closure #:hash-table #:undefined #:symbol
 	   #:instance #:json))
 
-(defpackage :tr.gen.core.server.markup
-  (:nicknames :<core-server :core-server.markup)
+(defpackage :<core-server
+  (:nicknames :tr.gen.core.server.markup :core-server.markup)
   (:use :core-server)
   (:export #:markup #:markup+ #:response #:authentication #:user))
 
-(defpackage :tr.gen.core.server.widget
-  (:nicknames :<widget :core-server.widget)
+(defpackage :<widget
+  (:nicknames :tr.gen.core.server.widget :core-server.widget)
   (:use :core-server)
   (:export #:simple #:simple-content #:simple-menu
 	   #:tab))
 
-(defpackage :tr.gen.core.server.rss
-  (:nicknames :<rss :core-server.rss)
+(defpackage :<rss
+  (:nicknames :tr.gen.core.server.rss :core-server.rss)
   (:use :core-server))
 
-(defpackage :tr.gen.core.server.tags
-  (:nicknames :<core)
+(defpackage :<core
+  (:nicknames :tr.gen.core.server.tags)
   (:use :cl)
   (:export #:input #:redirect #:table
 	   #:validating-input #:default-value-input
@@ -1325,8 +1325,8 @@
 	   #:simple-controller/anonymous
 	   #:simple-controller/authorized))
 
-(defpackage :tr.gen.core.server.atom
-  (:nicknames :<atom)
+(defpackage :<atom
+  (:nicknames :tr.gen.core.server.atom)
   (:use :cl)
   (:export #:feed #:author #:category #:contributor
 	   #:generator #:icon #:id #:link #:logo #:rights
@@ -1335,8 +1335,8 @@
 	   #:rss #:channel #:description #:pub-date #:language
 	   #:cloud #:image #:url #:item #:guid))
 
-(defpackage :tr.gen.core.server.gphoto
-  (:nicknames :<gphoto)
+(defpackage :<gphoto
+  (:nicknames :tr.gen.core.server.gphoto)
   (:use :cl)
   (:export #:albumid #:id #:max-photos-per-album #:nickname
 	   #:quotacurrent #:quotalimit #:thumbnail #:user
@@ -1350,8 +1350,8 @@
 	   #:weight #:allow-prints #:allow-downloads #:version
 	   #:position #:client #:license #:image-version))
 
-(defpackage :tr.gen.core.server.media
-  (:nicknames :<media)
+(defpackage :<media
+  (:nicknames :tr.gen.core.server.media)
   (:use :cl)
   (:export #:group #:content #:rating #:title #:description
 	   #:keywords #:thumbnail #:category #:hash #:player
@@ -1361,13 +1361,13 @@
 	   #:license #:sub-title #:peer-link #:location #:rights #:scenes
 	   #:scene))
 
-(defpackage :tr.gen.core.server.open-search
-  (:nicknames :<open-search)
+(defpackage :<open-search
+  (:nicknames :tr.gen.core.server.open-search)
   (:use :cl)
   (:export #:total-results :start-index :items-per-page))
 
-(defpackage :tr.gen.core.server.facebook
-  (:nicknames :<fb)
+(defpackage :<fb
+  (:nicknames :tr.gen.core.server.facebook)
   (:use :cl)
   (:export #:exception #:exception.code #:exception.type
 	   #:exception.message #:funkall #:fetch
@@ -1376,25 +1376,25 @@
 	   #:groups #:checkins #:videos-uploaded
 	   #:authenticate))
 
-(defpackage :tr.gen.core.server.openid
-  (:nicknames :<openid)
+(defpackage :<openid
+  (:nicknames :tr.gen.core.server.openid)
   (:use :cl)
   (:export #:funkall #:associate #:request-authentication
 	   #:verify-authentication))
 
-(defpackage :tr.gen.core.server.google
-  (:nicknames :<google)
+(defpackage :<google
+  (:nicknames :tr.gen.core.server.google)
   (:use :cl)
   (:export #:associate #:request-authentication
 	   #:verify-authentication #:extract-authentication))
 
-(defpackage :tr.gen.core.server.twitter
-  (:nicknames :<twitter)
+(defpackage :<twitter
+  (:nicknames :tr.gen.core.server.twitter)
   (:use :cl)
   (:export #:funkall #:get-user-lists))
 
-(defpackage :tr.gen.core.server.wordpress
-  (:nicknames :<wordpress :<wp)
+(defpackage :<wp
+  (:nicknames :<wordpress :tr.gen.core.server.wordpress)
   (:use :cl)
   (:export #:wxr_version #:base_site_url #:base_blog_url #:category
 	   #:category_nicename #:tag #:tag_slug #:tag_name #:term
@@ -1411,24 +1411,24 @@
 	   #:author #:author_id #:author_email #:author_display_name
 	   #:author_first_name #:author_last_name #:author_login))
 
-(defpackage :tr.gen.core.server.content
-  (:nicknames :<content)
+(defpackage :<content
+  (:nicknames :tr.gen.core.server.content)
   (:use :cl)
   (:export #:encoded))
 
-(defpackage :tr.gen.core.server.dc
-  (:nicknames :<dc)
+(defpackage :<dc
+  (:nicknames :tr.gen.core.server.dc)
   (:use :cl)
   (:export #:creator))
 
-(defpackage :tr.gen.core.server.excerpt
-  (:nicknames :<excerpt)
+(defpackage :<excerpt
+  (:nicknames :tr.gen.core.server.excerpt)
   (:use :cl)
   (:export #:encoded))
 
 ;; -------------------------------------------------------------------------
 ;; Rest Codomain
 ;; -------------------------------------------------------------------------
-(defpackage :tr.gen.core.server.rest
-  (:nicknames :<rest :core-server.rest)
+(defpackage :<rest
+  (:nicknames :tr.gen.core.server.rest :core-server.rest)
   (:export #:find #:list #:add #:update #:delete))

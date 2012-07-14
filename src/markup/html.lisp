@@ -174,10 +174,10 @@
 	     onmouseover onmouseout)
 (defhtml-tag <:legend :core :event :i18n accesskey onmouseover onmouseout)
 (defhtml-tag <:li :core :event :i18n onmouseover onmouseout)
-(defhtml-tag <:link :core :event :i18n charset href hreflang media rel
-	     rev type)
+(defhtml-empty-tag <:link :core :event :i18n charset href hreflang media rel
+		   rev type)
 (defhtml-tag <:map :core :event :i18n name onmouseover onmouseout)
-(defhtml-tag <:meta :i18n content http--equiv name scheme)
+(defhtml-empty-tag <:meta :i18n content http--equiv name scheme)
 (defhtml-tag <:noframes :core :event :i18n)
 (defhtml-tag <:noscript :core :event :i18n)
 (defhtml-tag <:object :core :event :i18n archive classid codebase codetype
@@ -451,10 +451,9 @@
 ;; -------------------------------------------------------------------------
 (defgeneric dom->lisp (html-element &optional k)
   (:documentation "Html to Javascript transformator"))
-(defmethod dom->lisp ((element t) &optional (k #'dom2lisp))
+(defmethod dom->lisp ((element t) &optional (k #'dom->lisp))
   (declare (ignore k))
-  nil)
-
+  element)
 
 (defmethod dom->lisp ((element xml) &optional (k #'dom->lisp))
   (let* ((ctor (class+.ctor-name (class-of element)))
@@ -465,7 +464,9 @@
     `(,(intern name package)
       ,@(reduce0 (lambda (acc slot)
 		   (with-slotdef (name initarg) slot
-		     (cons initarg (cons (slot-value element name) acc))))
+		     (aif (slot-value element name)
+			  (cons initarg (cons it acc))
+			  acc)))
 		 (class+.remote-slots (class-of element)))
       ,@(mapcar (rcurry k (curry #'funcall k)) (xml.children element)))))
 

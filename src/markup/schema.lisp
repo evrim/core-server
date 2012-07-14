@@ -14,14 +14,13 @@
   ())
 
 (defmacro defxs-tag (name &rest attributes)
-  `(progn
-     (defclass+ ,name (xml-schema-element)
-       (,@(mapcar (lambda (attr) (list attr :print nil :host 'remote))
-		  attributes))
-       (:metaclass xml-schema+)
-       (:tag ,@(string-downcase (symbol-name name)))
-       (:attributes ,@attributes))
-     (find-class+ ',name)))
+  `(defclass+ ,name (xml-schema-element)
+     (,@(mapcar (lambda (attr) (list attr :host 'remote :print t)) attributes))
+     (:metaclass xml-schema+)
+     (:tag ,@(string-downcase (symbol-name name)))
+     (:namespace ,@(string-downcase
+		    (subseq (package-name (symbol-package name)) 1)))
+     (:attributes ,@attributes)))
 
 (defxs-tag <xs:schema target-namespace element-form-default final-default block-default
 	   attribute-form-default)
