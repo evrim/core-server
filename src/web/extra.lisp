@@ -6,7 +6,7 @@
 ;; -------------------------------------------------------------------------
 ;; Simple Digital Clock
 ;; -------------------------------------------------------------------------
-(defcomponent <core:simple-clock ()
+(defcomponent <core:simple-clock (<:div cached-component)
   ((_update-thread :host remote)))
 
 (defmethod/remote update-me ((self <core:simple-clock))

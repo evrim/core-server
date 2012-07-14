@@ -1,5 +1,8 @@
 (in-package :core-server)
 
+;; -------------------------------------------------------------------------
+;; Tab Component
+;; -------------------------------------------------------------------------
 (defcomponent <core:tab (<:div)
   ((tabs :host remote)
    (hilight-class :host remote :initform "hilight")
@@ -41,7 +44,7 @@
     (let* ((content (_content self))
 	   (height (parse-int (slot-value (get-style content) 'height)))
 	   (max-height (*math.max (_height self) height)))
-      (_debug (list "foo" height (_height self) max-height (_offset self)))
+      ;; (_debug (list "foo" height (_height self) max-height (_offset self)))
       (setf (slot-value (slot-value self 'style) 'min-height)
 	    (+ (+ max-height (_offset self)) "px")
 	    (_height self) max-height))))
