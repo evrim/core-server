@@ -388,8 +388,10 @@
 ;; 	     expand)
     )
    (t
-    `(:and ,(symbol-to-js operator) "("
-	   ,(seperated-by ", " (mapcar (rcurry expand expand) arguments))
+    `(:and ,(if (member operator +js-free-variables+)
+		`(:json! ,operator)
+		(symbol-to-js operator))
+	   "(" ,(seperated-by ", " (mapcar (rcurry expand expand) arguments))
 	   ")"))))
 
 (defjavascript-expander lambda-application-form (operator arguments)
