@@ -470,6 +470,9 @@
 		 (class+.remote-slots (class-of element)))
       ,@(mapcar (rcurry k (curry #'funcall k)) (xml.children element)))))
 
+(defun html.load-from-file (pathname)
+  (read-stream (make-xml-stream (make-core-stream pathname))))
+
 
 ;; Core Server: Web Application Server
 
