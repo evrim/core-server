@@ -106,6 +106,13 @@
     /* border:2px inset #8A0000; */
 }
 .core span.invalid { color:#8A0000; }
-.core h2 { padding:10px; font-size:17px; font-weight:bold; }
+.core h2 { 
+    padding:10px;
+    padding-bottom:2px;
+    padding-left:2px;
+    font-size:15px;
+    font-weight:bold;
+    /* font-family: Verdana; */
+}
 .twitter a.twtr-join-conv {font-size:12px !important;}
 img.core-loading { position:absolute; top:10px; right:5px; }

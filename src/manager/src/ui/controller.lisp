@@ -8,7 +8,10 @@
 	      "Information regarding to the current instance"
 	      (cons "content" (<manager:server-info)))
 	(list "server" "Server" "Manage current core server instance"
-	      (cons "content" (<manager:server)))
+	      (cons "left1" (<manager:server-info))
+	      (cons "left2" (<manager:socket-server-info))
+	      (cons "right1" (<manager:database-server-info))
+	      (cons "right2" (<manager:mail-sender-info)))
 	(list "apps" "Applications"
 	      "Applications currently deployed on this server"
 	      (cons "content" (<manager:applications)))

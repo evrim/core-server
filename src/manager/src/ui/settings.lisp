@@ -26,7 +26,8 @@
 (defcomponent <manager:settings (<widget:tab)
   ((_facebook-crud :host remote :initform (facebook-app-crud))
    (_google-crud :host remote :initform (google-app-crud)))
-  (:default-initargs :tabs '("Facebook API" "Google API")))
+  (:default-initargs :tabs '("Facebook API" "Google API")
+    :tab-title "Server Settings"))
 
 (defmethod/local get-config ((self <manager:settings) tab)
   (cond
@@ -51,7 +52,7 @@
     ((equal tab "Google API")
      (setf (database.get application 'google) nil))))
 
-(defmethod/remote make-tab ((self <manager:settings) tab)
+(defmethod/remote core-server::make-tab ((self <manager:settings) tab)
   (let* ((_config (get-config self tab))
 	 (_crud
 	  (cond
@@ -71,10 +72,12 @@
     _crud))
 
 (defmethod/remote show-tab ((self <manager:settings) tab)
-  (let ((_tab (make-tab self tab)))
-    (with-slots (_content) self
-      (replace-node _content (setf (_content self) _tab))
-      (call-next-method self tab))))
+  (call-next-method self tab)
+  ;; (let ((_tab (make-tab self tab)))
+  ;;   (with-slots (_content) self
+  ;;     (replace-node _content (setf (_content self) _tab))
+  ;;     (call-next-method self tab)))
+  )
 
 (defmethod/remote init ((self <manager:settings))
   (call-next-method self))

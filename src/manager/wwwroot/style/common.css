@@ -45,6 +45,7 @@ ul.inline li { display:inline; }
 .text-left {text-align:left;}
 .text-right {text-align:right;}
 .text-center {text-align:center;}
+.width-50p {width:50%;}
 .width-70p {width:70%;}
 .width-30p {width:30%;}
 .width-100p {width:100%;}

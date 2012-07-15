@@ -73,11 +73,30 @@
 ;; -------------------------------------------------------------------------
 ;; Index Loop
 ;; -------------------------------------------------------------------------
+
+;; Uncomment below macro and M-x slime-macroexpand-1-inplace
+;; You will see similar to below defhandler.
+;;(defhandler/static #P"~/core-server/src/manager/wwwroot/index.html" "index.foo")
+
+
+;; (defhandler/static #P"~/core-server/src/manager/wwwroot/index.html" "index.foo")
+
+;; (DEFHANDLER "index.mtml" ((SELF HTTP-APPLICATION))
+;;   (destructuring-bind (username password) (SEND/SUSPEND
+;; 					    (index.foo self +context+))
+;;     (let ((admin (admin.find self :username username)))
+;;       (cond
+;; 	((and admin (equal (admin.password admin) password))
+;; 	 (continue/js
+;; 	  (lambda (self k)
+;; 	    (k (setf window.location "manager.foo")))))
+;; 	(t nil)))))
+
 (defhandler "index\.core" ((self manager-application))
   (destructuring-bind (username password)
       (javascript/suspend
        (lambda (stream)
-	 (let ((box (core-server::login-box))
+	 (let ((box (<core:login))
 	       (clock (<core:simple-clock)))
 	   (with-js (box clock) stream
 	     (let ((ctor box)

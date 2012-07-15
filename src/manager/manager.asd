@@ -28,8 +28,7 @@
 		       (:module :applications
 				:serial t
 				:components
-				((:file "http")
-				 (:file "database")))
+				((:file "http")))
 		       (:file "settings")
 		       (:file "sites")
 	     	       (:file "admin")
