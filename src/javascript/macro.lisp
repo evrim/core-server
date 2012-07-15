@@ -157,6 +157,31 @@
 (defjsmacro with-field (label input &optional validation)
   (macroexpand-1 `(with-field ,label ,input ,validation)))
 
+
+;; -------------------------------------------------------------------------
+;; Rebinding-js
+;; -------------------------------------------------------------------------
+(defmacro rebinding-js (vars stream &body body)
+  (let ((vars (mapcar #'ensure-list vars)))
+    `(let (,@(reduce0 (lambda (acc a)
+			(if (null (cdr a))
+			    acc
+			    (cons a acc)))
+		      (reverse vars)))
+       (with-js ,(mapcar #'car vars) ,stream
+	 (let ,(mapcar (lambda (a) (list (car a) (car a))) vars)
+	   (add-on-load
+	    (lambda ()
+	      ,@body)))))))
+
+;; -------------------------------------------------------------------------
+;; Rebinding-js/cc
+;; -------------------------------------------------------------------------
+(defmacro rebinding-js/cc (vars stream &body body)
+  `(rebinding-js ,vars ,stream
+     (with-call/cc ,@body)))
+
+
 ;; -------------------------------------------------------------------------
 ;; Bookmarklet Macro
 ;; -------------------------------------------------------------------------
