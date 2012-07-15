@@ -167,14 +167,14 @@ that has set before"
     nil)
 
   (defmethod http-application+.handlers ((self http-application+))
-    (uniq (nreverse
-	   (copy-list
-	    (reduce #'append
-		    (mapcar (rcurry #'slot-value 'handlers)
-			    (filter (lambda (a)
-				      (if (typep a 'http-application+) a))
-				    (class-superclasses self))))))
-	  :key #'car))
+    (uniq 
+     (copy-list
+      (reduce #'append
+	      (mapcar (rcurry #'slot-value 'handlers)
+		      (filter (lambda (a)
+				(if (typep a 'http-application+) a))
+			      (class-superclasses self)))))
+     :key #'car))
 
   (defmethod find-handler ((self http-application+) method-name)
     (find method-name (http-application+.handlers self) :key #'car))
