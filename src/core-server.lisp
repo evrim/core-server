@@ -257,6 +257,8 @@
    #:js*
    #:symbol->js
    #:with-js
+   #:rebinding-js
+   #:rebinding-js/cc
    #:jambda
    #:defrender/js
    #:defun/javascript
