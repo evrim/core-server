@@ -148,3 +148,71 @@
   (<:html
    (<:body
     (<:h1 "Hello " (car (query-session :user)) "!"))))
+
+
+
+;; PART 2
+;; http://labs.core.gen.tr/#web-handlers-2
+
+(defun/cc %write-page (stream)
+  (let ((clock (<core:simple-clock))
+	(login (<core:login)))
+    (with-js (clock login) stream
+      (let ((clock clock) (login login))
+	(add-on-load
+	 (lambda ()
+	   (clock (document.get-element-by-id "clock")
+		  (lambda (clock)
+		    (login (document.get-element-by-id "login")
+			   (lambda (login)
+			     (_debug "starting")))))))))))
+
+;; See src/javascript/macro.lisp
+;;
+;; (defmacro rebinding-js (vars stream &body body)
+;;   (let ((vars (mapcar #'ensure-list vars)))
+;;     `(let (,@(reduce0 (lambda (acc a)
+;; 			(if (null (cdr a))
+;; 			    acc
+;; 			    (cons a acc)))
+;; 		      (reverse vars)))
+;;        (with-js ,(mapcar #'car vars) ,stream
+;; 	 (let ,(mapcar (lambda (a) (list (car a) (car a))) vars)
+;; 	   (add-on-load
+;; 	    (lambda ()
+;; 	      ,@body)))))))
+
+(defun/cc %%write-page (stream)
+  (rebinding-js ((clock (<core:simple-clock)) (login (<core:login))) stream
+      (clock (document.get-element-by-id "clock")
+	     (lambda (clock)
+	       (login (document.get-element-by-id "login")
+		      (lambda (login)
+			(_debug "starting")))))))
+
+;; See src/javascript/macro.lisp
+;; (defmacro rebinding-js/cc (vars stream &body body)
+;;   `(rebinding-js ,vars ,stream
+;;      (with-call/cc ,@body)))
+
+(defun/cc %%%write-page (stream)
+  (let ((clock (<core:simple-clock)))
+    (rebinding-js/cc (clock (login (<core:login))) stream
+      (call/cc clock (document.get-element-by-id "clock"))
+      (call/cc login (document.get-element-by-id "login")))))
+
+(defhandler "index\.core" ((self web-handlers-example))
+  (destructuring-bind (username password) (javascript/suspend #'%%%write-page)
+    (flet ((get-user ()
+	     (let ((user (assoc username +users+ :test #'equal)))
+	       (and user (equal password (cdr user))
+		    user))))
+      (aif (get-user)
+	   (continue/js
+	    (progn
+	      (update-session :user it)
+	      (lambda (self k)
+		(k
+		 (setf window.location.href "homepage.html")))))
+	   (continue/js
+	    (lambda (self k) (k nil)))))))
