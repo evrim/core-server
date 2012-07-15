@@ -388,9 +388,7 @@
 ;; 	     expand)
     )
    (t
-    `(:and ,(if (member operator +js-free-variables+)
-		`(:json! ,operator)
-		(symbol-to-js operator))
+    `(:and ,(symbol-to-js operator)
 	   "(" ,(seperated-by ", " (mapcar (rcurry expand expand) arguments))
 	   ")"))))
 
