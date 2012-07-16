@@ -219,7 +219,7 @@ is needed in some systems like CVS"
   (format t "+-------------------------------------------------+~%")
   (ecase (repo-type self)
     (cvs (cvs :repo (repo self) :module (module self) :target (name self)))
-    (darcs (darcs :repo (repo self) :target (target-directory self) :partial t))
+    (darcs (darcs :repo (repo self) :target (target-directory self) :lazy t))
     (svn (svn :repo (repo self) :target (target-directory self)))
     (tar (tarball :repo (repo self) :target (target-directory self)))))
 
