@@ -44,6 +44,24 @@
 	   nil))))
 
 ;; ----------------------------------------------------------------------------
+;; Git
+;; ----------------------------------------------------------------------------
+(defcommand git (shell)
+  ((op :host local :initform "clone")
+   (repo :host local :initform nil)
+   (target :host local :initform nil))
+  (:default-initargs :cmd (whereis "git")))
+
+(defmethod render-arguments ((self git))
+  (cons (git.op self)
+	(cond
+	  ((equal (git.op self) "clone")
+	   (if (or (null (git.repo self)) (null (git.target self)))
+	       (error "Please specify repo/target."))
+	   (list (git.repo self) (git.target self)))
+	  (t (error "Not implemented.")))))
+
+;; ----------------------------------------------------------------------------
 ;; SVN
 ;; ----------------------------------------------------------------------------
 (defcommand svn (shell)
