@@ -220,6 +220,7 @@ is needed in some systems like CVS"
   (ecase (repo-type self)
     (cvs (cvs :repo (repo self) :module (module self) :target (name self)))
     (darcs (darcs :repo (repo self) :target (target-directory self) :lazy t))
+    (git (git :repo (repo self) :target (target-directory self)))
     (svn (svn :repo (repo self) :target (target-directory self)))
     (tar (tarball :repo (repo self) :target (target-directory self)))))
 
