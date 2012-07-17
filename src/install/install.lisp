@@ -568,11 +568,11 @@ case \"$1\" in
         sleep 1
         echo \"now!\"
 	if [ -z ${STY+1} ]; then
-            $(lookup screen) -c /dev/null -dmS core-server \
-		$(lookup sbcl) --dynamic-space-size $MEMSIZE \
+            $(lookup screen) -c /dev/null -dmS core-server \\
+		$(lookup sbcl) --dynamic-space-size $MEMSIZE \\
 		--load $CONFIGFILE
 	    else
-	    $(lookup sbcl) --dynamic-space-size $MEMSIZE \
+	    $(lookup sbcl) --dynamic-space-size $MEMSIZE \\
 		--load $CONFIGFILE
 	fi
         ;;
@@ -764,11 +764,11 @@ case \"$1\" in
         sleep 1
         echo \"now!\"
 	if [ -z ${STY+1} ]; then
-            $(lookup screen) -c /dev/null -dmS core-server \
-		$(lookup sbcl) --dynamic-space-size $MEMSIZE \
+            $(lookup screen) -c /dev/null -dmS core-server \\
+		$(lookup sbcl) --dynamic-space-size $MEMSIZE \\
 		--load $CONFIGFILE
 	    else
-	    $(lookup sbcl) --dynamic-space-size $MEMSIZE \
+	    $(lookup sbcl) --dynamic-space-size $MEMSIZE \\
 		--load $CONFIGFILE
 	fi
         ;;
