@@ -533,7 +533,7 @@ that has set before"
   "Executes 'body' with HTTP context bind to 'context'"
   `(with-call/cc
      (let ((+context+ ,context))
-       (declare (special +context+))
+       ;; (declare (special +context+))
        ,@body)))
 
 (defmethod %scan-uri ((application http-application) (handler-name symbol)
@@ -568,9 +568,8 @@ that has set before"
 	 (defmethod ,handler-symbol ((,application ,application-class)
 				     (,context http-context))
 	   (with-context ,context
-	     (with-html-output (http-response.stream
-				(context.response +context+))
-	       (with-query ,queries (context.request ,context)
+	     (with-html-output (http-response.stream (context.response +context+))
+	       (with-query ,queries (context.request  +context+)
 		 ,(if url-arguments
 		      (with-unique-names (result)
 			`(let ((,result (%scan-uri ,application
@@ -663,8 +662,8 @@ executing 'body'"
 			(assert (not (null req)))
 			(assert (not (null rep)))
 			(let ((+context+ ,context))
-			  (setf (context.request ,context) req
-				(context.response ,context) rep)
+			  (setf (context.request +context+) req
+				(context.response +context+) rep)
 			  (with-query ,(mapcar (lambda (param)
 						 (reverse
 						  (cons (car param)
