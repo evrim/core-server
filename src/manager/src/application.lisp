@@ -73,46 +73,29 @@
 ;; -------------------------------------------------------------------------
 ;; Index Loop
 ;; -------------------------------------------------------------------------
-
-;; Uncomment below macro and M-x slime-macroexpand-1-inplace
-;; You will see similar to below defhandler.
-;;(defhandler/static #P"~/core-server/src/manager/wwwroot/index.html" "index.foo")
-
-
-;; (defhandler/static #P"~/core-server/src/manager/wwwroot/index.html" "index.foo")
-
-;; (DEFHANDLER "index.mtml" ((SELF HTTP-APPLICATION))
-;;   (destructuring-bind (username password) (SEND/SUSPEND
-;; 					    (index.foo self +context+))
-;;     (let ((admin (admin.find self :username username)))
-;;       (cond
-;; 	((and admin (equal (admin.password admin) password))
-;; 	 (continue/js
-;; 	  (lambda (self k)
-;; 	    (k (setf window.location "manager.foo")))))
-;; 	(t nil)))))
+(defun/cc %make-index-controller (application)
+  (authorize application (make-anonymous-user)
+	     (<core:simple-controller :default-page "index"
+	       (<core:simple-page :name "index"
+		(<core:simple-widget-map :selector "login"
+					 :widget (<core:login))
+		(<core:simple-widget-map :selector "clock"
+					 :widget (<core:simple-clock))))))
 
 (defhandler "index\.core" ((self manager-application))
   (destructuring-bind (username password)
       (javascript/suspend
        (lambda (stream)
-	 (let ((box (<core:login))
-	       (clock (<core:simple-clock)))
-	   (with-js (box clock) stream
-	     (let ((ctor box)
-		   (cl clock))
-	       (add-on-load
-		(lambda ()
-		  (ctor (document.get-element-by-id "login")
-			(lambda (result)
-			  (cl (document.get-element-by-id "clock" window.k)))))))))))
+	 (let ((controller (%make-index-controller self)))
+	   (rebinding-js/cc (controller) stream
+	     (controller nil)))))
     (continue/js
      (let ((admin (admin.find self :username username)))
        (cond
-	 ((and admin (equal (admin.password admin) password))
-	  (prog1 (lambda (self k) (k (setf window.location "manager.html")))
-	    (update-session :user admin)))
-	 (t nil))))))
+    	 ((and admin (equal (admin.password admin) password))
+    	  (prog1 (lambda (self k) (k (setf window.location "manager.html")))
+    	    (update-session :user admin)))
+    	 (t (lambda (self k) (k nil))))))))
 
 ;; -------------------------------------------------------------------------
 ;; Main Manager Loop
@@ -122,16 +105,14 @@
    (lambda (stream)
      (aif (query-session :user)
 	  (let ((manager (or (query-session :manager)
-			     (update-session :manager
-					     (make-controller self it)))))
-	    (with-js (manager) stream
-	      (let ((ctor manager))
-		(add-on-load (lambda () (ctor null window.k))))))
-	  (with-js () stream
+			     (update-session :manager (make-controller self it)))))
+	    (rebinding-js/cc (manager) stream
+	      (manager nil)))
+	  (with-js () stream ;; Unauthorized
 	    (setf window.location "index.html"))))))
 
 (defhandler "auth\.core" ((self manager-application) (reply-to "reply-to")
-			(action "action") (mode "mode"))
+			  (action "action") (mode "mode"))
   (<:html
    (<:head
     (<:title "Core Server - http://labs.core.gen.tr/")
