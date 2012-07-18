@@ -18,7 +18,7 @@
 (defmethod/remote destroy ((self <core:simple-clock))
   (clear-timeout (_update-thread self))
   (delete-slot self '_update-thread)
-  (remove-class "core-clock-widget")
+  (remove-class self "core-clock-widget")
   (call-next-method self))
 
 (defmethod/remote init ((self <core:simple-clock))
