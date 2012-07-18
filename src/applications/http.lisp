@@ -567,20 +567,18 @@ that has set before"
 			',handler-symbol ,url))
 	 (defmethod ,handler-symbol ((,application ,application-class)
 				     (,context http-context))
-	   (prog1 (with-context ,context
-		    (with-html-output (http-response.stream
-				       (context.response +context+))
-		      (with-query ,queries (context.request ,context)
-			,(if url-arguments
-			     (with-unique-names (result)
-			       `(let ((,result (%scan-uri ,application
-							  ',handler-symbol
-							  +context+)))
-				  (destructuring-bind ,url-arguments ,result 
-				    ,@body)))
-			     `(progn ,@body)))))
-	     (setf (context.request ,context) nil
-		   (context.response ,context) nil)))))))
+	   (with-context ,context
+	     (with-html-output (http-response.stream
+				(context.response +context+))
+	       (with-query ,queries (context.request ,context)
+		 ,(if url-arguments
+		      (with-unique-names (result)
+			`(let ((,result (%scan-uri ,application
+						   ',handler-symbol
+						   +context+)))
+			   (destructuring-bind ,url-arguments ,result 
+			     ,@body)))
+		      `(progn ,@body))))))))))
 
 (defmacro defhandler/js (url ((application application-class) &rest queries)
 			 &body body)
@@ -621,9 +619,9 @@ that has set before"
 			     (context.request +context+) nil)
 		       (escape (reverse (context.returns +context+)))
 		       (break "send/suspend failed.")))))
-       (setf (context.request +context+) (context.request (car ,result))
-	     (context.response +context+) (context.response (car ,result))
-	     (context.continuation +context+) nil)
+       ;; (setf (context.request +context+) (context.request (car ,result))
+       ;; 	     (context.response +context+) (context.response (car ,result))
+       ;; 	     (context.continuation +context+) nil)
        (apply #'values (cdr ,result)))))
 
 (defmacro send/forward (&body body)
@@ -665,25 +663,29 @@ executing 'body'"
 			(assert (not (null req)))
 			(assert (not (null rep)))
 			(let ((+context+ ,context))
-			  (setf (context.request +context+) req
-				(context.response +context+) rep)			
+			  (setf (context.request ,context) req
+				(context.response ,context) rep)
 			  (with-query ,(mapcar (lambda (param)
 						 (reverse
 						  (cons (car param)
 							(reverse param))))
 					       parameters) (context.request +context+)
-			    (with-html-output (http-response.stream (context.response +context+))
+			    (with-html-output (http-response.stream
+					       (context.response +context+))
 			      ,@body))))))	   
 	   (prog1 ,name	   
-	     (setf (gethash ,name (session.continuations (context.session ,context))) kont)
+	     (setf (gethash ,name (session.continuations (context.session ,context)))
+		   kont)
 	     (setf (context.returns +context+)
-		     (cons (cons ,name (lambda ,(mapcar #'car parameters)
-					 (funcall kont
-						  (make-instance 'http-request
-								 :uri (make-instance 'uri))
-						  (make-response *core-output*)
-						  ,@(mapcar #'car parameters))))
-			   (remove-if #'(lambda (x) (equal x ,name)) (context.returns ,context) :key #'car)))))
+		   (cons (cons ,name
+			       (lambda ,(mapcar #'car parameters)
+				 (funcall kont
+					  (make-instance 'http-request
+							 :uri (make-instance 'uri))
+					  (make-response *core-output*)
+					  ,@(mapcar #'car parameters))))
+			 (remove-if #'(lambda (x) (equal x ,name))
+				    (context.returns ,context) :key #'car)))))
 	 "invalid-function-hash")))
 
 (defmacro function/hash (parameters &body body)
@@ -732,11 +734,28 @@ executing 'body'"
 				   +invalid-session+)
 	  +continuation-query-name+ (action/hash ,parameters ,@body)))
 
+(defun replace-context (k context)
+  (labels ((l00p (foo)
+	     (typecase foo
+	       (list
+		(if (eq (car foo) :let)
+		    (destructuring-bind (a b . c) foo
+		      (declare (ignore c a))
+		      (if (eq b '+context+)
+			  (list* :let '+context+ context)
+			  foo))
+		    (mapcar #'l00p foo)))
+	       (t foo))))
+    (l00p k)))
+
 (defmacro answer (&rest values)
   "Continues from the continuation saved by action/hash or function/hash"
   `(if (null (context.continuation +context+))
        (error "Surrounding send/suspend not found, can't answer")
-       (kall (context.continuation +context+) +context+ ,@values)))
+       (kall ;; (context.continuation +context+)
+	     (replace-context (context.continuation +context+)
+	     		      +context+)
+	     +context+ ,@values)))
 
 (defmacro answer/dispatch (to &rest arguments)
   `(answer (list ,to ,@arguments)))
