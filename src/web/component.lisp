@@ -386,9 +386,9 @@
 	(+action-hash-override+ (component.instance-id component)))
     (action/url ((method-name "method"))
       (let* ((args (uri.queries (http-request.uri (context.request +context+))))
-	     (result (component.serialize component
-		       (component.method-call component method-name args))))
-	(kall k context
+      	     (result (component.serialize component
+      		       (component.method-call component method-name args))))
+      	(kall k +context+
 	      (component/suspend (lambda (self) result)))))))
 
 (defmethod component.compile ((component component))

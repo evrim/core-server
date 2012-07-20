@@ -533,7 +533,7 @@ that has set before"
   "Executes 'body' with HTTP context bind to 'context'"
   `(with-call/cc
      (let ((+context+ ,context))
-       ;; (declare (special +context+))
+       (declare (special +context+))
        ,@body)))
 
 (defmethod %scan-uri ((application http-application) (handler-name symbol)
@@ -618,9 +618,8 @@ that has set before"
 			     (context.request +context+) nil)
 		       (escape (reverse (context.returns +context+)))
 		       (break "send/suspend failed.")))))
-       ;; (setf (context.request +context+) (context.request (car ,result))
-       ;; 	     (context.response +context+) (context.response (car ,result))
-       ;; 	     (context.continuation +context+) nil)
+       (setf (context.request +context+) (context.request (car ,result))
+       	     (context.response +context+) (context.response (car ,result)))
        (apply #'values (cdr ,result)))))
 
 (defmacro send/forward (&body body)
@@ -659,32 +658,31 @@ executing 'body'"
 			   (format nil "act-~A" (make-unique-random-string 8))))
 		(,context (copy-context +context+))
 		(kont (lambda (req rep &optional ,@(mapcar #'car parameters))
-			(assert (not (null req)))
-			(assert (not (null rep)))
+			(assert (and (not (null req)) (not (null rep))))
 			(let ((+context+ ,context))
 			  (setf (context.request +context+) req
-				(context.response +context+) rep)
+			  	(context.response +context+) rep)
 			  (with-query ,(mapcar (lambda (param)
-						 (reverse
-						  (cons (car param)
-							(reverse param))))
-					       parameters) (context.request +context+)
+			  			 (reverse
+			  			  (cons (car param)
+			  				(reverse param))))
+			  		       parameters) (context.request +context+)
 			    (with-html-output (http-response.stream
-					       (context.response +context+))
-			      ,@body))))))	   
+			  		       (context.response +context+))
+			      ,@body))))))
 	   (prog1 ,name	   
 	     (setf (gethash ,name (session.continuations (context.session ,context)))
 		   kont)
 	     (setf (context.returns +context+)
-		   (cons (cons ,name
-			       (lambda ,(mapcar #'car parameters)
-				 (funcall kont
-					  (make-instance 'http-request
-							 :uri (make-instance 'uri))
-					  (make-response *core-output*)
-					  ,@(mapcar #'car parameters))))
-			 (remove-if #'(lambda (x) (equal x ,name))
-				    (context.returns ,context) :key #'car)))))
+	     	   (cons (cons ,name
+	     		       (lambda ,(mapcar #'car parameters)
+	     			 (funcall kont
+	     				  (make-instance 'http-request
+	     						 :uri (make-instance 'uri))
+	     				  (make-response *core-output*)
+	     				  ,@(mapcar #'car parameters))))
+	     		 (remove-if #'(lambda (x) (equal x ,name))
+	     			    (context.returns ,context) :key #'car)))))
 	 "invalid-function-hash")))
 
 (defmacro function/hash (parameters &body body)
@@ -733,27 +731,11 @@ executing 'body'"
 				   +invalid-session+)
 	  +continuation-query-name+ (action/hash ,parameters ,@body)))
 
-(defun replace-context (k context)
-  (labels ((l00p (foo)
-	     (typecase foo
-	       (list
-		(if (eq (car foo) :let)
-		    (destructuring-bind (a b . c) foo
-		      (declare (ignore c a))
-		      (if (eq b '+context+)
-			  (list* :let '+context+ context)
-			  foo))
-		    (mapcar #'l00p foo)))
-	       (t foo))))
-    (l00p k)))
-
 (defmacro answer (&rest values)
   "Continues from the continuation saved by action/hash or function/hash"
   `(if (null (context.continuation +context+))
        (error "Surrounding send/suspend not found, can't answer")
-       (kall ;; (context.continuation +context+)
-	     (replace-context (context.continuation +context+)
-	     		      +context+)
+       (kall (context.continuation +context+)
 	     +context+ ,@values)))
 
 (defmacro answer/dispatch (to &rest arguments)
@@ -770,13 +752,7 @@ application/javascript"
 				  '("application" "javascript" ("charset" "UTF-8")))
   (send/suspend
     (prog1 nil
-      (funcall lambda (http-response.stream (context.response +context+))
-	       ;; (if (application.debug (context.application +context+))
-	       ;; 	   (make-indented-stream
-	       ;; 	    (http-response.stream (context.response +context+)))
-	       ;; 	   (make-compressed-stream
-	       ;; 	    (http-response.stream (context.response +context+))))
-	       ))))
+      (funcall lambda (http-response.stream (context.response +context+))))))
 
 (defmacro json/suspend (&body body)
   "Json version of send/suspend, sets content-type to text/json"
