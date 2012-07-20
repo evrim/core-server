@@ -3,7 +3,8 @@
 ;; -------------------------------------------------------------------------
 ;; Table Component (Single Select)
 ;; -------------------------------------------------------------------------
-(defcomponent <core:table (<:table slot-representations callable-component)
+(defcomponent <core:table (<:table cached-component slot-representations
+				   callable-component)
   ((instances :host remote :initarg :instances :initform nil)
    (primary-field :host remote :initform "name")
    (template-class :initform nil :host remote)
