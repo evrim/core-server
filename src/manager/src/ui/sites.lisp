@@ -27,11 +27,10 @@
    (api-key :label "API Key")
    (api-password :label "API Password")
    (owner :label "Owner"
-	  :reader (walk-form
-		    `(lambda (a)
-		       (let ((owner (slot-value a 'owner)))
-			 (with-slots (name username) owner
-			   (+ name " (" username ")"))))))
+	  :reader (jambda (a)
+		    (let ((owner (slot-value a 'owner)))
+		      (with-slots (name username) owner
+			(+ name " (" username ")")))))
    (timestamp :label "Creation Timestamp" :remote-type timestamp))
   (:default-initargs :title "Site" :editable-p nil :deletable-p t))
 
