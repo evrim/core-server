@@ -146,7 +146,6 @@
 			   (error "Class not found ~A" xml))))
 	   (instance (allocate-instance class))
 	   (id (read-from-string id)))
-      (describe class)
       (with-slots (cache counter) (database.cache self)
 	(setf (gethash id cache) instance counter (max counter id))
 	(apply #'initialize-instance instance
