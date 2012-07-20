@@ -347,7 +347,7 @@
 (defvar +js-free-variables+ nil)
 (defjavascript-expander free-variable-reference (name)
   (cond
-    ((or (member name +js-free-variables+) (boundp name))
+    ((member name +js-free-variables+)
      `(:json! ,name))
     (t (call-next-method))))
 
