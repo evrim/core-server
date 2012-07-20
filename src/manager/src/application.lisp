@@ -93,9 +93,9 @@
      (let ((admin (admin.find self :username username)))
        (cond
     	 ((and admin (equal (admin.password admin) password))
-    	  (prog1 (lambda (self k) (k (setf window.location "manager.html")))
+    	  (prog1 (jambda (self k) (k (setf window.location "manager.html")))
     	    (update-session :user admin)))
-    	 (t (lambda (self k) (k nil))))))))
+    	 (t (jambda (self k) (k nil))))))))
 
 ;; -------------------------------------------------------------------------
 ;; Main Manager Loop
