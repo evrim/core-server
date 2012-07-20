@@ -88,10 +88,15 @@
        (setq ,name (lambda ,params
 		     ,@body)))))
 
+(defparameter +js-no-capture+ '(document window))
 (defmacro jambda (arguments &body body)
-  (with-unique-names (stream)
-    (let ((stream (intern (symbol-name stream))))
-      `(with-core-stream/cc (,stream "")
-	 (with-js ,arguments ,stream
-	   ,@body)
-	 (return-stream ,stream)))))
+  (let* ((form (walk-form `(lambda ,arguments ,@body)))
+	 (env (mapcar (lambda (ref)
+			(with-slots (name) ref
+			  `(list :let ',name ,name)))
+		      (filter (lambda (a)
+				(member (slot-value a 'name) +js-no-capture+))
+			      (ast-search-type form 'free-variable-reference)))))
+    `(make-instance 'arnesi::closure/cc 
+		    :code ,form
+		    :env ,env)))

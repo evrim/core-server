@@ -152,7 +152,7 @@
 (defcps-expander/js let-form (binds body)
   (funcall expand
 	   (make-instance
-	    'application-form
+	    'lambda-application-form
 	    :operator (make-instance 'lambda-function-form
 				     :arguments (walk-lambda-list (mapcar #'car binds)
 								  (parent form) nil)
@@ -225,7 +225,6 @@
 
 (defcps-expander/js defun-form (name arguments body)
   (error "Please use defun/cc outside with-call/cc."))
-
 
 ;; +----------------------------------------------------------------------------
 ;; | Poor mans reduction: Fix Excessive Recursions (alpha,beta)
