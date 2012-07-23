@@ -156,6 +156,11 @@
 
 (defmethod/remote destroy ((self <core:table))
   (clear-interval (_resize-thread self))
+  (with-slots (parent-node) self    
+    (with-slots (parent-node) parent-node
+      (.remove-child parent-node (_head self))
+      (.remove-child parent-node (_foot self)))
+    (replace-node parent-node self))
   (call-next-method self))
 
 (defmethod/remote init ((self <core:table))
