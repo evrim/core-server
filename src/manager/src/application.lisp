@@ -73,8 +73,8 @@
 ;; -------------------------------------------------------------------------
 ;; Index Loop
 ;; -------------------------------------------------------------------------
-(defun/cc %make-index-controller (application)
-  (authorize application (make-anonymous-user)
+(defmethod make-index-controller ((self manager-application))
+  (authorize self (make-anonymous-user)
 	     (<core:simple-controller :default-page "index"
 	       (<core:simple-page :name "index"
 		(<core:simple-widget-map :selector "login"
@@ -86,7 +86,7 @@
   (destructuring-bind (username password)
       (javascript/suspend
        (lambda (stream)
-	 (let ((controller (%make-index-controller self)))
+	 (let ((controller (make-index-controller self)))
 	   (rebinding-js/cc (controller) stream
 	     (controller nil)))))
     (continue/js
@@ -104,8 +104,10 @@
   (javascript/suspend
    (lambda (stream)
      (aif (query-session :user)
-	  (let ((manager (or (query-session :manager)
-			     (update-session :manager (make-controller self it)))))
+	  (let ((manager (if (application.debug self)
+			     (make-controller self it)
+			     (or (query-session :manager)
+				 (update-session :manager (make-controller self it))))))
 	    (rebinding-js/cc (manager) stream
 	      (manager nil)))
 	  (with-js () stream ;; Unauthorized

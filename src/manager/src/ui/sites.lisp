@@ -12,17 +12,16 @@
 ;; -------------------------------------------------------------------------
 ;; Sites Table
 ;; -------------------------------------------------------------------------
-(deftable sites-table ()
+(deftable <manager:site/table ()
   ((fqdn :label "FQDN")   
    (owner :label "Owner"
-	  :reader (with-call/cc
-		    (lambda (a) (slot-value (slot-value a 'owner) 'name))))
+	  :reader (jambda (a) (slot-value (slot-value a 'owner) 'name)))
    (timestamp :label "Timestamp" :remote-type timestamp)))
 
 ;; -------------------------------------------------------------------------
 ;; Site Crud
 ;; -------------------------------------------------------------------------
-(defwebcrud site-crud ()
+(defwebcrud <manager:site/crud ()
   ((fqdn :label "FQDN")
    (api-key :label "API Key")
    (api-password :label "API Password")
@@ -37,19 +36,21 @@
 ;; -------------------------------------------------------------------------
 ;; Sites Component 
 ;; -------------------------------------------------------------------------
-(defcomponent sites-component (<core:table-with-crud <widget:simple)
+(defcomponent <manager:sites (<core:table-with-crud <widget:simple)
   ()
   (:default-initargs
-    :table-title "Sites" :table (sites-table) :crud (site-crud)
-    :input-element (<core:default-value-input
-		       :default-value "Enter site name (ie www.core.gen.tr)")))
+    :table-title "Sites"
+    :table (<manager:site/table)
+    :crud (<manager:site/crud)
+    :input-element (<core:default-value-input :default-value
+		       "Enter site name (ie www.core.gen.tr)")))
 
-(defmethod/local get-instances ((self sites-component))
+(defmethod/local get-instances ((self <manager:sites))
   (site.list application))
 
-(defmethod/local add-instance ((self sites-component) fqdn)
+(defmethod/local add-instance ((self <manager:sites) fqdn)
   (site.add application :fqdn fqdn))
 
-(defmethod/local delete-instance ((self sites-component) fqdn)
+(defmethod/local delete-instance ((self <manager:sites) fqdn)
   (aif (site.find application :fqdn fqdn)
        (prog1 t (site.delete application it))))

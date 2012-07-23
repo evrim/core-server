@@ -23,7 +23,7 @@
   (:ctor %make-http-application/view)
   (:default-initargs :nav-alignment "right" :tab-title "HTTP Application"))
 
-(defun make-http-application/view (&key http-application)
+(defun make-http-application/view (&key application)
   (flet ((to-symbols1 (handlers)
 	   (mapcar (lambda (a)
 		     (jobject
@@ -43,10 +43,10 @@
 		      :url (cadr a)
 		      :authentication-type (symbol->js (car (reverse a)))))
 		   handlers)))
-    (let ((handlers (http-application+.handlers (class-of http-application)))
+    (let ((handlers (http-application+.handlers (class-of application)))
 	  (s-handlers (core-server::http-application+.security-handlers
-		       (class-of http-application))))
-      (%make-http-application/view :http-application http-application 
+		       (class-of application))))
+      (%make-http-application/view :http-application application 
 				   :security-handlers (to-symbols2 s-handlers)
 				   :handlers (to-symbols1 handlers)))))
 

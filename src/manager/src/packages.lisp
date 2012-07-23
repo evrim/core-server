@@ -10,11 +10,46 @@
 
 (defpackage :tr.gen.core.manager.widget
   (:nicknames :<manager)
-  (:export #:settings #:applications #:applications-table #:application-crud
-	   #:dynamic-application-crud
-	   #:web-application-crud #:server #:server-info
-	   #:controller #:server/crud #:socket-server/crud
-	   #:socket-server-info
+  (:export #:controller
+
+	   ;; Info
+	   #:server-info/crud
+	   #:server-info
+
+	   ;; Server
+	   #:server
+	   #:server/crud
+
+	   ;; Socket
+	   #:socket-server/crud
+	   #:socket-server
+
+	   ;; Database
 	   #:database-server/crud
-	   #:database-server-info #:mail-sender/crud
-	   #:mail-sender-info))
+	   #:database-server
+
+	   ;; Mail Sender
+	   #:mail-sender/crud
+	   #:mail-sender
+
+	   ;; Applications
+	   #:application/table
+	   #:web-application/crud
+
+	   #:applications
+	   #:application-crud
+	   #:dynamic-application-crud
+
+	   ;; Sites
+	   #:sites
+	   #:site/table
+	   #:site/crud
+
+	   ;; Administrators
+	   #:admin/table
+	   #:admin/crud
+	   #:administrators
+
+	   ;; Settings
+	   #:settings
+	   ))

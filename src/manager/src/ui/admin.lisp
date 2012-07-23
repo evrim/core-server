@@ -16,7 +16,7 @@
 ;; -------------------------------------------------------------------------
 ;; Admin Table
 ;; -------------------------------------------------------------------------
-(deftable admin-table ()
+(deftable <manager:admin/table ()
   ((name :label "Name")   
    (username :label "Username")
    (creation-timestamp :label "Creation Timestamp" :remote-type timestamp)))
@@ -24,7 +24,7 @@
 ;; -------------------------------------------------------------------------
 ;; Manager Users Crud
 ;; -------------------------------------------------------------------------
-(defwebcrud admin-crud ()
+(defwebcrud <manager:admin/crud ()
   ((name :label "Name")
    (username :label "Username" :read-only t)
    (password :label "Password" :remote-type password)
@@ -36,25 +36,25 @@
 ;; -------------------------------------------------------------------------
 ;; Sites Component 
 ;; -------------------------------------------------------------------------
-(defcomponent administrators-component (<core:table-with-crud <widget:simple)
+(defcomponent <manager:administrators (<core:table-with-crud <widget:simple)
   ()
   (:default-initargs :table-title "Administrators"
-    :table (admin-table)
-    :crud (admin-crud)
-    :input-element (<core:required-value-input
-		    :default-value "Enter username (ie root)")))
+    :table (<manager:admin/table)
+    :crud (<manager:admin/crud)
+    :input-element (<core:required-value-input :default-value
+					       "Enter username (ie root)")))
 
-(defmethod/local get-instances ((self administrators-component))
+(defmethod/local get-instances ((self <manager:administrators))
   (admin.list application))
 
-(defmethod/local add-instance ((self administrators-component) username)
+(defmethod/local add-instance ((self <manager:administrators) username)
   (admin.add application :username username))
 
-(defmethod/local delete-instance ((self administrators-component)
+(defmethod/local delete-instance ((self <manager:administrators)
 				  (user admin))
   (prog1 t (admin.delete application user)))
 
-(defmethod/local update-instance ((self administrators-component)
+(defmethod/local update-instance ((self <manager:administrators)
 				  (user admin) updates)
   (prog1 updates
     (apply #'admin.update application

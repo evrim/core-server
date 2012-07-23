@@ -8,18 +8,15 @@
 	      "Information regarding to the current instance"
 	      (cons "content" (<manager:server-info)))
 	(list "server" "Server" "Manage current core server instance"
-	      (cons "left1" (<manager:server-info))
-	      (cons "left2" (<manager:socket-server-info))
-	      (cons "right1" (<manager:database-server-info))
-	      (cons "right2" (<manager:mail-sender-info)))
+	      (cons "content" (<manager:server)))
 	(list "apps" "Applications"
 	      "Applications currently deployed on this server"
 	      (cons "content" (<manager:applications)))
 	(list "aanda" "A & A" "Authentication & Authorization"
-	      (cons "content" (sites-component)))
+	      (cons "content" (<manager:sites)))
 	(list "users" "Administrators"
 	      "Administrative accounts that manage this server instance"
-	      (cons "content" (administrators-component)))
+	      (cons "content" (<manager:administrators)))
 	(list "settings" "Settings"
 	      "Settings related to the current server instance"
 	      (cons "content" (<manager:settings))))
@@ -28,7 +25,8 @@
 ;; -------------------------------------------------------------------------
 ;; Make Page
 ;; -------------------------------------------------------------------------
-(defun make-page (name title description &rest widgets)
+(defmethod %make-page ((self manager-application) name title description
+		      &rest widgets)
   (<core:simple-page :name name
    (cons
     (<core:simple-widget-map :selector "title"
@@ -41,27 +39,25 @@
 					 :widget widget)))
 	    widgets))))
 
-(defun make-pages (&optional (pages +pages+))
-  (mapcar (curry #'apply #'make-page) pages))
+(defmethod make-pages ((self manager-application) &optional (pages +pages+))
+  (mapcar (curry #'apply #'%make-page) (mapcar (curry #'cons self) pages)))
 
 ;; -------------------------------------------------------------------------
 ;; Make Menu
 ;; -------------------------------------------------------------------------
 (defun make-menu (&optional (pages +pages+))
   (<core:simple-widget-map :selector "menu"
-			   :widget
-			   (<widget:simple-menu
-			    (mapcar (lambda (page)
-				      (jobject :name (car page)
-					       :title (cadr page)))
-				    pages))))
+			   :widget (<widget:simple-menu
+				    (mapcar (lambda (page)
+					      (jobject :name (car page)
+						       :title (cadr page)))
+					    pages))))
 
 ;; -------------------------------------------------------------------------
 ;; Make Clock
 ;; -------------------------------------------------------------------------
 (defun make-clock ()
-  (<core:simple-widget-map :selector "clock"
-			   :widget (<core:simple-clock)))
+  (<core:simple-widget-map :selector "clock" :widget (<core:simple-clock)))
 
 
 ;; -------------------------------------------------------------------------
@@ -74,8 +70,8 @@
 ;; -------------------------------------------------------------------------
 ;; Make Controller
 ;; -------------------------------------------------------------------------
-(defun make-controller (application user)
-  (authorize application user
+(defmethod make-controller ((self manager-application) (user admin))
+  (authorize self user
 	     (<manager:controller :constants (list (make-menu +pages+)
 						   (make-clock))
-				  (make-pages +pages+))))
+				  (make-pages self +pages+))))

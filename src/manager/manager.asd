@@ -24,11 +24,19 @@
 	     	      :components
 	     	      ((:file "info")
 		       (:file "server")
+		       (:module :servers
+				:serial t
+				:components
+				((:file "socket")
+				 (:file "database")
+				 (:file "mail-sender")))
 		       (:file "application")
 		       (:module :applications
 				:serial t
 				:components
-				((:file "http")))
+				((:file "web")
+				 (:file "dynamic")
+				 (:file "http")))
 		       (:file "settings")
 		       (:file "sites")
 	     	       (:file "admin")
