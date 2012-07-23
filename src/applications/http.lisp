@@ -531,10 +531,12 @@ that has set before"
 
 (defmacro with-context (context &body body)
   "Executes 'body' with HTTP context bind to 'context'"
-  `(with-call/cc
-     (let ((+context+ ,context))
-       (declare (special +context+))
-       ,@body)))
+  `(let ((,context ,context))
+     (declare (special ,context))
+     (with-call/cc
+       (let ((+context+ ,context))
+	 (declare (special +context+))
+	 ,@body))))
 
 (defmethod %scan-uri ((application http-application) (handler-name symbol)
 		      (context http-context))
