@@ -41,7 +41,9 @@
 	     (append (reverse (.get-elements-by-tag-name form "INPUT"))
 		     (append
 		      (reverse (.get-elements-by-tag-name form "SELECT"))
-		      (reverse (.get-elements-by-tag-name form "TEXTAREA"))))
+		      (append
+		       (reverse (.get-elements-by-tag-name form "TEXTAREA"))
+		       (reverse (.get-elements-by-tag-name form "SPAN")))))
 	     t)))
       (mapcar (lambda (input)
 		(when (and (slot-value input 'type)
@@ -523,3 +525,48 @@
 				   (disable-inputs payload))
 			       payload))))
 		  (items self))))))
+
+;; +-------------------------------------------------------------------------
+;; | Password Combo Input
+;; +-------------------------------------------------------------------------
+(defcomponent <core:password-combo-input (<core:default-value-input)
+  ((min-length :initform 6 :host remote)
+   (_password-input :host remote :initform (<core:password-input))
+   (_password1 :host remote)
+   (_password2 :host remote))
+  (:default-initargs :default-value "Enter password")
+  (:tag . "span"))
+
+(defmethod/remote get-input-value ((self <core:password-combo-input))
+  (get-input-value (_password2 self)))
+
+(defmethod/remote validate-password ((self <core:password-combo-input))
+  (with-slots (_password1 _password2) self
+    (cond
+      ((not (valid _password2))
+       (_ "Two passwords do not match."))
+      ((not (equal (get-input-value _password1)
+		   (get-input-value _password2)))
+       (_ "Two passwords do not match."))
+      (t t))))
+
+(defmethod/remote validate ((self <core:password-combo-input))
+  (with-slots (_password1 _password2) self
+    (let ((result (validate _password1)))
+      (if (typep result 'string)
+	  result
+	  (validate-password self)))))
+
+(defmethod/remote init ((self <core:password-combo-input))
+  (with-slots (min-length validation-span-id) self
+    (let ((_password1 (setf (_password1 self)
+			    (make-component (_password-input self)
+					    :min-length min-length
+					    :validation-span-id validation-span-id)))
+	  (_password2 (setf (_password2 self)
+			    (make-component (_password-input self)
+					    :min-length min-length
+					    :validation-span-id validation-span-id))))
+      (append self _password1)
+      (append self _password2)
+      (call-next-method self))))
