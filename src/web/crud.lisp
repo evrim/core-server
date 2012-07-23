@@ -1,7 +1,5 @@
 (in-package :core-server)
 
-;; Fixme: Date lazim, Integer->Date, Text Editor
-
 ;; -------------------------------------------------------------------------
 ;; Crud Component
 ;; -------------------------------------------------------------------------
@@ -77,10 +75,19 @@
 	  (list
 	   (cond
 	     ((eq "password" remote-type) ;; Needs two fields to compare
-	      (set-ret
-	       (make-component slot-editor :value _value
-			       :min-length min-length
-			       :validation-span-id _id)))
+	      (let* ((_button (<:input :type "button"
+				       :value (_"Change password")))
+		     (_view _button)
+		     (_edit (make-component slot-editor :value _value
+					    :min-length min-length
+					    :validation-span-id _id)))
+		(with-slots (style) _button
+		  (setf (slot-value style 'width) "130px"
+			(slot-value style 'min-width) "130px")
+		  
+		  (connect _button "onclick"
+			   (lifte (replace-node _view (set-ret _edit)))))
+		_view))
 	     ((member remote-type '("number" "email")) ;; OK
 	      (set-ret
 	       (make-component slot-editor :value _value
@@ -134,7 +141,6 @@
   (let ((_template (_template self)))
     (setf (_template self) (replace-node _template (edit-template self)))))
 
-
 (defmethod/remote get-label ((self <core:crud) label)
   (if (eq "?" (car (reverse label)))
       label
@@ -183,26 +189,27 @@
       (answer-component self (list "delete" (instance self)))))
 
 (defmethod/remote edit-template ((self <core:crud))
-  (<:div (<:form :onsubmit (lifte (do-save1 self))
-		 (mapcar-cc
-		  (lambda (slot)
-		    (with-slots (name label read-only) slot
-		      (cond
-			(read-only
-			 (with-field (get-label self label)
-			   (<:div :class "value-view" (view-me self slot))))
-			(t
-			 (destructuring-bind (editor span) (edit-me self slot)
-			   (with-field (<:div :class "label-edit" label ": ")
-			     (list editor span)))))))
-		  (reverse (reverse (get-template-class self))))
-		 (<:p :class "buttons"
-		      (<:input :type "submit" :value "Save"
-			       ;; :disabled t
-			       ;; :onclick (lifte (do-save1 self))
-			       )
-		      (<:input :type "button" :value "Cancel"
-			       :onclick (lifte (do-cancel self)))))))
+  (<:div
+   (<:form :onsubmit (lifte (do-save1 self))
+	   (mapcar-cc
+	    (lambda (slot)
+	      (with-slots (name label read-only remote-type) slot
+		(cond
+		  (read-only
+		   (with-field (get-label self label)
+		     (<:div :class "value-view" (view-me self slot))))
+		  (t
+		   (destructuring-bind (editor span) (edit-me self slot)
+		     (with-field (<:div :class "label-edit" label ": ")
+		       (list editor span)))))))
+	    (reverse (reverse (get-template-class self))))
+	   (<:p :class "buttons"
+		(<:input :type "submit" :value "Save"
+			 ;; :disabled t
+			 ;; :onclick (lifte (do-save1 self))
+			 )
+		(<:input :type "button" :value "Cancel"
+			 :onclick (lifte (do-cancel self)))))))
 
 (defmethod/remote remove-child-nodes ((self <core:crud))
   (mapcar-cc (lambda (a) (.remove-child self a))
@@ -219,7 +226,13 @@
   (load-css (crud-css self))
   (add-class self "crud")
   (add-class self "core")
-  (append self (<:h2 (title self)))
+  (if (title self)
+      (append self (<:h2 (title self))))
+
+  (let ((_instance (instance self)))
+    (if (and _instance (typep _instance 'function))
+	(setf (instance self) (make-component _instance))))
+  
   (append self (setf (_template self) (view-template self))))
 
 (defmacro defwebcrud (name supers slots &rest rest)

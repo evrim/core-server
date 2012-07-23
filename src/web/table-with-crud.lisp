@@ -4,8 +4,8 @@
 ;; Table w/ Crud Component
 ;; -------------------------------------------------------------------------
 (defcomponent <core:table-with-crud (<:div)
-  ((table :host remote :initform (error "Provide :table-ctor"))
-   (crud :host remote :initform (error "Provide :crud-ctor"))
+  ((table :host remote :initform (error "Provide :table"))
+   (crud :host remote :initform (error "Provide :crud"))
    (input-element :host remote
 		  :initform (<core:default-value-input :default-value
 				"Enter key value (ie a key-value)"))

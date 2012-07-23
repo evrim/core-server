@@ -40,7 +40,7 @@
 
 (defmethod %get-slot-editor ((self slot-representations) remote-type)
   (cond
-    ((equal "password" remote-type) (<core:password-input))
+    ((equal "password" remote-type) (<core:password-combo-input))
     ((equal "number" remote-type) (<core:number-value-input))
     ((equal "email" remote-type) (<core:email-input))
     ((equal "checkbox" remote-type) (<core:checkbox))
