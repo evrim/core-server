@@ -18,7 +18,7 @@
 ;; password used to connect to a mail server. mail server hostname and
 ;; port also required.
 
-(defclass mail-sender (logger-server)
+(defclass+ mail-sender (logger-server)
   ((username :accessor mail-sender.username :initarg :mail-username
 	     :initform nil
 	     :documentation "Username for connecting to mail server")
