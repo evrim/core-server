@@ -663,8 +663,7 @@
 			       (package "package"))
   (let ((class (find-component-class (json-deserialize component)
 				     (json-deserialize package))))
-    (assert (not (null class)))
-    (assert (not (null component)))
+    (assert (and (not (null class)) (not (null component))))
     (flet ((foo () (slot-value class '%cached-ctor-timestamp)))
       (with-cache (foo) (component/suspend class)))))
 
