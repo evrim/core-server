@@ -41,14 +41,16 @@
   (:default-initargs :table-title "Administrators"
     :table (<manager:admin/table)
     :crud (<manager:admin/crud)
-    :input-element (<core:required-value-input :default-value
-					       "Enter username (ie root)")))
+    :input-element
+    (<core:required-value-input :default-value "Enter username (ie root)")))
 
 (defmethod/local get-instances ((self <manager:administrators))
   (admin.list application))
 
 (defmethod/local add-instance ((self <manager:administrators) username)
-  (admin.add application :username username))
+  (admin.add application :username username :name username
+	     :group (simple-group.find application :name "admin")
+	     :owner (admin.find application :name "root")))
 
 (defmethod/local delete-instance ((self <manager:administrators)
 				  (user admin))

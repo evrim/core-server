@@ -23,7 +23,7 @@
 		       :initform (get-universal-time)))
   (:ctor make-site)
   (:default-initargs
-    :permissions '((owner .0) (group .0) (other .0) (unauthorized . -1))
+    :permissions '((owner . 0) (group . 0) (other . 0) (unauthorized . -1))
     :levels '(site/authorized)))
 
 ;; -------------------------------------------------------------------------

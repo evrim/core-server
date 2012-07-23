@@ -3,7 +3,7 @@
 ;; -------------------------------------------------------------------------
 ;; Manager Created Application Crud
 ;; -------------------------------------------------------------------------
-(defwebcrud <manager::%dynamic-application-crud (<manager:web-application-crud)
+(defwebcrud <manager::%dynamic-application-crud (<manager:web-application/crud)
   ((fqdn :label "Domain Name")
    (application-class :label "Application Class" :read-only t)
    (application-superclasses :label "Superclasses"

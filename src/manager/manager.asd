@@ -18,7 +18,8 @@
 	    :components
 	    ((:file "packages")
 	     (:file "model" :depends-on ("packages"))
-	     (:file "application" :depends-on ("packages" "model")) 
+	     (:file "application" :depends-on ("packages" "model"))
+	     (:file "dynamic" :depends-on ("application"))
 	     (:module :ui
 	     	      :serial t
 	     	      :components
@@ -30,13 +31,13 @@
 				((:file "socket")
 				 (:file "database")
 				 (:file "mail-sender")))
-		       (:file "application")
 		       (:module :applications
 				:serial t
 				:components
 				((:file "web")
 				 (:file "dynamic")
 				 (:file "http")))
+		       (:file "application")
 		       (:file "settings")
 		       (:file "sites")
 	     	       (:file "admin")
