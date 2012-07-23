@@ -615,7 +615,12 @@
    #:database-server
    #:database
    #:database.directory
+   #:database.transaction-log-pathname
+   #:database.snapshot-pathname
 
+   ;; [Socket Server]
+   #:socket-server
+   
    ;; Interface
    #:serialization-cache
    #:xml-serialize
