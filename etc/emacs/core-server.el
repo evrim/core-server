@@ -26,7 +26,7 @@
 ; IBUFFER
 (autoload 'ibuffer "ibuffer" "List buffers." t)
 (global-set-key (kbd "C-x C-b") 'ibuffer)
-;;(column-number-mode)
+(column-number-mode)
 
 ;; Transient Mark mode
 (transient-mark-mode t)
@@ -34,10 +34,15 @@
 ;; PAREDIT
 ;;(load-el "paredit-beta.el")
 (load-el "paredit-7.0b4.el")
+(load-el "php-mode.el")
 
 (autoload 'enable-paredit-mode "paredit" 
   "Minor mode for pseudo-structurally editing Lisp code." t)
 (add-hook 'lisp-mode-hook 'enable-paredit-mode)
+
+;; Top Mode
+(load-el "top-mode.el")
+;; (top)
 
 ;; Highlights Parenthesis
 (show-paren-mode t)
@@ -45,27 +50,11 @@
 ;; SLIME
 (add-to-list 'load-path (concat (getenv "CORESERVER_HOME") "lib/slime/"))
 (add-to-list 'load-path (concat (getenv "CORESERVER_HOME") "lib/slime/contrib/"))
-(require 'slime)
-(add-hook 'slime-load-hook (lambda () 
-			     (require 'slime-fuzzy)
-			     (slime-fuzzy-init)))
-
-(setq inferior-lisp-program "/usr/bin/sbcl --dynamic-space-size 1024"
-      lisp-indent-function 'common-lisp-indent-function
-      slime-complete-symbol-function 'slime-fuzzy-complete-symbol
-      slime-startup-animation nil
-      slime-net-coding-system 'utf-8-unix
-      slime-multiprocessing t)
+(require 'slime-autoloads)
+(slime-setup '(slime-fancy slime-asdf slime-repl slime-xref-browser
+			   slime-indentation slime-sbcl-exts))
 
 (global-set-key "\C-cs" 'slime-selector)
-(defun save-and-load-and-compile () 
-  (interactive) (save-buffer)
-  (interactive) (slime-compile-and-load-file))
-
-(add-hook 'slime-mode-hook
-	  (lambda ()
-	    (slime-define-key "\C-c\C-k" 
-			      'save-and-load-and-compile)))
 
 (defun slime-run-rt-test ()
   (interactive)
@@ -73,27 +62,20 @@
   (slime-interactive-eval
    (format "%s" `(rt:do-test ',(cadr (read (slime-last-expression)))))))
 
-(add-hook 'slime-mode-hook
-	  (lambda ()
-	    (slime-define-key "\C-x\C-a"
-			      'slime-run-rt-test)))
-
-(slime-setup '(slime-fancy slime-asdf))
-;;(setq (get 'defmethod/cc 'common-lisp-indent-function) 'lisp-indent-defmethod
-;;      (get 'defmethod/unit 'common-lisp-indent-function) 'lisp-indent-defmethod)
-
 (defun add-macro-font-face (name)
   (font-lock-add-keywords 'lisp-mode
-			  `((,(concat "(\\(" name "\\)[ ]*\\(\\sw+\\)?")
+			  `((,(concat "(\\(" name "\\)[ ]+\\(\\sw+\\)")
 			      (1 font-lock-keyword-face)
 			      (2 font-lock-function-name-face)))))
 
 (add-macro-font-face "deftransaction")
 (add-macro-font-face "defcrud")
+
+;; "(\\(name\\)/\\(suffix\\)[ ]*\\(\\sw+\\)?"
 (defun add-macro-with-suffix-font-face (name suffix)
   (font-lock-add-keywords 'lisp-mode
 			  `((,(concat "(\\(" name "\\)/\\(" suffix 
-				      "\\)[ ]*\\(\\sw+\\)?")
+				      "\\)[ ]*\\(\\sw+\\)")
 			      (1 font-lock-keyword-face)
 			      (2 font-lock-constant-face)
 			      (3 font-lock-function-name-face)))))
@@ -106,12 +88,13 @@
 
 (defun add-class-font-face (name)
   (font-lock-add-keywords 'lisp-mode
-			  `((,(concat "(\\(" name "\\)[ ]*\\(\\sw+\\)?")
+			  `((,(concat "(\\(" name "\\)[ ]+\\(\\sw+\\)")
 			      (1 font-lock-keyword-face)
 			      (2 font-lock-type-face)))))
 
 (add-class-font-face "defclass\\+")
 (add-class-font-face "defcomponent")
+(add-class-font-face "defrest")
 
 ;; DARCSUM
 (load-el "darcsum.el")
@@ -131,49 +114,30 @@
 (setq mouse-autoselect-window t)
 
 ;; proper indentation
-(setf *core-server-methods* '(defmethod/cc
-			      defmethod/unit
-			      defmethod/local
-			      defmethod/remote
-			      redefmethod))
+(setq slime-enable-evaluate-in-emacs t)
+(defun tag-indent-function (path state indent-point sexp-column normal-indent)
+  (let* ((pos (car path))
+         (start (elt state 1))
+         (attrs (tag-indent-count-attributes start (point))))
+    (cond ((> pos attrs) (+ sexp-column 1))
+          (t normal-indent))))
 
-(setf *core-server-functions* '(defun/cc <:div <:form <:a <:select <:css))
+(defun tag-indent-count-attributes (start end)
+  (save-excursion
+    (goto-char start)
+    (save-restriction
+      (narrow-to-region (point) end)
+      (down-list)
+      (forward-sexp 1)
+      (let ((count 0))
+        (while (progn
+                 (skip-chars-forward " \t\n")
+                 (looking-at "[^() \n]"))
+          (incf count)
+          (forward-sexp 1))
+        count))))
 
-(defun cl-indent (sym indent) ;; by Pierpaolo Bernardi
-  (put sym 'common-lisp-indent-function
-       (if (symbolp indent)
-	   (get indent 'common-lisp-indent-function)
-	   indent)))
-
-(dolist (i *core-server-methods*)
-  (cl-indent i 'defmethod))
-
-(dolist (i *core-server-functions*)
-  (cl-indent i 'defun))
-
-(cl-indent 'event 'lambda)
-
-; Function to run Tidy HTML parser on buffer
-; NOTE: this requires external Tidy program
-(defun tidy-buffer ()
-  "Run Tidy HTML parser on current buffer."
-  (interactive)
-  (if (get-buffer "tidy-errs") (kill-buffer "tidy-errs"))
-  (shell-command-on-region (point-min) (point-max)
-                           ;;"tidy -f /tmp/tidy-errs -asxhtml -q -utf8 -i -wrap 72 -c"
-                           "tidy -f /tmp/tidy-errs -asxhtml --doctype transitional --char-encoding utf8 --output-encoding utf8 --add-xml-decl y --indent-attributes y --gnu-emacs y --tidy-mark n -q -utf8 -i -w 0" t)
-  (find-file-other-window "/tmp/tidy-errs")
-  (other-window 1)
-  (delete-file "/tmp/tidy-errs")
-  (message "buffer tidy'ed"))
-
-(define-skeleton coretal-insert-link
-  "Make a dynamic link"
-  "Link text: "
-  '(progn 
-     (setq anchor (skeleton-read "Page anchor:"))
-     (setq page-name (buffer-name (current-buffer))))
-  "<a href=\"" page-name "#" anchor "\" onclick=\"return coretal.loadPage('" anchor "');\">" str "</a>")
+(put 'mapcar 'common-lisp-indent-function 0)
 
 (define-skeleton skeleton-comment-1
     "Insert a Comment Header"
@@ -190,34 +154,6 @@
 ;; -------------------------------------------------------------------------"
   )
 
-(defun make-backup-file-name (file)
-  "Create the non-numeric backup file name for FILE.
-Normally this will just be the file's name with `~' appended.
-Customization hooks are provided as follows.
-
-If the variable `make-backup-file-name-function' is non-nil, its value
-should be a function which will be called with FILE as its argument;
-the resulting name is used.
-
-Otherwise a match for FILE is sought in `backup-directory-alist'; see
-the documentation of that variable.  If the directory for the backup
-doesn't exist, it is created."
-  (if make-backup-file-name-function
-      (funcall make-backup-file-name-function file)
-      (if (and (eq system-type 'ms-dos) (not (msdos-long-file-names)))
-	  (let ((fn (file-name-nondirectory file)))
-	    (concat (file-name-directory file)
-		    "."
-		    (or (and (string-match "\\`[^.]+\\'" fn)
-			     (concat (match-string 0 fn) ".~"))
-			(and (string-match "\\`[^.]+\\.\\(..?\\)?" fn)
-			     (concat (match-string 0 fn) "~")))))
-	  (let ((fname (make-backup-file-name-1 file)))
-	    (concat (file-name-directory fname) "." (file-name-nondirectory fname) "~")))))
-
-;; Top Mode
-(load-el "top-mode.el")
-(top)
 
 ;; irc.core.gen.tr developer connection
 (when (locate-library "erc")
@@ -236,7 +172,6 @@ doesn't exist, it is created."
    erc-interpret-mirc-color t
    erc-interpret-controls-p 'remove)
 
-  ;; diğer yapılandırma değerleri
   (custom-set-variables
    '(erc-prompt-for-nickserv-password nil)
    '(erc-auto-query (quote window-noselect))
@@ -256,4 +191,98 @@ doesn't exist, it is created."
    '(erc-kill-queries-on-quit t)
    '(erc-kill-server-buffer-on-quit t)))
 
-(core-irc)
+;; (core-irc)
+
+
+;; Old Garbage below.
+
+;; (setf *core-server-methods* '(defmethod/cc
+;; 			      defmethod/unit
+;; 			      defmethod/local
+;; 			      defmethod/remote
+;; 			      redefmethod))
+
+;; (setf *core-server-functions* '(defun/cc <:))
+
+;; (setq *core-server-macro* '(defhandler))
+
+;; (defun cl-indent (sym indent) ;; by Pierpaolo Bernardi
+;;   (put sym 'common-lisp-indent-function
+;;        (if (symbolp indent)
+;; 	   (get indent 'common-lisp-indent-function)
+;; 	   indent)))
+
+;; (dolist (i *core-server-methods*)
+;;   (cl-indent i 'defmethod))
+
+;; (dolist (i *core-server-functions*)
+;;   (cl-indent i 'defun))
+
+;; (cl-indent 'event 'lambda)
+
+;; ; Function to run Tidy HTML parser on buffer
+;; ; NOTE: this requires external Tidy program
+;; (defun tidy-buffer ()
+;;   "Run Tidy HTML parser on current buffer."
+;;   (interactive)
+;;   (if (get-buffer "tidy-errs") (kill-buffer "tidy-errs"))
+;;   (shell-command-on-region (point-min) (point-max)
+;;                            ;;"tidy -f /tmp/tidy-errs -asxhtml -q -utf8 -i -wrap 72 -c"
+;;                            "tidy -f /tmp/tidy-errs -asxhtml --doctype transitional --char-encoding utf8 --output-encoding utf8 --add-xml-decl y --indent-attributes y --gnu-emacs y --tidy-mark n -q -utf8 -i -w 0" t)
+;;   (find-file-other-window "/tmp/tidy-errs")
+;;   (other-window 1)
+;;   (delete-file "/tmp/tidy-errs")
+;;   (message "buffer tidy'ed"))
+
+;; (add-hook 'slime-load-hook (lambda () 
+;; 			     (require 'slime-fuzzy)
+;; 			     (slime-fuzzy-init)))
+
+;; (setq inferior-lisp-program "/usr/bin/sbcl --dynamic-space-size 1024"
+;;       lisp-indent-function 'common-lisp-indent-function
+;;       slime-complete-symbol-function 'slime-fuzzy-complete-symbol
+;;       slime-startup-animation nil
+;;       slime-net-coding-system 'utf-8-unix
+;;       slime-multiprocessing t)
+
+;; (defun save-and-load-and-compile () 
+;;   (interactive) (save-buffer)
+;;   (interactive) (slime-compile-and-load-file))
+
+;; (add-hook 'slime-mode-hook
+;; 	  (lambda ()
+;; 	    (slime-define-key "\C-c\C-k" 
+;; 			      'save-and-load-and-compile)))
+
+;; (add-hook 'slime-mode-hook
+;; 	  (lambda ()
+;; 	    (slime-define-key "\C-x\C-a"
+;; 			      'slime-run-rt-test)))
+
+;;(setq (get 'defmethod/cc 'common-lisp-indent-function) 'lisp-indent-defmethod
+;;      (get 'defmethod/unit 'common-lisp-indent-function) 'lisp-indent-defmethod)
+
+;; (defun make-backup-file-name (file)
+;;   "Create the non-numeric backup file name for FILE.
+;; Normally this will just be the file's name with `~' appended.
+;; Customization hooks are provided as follows.
+
+;; If the variable `make-backup-file-name-function' is non-nil, its value
+;; should be a function which will be called with FILE as its argument;
+;; the resulting name is used.
+
+;; Otherwise a match for FILE is sought in `backup-directory-alist'; see
+;; the documentation of that variable.  If the directory for the backup
+;; doesn't exist, it is created."
+;;   (if make-backup-file-name-function
+;;       (funcall make-backup-file-name-function file)
+;;       (if (and (eq system-type 'ms-dos) (not (msdos-long-file-names)))
+;; 	  (let ((fn (file-name-nondirectory file)))
+;; 	    (concat (file-name-directory file)
+;; 		    "."
+;; 		    (or (and (string-match "\\`[^.]+\\'" fn)
+;; 			     (concat (match-string 0 fn) ".~"))
+;; 			(and (string-match "\\`[^.]+\\.\\(..?\\)?" fn)
+;; 			     (concat (match-string 0 fn) "~")))))
+;; 	  (let ((fname (make-backup-file-name-1 file)))
+;; 	    (concat (file-name-directory fname) "." (file-name-nondirectory fname) "~")))))
