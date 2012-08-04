@@ -219,17 +219,17 @@
 			 slots))))))))
 
 (defmethod class+.find-lifted-slot ((self class+) slot-to-find)
-    (any (lambda (slot)
-	   (if (class+.find-slot (class+.find
-				  (let ((a (sb-pcl::slot-definition-type slot)))
-				    (if (listp a)
-					(cadr a)
-					a)))
-				 slot-to-find)
-	       (slot-definition-name slot)))
-	 (filter (lambda (slot)
-		   (eq 'lift (slot-definition-host slot)))
-		 (class+.slots self))))
+  (any (lambda (slot)
+	 (if (class+.find-slot (class+.find
+				(let ((a (sb-pcl::slot-definition-type slot)))
+				  (if (listp a)
+				      (cadr a)
+				      a)))
+			       slot-to-find)
+	     (slot-definition-name slot)))
+       (filter (lambda (slot)
+		 (eq 'lift (slot-definition-host slot)))
+	       (class+.slots self))))
 
 (defmethod copy-lifted-slot ((self class+-instance) (slot standard-slot-definition) value)
   value)
@@ -283,7 +283,9 @@
 			 ,(if writer
 			      `(defmethod/lift ,writer (value (self ,class-name))
 				 ,writer1))))))))
-	    (filter (lambda (slot) (slot-definition-lift slot))
+	    (filter (lambda (slot)
+		      (and (eq 'local (slot-definition-host slot))
+			   (slot-definition-lift slot)))
 		    (class+.slots class)))))))
 
 ;; -------------------------------------------------------------------------

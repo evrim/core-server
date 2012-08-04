@@ -130,7 +130,8 @@
 
 (defclass class+-slot-definition (standard-slot-definition)
   ((host :initarg :host :initform 'none :accessor slot-definition-host)
-   (remote-type :initarg :remote-type :initform 'primitive :accessor slot-definition-remote-type)
+   (remote-type :initarg :remote-type :initform 'primitive
+		:accessor slot-definition-remote-type)
    (relation :initarg :relation :initform nil :accessor slot-definition-relation)
    (index :initarg :index :initform nil :accessor slot-definition-index)
    (print :initarg :print :initform nil :accessor slot-definition-print)
@@ -140,35 +141,55 @@
    (export  :initarg :export :initform t :accessor slot-definition-export)
    (leaf :initarg :leaf :initform nil :accessor slot-definition-leaf)))
 
-(defclass class+-direct-slot-definition (class+-slot-definition standard-direct-slot-definition)
+(defclass class+-direct-slot-definition (class+-slot-definition
+					 standard-direct-slot-definition)
   ())
 
-(defclass class+-effective-slot-definition (class+-slot-definition standard-effective-slot-definition)
+(defclass class+-effective-slot-definition (class+-slot-definition
+					    standard-effective-slot-definition)
   ())
 
 (defmethod direct-slot-definition-class ((class class+) &rest initargs)
   (declare (ignore initargs))
   (find-class 'class+-direct-slot-definition))
 
-(defmethod effective-slot-definition-class ((class class+) &rest initargs)
-  (declare (ignore initargs))
-  (find-class 'class+-effective-slot-definition))
-
 (defmethod %class+-inherited-slots ((class class+))
   '(host remote-type sb-pcl::readers sb-pcl::writers relation
     index print label lift export leaf authorize))
 
-(defmethod compute-effective-slot-definition ((class class+) slot-name
-					      slot-defs)
-  (flet ((copy-slots (slots source target)
-	   (mapc (lambda (slot)
-		   (when (typep source 'class+-direct-slot-definition)
-		     (setf (slot-value target slot)
-			   (slot-value source slot))))
-		 slots)
-	   target))
-    (copy-slots (%class+-inherited-slots class) (car slot-defs)
-		(call-next-method))))
+(defmethod compute-effective-slot-definition-initargs :around ((class class+) direct-slotds)
+  (let ((slotd (car direct-slotds)))
+    (typecase slotd
+      (class+-slot-definition
+       (append (call-next-method)
+	       (reduce (lambda (acc slot)
+			 (cons (make-keyword slot)
+			       (cons (slot-value slotd slot) acc)))
+		       (%class+-inherited-slots class) :initial-value nil)))
+      (t (call-next-method)))))
+
+;; ;; -------------------------------------------------------------------------
+;; ;; Lifted Slots
+;; ;; -------------------------------------------------------------------------
+;; (defclass class+-effective-lifted-slot-definition (class+-lifted-slot-mixin
+;; 						   class+-effective-slot-definition)
+;;   ())
+
+;; ;; -------------------------------------------------------------------------
+;; ;; Authorized Slots
+;; ;; -------------------------------------------------------------------------
+;; (defclass class+-effective-authorized-and-lifted-slot-definition
+;;     (class+-lifted-slot-mixin class+-authorized-slot-mixin
+;; 			      class+-effective-slot-definition)
+;;   ())
+
+(defmethod effective-slot-definition-class ((class class+) &rest initargs)
+  ;; (cond
+  ;;   ((and (getf initargs :authorize) (getf initargs :lift))
+  ;;    (find-class 'class+-effective-authorized-and-lifted-slot-definition))
+  ;;   ((getf initargs :lift) (find-class 'class+-effective-slot-definition))
+  ;;   (t (find-class 'class+-effective-slot-definition)))
+  (find-class 'class+-effective-slot-definition))
 
 ;; --------------------------------------------------------------------------
 ;; Slot Definition Sugars
@@ -434,14 +455,13 @@
 	 (slots (filter #'slot-definition-print (class+.slots class+))))
     `(defprint-object (self ,name)
        (format t "~{~A~^ ~}"
-	       (list ,@(nreverse
-			(reduce0
-			 (lambda (acc slot)
-			   (cons `(list
-				   ',(slot-definition-name slot)
-				   (slot-value self ',(slot-definition-name slot)))
-				 acc))
-			 slots)))))))
+	       (list
+		,@(nreverse
+		   (reduce0
+		    (lambda (acc slot)
+		      (with-slotdef (name) slot
+			(cons `(list ',name (slot-value self ',name)) acc)))
+		    slots)))))))
 
 ;; --------------------------------------------------------------------------
 ;; defclass+ Macro
