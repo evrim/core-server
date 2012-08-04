@@ -29,7 +29,8 @@
   ((secure-object :host lift :type <core:simple-widget-map)
    (selector :host remote :lift t)
    (widget :host remote :lift t :authorize t)
-   (enabled :host remote :lift t)))
+   (enabled :host remote :lift t)
+   (controller :host remote)))
 
 (defmethod/remote on-page-load ((self <core:simple-widget-map/anonymous) name)
   (if (and (enabled self)
@@ -43,4 +44,5 @@
 (defmethod/remote init ((self <core:simple-widget-map/anonymous))
   (awhen (document.get-element-by-id (selector self))
     (setf (enabled self) t
-	  (widget self) (call/cc (widget self) it))))
+	  (widget self)
+	  (call/cc (widget self) (extend (jobject :widget-map self) it)))))

@@ -8,9 +8,12 @@
 	  :documentation "List of pages" :initarg :children)   
    (default-page :host both :type string
 		 :documentation "Name of the default page")
-   (constants :host remote :type abstract-widget-map*
+   (constants :host remote :type abstract-widget-map* :authorize t
 	      :documentation "Constant widgets associated with this
-	      controller"))
+	      controller")
+   (plugins :host remote :type plugin* :authorize t
+	    :documentation "Plugins that extends functions of this
+	    controller"))
   (:default-initargs
     :levels '(<core:simple-controller/unauthorized
 	      <core:simple-controller/anonymous
@@ -39,6 +42,7 @@
 						 secure-object/authorized)
   ((secure-object :host lift :type <core:simple-controller)
    (pages :host local :lift t :export nil :authorize t :type <core::simple-page*)
+   (plugins :host remote :lift t :authorize t :type plugin*)
    (default-page :host remote :lift t)
    (constants :host remote :lift t :authorize t)
    (core-css :host remote :initform "style/core.css")
@@ -59,7 +63,7 @@
     (cond
       (ctor
        (if (_page self) (destroy (_page self)))
-       (setf (_page self) (make-component ctor))
+       (setf (_page self) (make-component ctor :controller self))
        (mapcar-cc (lambda (a)
 		    (make-web-thread
 		     (lambda () (on-page-load a name))))
@@ -89,8 +93,12 @@
 
 (defmethod/remote init ((self <core:simple-controller/anonymous))
   (load-css (core-css self))
+  (setf (plugins self)
+	(mapcar-cc (lambda (plugin) (call/cc plugin self))
+		   (plugins self)))
   (setf (constants self)
-  	(mapcar-cc (lambda (a) (make-component a)) (constants self)))
+  	(mapcar-cc (lambda (a) (make-component a :controller self))
+		   (constants self)))
   (load-page self (or (get-parameter "page") (default-page self)))
   (start-history-timeout self)
   (_debug "loaded."))

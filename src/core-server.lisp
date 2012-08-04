@@ -1206,7 +1206,8 @@
    ;; #:abstract-widget
    ;; #:simple-widget
    ;; #:make-simple-widget
-
+   #:plugin
+   
    #:show-tab
    #:show-tab/js
    
@@ -1313,8 +1314,7 @@
 (defpackage :<widget
   (:nicknames :tr.gen.core.server.widget :core-server.widget)
   (:use :core-server)
-  (:export #:simple #:simple-content #:simple-menu
-	   #:tab))
+  (:export #:simple #:simple-content #:simple-menu #:tab))
 
 (defpackage :<rss
   (:nicknames :tr.gen.core.server.rss :core-server.rss)
