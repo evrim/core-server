@@ -106,8 +106,10 @@
 	       (make-web-thread (lambda () (f f))))))
     (do-validate do-validate))
   
-  (when (slot-value self 'type)
-    (setf (slot-value self 'type) "text")))
+  (with-slots (type) self
+    (if (or (null type) (eq "" type))
+	(setf (slot-value self 'type) "text")
+	(setf (slot-value self 'type) (+ (slot-value self 'type) "")))))
 
 ;; +-------------------------------------------------------------------------
 ;; | Default Value HTML Input
@@ -140,16 +142,13 @@
 
 (defmethod/remote reset-input-value ((self <core:default-value-input))
   (setf (slot-value self 'value) "")
-  (adjust-default-value self)
-  (run-validator self)
-  (set-validation-message self nil ""))
+  (run-validator self))
 
 (defmethod/remote init ((self <core:default-value-input))
+  (setf (slot-value self 'default-value) (_ (slot-value self 'default-value)))
+
   (if (null (slot-value self 'default-value))
       (setf (slot-value self 'default-value) (slot-value self 'value)))
-
-  (setf (slot-value self 'default-value)
-	(_ (slot-value self 'default-value)))
   
   (if (or (null (slot-value self 'value)) (eq "" (slot-value self 'value)))
       (setf (slot-value self 'value) (slot-value self 'default-value)))
@@ -201,6 +200,15 @@
   ((min-length :initform 6 :host remote))
   (:default-initargs :type "password" :default-value "Enter password"))
 
+(defmethod/remote adjust-default-value ((self <core:password-input))
+  (cond
+    ((equal self.default-value self.value)
+     (setf (slot-value self 'value) ""
+	   (slot-value self 'type) "password"))
+    ((equal "" (slot-value self 'value))
+     (setf (slot-value self 'value) (slot-value self 'default-value)
+	   (slot-value self 'type) "text"))))
+
 (defmethod/remote validate-password ((self <core:password-input))
   (cond
     ((or (null self.value) (< self.value.length self.min-length))
@@ -216,7 +224,7 @@
 
 (defmethod/remote init ((self <core:password-input))
   (call-next-method self)
-  (setf (slot-value self 'type) "password")
+  (setf (slot-value self 'type) "text")
   self)
 
 ;; +-------------------------------------------------------------------------
