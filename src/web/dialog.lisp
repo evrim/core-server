@@ -3,7 +3,7 @@
 ;; +-------------------------------------------------------------------------
 ;; | Dialog
 ;; +-------------------------------------------------------------------------
-(defcomponent dialog (<:div callable-component cached-component)
+(defcomponent <core:dialog (<:div callable-component cached-component)
   ((overlay :host remote :initform nil)
    (message :host remote :initform "This is a message dialog.")
    (title :host remote :initform "message")
@@ -12,33 +12,33 @@
   (:default-initargs :class "core core-dialog"))
 
 (defmacro/js message (self) `(get-message ,self))
-(defmethod/remote get-message ((self dialog))
+(defmethod/remote get-message ((self <core:dialog))
   (slot-value self 'message))
 
 (defmacro/js title (self) `(get-title ,self))
-(defmethod/remote get-title ((self dialog))
+(defmethod/remote get-title ((self <core:dialog))
   (slot-value self 'title))
 
-(defmethod/remote destroy ((self dialog))
+(defmethod/remote destroy ((self <core:dialog))
   (hide-component self)
   (delete-slots self 'overlay 'message 'title 'css-url '_scroll)
   (call-next-method self))
 
-(defmethod/remote call-component ((self dialog))
+(defmethod/remote call-component ((self <core:dialog))
   (show-component self)
   (call-next-method self))
 
-(defmethod/remote answer-component ((self dialog) arg)
+(defmethod/remote answer-component ((self <core:dialog) arg)
   (destroy self)
   (call-next-method self arg))
 
-(defmethod/cc call-component ((self dialog))
+(defmethod/cc call-component ((self <core:dialog))
   (call-next-method self))
 
-(defmethod/cc answer-component ((self dialog) arg)
+(defmethod/cc answer-component ((self <core:dialog) arg)
   (call-next-method self arg))
 
-(defmethod/remote show-component ((self dialog))
+(defmethod/remote show-component ((self <core:dialog))
   (load-css (css-url self))
   (setf (_scroll self)
 	(list (or document.document-element.scroll-left
@@ -50,7 +50,7 @@
   (prepend document.body self)
   (setf document.body.style.overflow "hidden"))
 
-(defmethod/remote hide-component ((self dialog))
+(defmethod/remote hide-component ((self <core:dialog))
   (remove-css (css-url self))
   (setf document.body.style.overflow "visible")  
   (.remove-child document.body self)
@@ -58,7 +58,7 @@
   (let ((scroll (_scroll self)))
     (window.scroll (car scroll) (car (cdr scroll)))))
 
-(defmethod/remote template ((self dialog))    
+(defmethod/remote template ((self <core:dialog))    
   (<:div :class "center text-center"
 	 (<:div :class "left left-bg"
 		(<:a :href "http://www.coretal.net/" ""))
@@ -68,12 +68,9 @@
 		(<:form :action "#"
 			(<:input :type "button" :class "button"
 				 :value "OK"
-				 :onclick (event (e)
-					    (with-call/cc
-					      (answer-component self t))
-					    false))))))
+				 :onclick (lifte (answer-component self t)))))))
 
-(defmethod/remote init ((self dialog))
+(defmethod/remote init ((self <core:dialog))
   (.append-child self (template self))
   (setf (overlay self) (<:div :class "core-dialog-overlay")))
 
@@ -84,15 +81,15 @@
   ())
 
 (defmethod/local make-dialog ((self supply-dialog))
-  (dialog))
+  (<core:dialog))
 
 ;; +-------------------------------------------------------------------------
 ;; | Prompt Dialog
 ;; +-------------------------------------------------------------------------
-(defcomponent prompt-dialog (dialog)
+(defcomponent <core:prompt-dialog (<core:dialog)
   ())
 
-(defmethod/remote template ((self prompt-dialog))
+(defmethod/remote template ((self <core:prompt-dialog))
   (let ((_prompt (<:input :type "text" :name "prompt" :class "text")))
     (<:div :class "center text-center"
 	   (<:div :class "left left-bg"
@@ -119,16 +116,16 @@
   ())
 
 (defmethod/local make-prompt-dialog ((self supply-prompt-dialog))
-  (prompt-dialog))
+  (<core:prompt-dialog))
 
 ;; +-------------------------------------------------------------------------
 ;; | Yes-No Dialog
 ;; +-------------------------------------------------------------------------
-(defcomponent yes-no-dialog (dialog)
+(defcomponent <core:yes-no-dialog (<core:dialog)
   ()
   (:default-initargs :title "yes/no" :message "Do you want to answer Yes?"))
 
-(defmethod/remote template ((self yes-no-dialog))  
+(defmethod/remote template ((self <core:yes-no-dialog))  
   (<:div :class "center text-center"
     (<:div :class "left left-bg" (<:a :href "http://www.coretal.net/" ""))
     (<:div :class "right right-bg"
@@ -150,18 +147,18 @@
   ())
 
 (defmethod/local make-yes-no-dialog ((self supply-yes-no-dialog))
-  (yes-no-dialog))
+  (<core:yes-no-dialog))
 
 ;; +-------------------------------------------------------------------------
 ;; | Login Dialog
 ;; +-------------------------------------------------------------------------
-(defcomponent login-dialog (dialog)
+(defcomponent <core:login-dialog (<core:dialog)
   ((default-email :host remote :initform "Email")
    (email-input :host remote :initform (<core:email-input))
    (password-input :host remote :initform (<core:password-input)))
   (:default-initargs :title "login"))
 
-(defmethod/remote template ((self login-dialog))  
+(defmethod/remote template ((self <core:login-dialog))  
   (let ((_email (call/cc (email-input self)
 			 (jobject :class-name "text" :type "text"
 				  :value (default-email self) 
@@ -206,11 +203,11 @@
 ;; +-------------------------------------------------------------------------
 ;; | Registration Dialog
 ;; +-------------------------------------------------------------------------
-(defcomponent registration-dialog (dialog)
+(defcomponent <core:registration-dialog (<core:dialog)
   ((email-input :host remote :initform (<core:email-input)))
   (:default-initargs :title "register"))
 
-(defmethod/remote template ((self registration-dialog))
+(defmethod/remote template ((self <core:registration-dialog))
   (let ((_email (call/cc (email-input self)
 			 (jobject :class-name "text" :type "text"
 				  :name "email"
@@ -236,11 +233,11 @@
 ;; -------------------------------------------------------------------------
 ;; Forgot Password
 ;; -------------------------------------------------------------------------
-(defcomponent forgot-password-dialog (dialog)
+(defcomponent <core:forgot-password-dialog (<core:dialog)
   ((email-input :host remote :initform (<core:email-input)))
   (:default-initargs :title "password"))
 
-(defmethod/remote template ((self forgot-password-dialog))
+(defmethod/remote template ((self <core:forgot-password-dialog))
   (let ((_email (call/cc (email-input self)
 			 (jobject :class-name "text" :type "text"
 				  :name "email"
@@ -266,18 +263,16 @@
 ;; -------------------------------------------------------------------------
 ;; Big Dialog
 ;; -------------------------------------------------------------------------
-(defcomponent big-dialog (dialog)
+(defcomponent <core:big-dialog (<core:dialog)
   ()
-  (:default-initargs
-    :class "core core-big-dialog core-dialog"
-    :title "Dialog"))
+  (:default-initargs :class "core core-big-dialog core-dialog" :title "Dialog"))
 
-(defmethod/remote dialog-buttons ((self big-dialog))
+(defmethod/remote dialog-buttons ((self <core:big-dialog))
   (<:div :class "buttons right pad10"
 	 (<:input :type "button" :value "Close"
 		  :onclick (lifte (hide-component self)))))
 
-(defmethod/remote template ((self big-dialog))
+(defmethod/remote template ((self <core:big-dialog))
   (<:div :class "center text-center"
 	 (<:div :class "left left-bg"
 		(<:a :href "http://www.coretal.net/" ""))
@@ -291,16 +286,16 @@
 ;; -------------------------------------------------------------------------
 ;; Full Screen Dialog
 ;; -------------------------------------------------------------------------
-(defcomponent fullscreen-dialog (dialog)
+(defcomponent <core:fullscreen-dialog (<core:dialog)
   ()
   (:default-initargs :class "core core-fullscreen-dialog" :title ""))
 
-(defmethod/remote template ((self fullscreen-dialog))
+(defmethod/remote template ((self <core:fullscreen-dialog))
   (<:div :class "center text-center"	 
 	 (<:h1 "I am a fullscreen dialog")
 	 (<:p "Lorem ipsum ..")))
 
-(defmethod/remote init ((self fullscreen-dialog))
+(defmethod/remote init ((self <core:fullscreen-dialog))
   (call-next-method self)
   (append self (<:a :onclick (lifte (hide-component self))
 		    :title (_"Close")

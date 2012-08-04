@@ -13,7 +13,7 @@
    (crud-css :host remote :initform "style/crud.css")
    (slot-editors :host remote :initform nil)
    (default-slot-editor :host remote :initform (<core:required-value-input))
-   (yes-no-dialog-ctor :host remote :initform (yes-no-dialog))
+   (yes-no-dialog-ctor :host remote :initform (<core:yes-no-dialog))
    (_template :host remote)
    (_result :host remote :initform (jobject))))
 
