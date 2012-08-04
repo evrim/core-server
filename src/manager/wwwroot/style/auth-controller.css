@@ -1,0 +1,20 @@
+body {
+    background:url(images/auth-bg.png) repeat-x;
+}
+.max-width { width:550px; }
+.header {height:80px;}
+.header .right { font-size:1.1em; padding:10px; }
+.sign-in { padding:10px 0; margin:0; font-size:1.2em; }
+#top-right a {
+    background:#eee;
+    padding:5px 10px;
+    color:#222;
+    border-radius:2px;
+    border:1px solid #c00;
+    margin-left:10px;
+    text-decoration:none;
+}
+#top-right a:hover { text-decoration:underline; background:#fff; }
+#top-right p { margin:15px; }
+input.close {margin-top:25px !important;}
+#middle {height:210px; overflow:hidden; }

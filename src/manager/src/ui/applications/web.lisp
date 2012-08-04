@@ -43,7 +43,8 @@
 	  (list (start-button self) (register-button self))))
 
 (defmethod/remote destroy ((self <manager:web-application/crud))
-  (destroy (tab self))
+  (if (typep (slot-value (tab self) 'destroy) 'function)
+      (destroy (tab self)))
   (call-next-method self))
 
 (defmethod/remote init ((self <manager:web-application/crud))
@@ -63,8 +64,8 @@
 ;; Web Application View
 ;; -------------------------------------------------------------------------
 (defcomponent web-application/view (remote-reference)
-  ((%web-application :host lift :type web-application
-		     :reader %%web-application :initarg :web-application)
+  ((%application :host lift :type web-application :reader %application
+		 :initarg :application)
    (fqdn :lift t :host remote)
    (application-class :host remote)
    (is-running :host remote)
@@ -76,21 +77,25 @@
   (case superclass
     (http-application
      (list "HTTP Application"
-	   (make-http-application/view :application application)))))
+	   (make-http-application/view :application application)))
+    (database-server
+     (list "Database Server"
+	   (<manager:database-server/crud
+	    :instance (<manager:database-server :server application))))))
 
-(defun make-web-application/view (&key web-application)
-  (let ((class (symbol->js (class-name (class-of web-application))))
-	(registered-p (if (application.server web-application)
+(defun make-web-application/view (&key application)
+  (let ((class (symbol->js (class-name (class-of application))))
+	(registered-p (if (application.server application)
 			  t))
 	(supers (mapcar #'class-name
-			(class+.superclasses (class-of web-application)))))
+			(class+.superclasses (class-of application)))))
     (%make-web-application/view
-     :web-application web-application
+     :application application
      :application-class class
-     :is-running (status web-application)
+     :is-running (status application)
      :is-registered registered-p
      :tabs (reduce0 (lambda (acc super)
-		      (aif (make-application-tab web-application super)
+		      (aif (make-application-tab application super)
 			   (cons it acc)
 			   acc))
 		    supers))))

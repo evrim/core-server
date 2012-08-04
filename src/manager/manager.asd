@@ -19,7 +19,16 @@
 	    ((:file "packages")
 	     (:file "model" :depends-on ("packages"))
 	     (:file "application" :depends-on ("packages" "model"))
+	     (:file "auth" :depends-on ("application"))
 	     (:file "dynamic" :depends-on ("application"))
+	     (:module :mixin
+		      :serial t
+		      :components
+		      ((:file "application")
+		       (:module :widgets
+				:serial t
+				:components
+				((:file "login")))))
 	     (:module :ui
 	     	      :serial t
 	     	      :components
@@ -41,6 +50,7 @@
 		       (:file "settings")
 		       (:file "sites")
 	     	       (:file "admin")
+		       (:file "login")
 	     	       (:file "controller"))))))
   :depends-on (:arnesi+ :core-server)
   :serial t)

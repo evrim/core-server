@@ -34,11 +34,11 @@
 	  (register-unregister-app self instance)
 	  (call-next-method self instance action args))))
 
+(defmethod/cc make-view ((self <manager:applications) (app dynamic-application))
+  (make-dynamic-application/view :application app))
+
 (defmethod/cc make-view ((self <manager:applications) (app web-application))
-  (typecase (class-of app)
-    ;; (core-server::persistent-http-application+
-    ;;  (make-dynamic-application/view :web-application app))
-    (t (make-web-application/view :web-application app))))
+  (make-web-application/view :application app))
 
 (defmethod/remote core-server::_make-crud-component ((self <manager:applications)
 						     instance)
@@ -49,16 +49,16 @@
 
 (defmethod/local get-instances ((self <manager:applications))
   (mapcar (lambda (app) (make-view self app))
-	  (union (database.get (application.server application) :applications)
-		 (server.applications (application.server application))
-		 :key #'web-application.fqdn :test #'equal)))
+	  (server.applications (application.server application))))
 
 (defmethod/local add-instance ((self <manager:applications) fqdn)
-  (let ((new-application (make-instance 'dynamic-application
-					:fqdn fqdn
-					:admin-email "root@localhost")))
-    (register (application.server application) new-application)
-    (make-view self new-application)))
+  (aif (find-application (application.server application) fqdn)
+       (make-web-error 'error "FQDN %1 already exists." fqdn)
+       (let ((new-application (make-instance 'dynamic-application
+					     :fqdn fqdn
+					     :admin-email "root@localhost")))
+	 (register (application.server application) new-application)
+	 (make-view self new-application))))
 
 (defmethod/local delete-instance ((self <manager:applications)
 				  (instance web-application/view))
@@ -72,10 +72,11 @@
 (defmethod/local update-instance ((self <manager:applications)
 				  (instance dynamic-application/view) args)
   (let* ((attributes (core-server::plist-to-alist (jobject.attributes args)))
-	 (supers (cdr (find 'application-superclasses attributes :key #'car)))
+	 (supers (cdr (find 'application-superclasses attributes :key #'car
+			    :test #'string=)))
 	 (attributes (core-server::alist-to-plist
-		      (remove 'application-superclasses attributes
-			      :key #'car))))
+		      (remove 'application-superclasses attributes :key #'car
+			      :test #'string=))))
     (dynamic-application.change-class (application.server application)
 				      instance supers)
     (make-view self (apply #'dynamic-application.update

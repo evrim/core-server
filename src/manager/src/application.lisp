@@ -10,7 +10,7 @@
 ;; -------------------------------------------------------------------------
 ;; Manager Application
 ;; -------------------------------------------------------------------------
-(defapplication manager-application (root-http-application-mixin
+(defapplication manager-application (root-web-application-mixin
 				     http-application database-server
 				     logger-server
 				     serializable-web-application)
@@ -76,11 +76,11 @@
 (defmethod make-index-controller ((self manager-application))
   (authorize self (make-anonymous-user)
 	     (<core:simple-controller :default-page "index"
-	       (<core:simple-page :name "index"
-		(<core:simple-widget-map :selector "login"
-					 :widget (<core:login))
-		(<core:simple-widget-map :selector "clock"
-					 :widget (<core:simple-clock))))))
+	      (<core:simple-page :name "index"
+	       (<core:simple-widget-map :selector "login"
+					:widget (<core:login))
+	       (<core:simple-widget-map :selector "clock"
+					:widget (<core:simple-clock))))))
 
 (defhandler "index\.core" ((self manager-application))
   (destructuring-bind (username password)
@@ -93,7 +93,8 @@
      (let ((admin (admin.find self :username username)))
        (cond
     	 ((and admin (equal (admin.password admin) password))
-    	  (prog1 (jambda (self k) (k (setf window.location "manager.html")))
+    	  (prog1 (jambda (self)
+		   (setf (slot-value window 'location) "manager.html"))
     	    (update-session :user admin)))
     	 (t (jambda (self k) (k nil))))))))
 
@@ -113,22 +114,6 @@
 	  (with-js () stream ;; Unauthorized
 	    (setf window.location "index.html"))))))
 
-(defhandler "auth\.core" ((self manager-application) (reply-to "reply-to")
-			  (action "action") (mode "mode"))
-  (<:html
-   (<:head
-    (<:title "Core Server - http://labs.core.gen.tr/")
-    (<:meta :http--equiv "Content-Type" :content "text/html; charset=utf-8")
-    (<:link :rel "stylesheet" :href "/style/reset.css")
-    (<:link :rel "stylesheet" :href "/style/common.css")
-    (<:style :type "text/css"
-	     (css "body"
-		  :background "url('/style/dialog/stripe.png')"))
-    (<:script :type "text/javascript" :src "library.core"))
-   (<:body :class "stripe-bg"
-	   (<:div :class "max-width center text-center"
-		  (core-server::login-box)
-		  "foo"))))
 
 ;; ;; -------------------------------------------------------------------------
 ;; ;; Interface
@@ -151,3 +136,8 @@
 ;;   (call-next-method self :fqdn fqdn :api-key api-key
 ;; 		    :api-password api-password :owner owner
 ;; 		    :timestamp timestamp))
+
+
+
+
+

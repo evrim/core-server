@@ -5,7 +5,9 @@
   (:import-from #:core-server #:host #:port #:peers-max #:peer-class
 		#:protocol #:username #:password #:mail-port #:ssl
 		#:server)
-  (:use :common-lisp :core-server :arnesi))
+  (:use :common-lisp :core-server :arnesi)
+  (:export #:manager-web-application-mixin #:web-application.oauth-uri
+	   #:web-application.oauth-handler-uri #:web-application.api-uri))
 
 
 (defpackage :tr.gen.core.manager.widget
@@ -52,4 +54,14 @@
 
 	   ;; Settings
 	   #:settings
+
+	   ;; Auth
+	   #:login
+	   #:registration
+	   #:authentication-error
+	   
+	   ;; Login Link
+	   #:login-link
+	   #:login-link/anonymous
+	   #:login-link/registered
 	   ))

@@ -39,8 +39,7 @@
 (defcomponent <manager:administrators (<core:table-with-crud <widget:simple)
   ()
   (:default-initargs :table-title "Administrators"
-    :table (<manager:admin/table)
-    :crud (<manager:admin/crud)
+    :table (<manager:admin/table) :crud (<manager:admin/crud)
     :input-element
     (<core:required-value-input :default-value "Enter username (ie root)")))
 
@@ -48,9 +47,11 @@
   (admin.list application))
 
 (defmethod/local add-instance ((self <manager:administrators) username)
-  (admin.add application :username username :name username
-	     :group (simple-group.find application :name "admin")
-	     :owner (admin.find application :name "root")))
+  (aif (admin.find application :username username)
+       (make-web-error 'error "User %1 already exists." username)
+       (admin.add application :username username :name username
+		  :group (simple-group.find application :name "admin")
+		  :owner (admin.find application :name "root"))))
 
 (defmethod/local delete-instance ((self <manager:administrators)
 				  (user admin))

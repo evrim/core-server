@@ -35,8 +35,7 @@
 				      (<:h2 description)))
     (mapcar (lambda (widget)
 	      (destructuring-bind (selector . widget) widget
-		(<core:simple-widget-map :selector selector
-					 :widget widget)))
+		(<core:simple-widget-map :selector selector :widget widget)))
 	    widgets))))
 
 (defmethod make-pages ((self manager-application) &optional (pages +pages+))
@@ -51,7 +50,7 @@
 				    (mapcar (lambda (page)
 					      (jobject :name (car page)
 						       :title (cadr page)))
-					    pages))))
+				     pages))))
 
 ;; -------------------------------------------------------------------------
 ;; Make Clock

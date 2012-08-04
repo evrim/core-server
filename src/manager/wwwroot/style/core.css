@@ -30,6 +30,7 @@
 .core .text-left {text-align:left;}
 .core .text-right {text-align:right;}
 .core .text-center {text-align:center;}
+.core .width-50p {width:50% !important;}
 .core .width-70p {width:70% !important;}
 .core .width-90p {width:90% !important;}
 .core .width-30p {width:30% !important;}
@@ -78,12 +79,18 @@
 /*   min-height:0; */
 }
 .core a { text-decoration:none; }
-.core span.validation { display:inline; color:#008; padding-left:5px; padding-right:5px; }
+.core span.validation { 
+    display:inline;
+    color:#008;
+    padding-left:5px;
+    padding-right:5px;
+}
 .core input, .core select {padding:5px;}
 .core input[type=text],.core input[type=password], .core select {
     min-width:170px;
     border:2px inset #EEE;
     font-size:13px;
+    background-image:url(images/input-bg.png);
 }
 .core input[type=submit].disabled, .core input[type=reset].disabled, .core input[type=button].disabled {
     color:gray;
@@ -99,11 +106,15 @@
     font-size:13px;
 }
 
+.core input.valid {
+    border-left:2px solid #008;
+}
 .core input.invalid { 
     border-left:2px solid #8A0000;
-    border-top:2px solid #8A0000;
-    border-bottom:2px solid #B94E4E;
-    border-right:2px solid #B94E4E;
+    /* border-top:2px solid #8A0000; */
+    /* border-bottom:2px solid #B94E4E; */
+    /* border-right:2px solid #B94E4E; */
+
     /* border:2px inset #8A0000; */
 }
 .core span.invalid { color:#8A0000; }
