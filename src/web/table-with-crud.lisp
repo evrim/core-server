@@ -60,15 +60,12 @@
 (defmethod/remote make-form ((self <core:table-with-crud))
   (let* ((_id (random-string))
 	 (_span (<:span :id _id :class "validation"))
-	 (val (make-component (input-element self)
-			      :validation-span-id _id)))
+	 (val (make-component (input-element self) :validation-span-id _id)))
     (add-class val "width-250px")
     (add-class val "pad5")
     (<:form :onsubmit (lifte
-		       (let ((_value (get-input-value val)))
-			 (+ _value "")
-			 (reset-input-value val)
-			 (do-add-instance self _value)))
+		       (progn (do-add-instance self (get-input-value val))
+			      (reset-input-value val)))
 	    _span val
 	    (<:input :type "submit" :disabled t :value "Add"))))
 
