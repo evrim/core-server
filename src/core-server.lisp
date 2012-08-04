@@ -1389,12 +1389,16 @@
 (defpackage :<fb
   (:nicknames :tr.gen.core.server.facebook)
   (:use :cl)
-  (:export #:exception #:exception.code #:exception.type
-	   #:exception.message #:funkall #:fetch
-	   #:me #:friends #:home #:feed #:likes #:movies #:music #:books
+  (:export #:oauth-uri
+	   #:exception #:exception.code #:exception.type #:exception.message
+	   #:funkall 
+	   #:access-token #:%make-access-token #:access-token.timestamp
+	   #:access-token.expires #:access-token.token #:get-access-token
+	   #:authorized-funkall #:me
+	   #:friends #:home #:feed #:likes #:movies #:music #:books
 	   #:notes #:permissions #:photos #:albums #:videos #:events
 	   #:groups #:checkins #:videos-uploaded
-	   #:authenticate))
+	   #:fetch #:authenticate))
 
 (defpackage :<openid
   (:nicknames :tr.gen.core.server.openid)
