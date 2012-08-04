@@ -334,10 +334,13 @@
 
 (defprint-object (self uri :identity t :type t)
   (with-slots (scheme username password server
-		      port paths queries fragments) self
-    (format *standard-output* "~A://~A:~A@~A:~A~{/~A~}?~{~A&~}#~{~A&~}"
-	    scheme username password server port paths
-	    (ensure-list queries) (ensure-list fragments))))
+	       port paths queries fragments) self
+    (format t "~A://" scheme)
+    (if username (format t "~A:~A@" username password))
+    (format t "~A" server)
+    (if port (format t ":~A" port))
+    (format t "~{/~A~}?~{~A~}#~{~A~}" paths (ensure-list queries)
+	    (ensure-list fragments))))
 
 (defgeneric urip (uri)
   (:method ((uri uri)) t)
@@ -377,9 +380,9 @@
 (defconstant +uri-query-equal-seperator+ #\=)
 (defconstant +uri-query-seperator+ #\&)
 (defun query! (stream query)
-  (string! stream (car query))
+  (string! stream (escape-as-uri (car query)))
   (char! stream +uri-query-equal-seperator+)
-  (string! stream (cdr query)))
+  (string! stream (escape-as-uri (cdr query))))
 
 (defmethod uri! ((stream core-stream) (uri string))
   (string! stream uri))
