@@ -228,17 +228,29 @@ environment for rules."
 
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defparser utf-escaped? (f1 f2 f3 f4)
-    (:sci "%u")    
+    (:sci "%u")
     (:type hex? f1)  (:type hex? f2) (:type hex? f3) (:type hex? f4)
-    (:do (describe (list f1 f2 f3 f4)))
+    ;; (:do (describe (list f1 f2 f3 f4)))
     (:return ;;(+ (- f1 48) (* 8 (- f2 48)) (* 16 (- f3 48)) (* 32 (- f4 48)))
       (with-input-from-string (s (format nil "#x~C~C~C~C"
 					 (code-char f1) (code-char f2)
 					 (code-char f3) (code-char f4)))
 	(read s)))))
 
+;; ie. \u0040 -> @ symbol
+;; used in javascript
+(defparser utf-escaped2? (f1 f2 f3 f4)
+  (:seq "\\u")
+  (:type hex? f1)  (:type hex? f2) (:type hex? f3) (:type hex? f4)
+  ;; (:do (describe (list f1 f2 f3 f4)))
+  (:return ;;(+ (- f1 48) (* 8 (- f2 48)) (* 16 (- f3 48)) (* 32 (- f4 48)))
+    (with-input-from-string (s (format nil "#x~C~C~C~C"
+				       (code-char f1) (code-char f2)
+				       (code-char f3) (code-char f4)))
+      (read s))))
+
 (defparser escaped-string? (c (acc (make-accumulator :byte)))
-  (:oom (:or (:escaped? c) (:type octet? c))
+  (:oom (:or (:utf-escaped2? c) (:escaped? c) (:type octet? c))
 	(:collect c acc))
   (:return (if (> (length acc) 0)
 	       (octets-to-string acc :utf-8)
@@ -255,8 +267,9 @@ environment for rules."
 	     (:oom (:if (eq identifier #.(char-code #\'))
 			(:not #\')
 			(:not #\"))
-		   (:or (:and #\\ (:type octet? c))
+		   (:or (:utf-escaped2? c)
 			(:escaped? c)
+			(:and #\\ (:type octet? c))
 			(:type octet? c))
 		   (:collect c acc))
 	     (:return (octets-to-string acc :utf-8))))
