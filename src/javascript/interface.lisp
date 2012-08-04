@@ -90,13 +90,19 @@
 
 (defparameter +js-no-capture+ '(document window))
 (defmacro jambda (arguments &body body)
-  (let* ((form (walk-form `(lambda ,arguments ,@body)))
+  (let* ((form (walk-js-form `(lambda ,arguments ,@body)))
 	 (env (mapcar (lambda (ref)
 			(with-slots (name) ref
 			  `(list :let ',name ,name)))
 		      (filter (lambda (a)
-				(member (slot-value a 'name) +js-no-capture+))
+				(not (member (slot-value a 'name) +js-no-capture+
+					     :test #'string=)))
 			      (ast-search-type form 'free-variable-reference)))))
     `(make-instance 'arnesi::closure/cc 
-		    :code ,form
-		    :env ,env)))
+		    :code ,(fix-lambda-k
+			    (fix-progn
+			     (fix-excessive-recursion
+			      (walk-js-form
+			       (javascript->cps form #'javascript->cps
+						`(lambda (a) a) nil)))))
+		    :env (list ,@env))))
