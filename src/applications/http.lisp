@@ -228,14 +228,6 @@ that has set before"
     (:documentation "HTTP Application Class")
     (:metaclass http-application+)))
 
-(defmethod print-object ((self http-application) stream)
-  (print-unreadable-object (self stream :type t :identity t)
-    (if (typep self 'server)
-	(format stream "FQDN:\"~A\" is ~A running"
-		(web-application.fqdn self)
-		(if (status self) "" "*not*"))
-	(format stream "FQDN:\"~A\"" (web-application.fqdn self)))))
-
 (defmethod start ((self http-application))
   (clrhash (slot-value self 'sessions)))
 
@@ -245,32 +237,6 @@ that has set before"
 
 (defmethod reset-sessions ((self http-application))
   (clrhash (slot-value self 'sessions)))
-
-(defmethod web-application.serve-url ((self http-application) (req t))
-  (format nil "/~A/TESTREQUEST" (web-application.fqdn self)))
-
-(defmethod web-application.base-url ((self http-application))
-  (format nil "/~A" (web-application.fqdn self)))
-
-(defmethod web-application.serve-url ((self http-application) (req http-request))
-  (format nil "~A~A" (web-application.base-url self)
-	  (with-core-stream (s "")
-	    (mapc #'(lambda (path)
-		      (char! s core-server::+uri-path-seperator+)
-		      (string! s (car path))
-		      (mapc #'(lambda (path)
-				(core-server::char!
-				 s core-server::+uri-segment-seperator+)
-				(core-server::string! s path))
-			    (cdr path)))
-		  (core-server::uri.paths (http-request.uri req)))	    
-	    (return-stream s))))
-
-;; +-------------------------------------------------------------------------
-;; | Root Http Application (App to serve at /)
-;; +-------------------------------------------------------------------------
-(defclass+ root-http-application-mixin ()
-  ())
 
 ;; --------------------------------------------------------------------------
 ;; defapplication Macro: Adds http-application+ metaclass
@@ -506,17 +472,6 @@ that has set before"
 	response))
      (t (make-404-response)))))
 
-;; --------------------------------------------------------------------------
-;; Overriden get-directory method: This allows us to use default
-;; database directory for database driven http applications.
-;; --------------------------------------------------------------------------
-(defmethod database.directory ((application http-application))
-  (ensure-directories-exist
-   (merge-pathnames
-    (make-pathname :directory (list :relative "var"
-				    (web-application.fqdn application) "db"))
-    (bootstrap::home))))
-
 ;; +-------------------------------------------------------------------------
 ;; | HTTP Macros
 ;; +-------------------------------------------------------------------------
@@ -531,12 +486,10 @@ that has set before"
 
 (defmacro with-context (context &body body)
   "Executes 'body' with HTTP context bind to 'context'"
-  `(let ((,context ,context))
-     (declare (special ,context))
-     (with-call/cc
-       (let ((+context+ ,context))
-	 (declare (special +context+))
-	 ,@body))))
+  `(with-call/cc
+    (let ((+context+ ,context))
+      (declare (special +context+))
+      ,@body)))
 
 (defmethod %scan-uri ((application http-application) (handler-name symbol)
 		      (context http-context))

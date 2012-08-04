@@ -834,7 +834,7 @@
    
    ;; Class
    #:http-application
-   #:root-http-application-mixin
+   #:root-web-application-mixin
    #:http-application.sessions
    #:defapplication
    #:find-session
