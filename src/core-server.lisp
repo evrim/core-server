@@ -860,6 +860,7 @@
    #:send/suspend
    #:send/forward
    #:send/finish
+   #:send/redirect
    #:action/hash
    #:function/hash
    #:action/url
