@@ -169,54 +169,39 @@
 (defun make-fb-me-uri (&rest paths)
   (make-fb-graph-uri :paths `(("me") ,@paths)))
 
-;; v v v v v v v
-;; ;; -------------------------------------------------------------------------
-;; ;; Other Facebook Commands
-;; ;; -------------------------------------------------------------------------
-;; *************
-;; ;; -------------------------------------------------------------------------
-;; ;; Other Facebook Commands
-;; ;; -------------------------------------------------------------------------
-;; (defun make-fb-me-uri (&rest paths)
-;;   (make-fb-graph-uri :paths `(("me") ,@paths)))
+(eval-when (:load-toplevel :compile-toplevel :execute)
+  (defvar +fb-me-commands+ '(friends home feed likes movies music
+			     books notes permissions photos albums
+			     videos events groups checkins)))
 
-;; ;; -------------------------------------------------------------------------
-;; ;; Other Facebook Commands
-;; ;; -------------------------------------------------------------------------
-;; ^ ^ ^ ^ ^ ^ ^
-;; (eval-when (:load-toplevel :compile-toplevel :execute)
-;;   (defvar +fb-me-commands+ '(friends home feed likes movies music
-;; 			     books notes permissions photos albums
-;; 			     videos events groups checkins)))
+(defmacro deffb-me-commands (lst)
+  (let ((lst (if (listp lst) lst (eval lst))))
+    `(progn
+       ,@(mapcar
+	  (lambda (command)
+	    (let ((name (intern (string-upcase command) (find-package :<fb))))
+	      `(defcommand ,name (<fb:me)
+		   ()
+		 (:default-initargs :url (make-fb-me-uri '(,(symbol-name command)))))))
+	  lst))))
 
-;; (defmacro deffb-me-commands (lst)
-;;   (let ((lst (if (listp lst) lst (eval lst))))
-;;     `(progn
-;;        ,@(mapcar
-;; 	  (lambda (command)
-;; 	    (let ((name (intern (string-upcase command) (find-package :<fb))))
-;; 	      `(defcommand ,name (<fb:me)
-;; 		   ()
-;; 		 (:default-initargs :url (make-fb-me-uri '(,(symbol-name command)))))))
-;; 	  lst))))
+(deffb-me-commands +fb-me-commands+)
 
-;; (deffb-me-commands +fb-me-commands+)
+;; one more extra, videos-uploaded.
+(defcommand <fb:videos-uploaded (<fb:me)
+  ()
+  (:default-initargs :url (make-fb-me-uri '("videos") '("uploaded"))))
 
-;; ;; one more extra, videos-uploaded.
-;; (defcommand <fb:videos-uploaded (<fb:me)
-;;   ()
-;;   (:default-initargs :url (make-fb-me-uri '("videos") '("uploaded"))))
+(defcommand <fb:fetch (<fb:authorized-funkall)
+  ((id :host local :initform (error "Provide :id") :initarg :id)))
 
-;; (defcommand <fb:fetch (<fb:authorized-funkall)
-;;   ((id :host local :initform (error "Provide :id") :initarg :id)))
+(defmethod http.setup-uri ((self <fb:fetch))
+  (let ((uri (call-next-method self)))
+    (setf (uri.paths uri) (list (list (s-v 'id))))
+    uri))
 
-;; (defmethod http.setup-uri ((self <fb:fetch))
-;;   (let ((uri (call-next-method self)))
-;;     (setf (uri.paths uri) (list (list (s-v 'id))))
-;;     uri))
-
-;; (defun <fb:authenticate (token)
-;;   (let ((user (<fb:me :token token :debug-p t)))
-;;     (list :email (format nil "~A@facebook.com"
-;; 			 (get-attribute user :username))
-;; 	  :name (get-attribute user :name))))
+(defun <fb:authenticate (token)
+  (let ((user (<fb:me :token token :debug-p t)))
+    (list :email (format nil "~A@facebook.com"
+			 (get-attribute user :username))
+	  :name (get-attribute user :name))))
