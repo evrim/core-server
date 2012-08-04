@@ -8,7 +8,7 @@
   (:or (:and (:or (:seq "\"\"")
 		  (:seq "''")) (:return "")) ;; -hek.
        (:and (:quoted? q) (:return (if (> (length q) 0) q nil)))
-       (:or (:and (:escaped-string? acc) (:return acc))
+       (:or ;; (:and (:escaped-string? acc) (:return acc))
 	    (:and (:do (setq acc (make-accumulator :byte)))
 		  (:oom (:type (or visible-char? space?) c)
 			(:collect c acc)) 
@@ -284,6 +284,9 @@
 				       (warn "Fixme: serialize closure to json: ~A" arg)))))
 			      frees))))))
 
+(defmethod json! ((stream core-stream) (uri uri))
+  (json! stream (uri->string uri)))
+
 (defun json-serialize (object)
   (let ((s (make-core-stream "")))
     (json! s object)
@@ -299,7 +302,7 @@
 
 (deftrace json-parsers
     '(json? json-array? json-key? json-object? json-number?
-      json-boolean? json-string?))
+      json-boolean? json-string? json-key?))
 
 ;; Core Server: Web Application Server
 
