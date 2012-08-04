@@ -627,6 +627,7 @@
    #:serialization-cache
    #:xml-serialize
    #:xml-deserialize
+   #:dynamic-class+
    #:transaction
    #:with-transaction
    #:deftransaction

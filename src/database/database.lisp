@@ -136,14 +136,7 @@
 				 (xml <db:instance)
 				 &optional (k #'database.deserialize))
   (with-slots (class children id) xml
-    (let* ((class (or (and class (find-class (read-from-string class)))
-		      (aif (any (lambda (a)
-				  (if (or (typep a '<db:class)
-					  (typep a '<db:dynamic-class))
-				      a))
-				children)
-			   (funcall k it k)
-			   (error "Class not found ~A" xml))))
+    (let* ((class (xml-find-class xml k))
 	   (instance (allocate-instance class))
 	   (id (read-from-string id)))
       (with-slots (cache counter) (database.cache self)
@@ -155,13 +148,9 @@
 			   (multiple-value-bind (name value) (funcall k slot k)
 			     (if (slot-exists-p instance name)
 				 (list (make-keyword name) value))))
-			 (filter (lambda (a)
-				   (or (not (typep a '<db:class))
-				       (not (typep a '<db:dynamic-class))))
-				 children))
+			 (filter (lambda (a) (typep a '<db:slot)) children))
 		 (mapcar (lambda (a) (list (car a) (cadr a)))
-			 (class-default-initarg-values
-			  (class-of instance))))))))))
+			 (class-default-initarg-values (class-of instance))))))))))
 
 (defmethod database.serialize ((self abstract-database) (object standard-object)
 			       &optional (k (curry #'database.serialize self)))
@@ -451,7 +440,7 @@
 ;; 				  (car arg-names))))
 ;;        ,@body)))
 
-(deftransaction database.get ((server database) key)
+(defmethod database.get ((server database) key)
   (gethash key (database.root server)))
 
 (deftransaction (setf database.get) (value (server database) key)

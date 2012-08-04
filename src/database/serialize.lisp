@@ -256,13 +256,11 @@
 ;; Class
 ;; ----------------------------------------------------------------------------
 (defxml <db:class id)
-
 (defmethod xml-deserialize ((xml <db:class) &optional (k #'xml-deserialize))
   (declare (ignore k))
   (find-class (read-from-string (car (slot-value xml 'children)))))
 
-(defmethod xml-serialize ((object standard-class)
-			  &optional (k #'xml-serialize))
+(defmethod xml-serialize ((object standard-class) &optional (k #'xml-serialize))
   (declare (ignore k))
   (<db:class (symbol->string (class-name object))))
 
@@ -270,12 +268,12 @@
 (defmethod xml-deserialize ((xml <db:dynamic-class) &optional
 			    (k #'xml-deserialize))
   (with-slots (name class children) xml    
-    (let* ((supers (mapcar (rcurry k (curry #'funcall k))
-			   (filter (lambda (a) (typep a '<db:class))
-				   children))))
+    (let* ((supers (mapcar (rcurry k k)
+			   (filter (lambda (a) (typep a '<db:class)) children))))
       (make-instance (find-class (read-from-string class))
 		     :name (read-from-string name)
-		     :direct-superclasses supers))))
+		     :direct-superclasses (cons (find-class (read-from-string name))
+						supers)))))
 
 (defmethod xml-serialize ((object dynamic-class+)
 			  &optional (k #'xml-serialize))
@@ -290,26 +288,30 @@
 ;; Standard Object
 ;; ----------------------------------------------------------------------------
 (defxml <db:instance id class)
+(defmethod xml-find-class ((xml <db:instance) &optional (k #'xml-deserialize))
+  (with-slots (class children) xml
+    (or (and class (find-class (read-from-string class)))
+	(aif (any (lambda (a)
+		    (if (or (typep a '<db:class)
+			    (typep a '<db:dynamic-class))
+			a))
+		  children)
+	     (funcall k it k)
+	     (error "Class not found ~A" xml)))))
 
 (defmethod xml-deserialize ((xml <db:instance) &optional (k #'xml-deserialize))
   (with-slots (class children) xml
-    (let* ((class (or (aif (car (any (lambda (a) (typep a '<db:class))
-				     children))
-			   (funcall k it k))
-		      (find-class (read-from-string class))))
+    (let* ((class (xml-find-class xml k))
 	   (instance (allocate-instance class)))
       (initialize-instance
        (reduce (lambda (instance slot)
-		 (typecase slot
-		   (<db:class instance)
-		   (<db:slot
-		    (multiple-value-bind (name value) (funcall k slot k)
-		      (setf (slot-value instance name) value)
-		      instance))))
-	       children :initial-value instance)))))
+		 (multiple-value-bind (name value) (funcall k slot k)
+		   (setf (slot-value instance name) value)
+		   instance))
+	       (filter (lambda (a) (typep a '<db:slot)) children)
+	       :initial-value instance)))))
 
-(defmethod xml-serialize ((object standard-object)
-			  &optional (k #'xml-serialize))
+(defmethod xml-serialize ((object standard-object) &optional (k #'xml-serialize))
   (<db:instance (funcall k (class-of object) k)
 		(mapcar (lambda (slot)
 			  (<db:slot :name (symbol->string slot)
