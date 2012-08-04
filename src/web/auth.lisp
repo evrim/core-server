@@ -8,8 +8,13 @@
 ;; --------------------------------------------------------------------------
 (defcomponent <core:login (<:div callable-component)
   ((_password-input :host remote
-		    :initform (<core:password-input  :min-length 5))
-   (_username-input :host remote :initform (<core:required-value-input)))
+		    :initform
+		    (<core:password-input :min-length 5 :name "password"
+					  :default-value "Password"))
+   (_username-input :host remote
+		    :initform
+		    (<core:required-value-input :name "username"
+						:default-value "Username")))
   (:default-initargs :id "loginBox"))
 
 (defmethod/local answer-component ((self <core:login) arg)
@@ -17,121 +22,33 @@
 
 (defmethod/remote template ((self <core:login))
   (let ((_username (make-component (_username-input self)
-				   :class-name "text"
-				   :type "text" :name "username"
-				   :validation-span-id "username-validation"
-				   :default-value "Username"))
+				   ;; :class-name "text"
+				   :validation-span-id "username-validation"))
 	(_password (make-component (_password-input self)
-				    :class-name "text"
-				    :default-value "password"
-				    :type "password" :name "password"
-				    :validation-span-id "password-validation")))
-    (list
-     (<:form :onsubmit (lifte
-			(answer-component self (cons
-						(get-input-value _username)
-						(get-input-value _password))))
-	     (with-field _username
-	       (<:span :class "validation"
-		       :id "username-validation" "Enter your username"))
-	     (with-field _password
-	       (<:span :class "validation"
-		       :id "password-validation" "Enter your password"))
-	     (with-field ""
-	       (<:input :type "submit" :class "button"
-			:value "login" :disabled t))))))
+				   ;; :class-name "text"
+				   :validation-span-id "password-validation")))
+    (<:form :onsubmit (lifte
+		       (answer-component self (cons
+					       (get-input-value _username)
+					       (get-input-value _password))))
+	    (with-field _username
+	      (<:span :class "validation"
+		      :id "username-validation" "Enter your username"))
+	    (with-field _password
+	      (<:span :class "validation"
+		      :id "password-validation" "Enter your password"))
+	    (with-field ""
+	      (<:input :type "submit" :class "button"
+		       :value "login" :disabled t)))))
 
 (defmethod/remote destroy ((self <core:login))
-  (remove-class self "core"))
+  (remove-class self "core")
+  (call-next-method self))
 
 (defmethod/remote init ((self <core:login))
   (add-class self "core")
-  (mapcar (lambda (a) (.append-child self a)) (template self)))
+  (append self (template self)))
 
-;; -------------------------------------------------------------------------
-;; Registration Box
-;; -------------------------------------------------------------------------
-(defcomponent registration-box (<:div)
-  ()
-  (:default-initargs :id "registrationBox"))
-
-(defmethod/remote template ((self registration-box))
-  (list
-   (<:form :action "#"
-	   :onsubmit (event (e)
-		       (with-call/cc
-			 (answer-component self this.email.value))
-		       false)
-      (with-field
-	  (<core:email-input :class-name "text" :type "text" :name "email"
-			     :validation-span-id "email-validation"
-			     :default-value "Email")
-	(<:span :class "validation" :id "email-validation" "Enter your email address"))
-      (with-field ""
-	(<:input :type "submit" :class "button"
-		 :value "login or register" :disabled t)))))
-
-(defmethod/remote init ((self registration-box))
-  (mapcar (lambda (a) (.append-child self a)) (template self)))
-
-;;(defcomponent-ctor login)
-;; (defhtmlcomponent-ctor login)
-
-;; --------------------------------------------------------------------------
-;; Authentication Component
-;; --------------------------------------------------------------------------
-;; (defcomponent <core:auth ()
-;;   ((user :host local)))
-
-;; (defmethod/local get-name ((self <core:auth))
-;;   (slot-value (s-v 'user) 'name))
-
-;; (defmethod/local is-authenticated ((self <core:auth))
-;;   (and (s-v 'user) t))
-
-;; --------------------------------------------------------------------------
-;; Login Dialog
-;; --------------------------------------------------------------------------
-;; (defcomponent login-box (<:a)
-;;   ())
-
-;; (defcomponent login-component ()
-;;   ())
-
-;; (defmethod/remote authenticate ((self login-component) username password)
-;;   (throw (new (*error "Please implement authenticate method."))))
-
-;; (defmethod/local render-login-form ((self login-component))
-;;   (<:div :id "login-dialog"
-;; 	 (<:form :action "#" :id "login-form"
-;; ;;; 	  ;;	    :onsubmit "return false;"
-;; ;;; 	  ;;	    :onsubmit "return trg.authenticate(this.username.value, this.password.value);"
-;; 		 (<:div :class "field-name" "Username:")
-;; 		 (<:div :class "field-value" (<:input :type "text" :name "username" :id "username-field"))
-;; 		 (<:div :class "field-name" "Password:")
-;; 		 (<:div :class "field-value" (<:input :type "password" :name "password" :id "password-field"))
-;; 		 (<:div :class "field-name")
-;; 		 (<:div :class "field-value" (<:input :type "submit" :value "Enter")))))
-
-;; (defmethod/remote do-login ((self login-component))
-;;   (let ((d (this.render-login-form)))
-;;     (setf d.first-child.onsubmit
-;; 	  (dojo.hitch this (lambda ()
-;; 			     (let ((result
-;; 				    (this.authenticate
-;; 				     (slot-value (dojo.by-id "username-field") 'value)
-;; 				     (slot-value (dojo.by-id "password-field") 'value))))
-;; 			       (if result
-;; 				   (.hide (dijit.by-id "login-dialog"))
-;; 				   (alert "Sorry, username or password is wrong, please try again.")))
-;; 			     (return false))))
-;;     (dojo.require "dijit.Dialog")
-;;     (if (dijit.by-id "login-dialog")
-;; 	(.destroy (dijit.by-id "login-dialog")))
-    
-;;     (let ((dialog (new (dijit.*dialog (create :title "Coretal v2") d))))
-;;       (dialog.show))
-;;     (return false)))
 
 ;; Core Server: Web Application Server
 
