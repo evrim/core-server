@@ -21,7 +21,7 @@
 		   key (make-accumulator)
 		   value (make-accumulator)))
 	(:lwsp?))
-  (:return (nreverse lst)))
+  (:return (cons (cons "timestamp" (get-universal-time)) (nreverse lst))))
 
 (defmethod %%encode ((self <openid:funkall) params)
   (flet ((one (stream key-value)
