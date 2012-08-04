@@ -558,7 +558,9 @@
    #:web-application
    #:server
    #:web-server
-   #:persistent-http-server
+   #:persistent-server
+   #:persistent-application
+   
    ;; Accessors
    #:application.server
    #:application.debug
@@ -575,6 +577,7 @@
    #:start
    #:stop
    #:status
+   #:stop-start
    #:register
    #:unregister
    #:with-server-mutex

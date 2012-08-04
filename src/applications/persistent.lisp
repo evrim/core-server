@@ -3,13 +3,11 @@
 ;; -------------------------------------------------------------------------
 ;; Persistent Application
 ;; -------------------------------------------------------------------------
-;; By default every web-application is persistent if :persist slot is t
+(defclass+ persistent-application (application)
+  ((start-stop-state :host local :export nil)))
 
+(defmethod start ((self persistent-application))
+  (setf (slot-value self 'start-stop-state) t))
 
-;; -------------------------------------------------------------------------
-;; Persistent HTTP Application Metaclass
-;; -------------------------------------------------------------------------
-;; This application metaclass is for the use manager-application.
-(defclass+ persistent-http-application+ (dynamic-class+ http-application+)
-  ())
-
+(defmethod stop ((self persistent-application))
+  (setf (slot-value self 'start-stop-state) nil))
