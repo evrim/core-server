@@ -308,6 +308,7 @@
    #:funcall2-cc
    #:singleton-component-mixin
    #:remote-reference
+   #:make-web-error
    
    ;; [RFC 2109]
    #:cookie
