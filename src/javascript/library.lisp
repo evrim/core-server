@@ -216,8 +216,7 @@
 	      (fun i (slot-value obj i))))
       result))
 
-  (defun describe (obj)
-    (mapobject (lambda (a b) (_debug (list a b))) obj))
+  (defun describe (obj) (_debug obj))
 
   (defun object-to-list (obj)
     (let ((result))
@@ -225,6 +224,9 @@
 		   (setf result (cons (list k v) result)))
 		 obj)
       (reverse result)))
+
+  (defun describe-object (obj)
+    (describe (object-to-list obj)))
     
   (defun member (obj lst)
     (reduce (lambda (acc atom)
@@ -320,7 +322,9 @@
 	(if (null item)
 	    to
 	    (if (slot-value to 'node-name)
-		(to.append-child item)
+		(if (typep item 'string)
+		    (to.append-child (document.create-text-node item))
+		    (to.append-child item))
 		(reduce (flip cons)
 			(reduce (flip cons) to)
 			(reverse (reduce (flip cons) item)))))))
@@ -914,24 +918,26 @@
   (defun gettext (str args)
     (gettext-lang +default-language+ str args))
 
-  (defun pop-up (url name width height)
-    (with-call/cc
-      (let* ((width (if width
-			width
-			(if (> screen.width 0)
-			    (*math.floor (/ (- screen.width 10) 2))
-			    400)))
-	     (height (if height
-			 height
-			 (if (> screen.height 0)
-			     (*math.floor (/ (- screen.height 10) 2))
-			     400)))
-	     (left (*math.floor (/ (- screen.width width) 2)))
-	     (top (*math.floor (/ (- screen.height height) 2)))
-	     (params (+ "left=" left ", top=" top ",width=" width ", height=" height ", screenX=" left ", screenY=" top ", toolbar=no, status=yes, location=no, menubar=no, directories=no, scrollbars=yes, resizable=yes")))
-	;; (_debug (list "he" height "wi" width "param" params))
-	(window.open url "" ;; name
-		     params))))
+  (defun/cc pop-up (url name width height)
+    (let* ((width (if width
+		      width
+		      (if (> screen.width 0)
+			  (*math.floor (/ (- screen.width 10) 2))
+			  400)))
+	   (height (if height
+		       height
+		       (if (> screen.height 0)
+			   (*math.floor (/ (- screen.height 10) 2))
+			   400)))
+	   (left (*math.floor (/ (- screen.width width) 2)))
+	   (top (*math.floor (/ (- screen.height height) 2)))
+	   (params (+ "left=" left ", top=" top ",width=" width
+		      ", height=" height ", screenX=" left
+		      ", screenY=" top ", toolbar=no, status=yes, "
+		      "location=no, menubar=no, directories=no, "
+		      "scrollbars=yes, resizable=yes")))
+      (describe (list "popUp" url "height" height "width" width "param" params))
+      (window.open url name params)))
   
   (defun random-string (len)
     (let ((len (or len 8))
