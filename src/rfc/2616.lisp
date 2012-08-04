@@ -1441,12 +1441,15 @@
 (defhttp-header-parser http-request-header? "HTTP-~A?" +http-request-headers+)
 (defhttp-header-parser http-entity-header? "HTTP-~A?" +http-entity-headers+)
 
+(defatom %%http-header-value? ()
+  (and (not (linefeed? c)) (not (carriage-return? c))))
+
 (defparser http-unknown-header? ((key (make-accumulator))
 			       (value (make-accumulator :byte)) c)
   (:not #\Newline)
   (:oom (:type http-header-name? c) (:collect c key))
   #\: (:zom (:type space?))
-  (:oom (:type http-header-value? c) (:collect c value))
+  (:oom (:type %%http-header-value? c) (:collect c value))
   (:return (cons key value)))
 
 (defparser rfc2616-request-headers? (c method uri version key value header
@@ -1669,14 +1672,7 @@
   (:zom (:or (:and (:http-general-header? header) (:do (push header gh)))
 	     (:and (:http-response-header? header) (:do (push header gh)))
 	     (:and (:http-entity-header? header) (:do (push header eh)))
-	     (:and (:type http-header-name? c)
-		   (:do (setq key (make-accumulator))) (:collect c key)
-		   (:zom (:type http-header-name? c) (:collect c key))
-		   (:or (:and #\: (:zom (:type space?)))
-			(:and (:zom (:type space?)) (:crlf?)))
-		   (:do (setq value (make-accumulator :byte)))
-		   (:zom (:type http-header-value? c) (:collect c value)) 
-		   (:do (push (list key value) uh))))
+	     (:and (:http-unknown-header? header) (:do (push header uh))))
 	(:optional (:crlf?)))
   (:return (values (nreverse gh) (nreverse eh) (nreverse uh))))
 
