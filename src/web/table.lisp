@@ -206,7 +206,8 @@
       (prepend tbody row)
       (setf (slot-value (slot-value self 'parent-node) 'scroll-top) "0")
       (resize-thead self)
-      (on-select self instance))))
+      (make-web-thread (lambda () (on-select self instance)))
+      instance)))
 
 (defmethod/remote remove-instance ((self <core:table) instance)
   (with-slots (instances) self
