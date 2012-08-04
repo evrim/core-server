@@ -28,11 +28,14 @@
 	  (slot-value (_nav self) 'child-nodes)))
 
 (defmethod/remote make-tab ((self <core:tab) tab)
-  (reduce0 (lambda (acc a)
-	     (if (and (listp a) (eq tab (car a)))
-		 (car (cdr a))
-		 acc))
-	   (tabs self)))
+  (reduce0-cc (lambda (acc a)
+		(if (and (listp a) (eq tab (car a)))
+		    (let ((tab (car (cdr a))))
+		      (if (typep tab 'function)
+			  (make-component tab)
+			  tab))
+		    acc))
+	      (tabs self)))
 
 (defmethod/remote maintain-height ((self <core:tab))
   (with-slots (_offset) self
@@ -52,7 +55,8 @@
 (defmethod/remote show-tab ((self <core:tab) tab)
   (hilight-tab self tab)
   (aif (make-tab self tab)
-       (setf (_content self) (replace-node (_content self) it)))
+       (progn (describe (list "foo" it))
+	      (setf (_content self) (replace-node (_content self) it))))
   (maintain-height self))
 
 (defmethod/remote navigation ((self <core:tab))
