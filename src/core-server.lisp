@@ -1336,7 +1336,10 @@
 	   #:simple-controller #:simple-controller/unauthorized
 	   #:simple-controller/anonymous
 	   #:simple-controller/authorized
-	   #:login))
+	   #:login #:dialog #:prompt-dialog #:yes-no-dialog
+	   #:login-dialog #:registration-dialog
+	   #:forgot-password-dialog #:big-dialog
+	   #:fullscreen-dialog))
 
 (defpackage :<atom
   (:nicknames :tr.gen.core.server.atom)
