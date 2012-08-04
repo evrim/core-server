@@ -225,6 +225,7 @@
    #:parse-safe-html
    #:html-stream
    #:safe-html-stream
+   #:href
    
    ;; [Dom Markup]
    #:dom2string

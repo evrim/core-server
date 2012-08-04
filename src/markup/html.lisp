@@ -363,7 +363,7 @@
               (string (write-string key href))
               (symbol (write-string (string-downcase key) href))) 
 	 do (write-char #\= href)
-	 do (princ value href)
+	 do (princ (escape-as-uri value) href)
 	 when rest
 	 do (write-char #\& href)))))
 
