@@ -42,8 +42,14 @@
 (declaim (inline push-atom))
 (defun push-atom (atom accumulator)  
   (cond
+    ((and (numberp atom) (> atom 255))
+     (reduce #'(lambda (acc atom)
+		 (declare (ignore acc))
+		 (vector-push-extend atom accumulator))
+	     (string-to-octets (string (code-char atom)) :utf8) :initial-value nil))
     ((and (characterp atom)
 	  (not (eq 'character (array-element-type accumulator))))
+	
      (reduce #'(lambda (acc atom)
 		 (declare (ignore acc))
 		 (vector-push-extend atom accumulator)
