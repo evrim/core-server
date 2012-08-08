@@ -21,7 +21,7 @@
    (debug-p :host local :initform nil :documentation "Enable debug statements")
    (parse-p :host local :initform t :documentation "Parse response entities")
    (cache-p :host local :initform nil :documentation "Cache?")
-   (error-p :host local :initform t :documentation "Raise error")
+   (error-p :host local :initform t :documentation "Raise error?")   
    (request-headers :host local :initform nil)))
 
 (defmethod http.debug ((self http) &rest args)
@@ -54,15 +54,14 @@
   (if (stringp (s-v 'url))
       (setf (s-v 'url) (uri? (make-core-stream (s-v 'url)))))
 
-  #+ssl
-  (if (and (http.ssl-p self) (null (uri.port (s-v 'url))))
-      (setf (uri.port (s-v 'url)) 443))
-
   (s-v 'url))
 
 (defmethod http.connect ((self http))
   (with-slots (url) self
-    (let* ((stream (connect (uri.server url) (or (uri.port url) 80)))
+    (let* ((stream (connect (uri.server url) (or (uri.port url)
+						 (if (http.ssl-p self)
+						     443
+						     80))))
 	   #+ssl
 	   (stream (if (http.ssl-p self)
 		       (make-core-stream (cl+ssl:make-ssl-client-stream
@@ -131,7 +130,8 @@
 	 (let ((entity (read-stream (make-relaxed-xml-stream stream))))
 	   (if entity
 	       (setf (http-response.entities response) (list entity)))))
-	((and (string= "javascript" (cadr content-type))
+	((and (or (string= "javascript" (cadr content-type))
+		  (string= "json" (cadr content-type)))
 	      (or (string= "text" (car content-type))
 		  (string= "application" (car content-type))))
 	 (let ((entity (json? stream)))
@@ -144,8 +144,6 @@
 	      (setf (http-response.entities response) (list entity))))
 	   (t (warn "Cannot read-everything?, no content-length"))))))))
 
-
-;; BURAYA KADAR OK
 
 (defmethod http.authorize ((self http) (type (eql 'basic)) parameters)
   (with-slots (username password) self

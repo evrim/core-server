@@ -119,13 +119,7 @@
 				   (:file "admin")
 				   (:file "scm")
                                    ;; (:file "hxpath")
-				   (:file "image")
-				   (:file "http")
-				   (:file "facebook")
-				   (:file "openid")
-				   (:file "google")
-				   (:file "paypal")
-				   (:file "twitter")))
+				   (:file "image")))
 			 (:module :install
 				  :serial t
 				  :components
@@ -207,7 +201,7 @@
                                    ;; (:file "ticket")
                                    (:file "socket")
                                    (:file "http" :depends-on ("socket" "logger"))
-				   (:file "persistent-http" :depends-on ("http"))))
+				   (:file "persistent" :depends-on ("http"))))
                          (:module :services
                                   :components
                                   ((:file "whois")
@@ -219,6 +213,17 @@
 				   (:file "authorize")
 				   (:file "authenticate"))
 				  :serial t)
+			 (:module :clients
+				  :serial t
+				  :components
+				  ((:file "http")
+				   (:file "openid")
+				   (:file "oauth-v1")
+				   (:file "oauth-v2")
+				   (:file "facebook")
+				   (:file "google")
+				   (:file "twitter")
+				   (:file "paypal")))
                          (:module :web
                                   :serial t
                                   :components

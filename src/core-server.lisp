@@ -1386,36 +1386,59 @@
   (:use :cl)
   (:export #:total-results :start-index :items-per-page))
 
-(defpackage :<fb
-  (:nicknames :tr.gen.core.server.facebook)
-  (:use :cl)
-  (:export #:oauth-uri
-	   #:exception #:exception.code #:exception.type #:exception.message
-	   #:funkall 
-	   #:access-token #:%make-access-token #:access-token.timestamp
-	   #:access-token.expires #:access-token.token #:get-access-token
-	   #:authorized-funkall #:me
-	   #:friends #:home #:feed #:likes #:movies #:music #:books
-	   #:notes #:permissions #:photos #:albums #:videos #:events
-	   #:groups #:checkins #:videos-uploaded
-	   #:fetch #:authenticate))
-
 (defpackage :<openid
   (:nicknames :tr.gen.core.server.openid)
   (:use :cl)
   (:export #:funkall #:associate #:request-authentication
 	   #:verify-authentication))
 
+(defpackage :<oauth1
+  (:nicknames :tr.gen.core.server.oauth1)
+  (:use :cl)
+  (:export #:funkall #:funkall.parameters #:funkall.signature-key
+	   #:funkall.sign #:funkall.build-signature #:funkall.header
+	   #:get-request-token
+	   #:request-token #:request-token.token #:request-token.token-secret
+	   #:request-token.callback-confirmed #:%make-request-token
+	   #:authorize-url #:access-token #:%make-access-token
+	   #:get-access-token))
+
+(defpackage :<oauth2
+  (:nicknames :tr.gen.core.server.oauth2)
+  (:use :cl)
+  (:export #:oauth-uri #:exception #:exception.code #:exception.type
+	   #:exception.message #:funkall #:access-token #:access-token.timestamp
+	   #:access-token.expires #:access-token.token
+	   #:access-token.id-token #:access-token.token-type
+	   #:%make-access-token
+	   #:get-access-token #:authorized-funkall))
+
+(defpackage :<fb
+  (:nicknames :tr.gen.core.server.facebook)
+  (:use :cl)
+  (:export #:oauth-uri #:get-access-token #:authorized-funkall #:me
+	   #:friends #:home #:feed #:likes #:movies #:music #:books
+	   #:notes #:permissions #:photos #:albums #:videos #:events
+	   #:groups #:checkins #:videos-uploaded
+	   #:fetch #:authenticate))
+
 (defpackage :<google
   (:nicknames :tr.gen.core.server.google)
   (:use :cl)
-  (:export #:associate #:request-authentication
-	   #:verify-authentication #:extract-authentication))
+  (:export
+   ;; OAuth 2.0
+   #:oauth-uri #:get-access-token #:userinfo
+
+   ;; Open ID (Depreciated)
+   ;; #:associate #:request-authentication
+   ;; #:verify-authentication #:extract-authentication
+   ))
 
 (defpackage :<twitter
   (:nicknames :tr.gen.core.server.twitter)
   (:use :cl)
-  (:export #:funkall #:get-user-lists))
+  (:export #:funkall #:authorize-url #:get-request-token #:get-access-token
+	   #:access-token #:%make-access-token #:get-user-lists))
 
 (defpackage :<wp
   (:nicknames :<wordpress :tr.gen.core.server.wordpress)
