@@ -1,7 +1,7 @@
 (in-package :manager)
 
 ;; -------------------------------------------------------------------------
-;; Settings
+;; Server Settings
 ;; -------------------------------------------------------------------------
 (defclass+ facebook-credentials ()
   ((app-id :host both)
@@ -15,10 +15,11 @@
 
 (defclass+ twitter-credentials ()
   ((consumer-key :host both)
-   (consumer-secret :host both)))
+   (consumer-secret :host both))
+  (:ctor make-twitter-credentials))
 
 ;; +-------------------------------------------------------------------------
-;; | Administrator Definition
+;; | Administrator Definition (Manager Application Users)
 ;; +-------------------------------------------------------------------------
 (defclass+ admin (secure-object simple-user)
   ((username :host local :print t :index t :documentation "Admin Username")
@@ -27,8 +28,8 @@
 		       :initform (get-universal-time)))
   (:ctor make-admin)
   (:default-initargs
-    :permissions '((owner . 0) (group . 0) (other . 0) (unauthorized . -1))
-    :levels '(admin/authorized)))
+   :permissions '((owner . 0) (group . 0) (other . 0) (unauthorized . -1))
+   :levels '(admin/authorized)))
 
 ;; +-------------------------------------------------------------------------
 ;; | Site Definition
@@ -47,21 +48,22 @@
 ;; User Definition
 ;; -------------------------------------------------------------------------
 (defclass+ user (object-with-id simple-user)
-  ((accounts :host local :type abstract-account :relation user
-	     :documentation "Associated accounts")))
+  ((accounts :host local :type account :relation user
+	     :documentation "Associated accounts"))
+  (:ctor make-user))
 
 ;; -------------------------------------------------------------------------
 ;; Account Definition
 ;; -------------------------------------------------------------------------
-(defclass+ abstract-account (object-with-id)
+(defclass+ account (object-with-id)
   ((user :host local :type user :relation accounts
 	 :documentation "Associated User"))
-  (:ctor %make-abstract-account))
+  (:ctor %make-account))
 
 ;; -------------------------------------------------------------------------
 ;; Local Account Definition
 ;; -------------------------------------------------------------------------
-(defclass+ local-account (abstract-account)
+(defclass+ local-account (account)
   ((email :host local :print t :index t :documentation "Email address")
    (password :host local :print t :documentation "Password"))
   (:ctor make-local-account))
@@ -69,31 +71,51 @@
 ;; -------------------------------------------------------------------------
 ;; External Account Definition
 ;; -------------------------------------------------------------------------
-(defclass+ abstract-external-account (abstract-account)
-  ((username :host local :print t :index t
-	     :documentation "Username associated")
+(defclass+ external-account (account)
+  ((username :host local :print t :index t :documentation "Username associated")
    (token :host local :documentation "Token associated")
    (token-timestamp :host local :documentation "Token timestamp"))
-  (:ctor %make-abstract-external-account))
+  (:ctor %make-external-account))
 
 ;; -------------------------------------------------------------------------
 ;; Facebook Account Definition
 ;; -------------------------------------------------------------------------
-(defclass+ fb-account (abstract-external-account)
-  ()
-  (:ctor make-fb-account))
+;; #<JOBJECT {100D4774D3}> [standard-object]
+
+;; Slots with :INSTANCE allocation:
+;;   ATTRIBUTES  = (:METADATA #<JOBJECT {100D4760F3}> :UPDATED_TIME
+;;  "2012-06-25T18:36:31+0000" :VERIFIED TRUE :LOCALE "en_US" :TIMEZONE 3
+;;  :EMAIL "evrimulu@gmail.com" :GENDER "male" :FAVORITE_ATHLETES
+;;  (#<JOBJECT {100CFD0A13}>) :LOCATION #<JOBJECT {100CFC86E3}> :USERNAME
+;;  "eevrimulu" :LINK "http://www.facebook.com/eevrimulu" :LAST_NAME "Ulu"
+;;  :FIRST_NAME "Evrim" :NAME "Evrim Ulu" :ID "700518347")
+
+(defclass+ fb-account (external-account)
+  ((facebook-id :host local :type string :index t)
+   (name :host local)
+   (first-name :host local)
+   (last-name :host local)
+   (email :host local)
+   (verified :host local)
+   (last-update :host local)
+   (timezone :host local)
+   (locale :host local)
+   (location :host local)
+   (gender :host local)
+   (link :host local))
+  (:ctor %make-fb-account))
 
 ;; -------------------------------------------------------------------------
 ;; Google Account
 ;; -------------------------------------------------------------------------
-(defclass+ google-account (abstract-external-account)
+(defclass+ google-account (external-account)
   ()
   (:ctor make-google-account))
 
 ;; -------------------------------------------------------------------------
 ;; Twitter Account
 ;; -------------------------------------------------------------------------
-(defclass+ twitter-account (abstract-external-account)
+(defclass+ twitter-account (external-account)
   ()
   (:ctor make-twitter-account))
 
@@ -104,6 +126,29 @@
 (defcrud fb-account)
 (defcrud google-account)
 (defcrud twitter-account)
+
+(defmethod fb-account.add-from-jobject ((self database) jobject)
+  (with-attributes (updated_time verified locale timezone
+				 email location gender link first-name last-name
+				 username name id) jobject
+    (fb-account.add self
+		    :facebook-id id :name name :username username
+		    :first-name first-name :last-name last-name :email email
+		    :verified verified
+		    :last-update updated_time :timezone timezone :locale locale
+		    :location location :gender gender :link link)))
+
+(defmethod fb-account.update-from-jobject ((self database) (instance fb-account)
+					   jobject)
+  (with-attributes (updated_time verified locale timezone
+				 email location gender link first-name last-name
+				 name id username) jobject
+    (fb-account.update self instance
+		       :facebook-id id :name name :username username
+		       :first-name first-name :last-name last-name :email email
+		       :verified verified
+		       :last-update updated_time :timezone timezone :locale locale
+		       :location location :gender gender :link link)))
 
 ;; ;; -------------------------------------------------------------------------
 ;; ;; Manager Users
@@ -134,19 +179,6 @@
 ;; (defmethod/remote init ((self site))
 ;;   (setf (owner self) (make-component (owner self))))
 
-;; ;; -------------------------------------------------------------------------
-;; ;; User Definition
-;; ;; -------------------------------------------------------------------------
-;; (defcomponent user (object-with-id)
-;;   ((accounts :host both :type account* :relation user
-;; 	     :documentation "Associated accounts to this user")
-;;    (profiles :host both :type profile* :relation account
-;; 	     :documentation "Associated profiles to this account")
-;;    (default-profile :host both :type profile
-;; 		    :documentation "Default profile of this account")
-;;    (associations :host both :type profile-association* :relation user
-;; 		 :documentation "Profile associations"))
-;;   (:ctor make-user))
 
 ;; ;; -------------------------------------------------------------------------
 ;; ;; Account Definition
@@ -196,6 +228,20 @@
 ;; (defcomponent twitter-account (external-account)
 ;;   ()
 ;;   (:ctor make-twitter-account))
+
+;; ;; -------------------------------------------------------------------------
+;; ;; User Definition
+;; ;; -------------------------------------------------------------------------
+;; (defcomponent user (object-with-id)
+;;   ((accounts :host both :type account* :relation user
+;; 	     :documentation "Associated accounts to this user")
+;;    (profiles :host both :type profile* :relation account
+;; 	     :documentation "Associated profiles to this account")
+;;    (default-profile :host both :type profile
+;; 		    :documentation "Default profile of this account")
+;;    (associations :host both :type profile-association* :relation user
+;; 		 :documentation "Profile associations"))
+;;   (:ctor make-user))
 
 ;; ;; -------------------------------------------------------------------------
 ;; ;; Profile Definition

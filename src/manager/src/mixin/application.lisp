@@ -19,7 +19,7 @@
 
 
 (defmethod web-application.oauth-handler-uri ((self manager-web-application-mixin))
-  (or (slot-value self 'oauth-handler-uri) "auth.core"))
+  (or (slot-value self 'oauth-handler-uri) "auth.html"))
 
 (defmethod web-application.oauth-uri ((self manager-web-application-mixin))
   (manager.oauth-uri (server.manager (application.server self))))

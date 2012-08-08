@@ -50,7 +50,6 @@
 		       (:file "settings")
 		       (:file "sites")
 	     	       (:file "admin")
-		       (:file "login")
 	     	       (:file "controller"))))))
   :depends-on (:arnesi+ :core-server)
   :serial t)

@@ -131,7 +131,6 @@
   (add-class self "core")
   (append self (template self)))
 
-
 ;; -------------------------------------------------------------------------
 ;; Error Content
 ;; -------------------------------------------------------------------------
@@ -145,7 +144,7 @@
 (defmethod/remote init ((self <manager:authentication-error))
   (setf (core-server::content self)
 	(list (<:h1 (_ "Authentication Error"))
-	      (<:h2 (or (get-parameter "message")
-		     (message self)))))
+	      (<:h2 (_ (or (get-parameter "message") (message self)
+			   "Sorry, and error occured.")))))
   (add-class self "manager-auth-error")
   (call-next-method self))
