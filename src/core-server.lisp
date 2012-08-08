@@ -949,6 +949,7 @@
    #:json-serialize
    #:json-deserialize
    #:jobject
+   #:with-attributes
    #:get-attribute
    #:set-attribute
    #:jobject.attributes

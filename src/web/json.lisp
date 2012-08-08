@@ -138,6 +138,13 @@
   ((attributes :initarg :attributes :initform nil
 	       :reader jobject.attributes)))
 
+(defmacro with-attributes (attributes jobject &body body)
+  `(let (,@(mapcar (lambda (attr)
+		     `(,attr (get-attribute ,jobject
+					    ,(make-keyword attr))))
+		   attributes))
+     ,@body))
+
 (defun jobject (&rest attributes)
   (make-instance 'jobject :attributes attributes))
 
@@ -145,6 +152,9 @@
   (getf (slot-value self 'attributes) attribute))
 
 (defmethod set-attribute ((self jobject) attribute value)
+  (setf (getf (slot-value self 'attributes) attribute) value))
+
+(defmethod (setf get-attribute) (value (self jobject) attribute)
   (setf (getf (slot-value self 'attributes) attribute) value))
 
 (defun convert-label-to-javascript (label)
