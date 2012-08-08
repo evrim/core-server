@@ -30,10 +30,10 @@
 		(server.applications self)
 		:test #'equal :key #'web-application.fqdn)))
 
-(defmethod register ((self http-server) (app root-http-application-mixin))
+(defmethod register ((self http-server) (app root-web-application-mixin))
   (setf (slot-value self 'root-application) app))
 
-(defmethod unregister ((self http-server) (app root-http-application-mixin))
+(defmethod unregister ((self http-server) (app root-web-application-mixin))
   (setf (slot-value self 'root-application) nil))
 
 ;; -------------------------------------------------------------------------
