@@ -758,6 +758,8 @@
    #:make-project-path
    #:with-current-directory
    #:time->string
+   #:get-unix-time
+   
    #+ssl #:hmac
    #:+day-names+
    #:+month-names+

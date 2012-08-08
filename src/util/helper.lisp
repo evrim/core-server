@@ -304,6 +304,17 @@ iv) t      - 06/06/2008 17:30"
     (declare (ignore second minute hour day-of-week dst-p))
     (+ seconds (encode-universal-time 0 0 0 day month year tz))))
 
+;; http://lisptips.com/post/11649360174/the-common-lisp-and-unix-epochs
+(defvar +unix-epoch-difference+ (encode-universal-time 0 0 0 1 1 1970 0))
+(defun universal-to-unix-time (universal-time)
+  (- universal-time +unix-epoch-difference+))
+
+(defun unix-to-universal-time (unix-time)
+  (+ unix-time +unix-epoch-difference+))
+
+(defun get-unix-time (&optional (universal-time (get-universal-time)))
+  (universal-to-unix-time universal-time))
+
 (defun concat (&rest args)
   (reduce0 (curry #'concatenate 'string) args))
 
