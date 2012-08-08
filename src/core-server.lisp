@@ -371,6 +371,7 @@
    #:uri.queries
    #:uri.fragments
    #:uri.query
+   #:uri.add-query
    #:urip
    #:make-uri
    #:uri?

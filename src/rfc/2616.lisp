@@ -669,7 +669,11 @@
 
 (defmethod http-authorization! ((stream core-stream) challenge)
   (let ((scheme (car challenge)))
-    (symbol! stream scheme)
+    ;; (symbol! stream scheme)
+    ;; This is amazing, twitter does not respond to "oauth" -evrim.
+    (if (string= scheme 'oauth)
+    	(string! stream "OAuth")
+    	(string! stream (format nil "~@(~A~)" scheme)))
     (char! stream #\ )
     (prog1 stream
       (if (eq 'basic scheme)
@@ -680,13 +684,13 @@
 	      (char! stream #\=)
 	      (quoted! stream (cdar params))
 	      (if (cdr params)
-		  (reduce #'(lambda (acc item)
+		  (reduce #'(lambda (stream item)
 			      (char! stream #\,)
 			      ;; (char! stream #\Newline)
 			      (string! stream (car item))
 			      (char! stream #\=)
 			      (quoted! stream (cdr item)))
-			  (cdr params) :initial-value nil))))))))
+			  (cdr params) :initial-value stream))))))))
 
 ;; 14.20 Expect
 ;; expectation-extension =  token [ "=" ( token | quoted-string )
@@ -1382,6 +1386,12 @@
 (defmethod http-request.header ((request http-request) key)
   (cdr (assoc key (http-request.headers request) :test #'string=)))
 
+(defmethod http-request.add-request-header ((self http-request) key val)
+  (setf (slot-value self 'headers)
+	(cons (cons key val)
+	      (remove-if #'(lambda (a) (eq a key))
+			 (slot-value self 'headers) :key #'car))))
+
 (defmethod http-request.referrer ((request http-request))
   (aif (http-request.header request 'referer)
        (uri.server it)))
@@ -1460,6 +1470,7 @@
 	     (:and (:http-request-header? header) (:do (push header rh)))
 	     (:and (:http-entity-header? header) (:do (push header eh)))
 	     (:and (:http-unknown-header? header) (:do (push header uh))))
+	(:zom (:type %%http-header-value?))
 	(:crlf?))
   (:return (values method uri version (nreverse gh)
 		   (nreverse rh) (nreverse eh) (nreverse uh))))
@@ -1673,6 +1684,7 @@
 	     (:and (:http-response-header? header) (:do (push header gh)))
 	     (:and (:http-entity-header? header) (:do (push header eh)))
 	     (:and (:http-unknown-header? header) (:do (push header uh))))
+	(:zom (:type %%http-header-value?))
 	(:optional (:crlf?)))
   (:return (values (nreverse gh) (nreverse eh) (nreverse uh))))
 

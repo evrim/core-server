@@ -55,7 +55,9 @@
   (:return key))
 
 (defrule query-value? (c (val (make-accumulator :byte)))
-  (:oom (:or (:escaped? c) (:type unreserved? c)	     
+  (:oom (:or (:escaped? c) (:type unreserved? c)
+	      ;; Allow Google OAuth Keys like 4/blablabla
+	     (:and #\/ (:do (setq c #.(char-code #\/))))
 	     (:and #\+ (:do (setq c #.(char-code #\Space)))))
 	(:collect c val))
   (:return (octets-to-string val :utf-8)))
@@ -348,6 +350,10 @@
 
 (defmethod uri.query ((uri uri) name)
   (cdr (assoc name (uri.queries uri) :test #'equal)))
+
+(defmethod uri.add-query ((uri uri) key value)
+  (prog1 uri
+    (setf (uri.queries uri) (cons `(,key . ,value) (uri.queries uri)))))
 
 (defun make-uri (&key scheme username password server port paths queries
 		      fragments)
