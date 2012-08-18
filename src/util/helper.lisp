@@ -128,6 +128,9 @@ for traceing a closed system"
 		   acc))
 	  list :initial-value nil))
 
+(defun make-type-matcher (type-name)
+  (lambda (a) (and (typep a type-name) a)))
+
 (defun all (lambda &rest lists)
   "Return t if all elements of lists satisfies lambda"
   (apply #'mapc
