@@ -724,6 +724,9 @@
        (outro! stream object)))
     stream))
 
+;; -------------------------------------------------------------------------
+;; Trace Definition
+;; -------------------------------------------------------------------------
 (deftrace xml-parsers
     '(xml-tag-name? xml-lexer? xml-comment? xml-text-node?
       xml-cdata? %xml-lexer? xml-lwsp? xml-attribute?

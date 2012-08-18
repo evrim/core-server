@@ -273,6 +273,7 @@
     (component (with-call/cc (component! stream element)))
     (t (write-stream stream (js* (dom2js element))))))
 
+
 (defmethod json! ((stream core-stream) (closure arnesi::closure/cc))
   (let* ((frees (find-free-variables (slot-value closure 'code)))
 	 (frees (filter (lambda (arg) (member (cadr arg) frees))
