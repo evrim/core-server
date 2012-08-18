@@ -224,7 +224,10 @@ that has set before"
   (defclass http-application (web-application)
     ((sessions :accessor http-application.sessions
 	       :initform (make-hash-table :test #'equal :synchronized t)
-	       :documentation "A hash-table that holds sessions"))
+	       :documentation "A hash-table that holds sessions")
+     (default-handler :accessor http-application.default-handler
+		      :initform nil :initarg :default-handler
+		      :documentation "Symbol of the default handler."))
     (:documentation "HTTP Application Class")
     (:metaclass http-application+)))
 
@@ -297,56 +300,45 @@ that has set before"
 		     sessions)
 	    expired))))
 
-(defmethod http-application.realm ((application http-application))
-  (concat (web-application.fqdn application) " Security Zone"))
-
-(defmethod http-application.password-of ((application http-application)
-					 (username string))
-  (error "Implement (http-appliaction.password-of http-application username)"))
-
-(defmethod http-application.find-user ((application http-application)
-				       (username string))
-  (error "Implement (http-application.find-user http-application username)" ))
-
 (defmacro defauth (url application-class &optional (method 'digest))
   (let ((handler (intern (string-upcase url))))
     `(eval-when (:compile-toplevel :load-toplevel :execute)
        (add-security-handler (find-class ',application-class)
 			     ',handler ,url ',method))))
 
+;; -------------------------------------------------------------------------
+;; Basic Authentication
+;; -------------------------------------------------------------------------
 (defmethod http-application.authorize ((application http-application)
 				       (request http-request)
-				       (type (eql 'basic)) (kontinue function))
-  (labels ((make-response ()
-	     (let ((response (make-401-response))
-		   (realm (http-application.realm application)))
-	       (http-response.add-response-header response 'www-authenticate
-						  (cons 'basic (list (cons "realm"
-									   realm))))
-	       response))
-	   (do-kontinue (username)
-	     (setf (http-request.authenticated-p request) t
-		   (http-request.authenticated-user request) username)
-	     (funcall kontinue application request)))
-    (let ((authorization (http-request.header request 'authorization)))
-      (if authorization
-	  (destructuring-bind (scheme &rest parameters) authorization
-	    (if (eq 'basic scheme)
-		(destructuring-bind (username password) parameters
-		  (if (and username password
-			   (equal password
-				  (http-application.password-of application
-								username)))
-		      (do-kontinue username)
-		      (make-response)))
-		(make-response)))
+				       (method (eql 'basic))
+				       (kontinue function))
+  (flet ((do-kontinue (username)
+	   (setf (http-request.authenticated-p request) t
+		 (http-request.authenticated-user request) username)
+	   (funcall kontinue application request))
+	 (make-response ()
+	   (let ((response (make-401-response)))
+	     (http-response.add-response-header
+	      response 'www-authenticate
+	      `(basic (("realm" . ,(web-application.realm application)))))
+	     response)))
+    (let ((header (http-request.header request 'authorization)))
+      (if (and header (eq (car header) 'basic))
+	  (destructuring-bind (username password) (cdr header)
+	    (if (and username password
+		     (equal (web-application.password-of application username)
+			    password))
+		(do-kontinue username)
+		(make-403-response)))	  
 	  (make-response)))))
 
 (defvar +nonce-key+ (random-string))
 (defmethod http-application.authorize ((application http-application)
 				       (request http-request)
-				       (type (eql 'digest)) (kontinue function))
-  (let ((realm (http-application.realm application)))
+				       (method (eql 'digest))
+				       (kontinue function))
+  (let ((realm (web-application.realm application)))
     (labels ((get-nonce ()
 	       (md5 (concat +nonce-key+
 			    (princ-to-string (truncate (get-universal-time) 1000))
@@ -364,13 +356,13 @@ that has set before"
 						    (cons 'digest attrs))
 		 response))
 	     (calc-auth-response (username uri nonce nc qop cnonce)
-	       (let ((password (http-application.password-of application username))
+	       (let ((password (web-application.password-of application username))
 		     (method (symbol-name (http-request.method request))))
 		 (let ((ha1 (md5 (concat username ":" realm ":" password)))
 		       (ha2 (md5 (concat method ":" uri))))
 		   (md5 (concat ha1 ":" nonce ":" nc ":" cnonce ":" qop ":" ha2)))))
 	     (calc-response (username uri nonce)
-	       (let ((password (http-application.password-of application username))
+	       (let ((password (web-application.password-of application username))
 		     (method (symbol-name (http-request.method request))))
 		 (let ((ha1 (md5 (concat username ":" realm ":" password)))
 		       (ha2 (md5 (concat method ":" uri))))
@@ -379,31 +371,30 @@ that has set before"
 	       (setf (http-request.authenticated-p request) t
 		     (http-request.authenticated-user request) username)
 	       (funcall kontinue application request)))
-      (let ((authorization (http-request.header request 'authorization)))
-	(if authorization
-	    (destructuring-bind (scheme &rest parameters) authorization
+      (let ((header (http-request.header request 'authorization)))
+	(if (and header (eq (car header) 'digest))
+	    (let ((parameters (cdr header)))
 	      (flet ((get-param (name) (cdr (assoc name parameters :test #'equal))))
-		(if (eq 'digest scheme)
-		    (let ((username (get-param "username"))
-			  (qop (get-param "qop"))
-			  (response (get-param "response"))
-			  (uri (get-param "uri"))
-			  (nonce (get-param "nonce"))
-			  (nc (get-param "nc"))
-			  (cnonce (get-param "cnonce")))
-		      (cond
-			((not (equal nonce (get-nonce))) (make-response t))
-			((equal qop "auth")
-			 (if (equal response
-				    (calc-auth-response username uri nonce
-							nc qop cnonce))
-			     (do-kontinue username)
-			     (make-response)))
-			;; Not supported.
-			((equal qop "auth-int") (make-response))
-			(t (if (equal response (calc-response username uri nonce))
-			       (do-kontinue username)
-			       (make-response))))))))
+		(let ((username (get-param "username"))
+		      (qop (get-param "qop"))
+		      (response (get-param "response"))
+		      (uri (get-param "uri"))
+		      (nonce (get-param "nonce"))
+		      (nc (get-param "nc"))
+		      (cnonce (get-param "cnonce")))
+		  (cond
+		    ((not (equal nonce (get-nonce))) (make-response t))
+		    ((equal qop "auth")
+		     (if (equal response
+				(calc-auth-response username uri nonce
+						    nc qop cnonce))
+			 (do-kontinue username)
+			 (make-403-response)))
+		    ;; Not supported.
+		    ((equal qop "auth-int") (make-403-response))
+		    (t (if (equal response (calc-response username uri nonce))
+			   (do-kontinue username)
+			   (make-403-response)))))))
 	    (make-response))))))
 
 (defmethod dispatch :around ((application http-application) (request http-request))
@@ -459,6 +450,11 @@ that has set before"
 	      (format nil "fqdn: ~A, static-handler:: ~A"
 		      (web-application.fqdn self)
 		      (http-request.uri request)))
+      (let ((response (make-response)))
+	(funcall it self (make-new-context self request response session))
+	response))
+     ((and (equal "" (caar (uri.paths (http-request.uri request))))
+	   (http-application.default-handler self))
       (let ((response (make-response)))
 	(funcall it self (make-new-context self request response session))
 	response))
@@ -626,7 +622,7 @@ executing 'body'"
 			  		       (context.response +context+))
 			      ,@body))))))
 	   (prog1 ,name	   
-	     (setf (gethash ,name (session.continuations (context.session ,context)))
+	     (setf (gethash ,name (session.continuations (context.session +context+)))
 		   kont)
 	     (setf (context.returns +context+)
 	     	   (cons (cons ,name

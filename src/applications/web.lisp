@@ -67,6 +67,22 @@
 		  (core-server::uri.paths (http-request.uri req)))	    
 	    (return-stream s))))
 
+;; -------------------------------------------------------------------------
+;; Web Application Security Protocol (required for HTTP Authentication)
+;; -------------------------------------------------------------------------
+(defmethod web-application.realm ((application web-application))
+  (concat (web-application.fqdn application) " Security Zone"))
+
+(defmethod web-application.password-of ((application web-application)
+					(username string))
+  (error "Implement (web-application.password-of ~A username)"
+	 (class-name (class-of application))))
+
+(defmethod web-application.find-user ((application web-application)
+				      (username string))
+  (error "Implement (web-application.find-user ~A username)"
+	 (class-name (class-of application))))
+
 ;; --------------------------------------------------------------------------
 ;; Overriden get-directory method: This allows us to use default
 ;; database directory for database driven http applications.
