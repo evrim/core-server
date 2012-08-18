@@ -17,4 +17,5 @@ body {
 #top-right a:hover { text-decoration:underline; background:#fff; }
 #top-right p { margin:15px; }
 input.close {margin-top:25px !important;}
-#middle {height:210px; overflow:hidden; }
+#middle {height:205px; overflow:hidden; }
+.auth-buttons { padding-top:65px; }

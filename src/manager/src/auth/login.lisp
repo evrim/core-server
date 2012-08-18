@@ -5,13 +5,18 @@
 ;; -------------------------------------------------------------------------
 (defcomponent <manager:login (<widget:simple <core:login)
   ((title :host remote :initform "Sign In")
-   (subtitle :host remote :initform "Provide your credentials to log-in.")
-   (facebook-uri :host remote)
-   (twitter-uri :host remote)
-   (google-uri :host remote))
+   (subtitle :host remote :initform "Provide your credentials to log-in."))
   (:default-initargs
    :_username-input (<core:email-input :default-value "Email" :name "email"
 				       :size "35")))
+
+(defmethod/local external-login-url ((self <manager:login) provider)
+  (let ((provider (find (string-upcase provider) '(facebook yahoo google twitter)
+			:test #'string=)))
+    (answer-component self (list self :login provider))))
+
+(defmethod/remote do-external-login ((self <manager:login) provider)
+  (setf window.location (external-login-url self provider)))
 
 (defmethod/remote template ((self <manager:login))
   (let ((form (call-next-method self)))
@@ -20,22 +25,24 @@
      (<:h2 (subtitle self))
      (<:div :class "left core" form)
      (<:div :class "right buttons"
-	    (<:p (<:a :class "btn-auth btn-facebook"
-		      :href (facebook-uri self)
-		      (_"Sign In with ") (<:b "Facebook")))
-	    (<:p (<:a :class "btn-auth btn-twitter"
-		      :href (twitter-uri self)
-		      (_"Sign In with ") (<:b "Twitter")))
-	    (<:p (<:a :class "btn-auth btn-google"
-		      :href (google-uri self)
-		      (_"Sign In with ") (<:b "Google")))))))
+      (<:p (<:a :class "btn-auth btn-facebook"
+		:onclick (lifte (do-external-login self "facebook"))
+	    (_"Sign In with ") (<:b "Facebook")))
+      (<:p (<:a :class "btn-auth btn-twitter"
+		:onclick (lifte (do-external-login self "twitter"))
+	    (_"Sign In with ") (<:b "Twitter")))
+      (<:p (<:a :class "btn-auth btn-google"
+		:onclick (lifte (do-external-login self "google"))
+	    (_"Sign In with ") (<:b "Google")))
+      (<:p (<:a :class "btn-auth btn-yahoo"
+		:onclick (lifte (do-external-login self "yahoo"))
+	    (_"Sign In with ") (<:b "Yahoo")))))))
 
 (defmethod/remote destroy ((self <manager:login))
   (call-next-method self))
 
 (defmethod/remote init ((self <manager:login))
   (call-next-method self)
-  (remove-class self "core")
   (add-class self "manager-login"))
 
 ;; -------------------------------------------------------------------------

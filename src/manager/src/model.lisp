@@ -1,7 +1,10 @@
+;; +-------------------------------------------------------------------------
+;; | Manager Application Model
+;; +-------------------------------------------------------------------------
 (in-package :manager)
 
 ;; -------------------------------------------------------------------------
-;; Server Settings
+;; Server OAuth Credentials
 ;; -------------------------------------------------------------------------
 (defclass+ facebook-credentials ()
   ((app-id :host both)
@@ -31,33 +34,30 @@
    :permissions '((owner . 0) (group . 0) (other . 0) (unauthorized . -1))
    :levels '(admin/authorized)))
 
-;; +-------------------------------------------------------------------------
-;; | Site Definition
-;; +-------------------------------------------------------------------------
-(defclass+ site (secure-object object-with-id)
-  ((fqdn :host local :index t :print t :documentation "FQDN" :type string)
-   (creation-timestamp :host both :type integer
-		       :documentation "Creation timestamp"
-		       :initform (get-universal-time)))
-  (:ctor make-site)
-  (:default-initargs
-    :permissions '((owner . 0) (group . 0) (other . 0) (unauthorized . -1))
-    :levels '(site/authorized)))
-
 ;; -------------------------------------------------------------------------
 ;; User Definition
 ;; -------------------------------------------------------------------------
 (defclass+ user (object-with-id simple-user)
-  ((accounts :host local :type account :relation user
-	     :documentation "Associated accounts"))
+  ((accounts :host local :type account* :relation user
+	     :documentation "Associated accounts")
+   (default-account :host local :type account
+		    :documentation "Default Account of this user")
+   (associations :host local :type account-associations :relation user))
   (:ctor make-user))
+
+(defmethod user.default-account ((self user))
+  (with-slots (accounts default-account) self
+    (or default-account (car accounts))))
 
 ;; -------------------------------------------------------------------------
 ;; Account Definition
 ;; -------------------------------------------------------------------------
 (defclass+ account (object-with-id)
   ((user :host local :type user :relation accounts
-	 :documentation "Associated User"))
+	 :documentation "Associated User")
+   (provider :initform (error "Provide :provider"))
+   (last-update :host local :documentation "Last update time of this account")
+   (name :host local :documentation "Name of this person"))
   (:ctor %make-account))
 
 ;; -------------------------------------------------------------------------
@@ -66,15 +66,16 @@
 (defclass+ local-account (account)
   ((email :host local :print t :index t :documentation "Email address")
    (password :host local :print t :documentation "Password"))
-  (:ctor make-local-account))
+  (:ctor make-local-account)
+  (:default-initargs :provider 'coretal))
 
 ;; -------------------------------------------------------------------------
 ;; External Account Definition
 ;; -------------------------------------------------------------------------
 (defclass+ external-account (account)
-  ((username :host local :print t :index t :documentation "Username associated")
-   (token :host local :documentation "Token associated")
-   (token-timestamp :host local :documentation "Token timestamp"))
+  ((account-id :host local :print t :index t :documentation "Account ID"
+	       :accessor account.account-id)
+   (token :host local :documentation "Token associated with this account"))
   (:ctor %make-external-account))
 
 ;; -------------------------------------------------------------------------
@@ -90,65 +91,120 @@
 ;;  "eevrimulu" :LINK "http://www.facebook.com/eevrimulu" :LAST_NAME "Ulu"
 ;;  :FIRST_NAME "Evrim" :NAME "Evrim Ulu" :ID "700518347")
 
-(defclass+ fb-account (external-account)
-  ((facebook-id :host local :type string :index t)
-   (name :host local)
+(defclass+ facebook-account (external-account)
+  ((username :host local)
    (first-name :host local)
    (last-name :host local)
    (email :host local)
    (verified :host local)
-   (last-update :host local)
    (timezone :host local)
    (locale :host local)
    (location :host local)
    (gender :host local)
    (link :host local))
-  (:ctor %make-fb-account))
+  (:ctor make-facebook-account)
+  (:default-initargs :provider 'facebook))
 
 ;; -------------------------------------------------------------------------
 ;; Google Account
 ;; -------------------------------------------------------------------------
 (defclass+ google-account (external-account)
-  ()
-  (:ctor make-google-account))
+  ((locale :host local)
+   (gender :host local)
+   (picture :host local)
+   (link :host local)
+   (last-name :host local)
+   (first-name :host local)
+   (verified :host local)
+   (email :host local)
+   (last-update :host local))
+  (:ctor make-google-account)
+  (:default-initargs :provider 'google))
 
 ;; -------------------------------------------------------------------------
 ;; Twitter Account
 ;; -------------------------------------------------------------------------
 (defclass+ twitter-account (external-account)
-  ()
-  (:ctor make-twitter-account))
+  ((lang :host local)
+   (verified :host local)
+   (geo-enabled :host local)
+   (time-zone :host local)
+   (utc-offset :host local)
+   (created-at :host local)
+   (protected :host local)
+   (description :host local)
+   (url :host local)
+   (location :host local)
+   (screen-name :host local))
+  (:ctor make-twitter-account)
+  (:default-initargs :provider 'twitter))
 
+;; -------------------------------------------------------------------------
+;; Account Association
+;; -------------------------------------------------------------------------
+(defclass+ account-association (object-with-id)
+  ((account :host local :type account)
+   (realm :host local :type realm :relation associations)))
+
+;; +-------------------------------------------------------------------------
+;; | Realm Definition
+;; +-------------------------------------------------------------------------
+(defclass+ realm (secure-object object-with-id)
+  ((fqdn :host local :index t :print t :documentation "FQDN" :type string)
+   (creation-timestamp :host both :type integer :documentation "Creation timestamp"
+		       :initform (get-universal-time))
+   (associations :host local :type account-association* :relation realm))
+  (:ctor make-realm)
+  (:default-initargs
+    :permissions '((owner . 0) (group . 0) (other . 0) (unauthorized . -1))
+    :levels '(realm/authorized)))
+
+;; -------------------------------------------------------------------------
+;; Crud Definitions
+;; -------------------------------------------------------------------------
 (defcrud admin)
-(defcrud site)
 (defcrud user)
 (defcrud local-account)
-(defcrud fb-account)
+(defcrud external-account)
+(defcrud facebook-account)
 (defcrud google-account)
 (defcrud twitter-account)
+(defcrud account-association)
+(defcrud realm)
 
-(defmethod fb-account.add-from-jobject ((self database) jobject)
-  (with-attributes (updated_time verified locale timezone
-				 email location gender link first-name last-name
-				 username name id) jobject
-    (fb-account.add self
-		    :facebook-id id :name name :username username
-		    :first-name first-name :last-name last-name :email email
-		    :verified verified
-		    :last-update updated_time :timezone timezone :locale locale
-		    :location location :gender gender :link link)))
+;; -------------------------------------------------------------------------
+;; Access Token
+;; -------------------------------------------------------------------------
+(defvar +token-lifetime+ (* 12 3600))
+(defclass+ access-token ()
+  ((timestamp :host local :initform (get-universal-time)
+	      :accessor access-token.timestamp)
+   (token :host local :initform (random-string 8) :accessor access-token.token)
+   (association :host local :initform (error "Provide :association")
+		:accessor access-token.association)
+   (session-id :host local :initform (error "Provide :session-id")
+	       :accessor access-token.session-id))
+  (:ctor make-access-token))
 
-(defmethod fb-account.update-from-jobject ((self database) (instance fb-account)
-					   jobject)
-  (with-attributes (updated_time verified locale timezone
-				 email location gender link first-name last-name
-				 name id username) jobject
-    (fb-account.update self instance
-		       :facebook-id id :name name :username username
-		       :first-name first-name :last-name last-name :email email
-		       :verified verified
-		       :last-update updated_time :timezone timezone :locale locale
-		       :location location :gender gender :link link)))
+(defmethod access-token.expired-p ((self access-token))
+  (with-slots (timestamp) self
+    (if (> (get-universal-time) (+ timestamp +token-lifetime+))
+	t)))
+
+
+;; (deftransaction user.update-from-facebook ((self database) (user user)
+;; 					   (data jobject))
+;;   (with-attributes (id) data
+;;     (let ((account (any (lambda (account)
+;; 			  (and (typep account 'facebook-account)
+;; 			       (equal (account.account-id account) id)
+;; 			       account))
+;; 			(user.accounts user))))
+      
+;;       (if (null account)
+;; 	  (error "No Facebook account found for ~A, Data: ~A" user data))
+
+;;       (prog1 user (facebook-account.update-from-jobject self account data)))))
 
 ;; ;; -------------------------------------------------------------------------
 ;; ;; Manager Users

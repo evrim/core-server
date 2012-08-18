@@ -64,4 +64,31 @@
 	   #:login-link
 	   #:login-link/anonymous
 	   #:login-link/registered
+
+	   ;; Account
+	   #:accounts
+	   #:accounts/anonymous
+	   #:accounts/registered
+
+	   ;; Plugin
+	   #:authentication-plugin
+	   #:authentication-plugin/anonymous
+	   #:authentication-plugin/user
+
+	   ;; API Client
+	   #:realm.list
+	   #:realm.add
+	   #:realm.update
+	   #:realm.delete
+	   
 	   ))
+
+
+;; -------------------------------------------------------------------------
+;; A Namespace for API Calls
+;; -------------------------------------------------------------------------
+(defpackage :<core-server
+  (:nicknames :tr.gen.core.server.markup :core-server.markup)
+  (:use :core-server)
+  (:export #:markup #:markup+ #:response #:error
+	   #:login #:logout #:authentication #:user ))

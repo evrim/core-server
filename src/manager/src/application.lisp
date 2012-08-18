@@ -1,67 +1,162 @@
-(in-package :manager)
-
-(defvar *wwwroot* (make-project-path "manager" "wwwroot"))
-
-(defvar *db-location*
-  (merge-pathnames
-   (make-pathname :directory '(:relative "var" "localhost" "db"))
-   (tr.gen.core.server.bootstrap:home)))
-
 ;; -------------------------------------------------------------------------
 ;; Manager Application
 ;; -------------------------------------------------------------------------
+(in-package :manager)
+
 (defapplication manager-application (root-web-application-mixin
 				     http-application database-server
 				     logger-server
 				     serializable-web-application)
-  ()
+  ((token-cache :accessor manager.token-cache
+		:initform (make-hash-table :test #'equal :synchronized t)))
   (:default-initargs
-      :database-directory *db-location*
-    :db-auto-start t
-    :fqdn "localhost"
-    :admin-email "root@localhost"
-    :project-name "manager"
-    :project-pathname #p"/home/aycan/core-server/projects/manager/"
-    :htdocs-pathname *wwwroot*
-    :sources '(src/packages src/model src/tx src/interfaces src/application
-	       src/security src/ui/main)
-    :directories '(#p"src/" #p"src/ui/" #p"t/" #p"doc/" #p"wwwroot/"
-		   #p"wwwroot/style/" #p"wwwroot/images/" #p"templates/"
-		   #p"db/")
-    :use '(:common-lisp :core-server :cl-prevalence :arnesi)
-    :depends-on '(:arnesi+ :core-server)))
+   :database-directory (merge-pathnames
+			(make-pathname :directory '(:relative "var" "localhost" "db"))
+			(tr.gen.core.server.bootstrap:home))
+   :db-auto-start t :fqdn "localhost" :admin-email "root@localhost"
+   :project-name "manager"
+   :project-pathname #p"/home/aycan/core-server/projects/manager/"
+   :htdocs-pathname (make-project-path "manager" "wwwroot")))
 
-(defvar *app* (make-instance 'manager-application))
-
-(defmethod http-application.password-of ((self manager-application)
-					 (username string))
-  (aif (admin.find self :username username)
+(defmethod web-application.password-of ((self manager-application) (user string))
+  (aif (admin.find self :username user)
        (admin.password it)))
 
-(defmethod http-application.find-user ((self manager-application)
-				       (username string))
-  (admin.find self :username username))
+(defmethod web-application.find-user ((self manager-application) (user string))
+  (admin.find self :username user))
 
+(defmethod manager.oauth-uri ((self manager-application))
+  (let ((server (application.server self)))
+    (make-uri :scheme "http"
+	      :server (web-application.fqdn self)
+	      :port (core-server::socket-server.port server)
+	      :paths '(("oauth.html")))))
+
+(defmethod manager.api-uri ((self manager-application))
+  (let ((server (application.server self)))
+    (make-uri :scheme "http"
+	      :server (web-application.fqdn self)
+	      :port (core-server::socket-server.port server)
+	      :paths '(("api")))))
+
+;; -------------------------------------------------------------------------
+;; Access Token Interface
+;; -------------------------------------------------------------------------
+(defmethod manager.remove-token ((self manager-application) (token access-token))
+  (remhash (access-token.token token) (manager.token-cache self)))
+
+(defmethod manager.gc-tokens ((self manager-application))
+  (let ((cache (manager.token-cache self)))
+    (prog1 cache
+      (maphash (lambda (key access-token)
+		 (if (access-token.expired-p access-token)
+		     (remhash key cache)))
+	       (manager.token-cache self)))))
+
+(defmethod manager.create-token ((self manager-application) (realm realm)
+				 (account account) (session-id string))
+
+  ;; Garbage Collect First
+  (when (> (random 100) 40) (manager.gc-tokens self))
+
+  ;; Create Access Token
+  (let ((association (or (account-association.find self :realm realm :account account)
+			 (account-association.add self :realm realm :account account))))
+    (let ((access-token (make-access-token :association association
+					   :session-id session-id)))
+      (with-slots (token) access-token
+	(setf (gethash token (manager.token-cache self)) access-token)
+	access-token))))
+
+(deftransaction facebook-account.update-from-jobject ((self database)
+						      (account facebook-account)
+						      (data jobject))
+  (with-attributes (updated_time verified locale timezone email
+				 location gender link first_name
+				 last_name name username) data
+    (facebook-account.update self account
+			     :name name :username username
+			     :first-name first_name :last-name last_name
+			     :email email :verified verified
+			     :last-update updated_time :timezone timezone
+			     :locale locale :location location :gender gender
+			     :link link)))
+
+(deftransaction facebook-account.add-from-jobject ((self database) (data jobject))
+  (with-attributes (id) data
+    (let ((account (facebook-account.add self :account-id id)))
+      (facebook-account.update-from-jobject self account data))))
+
+(deftransaction twitter-account.update-from-jobject ((self database)
+						     (account twitter-account)
+						     (data jobject))
+  (with-attributes (lang verified geo_enabled time_zone
+			 utc_offset created_at protected description
+			 url location screen_name name) data
+    (twitter-account.update self account
+			    :lang lang
+			    :verified verified
+			    :geo-enabled geo_enabled
+			    :time-zone time_zone
+			    :utc-offset utc_offset
+			    :created-at created_at
+			    :protected protected
+			    :description description
+			    :url url
+			    :location location
+			    :screen-name screen_name
+			    :name name
+			    :last-update (get-universal-time))))
+
+(deftransaction twitter-account.add-from-jobject ((self database) (data jobject))
+  (with-attributes (id_str) data
+    (let ((account (twitter-account.add self :account-id id_str)))
+      (twitter-account.update-from-jobject self account data))))
+
+
+(deftransaction google-account.update-from-jobject ((self database)
+						    (account google-account)
+						    (data jobject))
+  (with-attributes (locale gender picture link family_name
+			   given_name name verified_email email
+			   last-update) data
+    (google-account.update self account
+			   :locale locale
+			   :gender gender
+			   :picture picture
+			   :link link
+			   :last-name family_name
+			   :first-name given_name
+			   :name name
+			   :verified verified_email
+			   :email email
+			   :last-update last-update)))
+
+(deftransaction google-account.add-from-jobject ((self database) (data jobject))
+  (with-attributes (id) data
+    (let ((account (google-account.add self :account-id id)))
+      (google-account.update-from-jobject self account data))))
+
+;; -------------------------------------------------------------------------
+;; Init Database
+;; -------------------------------------------------------------------------
 (defmethod init-database ((self manager-application))
   (assert (null (database.get self 'initialized)))
   (setf (database.get self 'api-secret) (random-string))
   (let ((group (simple-group.add self :name "admin")))
     (admin.add self :name "Root User" :username "root" :password "core-server"
 	       :owner nil :group group))
+  (simple-group.add self :name "user")
   (setf (database.get self 'initialized) t)
   self)
 
+;; -------------------------------------------------------------------------
+;; Server API Hook
+;; -------------------------------------------------------------------------
 (defmethod start ((self manager-application))
   (if (not (database.get self 'initialized))
       (prog1 t (init-database self))
       nil))
-
-(defun register-me (&optional (server *server*))
-  (if (null (status *app*)) (start *app*))
-  (register server *app*))
-
-(defun unregister-me (&optional (server *server*))
-  (unregister server *app*))
 
 (defun hostname ()
   #+sbcl (sb-unix:unix-gethostname)
@@ -70,74 +165,36 @@
 (defun core-server-version ()
   (slot-value (asdf::find-system "core-server") 'asdf::version))
 
-;; -------------------------------------------------------------------------
-;; Index Loop
-;; -------------------------------------------------------------------------
-(defmethod make-index-controller ((self manager-application))
-  (authorize self (make-anonymous-user)
-	     (<core:simple-controller :default-page "index"
-	      (<core:simple-page :name "index"
-	       (<core:simple-widget-map :selector "login"
-					:widget (<core:login))
-	       (<core:simple-widget-map :selector "clock"
-					:widget (<core:simple-clock))))))
 
-(defhandler "index\.core" ((self manager-application))
-  (destructuring-bind (username password)
-      (javascript/suspend
-       (lambda (stream)
-	 (let ((controller (make-index-controller self)))
-	   (rebinding-js/cc (controller) stream
-	     (controller nil)))))
-    (continue/js
-     (let ((admin (admin.find self :username username)))
-       (cond
-    	 ((and admin (equal (admin.password admin) password))
-    	  (prog1 (jambda (self)
-		   (setf (slot-value window 'location) "manager.html"))
-    	    (update-session :user admin)))
-    	 (t (jambda (self k) (k nil))))))))
+;; (deftransaction user.add-from-twitter ((self database) (data jobject))
+;;   (with-attributes (id_str) data
+;;     (aif (twitter-account.find self :account-id id_str)
+;; 	 (error "User already exists ~A, Data: ~A" it data))
 
-;; -------------------------------------------------------------------------
-;; Main Manager Loop
-;; -------------------------------------------------------------------------
-(defhandler "manager\.core" ((self manager-application))
-  (javascript/suspend
-   (lambda (stream)
-     (aif (query-session :user)
-	  (let ((manager (if (application.debug self)
-			     (make-controller self it)
-			     (or (query-session :manager)
-				 (update-session :manager (make-controller self it))))))
-	    (rebinding-js/cc (manager) stream
-	      (manager nil)))
-	  (with-js () stream ;; Unauthorized
-	    (setf window.location "index.html"))))))
+;;     (let ((account (twitter-account.add-from-jobject self data)))
+;;       (values (user.add self
+;; 			:accounts (list account)
+;; 			:group (simple-group.find self :name "user"))
+;; 	      account))))
 
+;; (deftransaction user.add-from-google ((self database) (data jobject))
+;;   (with-attributes (id) data
+;;     (aif (google-account.find self :account-id id)
+;; 	 (error "Google account already exists ~A, Data: ~A" it data))
 
-;; ;; -------------------------------------------------------------------------
-;; ;; Interface
-;; ;; -------------------------------------------------------------------------
-;; (deftransaction make-api-key ((self manager-application) fqdn)
-;;   (let ((secret (ironclad::ascii-string-to-byte-array (database.get self 'api-secret))))
-;;     (core-server::hmac secret (format nil "~A-api-key" fqdn))))
+;;     (let ((account (google-account.add-from-jobject self data)))
+;;       (values (user.add self
+;; 			:accounts (list account)
+;; 			:group (simple-group.find self :name "user"))
+;; 	      account))))
 
-;; (deftransaction make-api-password ((self manager-application) fqdn)
-;;   (let ((secret (ironclad::ascii-string-to-byte-array (database.get self 'api-secret))))
-;;     (core-server::hmac secret (format nil "~A-api-password" fqdn))))
+;; (deftransaction user.add-from-facebook ((self database) (data jobject))
+;;   (with-attributes (id) data
+;;     (aif (facebook-account.find self :account-id id)
+;; 	 (error "User already exists ~A, Data: ~A" it data))
 
-;; (deftransaction site.add ((self manager-application) &key
-;; 			  (fqdn (error "Provide :fqdn"))
-;; 			  (api-key (make-api-key self fqdn))
-;; 			  (api-password (make-api-password self fqdn))
-;; 			  (owner (admin.find self :username "root"))
-;; 			  (timestamp (get-universal-time)))
-;;   (assert (not (null owner)))
-;;   (call-next-method self :fqdn fqdn :api-key api-key
-;; 		    :api-password api-password :owner owner
-;; 		    :timestamp timestamp))
-
-
-
-
-
+;;     (let ((account (facebook-account.add-from-jobject self data)))
+;;       (values (user.add self
+;; 			:accounts (list account)
+;; 			:group (simple-group.find self :name "user"))
+;; 	      account))))

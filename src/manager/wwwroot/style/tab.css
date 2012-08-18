@@ -1,4 +1,4 @@
-.core-tab { padding-top:5px; }
+.core-tab { padding-top:5px; text-align:left; }
 .core-tab .core-tab-navigation {
     border-bottom:2px solid #222;
 }

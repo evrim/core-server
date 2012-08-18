@@ -10,6 +10,8 @@
    (logout-text :host remote :initform "Logout"))
   (:default-initargs
    :levels '(<manager:login-link/anonymous <manager:login-link/registered)
+   :permissions '((OWNER . 1) (GROUP . 1) (OTHER . 1)
+		  (ANONYMOUS . 0) (UNAUTHORIZED . -1))
    :owner (make-simple-user :name "Admin")
    :group (make-simple-group :name "users")))
 
@@ -33,12 +35,13 @@
 	    (slot-value self 'onclick)
 	    (lifte (pop-up url "Login" 600 350))))))
 
-(defcomponent <manager:login-link/registered (<:a secure-object/authorized)
+(defcomponent <manager:login-link/registered (<:a <widget:simple secure-object/authorized)
   ((secure-object :host lift :type <manager:login-link)
    (logout-text :host remote :lift t)))
 
 (defmethod/remote init ((self <manager:login-link/registered))
-  (setf (slot-value self 'inner-h-t-m-l) (_ (logout-text self))))
+  (setf (slot-value self 'inner-h-t-m-l) (_ (logout-text self))
+	(slot-value self 'onclick) (lifte (do-logout (controller (widget-map self))))))
 
 ;; Core Server: Web Application Server
 
