@@ -50,6 +50,8 @@
 ;; SLIME
 (add-to-list 'load-path (concat (getenv "CORESERVER_HOME") "lib/slime/"))
 (add-to-list 'load-path (concat (getenv "CORESERVER_HOME") "lib/slime/contrib/"))
+(setq slime-complete-symbol-function 'slime-fuzzy-complete-symbol)
+
 (require 'slime-autoloads)
 (slime-setup '(slime-fancy slime-asdf slime-repl slime-xref-browser
 			   slime-indentation slime-sbcl-exts))
@@ -94,7 +96,9 @@
 
 (add-class-font-face "defclass\\+")
 (add-class-font-face "defcomponent")
+(add-class-font-face "defplugin")
 (add-class-font-face "defrest")
+(add-class-font-face "defcommand")
 
 ;; DARCSUM
 (load-el "darcsum.el")
