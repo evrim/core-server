@@ -146,6 +146,7 @@
                                   ((:file "2109") ;;cookie
                                    (:file "2396") ;;uri
                                    (:file "2822") ;;text messages
+				   (:file "mime-types") ;; mime types
                                    (:file "2617") ;;http auth
                                    (:file "2616") ;;http
                                    (:file "2045") ;;mime-part1
@@ -158,6 +159,7 @@
 				  ((:file "xml")				   
 				   (:file "dom")
 				   (:file "html")
+				   (:file "json")
 				   (:file "schema")
 				   (:file "wsdl")
 				   (:file "css")
@@ -227,25 +229,20 @@
                          (:module :web
                                   :serial t
                                   :components
-                                  ((:file "json")
-				   (:file "mime-types")
-				   (:file "tags")
-				   (:file "component")
+                                  ((:file "component")
 				   (:file "rest")
 				   (:file "jquery")
 				   (:file "form")
 				   (:file "dialog")
-				   (:file "extra")
-				   (:file "auth")
+				   (:file "editor")
 				   (:file "representations")
 				   (:file "table")
 				   (:file "crud")
 				   (:file "table-with-crud")
 				   (:file "tab")
+				   (:file "extra")
+				   (:file "auth")
 				   (:file "image")
-				   (:file "video")
-				   (:file "editor")
-				   (:file "dojo")
 				   (:file "picasa")))
 			 (:module :coretal
 				  :serial t
@@ -253,14 +250,14 @@
 				  ((:file "map")
 				   (:file "page")
 				   (:file "widget")
+				   (:file "plugin")
 				   (:file "controller")))
 			 (:module :widget
 				  :serial t
 				  :components
 				  ((:file "menu")
 				   (:file "content")
-				   (:file "tab")))
-			 (:file "quicklisp"))))
+				   (:file "tab"))))))
   
   :depends-on (:swank :bordeaux-threads ;; :cl-prevalence
 		      :sb-bsd-sockets :arnesi+ :cl-ppcre :cl-fad :cffi

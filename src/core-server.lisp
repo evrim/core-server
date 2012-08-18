@@ -574,6 +574,10 @@
    #:web-application.admin-email
    #:web-application.serve-url
    #:web-application.base-url
+   #:web-application.password-of
+   #:web-application.find-user
+   #:web-application.realm
+   
    ;; API
    #:start
    #:stop
@@ -765,6 +769,7 @@
    #:+month-names+
    #:take
    #:any
+   #:make-type-matcher
    #:drop
    #:flatten
    #:flatten1
@@ -845,15 +850,14 @@
    #:render-404
    #:render-file
    #:dispatch
-
+   #:reset-sessions
+   
    ;; Macros
    #:with-query
    #:with-context
    #:defauth
    #:basic
-   #:digest
-   #:http-application.password-of
-   #:http-application.find-user
+   #:digest   
    #:defhandler
    #:defhandler/static
    #:defhandler/js
@@ -865,6 +869,7 @@
    #:send/finish
    #:send/redirect
    #:action/hash
+   #:+action-hash-override+
    #:function/hash
    #:action/url
    #:function/url
@@ -940,6 +945,7 @@
    #:rest.add
    #:rest.update
    #:rest.delete
+   #:defrest-client
    
    ;; [ Web Component Stacks ]
    #:dojo
@@ -1137,6 +1143,8 @@
    #:http.method
    #:http.post-data
    #:http.add-query
+   #:http.setup-uri
+   #:http.evaluate
    
    ;; [ Core Parser ]
    #:defrule
@@ -1211,7 +1219,18 @@
    ;; #:abstract-widget
    ;; #:simple-widget
    ;; #:make-simple-widget
+
+   ;; Widget Map
+   #:selector
+   #:widget
+   #:controller
+   ;; Widget
+   #:widget-map
+   
+   ;; Plugin
+   #:plugin+
    #:plugin
+   #:defplugin
    
    #:show-tab
    #:show-tab/js
@@ -1311,11 +1330,6 @@
 	   #:object #:closure #:hash-table #:undefined #:symbol
 	   #:instance #:json))
 
-(defpackage :<core-server
-  (:nicknames :tr.gen.core.server.markup :core-server.markup)
-  (:use :core-server)
-  (:export #:markup #:markup+ #:response #:authentication #:user))
-
 (defpackage :<widget
   (:nicknames :tr.gen.core.server.widget :core-server.widget)
   (:use :core-server)
@@ -1405,7 +1419,7 @@
 	   #:request-token #:request-token.token #:request-token.token-secret
 	   #:request-token.callback-confirmed #:%make-request-token
 	   #:authorize-url #:access-token #:%make-access-token
-	   #:get-access-token))
+	   #:get-access-token #:secure-funkall))
 
 (defpackage :<oauth2
   (:nicknames :tr.gen.core.server.oauth2)
@@ -1442,7 +1456,8 @@
   (:nicknames :tr.gen.core.server.twitter)
   (:use :cl)
   (:export #:funkall #:authorize-url #:get-request-token #:get-access-token
-	   #:access-token #:%make-access-token #:get-user-lists))
+	   #:access-token #:%make-access-token #:get-user-lists
+	   #:secure-get-user #:access-token.user-id #:access-token.screen-name))
 
 (defpackage :<wp
   (:nicknames :<wordpress :tr.gen.core.server.wordpress)
