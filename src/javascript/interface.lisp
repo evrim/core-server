@@ -93,7 +93,7 @@
   (let* ((form (walk-js-form `(lambda ,arguments ,@body)))
 	 (env (mapcar (lambda (ref)
 			(with-slots (name) ref
-			  `(list :let ',name ,name)))
+			  `(list* :let ',name ,name)))
 		      (filter (lambda (a)
 				(not (member (slot-value a 'name) +js-no-capture+
 					     :test #'string=)))
