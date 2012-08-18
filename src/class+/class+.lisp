@@ -289,6 +289,8 @@
   (let ((relational-slot (slot-definition-relational-slot slot)))
     (values
      (cond
+       ((null relational-slot)
+	(error "Cannot find relational-slot of slot ~A" slot))
        ((and (slot-definition-plural-typep slot)
 	     (slot-definition-singular-typep relational-slot))
 	;; 1->n Relation
