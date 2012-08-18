@@ -11,10 +11,14 @@
   ((url :initarg :url)
    (authenticate :initarg :authenticate :initform nil)
    (data-class :initarg :data-class :initform nil)
+   (rest-class :initarg :rest-class :initform nil)
    (prefix :initarg :prefix :initform nil)))
 
 (defmethod validate-superclass ((class rest+) (super component+)) t)
 (defmethod validate-superclass ((class component+) (super rest+)) t)
+
+(defmethod rest+.rest-class ((self rest+))
+  (or (slot-value self 'rest-class) (class-name self)))
 
 (defmethod rest+.data+ ((self rest+))
   (class+.find (slot-value self 'data-class)))
@@ -64,8 +68,7 @@
 	 (arguments (class+.ctor-keyword-arguments data+ lambda-list)))
     (destructuring-bind (index-name index-type index-initarg) (rest+.index self)
       (declare (ignore index-type))
-      `(defmethod/local ,name ((self ,(class-name self))
-						     &key ,@lambda-list)
+      `(defmethod/local ,name ((self ,(class-name self)) &key ,@lambda-list)
 	 (if (,(class+.find-function data+) application ,index-initarg ,index-name)
 	     (jobject :error "zaten var haci")
 	     (apply ',(class+.add-function data+) application
@@ -85,9 +88,8 @@
 	 (arguments (class+.ctor-keyword-arguments data+ lambda-list)))
     (destructuring-bind (index-name index-type index-initarg) (rest+.index self)
       (declare (ignore index-name))
-      `(defmethod/local ,name ((self ,(class-name self))
-							(key ,index-type)
-							&key ,@lambda-list)
+      `(defmethod/local ,name ((self ,(class-name self)) (key ,index-type)
+			       &key ,@lambda-list)
 	 (aif (,(class+.find-function data+) application ,index-initarg key)
 	      (apply ',(class+.update-function data+) application (cons it ,arguments))
 	      (jobject :error "not found haci"))))))
@@ -169,7 +171,7 @@
 
 (defmethod rest.get-method ((self abstract-rest/anonymous) http-method key)
   (destructuring-bind (rest-list rest-find ig1 ig2 ig3 ig4)
-      (class+.crud-functions (class-of self))
+      (class+.crud-functions (find-class (rest+.rest-class (class-of self))))
     (declare (ignore ig1 ig2 ig3 ig4))
     (cond
       ((eq http-method 'get)
@@ -186,7 +188,7 @@
 
 (defmethod rest.get-method ((self abstract-rest/user) http-method key)
   (destructuring-bind (rest-list rest-find ignr rest-add rest-update rest-delete)
-      (class+.crud-functions (class-of self))
+      (class+.crud-functions (find-class (rest+.rest-class (class-of self))))
     (declare (ignore ignr))
     (cond
       ((eq http-method 'get) (if (or (null key) (equal "" key)) 
@@ -257,6 +259,7 @@
 	   (:metaclass ,metaclass)
 	   (:url . ,url)
 	   (:prefix . ,name)
+	   (:rest-class . ,name)
 	   (:default-initargs :levels '(,anonymous-class ,user-class))
 	   ,@rest)
 	 (defclass+ ,anonymous-class (,@supers secure-object/authorized
@@ -264,12 +267,14 @@
 	   ((secure-object :host lift :type ,name))
 	   (:metaclass rest+)
 	   (:prefix . ,name)
+	   (:rest-class . ,name)
 	   (:data-class . ,data-class))
 	 (defclass+ ,user-class (,@supers secure-object/authorized
 					  abstract-rest/user)
 	   ((secure-object :host lift :type ,name))
 	   (:prefix . ,name)
 	   (:metaclass rest+)
+	   (:rest-class . ,name)
 	   (:data-class . ,data-class))
 	 (defrest-handler ,name ,url ,auth)
 	 (defrest-crud ,anonymous-class)
@@ -287,45 +292,99 @@
   ())
 
 (defcommand <rest:add (http)
-  ((args :host local :initform nil))
+  ((args :host local :initform nil :accessor rest.args))
   (:default-initargs :method 'post))
 
 (defmethod run ((self <rest:add))
   (mapcar (lambda (arg)
 	    (destructuring-bind (a b) arg
 	      (http.add-post self a b)))
-	  (s-v 'args))
+	  (rest.args self))
   (call-next-method self))
 
 (defclass+ rest-key-mixin ()
-  ((key :host local :initform (error "Provide :key"))))
+  ((key :host local :initform (error "Provide :key") :accessor rest.key)))
 
 (defmethod http.setup-uri ((self rest-key-mixin))
   (let ((uri (call-next-method self)))
     (prog1 uri
       (with-slots (paths) uri
-	(with-slots (key) self
-	  (setf paths (if (equal (caar paths) "")
-			  (list (list key))
-			  (append paths (list (list key))))))))))
+	(setf paths (if (equal (caar paths) "")
+			(list (list (rest.key self)))
+			(append paths (list (list (rest.key self))))))))))
 
 (defcommand <rest:find (rest-key-mixin http)
   ())
 
 (defcommand <rest:update (rest-key-mixin http)
-  ((args :host local :initform nil))
+  ((args :host local :initform nil :accessor rest.args))
   (:default-initargs :method 'put))
 
 (defmethod run ((self <rest:update))
   (mapcar (lambda (arg)
 	    (destructuring-bind (a b) arg
 	      (http.add-post self a b)))
-	  (s-v 'args))
+	  (rest.args self))
   (call-next-method self))
 
 (defcommand <rest:delete (rest-key-mixin http)
   ()
   (:default-initargs :method 'delete))
+
+(defmacro defrest-client (url data-class namespace)
+  (let* ((namespace (find-package namespace))
+	 (class (find-class data-class))
+	 (local-slots (reduce0 (lambda (acc slot)
+				 (if (slot-definition-export slot)
+				     (cons (slot-definition-name slot) acc)
+				     acc))
+			       (class+.local-slots class))))
+    (destructuring-bind (list find query add update delete) (class+.crud-functions class)
+      (declare (ignore query))
+      (let* ((list-symbol (intern (symbol-name list) namespace))
+	     (add-symbol (intern (symbol-name add) namespace))
+	     (find-symbol (intern (symbol-name find) namespace))
+	     (update-symbol (intern (symbol-name update) namespace))
+	     (delete-symbol (intern (symbol-name delete) namespace))
+	     (index (car (class+.indexes class)))
+	     (index-initarg (car (slot-definition-initargs index)))
+	     (index-slot `(key :host local
+			       :initform (error ,(format nil "Provide :~A" index-initarg))
+			       :accessor rest.key :initarg ,index-initarg)))
+	`(progn
+	   (defcommand ,list-symbol (<rest:list)
+	     ()
+	     (:default-initargs :url ,url))
+	   (defcommand ,add-symbol (<rest:add)
+	     (,@(mapcar (lambda (slot) `(,slot :host local)) local-slots))
+	     (:default-initargs :url ,url))
+	   (defmethod rest.args ((self ,add-symbol))
+	     (reduce0 (lambda (acc slot)
+			(let ((value (slot-value self slot)))
+			  (if value
+			      (cons (list (string-downcase (symbol-name slot)) value)
+				    acc)
+			      acc)))
+		      ',local-slots))	   
+	   (defcommand ,find-symbol (<rest:find)
+	     (,index-slot)
+	     (:default-initargs :url ,url))
+	   (defcommand ,update-symbol (<rest:update)
+	     (,index-slot
+	      ,@(mapcar (lambda (slot) `(,slot :host local))
+			(remove (slot-definition-name index) local-slots)))
+	     (:default-initargs :url ,url))
+	   (defmethod rest.args ((self ,update-symbol))
+	     (reduce0 (lambda (acc slot)
+			(let ((value (slot-value self slot)))
+			  (if value
+			      (cons (list (string-downcase (symbol-name slot)) value)
+				    acc)
+			      acc)))
+		      ',local-slots))
+	   (defcommand ,delete-symbol (<rest:delete)
+	     (,index-slot)
+	     (:default-initargs :url ,url)))))))
 
 ;; Core Server: Web Application Server
 

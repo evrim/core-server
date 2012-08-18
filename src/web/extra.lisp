@@ -4,6 +4,15 @@
 (in-package :core-server)
 
 ;; -------------------------------------------------------------------------
+;; HTML Redirect
+;; -------------------------------------------------------------------------
+(defun <core:redirect (&key href (seconds 0))
+  (<:html
+   (<:head
+    (<:meta :http--equiv "Refresh" :content (format nil "~D; ~A" seconds href)))
+   (<:body)))
+
+;; -------------------------------------------------------------------------
 ;; Simple Digital Clock
 ;; -------------------------------------------------------------------------
 (defcomponent <core:simple-clock (<:div cached-component)

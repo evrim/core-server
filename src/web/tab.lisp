@@ -91,4 +91,6 @@
   (append self (<:div :class "clear"))
   (append self (setf (_content self)
 		     (<:p :class "pad10"
-			  "Please select an option from above."))))
+			  "Please select an option from above.")))
+  (if (default-tab self)
+      (show-tab self (default-tab self))))

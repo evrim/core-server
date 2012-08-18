@@ -165,6 +165,23 @@
 ;; | defmethod/local macro: Defines a local method
 ;; +-------------------------------------------------------------------------
 (eval-when (:compile-toplevel :load-toplevel)
+  (defmethod component+.local-funkall-morphism ((class component+) name self args)
+    (let* ((metaclass (class-name (class-of class)))
+	   (morphism (component+.morphism-function-name class name))
+	   (arg-names (extract-argument-names args :allow-specializers t)))
+      `(defmethod ,morphism ((self ,metaclass))
+	 `(method ,',arg-names
+		  (with-slots (session-id instance-id) self
+		    (funkall self (+ "?s:" session-id
+				     "$k:" instance-id
+				     "$method:" ,',(symbol-name name))
+			     (create
+			      ,@',(nreverse
+				   (reduce0
+				    (lambda (acc arg)
+				      (cons arg (cons (make-keyword arg) acc)))
+				    arg-names)))))))))
+  
   (defmethod component+.local-morphism ((class component+) name self args body)
     (flet ((stub-predicate (arguments)
 	     (let* ((args (filter (lambda (a)
@@ -195,18 +212,7 @@
 	     (setf (gethash ',name +javascript-cps-functions+) t
 		   (gethash ',remote +javascript-cps-functions+) t)
 	     (defjsmacro ,name (&rest args) `(,',remote ,@args)))
-	   (defmethod ,morphism ((self ,metaclass))
-	     `(method ,',arg-names
-		      (with-slots (session-id instance-id) self
-			(funkall self (+ "?s:" session-id
-					 "$k:" instance-id
-					 "$method:" ,',(symbol-name name))
-				 (create
-				  ,@',(nreverse
-				       (reduce0
-					(lambda (acc arg)
-					  (cons arg (cons (make-keyword arg) acc)))
-					arg-names)))))))
+	   ,(component+.local-funkall-morphism class name self args) 
 	   ,(when stub-p
 	     `(defmethod/cc ,name ((self ,class-name) ,@(stub-arguments))
 		(error "Signature failed: (~A~{ ~A~})" ',name
@@ -427,8 +433,8 @@
 ;; definition changed.
 ;; --------------------------------------------------------------------------
 (defmethod/cc component! :around ((stream core-stream) (component component))
-  (if (component+.recompile-p (class-of component))      
-      (component.compile component))
+  (when (component+.recompile-p (class-of component))
+    (component.compile component))
   
   (call-next-method stream component))
 
@@ -535,7 +541,7 @@
 
 (defmethod component.compile ((component cached-component))
   (let* ((class (class-of component)))
-    (format *standard-output* "Compiling cached constructor for ~A.~%"
+    (format *standard-output* "Compiling constructor for cached-component ~A.~%"
 	    (class-name class))
     (eval (component.ctor component))
     (setf (slot-value class '%ctor-timestamp) (get-universal-time))))
@@ -632,7 +638,7 @@
 	       to-extend)))))))
 
 (defmethod component+.compile ((component+ component+))
-  (format *standard-output* "Compiling cached constructor for ~A.~%"
+  (format *standard-output* "Compiling cached constructor for class ~A.~%"
 	  (class-name component+))
   (eval (component+.ctor component+))
   (setf (slot-value component+ '%cached-ctor-timestamp) (get-universal-time)))
