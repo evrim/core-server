@@ -15,11 +15,11 @@
 (defcomponent <core:simple-widget-map (secure-object abstract-widget-map)
   ()
   (:default-initargs
-      :levels '(<core:simple-widget-map/anonymous)
-    :permissions '((owner . 0) (group . 0) (other . 0) (anonymous . 0)
-		   (unauthorized . 0))
-    :owner (make-simple-user :name "admin")
-    :group (make-simple-group :name "admin")))
+   :levels '(<core:simple-widget-map/anonymous)
+   :permissions '((owner . 0) (group . 0) (other . 0) (anonymous . 0)
+		  (unauthorized . 0))
+   :owner (make-simple-user :name "admin")
+   :group (make-simple-group :name "admin")))
 
 ;; -------------------------------------------------------------------------
 ;; Simple Widget Map / Anonymous

@@ -31,7 +31,8 @@
 					   secure-object/authorized)
   ((secure-object :host lift :type <core:simple-page)
    (widgets :host remote :lift t :authorize t)
-   (name :host remote :lift t)))
+   (name :host remote :lift t)
+   (controller :host remote)))
 
 (defmethod/remote destroy ((self <core:simple-page/anonymous))
   (mapcar-cc (lambda (a) (if a (destroy a))) (widgets self))
@@ -40,7 +41,8 @@
 
 (defmethod/remote init ((self <core:simple-page/anonymous))
   (setf (widgets self)
-	(mapcar-cc (lambda (m) (make-component m)) (widgets self))))
+	(mapcar-cc (lambda (m) (make-component m :controller (controller self)))
+		   (widgets self))))
 
 ;; -------------------------------------------------------------------------
 ;; Simple Page / Registered
