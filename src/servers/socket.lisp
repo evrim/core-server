@@ -31,7 +31,7 @@
 		  :documentation "TCP reuse address option")
    (backlog :initarg :backlog :initform 1
 	    :documentation "TCP backlog option")
-   (peers-max :initarg :peers-max :initform 4
+   (peers-max :initarg :peers-max :initform 8
 	      :documentation "Number of peers that this server manages")
    (element-type :initarg :element-type :initform '(unsigned-byte 8)
 		 :documentation "Data type for socket stream")

@@ -169,6 +169,13 @@ nil if stream data is invalid"
       (<:html (<:body (<:h1 "Unauthorized.") (<:h2 "[Core-serveR]"))))
     response))
 
+(defun make-403-response (&optional (stream (make-core-list-output-stream)))
+  (let ((response (make-response stream)))
+    (setf (http-response.status-code response) (make-status-code 403))
+    (with-html-output stream
+      (<:html (<:body (<:h1 "Forbidden.") (<:h2 "[Core-serveR]"))))
+    response))
+
 (defun make-error-response (&optional (stream (make-core-list-output-stream)))
   (let ((response (make-response stream)))
     (setf (http-response.status-code response) (make-status-code 500))
@@ -307,8 +314,15 @@ evaulates to a HTTP response. Its' server is an instance of http-server"))
 		 (close-stream (http-response.stream response)))
 		(t
 		 (close-stream stream))))
-	    (progn (render-error (peer.server peer) stream nil)
-		   (close-stream stream)))))))
+	    (progn
+	      (let* ((buffer (slot-value stream '%read-buffer))
+		     (string (octets-to-string buffer  :utf-8)))
+		(format *standard-output* "Bogus request of length: ~A~%"
+			(length buffer))
+		(format *standard-output* "~A~%" string))
+	      
+	      (render-error (peer.server peer) stream nil)
+	      (close-stream stream)))))))
 
 (deftrace http-server
     '(handle-stream dispatch parse-request eval-request make-response
