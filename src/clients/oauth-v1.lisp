@@ -115,7 +115,10 @@
 (defmethod <oauth1:funkall.parameters ((self <oauth1:get-request-token))
   (with-slots (callback) self
     (let ((parameters (call-next-method self)))
-      (cons `("oauth_callback" . ,callback) parameters))))
+      (cons `("oauth_callback" . ,(typecase callback
+				    (string callback)
+				    (uri (uri->string callback))))
+	    parameters))))
 
 (defmethod http.parse-response ((self <oauth1:get-request-token)
 				(stream core-fd-io-stream))
@@ -191,6 +194,25 @@
 	     :token (get-key "oauth_token")
 	     :token-secret (get-key "oauth_token_secret"))
 	    response)))
+
+;; -------------------------------------------------------------------------
+;; Secure Funkall
+;; -------------------------------------------------------------------------
+(defcommand <oauth1:secure-funkall (<oauth1:funkall)
+  ((token :host local :initform (error "Provide :token")))
+  (:default-initargs :method 'get))
+
+(defmethod <oauth1:funkall.signature-key ((self <oauth1:secure-funkall))
+  (with-slots (consumer-secret token) self
+    (concat (escape-as-uri consumer-secret) "&"
+	    (escape-as-uri (slot-value token 'token-secret)))))
+
+(defmethod <oauth1:funkall.parameters ((self <oauth1:secure-funkall))
+  (with-slots (token) self
+    (cons `("oauth_token" . ,(typecase token
+			       (<oauth1:access-token (slot-value token 'token))
+			       (string token)))
+	  (call-next-method self))))
 
 (deftrace oauth1 '(<oauth1:funkall.header <oauth1:funkall.build-signature
 		   <oauth1:funkall.sign <oauth1:funkall.signature-key

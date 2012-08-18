@@ -27,8 +27,8 @@
 ;; Twitter Access Token
 ;; -------------------------------------------------------------------------
 (defclass+ <twitter:access-token (<oauth1:access-token)
-  ((user-id :host local)
-   (screen-name :host local))
+  ((user-id :host local :accessor <twitter:access-token.user-id)
+   (screen-name :host local :accessor <twitter:access-token.screen-name))
   (:ctor <twitter:%make-access-token))
 
 ;; -------------------------------------------------------------------------
@@ -58,7 +58,35 @@
 	     :screen-name (get-key "screen_name"))
 	    response)))
 
+;; -------------------------------------------------------------------------
+;; Secure Get User
+;; -------------------------------------------------------------------------
+(defcommand <twitter:secure-get-user (<oauth1:secure-funkall)
+  ((screen-name :host local)
+   (user-id :host local)
+   (include-entities :host local :initform t))
+  (:default-initargs :url "https://api.twitter.com/1/users/show.json"
+		     :method 'get))
 
+(defmethod <oauth1:funkall.parameters ((self <twitter:secure-get-user))
+  (with-slots (screen-name user-id include-entities) self
+    (cons (if screen-name
+	      `("screen_name" . ,screen-name)
+	      `("user_id" . ,user-id))
+	  (if include-entities
+	      (cons `("include_entities" . "true") (call-next-method self))
+	      (call-next-method self)))))
+
+(defmethod http.setup-uri ((self <twitter:secure-get-user))
+  (with-slots (screen-name user-id include-entities) self
+    (when (and (null screen-name) (null user-id))
+      (error "One of :screen-name or :user-id must be provided.")))
+  
+  (call-next-method self))
+
+;; -------------------------------------------------------------------------
+;; Twitter Funkall (depreciated)
+;; -------------------------------------------------------------------------
 ;; https://dev.twitter.com/docs/api
 (defcommand <twitter:funkall (http)
   ((cmd :host local :initform (error "Provide :cmd")))
@@ -104,6 +132,11 @@
 ;; "zlpTUE70IDvWXcKeHTPX8F6g44JsDEd35XgZT3aNE6g"
 
 ;; STAGE 3.
+;; Twitter redirects to:
+;; http://node1.coretal.net/auth.html?oauth_token=M5JgfX6wlMbIqx9KoV0MXCpHNLsleziMmvTEtQqA&oauth
+;; _verifier=qCfX9zfDWrWwaG8Zp2u1zlg76vcby6ssdGLivmcrQjY
+
+;; Let's evaluate:
 ;; MANAGER> (with-slots (consumer-key consumer-secret) (database.get *app* :twitter)
 ;; 	   (<twitter:get-access-token :verifier *verifier
 ;; 				      :consumer-key consumer-key

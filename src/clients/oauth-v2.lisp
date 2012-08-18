@@ -112,11 +112,11 @@
     (cond
       ((and (equal "application" (car content-type))
 	    (equal "json" (cadr content-type)))
-       (with-attributes (id_token expires_in token_type
-				  access_token) result
+       (with-attributes (id_token expires_in token_type access_token) result
 	 (values (<oauth2:%make-access-token
 		  :expires expires_in :token access_token
-		  :id-token id_token :token-type token_type))))
+		  :id-token id_token :token-type token_type)
+		 response)))
       (t
        (flet ((get-key (key result) (cdr (assoc key result :test #'string=))))
 	 (let* ((result (query? (make-core-stream result))))

@@ -88,12 +88,22 @@
   (let ((request (http.make-request self)))
     (checkpoint-stream stream)
     (http-request! stream request)
+
     (if (s-v 'debug-p) (describe request))
+
     (awhen (s-v 'post-data)
       (http.debug self 'post-data (s-v 'post-data))
       (string! stream it))
 
+    (when (s-v 'debug-p)
+      (format *standard-output* "Request output buffer:~%")
+      (format *standard-output* "-------------------------------------------~%")
+      (format *standard-output* "~A"
+	      (octets-to-string (slot-value stream '%write-buffer) :utf-8))
+      (format *standard-output* "-------------------------------------------~%"))
+    
     (commit-stream stream)
+    (assert (< (current-checkpoint stream) 0))
     request))
 
 (defparser read-everything? (c (acc (make-accumulator :byte)))
@@ -121,7 +131,7 @@
 	   ((or core-chunked-stream bounded-stream)
 	    (let ((entity (read-everything? stream)))
 	      (setf (http-response.entities response) (list entity))))
-	   (t (warn "Cannot read-everything?, no content-length"))))
+	   (t (error "Cannot read-everything?, no content-length"))))
 	((eq (s-v 'method) 'head) response)
 	((or (and (string= "text" (car content-type))
 		  (string= "html" (cadr content-type)))
@@ -142,8 +152,10 @@
 	   ((or core-chunked-stream bounded-stream)
 	    (let ((entity (read-everything? stream)))
 	      (setf (http-response.entities response) (list entity))))
-	   (t (warn "Cannot read-everything?, no content-length"))))))))
+	   (t (error "Cannot read-everything?, no content-length"))))))))
 
+(defmethod http.authorize ((self http) (type t) parameters)
+  (error "Unsupported authentication method ~{~A~}" (cons type parameters)))
 
 (defmethod http.authorize ((self http) (type (eql 'basic)) parameters)
   (with-slots (username password) self
@@ -216,68 +228,56 @@
 	  (t (http.debug self "Unsupported digest qop" qop)))
 	self))))
 
-(defmethod http.fetch ((self http) &optional (recurse t))
-  (with-slots (url) self
-    (http.debug self 'fetch (uri->string url))
-    
-    (let* ((stream (http.connect self))
-	   (request (http.send-request self stream)))
-      
-      (let* ((response (http.parse-response self stream))
-	     (status-code (http-response.status-code response)))
-	(flet ((return-response ()
-		 (close-stream stream)
-		 (values (let ((entities (http-response.entities response)))
-			   (if (null (cdr entities))
-			       (car entities)
-			       entities))
-			 response)))
-	  (cond
-	    ((and recurse (eq 401 status-code))
-	     (http.debug self 'unauthorized (uri->string url))
-	     (with-slots (username password) self
+(defmethod http.make-response ((self http) (response http-response))
+  (values (let ((entities (http-response.entities response)))
+	    (if (null (cdr entities))
+		(car entities)
+		entities))
+	  response))
 
-	       ;; No username & password
-	       (if (or (not username) (not password))
-		   (return-from http.fetch (return-response)))
-	       
-	       (let ((authenticate (http-response.response-header
-				    response 'www-authenticate)))
-		 (destructuring-bind (scheme &rest parameters) authenticate
-		   (cond
-		     ((eq scheme 'basic) ;; Basic Auth
-		      (http.authorize self 'basic parameters)
-		      (http.fetch self nil))
-		     ((eq scheme 'digest)
-		      (cond
-			;; Stale nonce, retry
-			((equal "true" (cdr (assoc "stale" parameters
-						   :test #'equal)))
-			 (http.fetch self))
-			(t
-			 (http.authorize self 'digest parameters)
-			 (http.fetch self nil))))
-		     (t
-		      (http.debug self "Unknown authorization scheme" scheme)
-		      (values nil response)))))))
-	    ((and (member status-code '(301 302 303 307))
-		  (http-response.get-response-header response 'location)
-		  (not (equal (uri->string
-			       (http-response.get-response-header
-				response 'location))
-			      (uri->string (s-v 'url)))))
-	     (let ((location (http-response.get-response-header
-			      response 'location)))
-	       (http.debug self 'redirecting-to location)
-	       (cond
-		 (recurse
-		  (setf (s-v 'url) location)
-		  (http.fetch self nil))
-		 (t (return-response)))))
-	    ((not (eq (http-response.status-code response) 200))
-	     (http.raise-error self request response)
-	     (return-response))
-	    (t (return-response))))))))
+(defmethod http.fetch ((self http) &optional (recurse t))
+  (http.debug self 'fetch (uri->string (s-v 'url)))
+  (let* ((stream (http.connect self))
+	 (request (http.send-request self stream))
+	 (response (http.parse-response self stream))
+	 (status-code (http-response.status-code response)))
+    (declare (ignore request))
+    (cond
+      ((and (eq 401 status-code)
+	    (http-response.response-header response 'www-authenticate))       
+       (http.debug self 'unauthorized (uri->string (s-v 'url)))
+       (with-slots (username password) self
+	 (let ((header (http-response.response-header response 'www-authenticate)))
+
+	   (cond
+	     ;; No username & password & www-authenticate header.
+	     ((or (null username) (null password) (null header))
+	      (close-stream stream)
+	      (http.make-response self response))
+	     (t
+	      (close-stream stream)
+	      (http.authorize self (car header) (cdr header))
+	      (http.fetch self))))))
+      ((and (member status-code '(301 302 303 307 308))
+	    (http-response.response-header response 'location)
+	    (not (equal (uri->string
+			 (http-response.get-response-header
+			  response 'location))
+			(uri->string (s-v 'url)))))
+       (let ((location (http-response.get-response-header
+			response 'location)))
+	 (http.debug self 'redirecting-to location)
+	 (cond
+	   (recurse
+	    (setf (s-v 'url) location)
+	    (close-stream stream)
+	    (http.fetch self nil))
+	   (t
+	    (close-stream stream)
+	    (http.make-response self response)))))
+      (t
+       (close-stream stream)
+       (http.make-response self response)))))
 
 (defmethod run :before ((self http))
   (http.setup-uri self))
@@ -292,36 +292,61 @@
 	(http.evaluate self result response))))
 
 (defmethod run ((self http))
-  (let ((url-string (uri->string (s-v 'url))))
-    (cond
-      ((and (not (eq (s-v 'method) 'head)) (http.cache-p self)
-	    (http.parse-p self))
-       (cond
-	 ((or (http.debug self) (null (gethash url-string +http-cache+)))
-	  (multiple-value-bind (entity response) (http.fetch self)
-	    (setf (gethash url-string +http-cache+) (cons entity response))
-	    (values entity response)))
-	 ((eq 0 (random 20))
-	  (multiple-value-bind (entity response) (http :url url-string
-						       :post-data (s-v 'post-data)
-						       :method 'head
-						       :debug-p (http.debug self))
-	    (declare (ignore entity))
-	    (let ((last-modified (http-response.get-entity-header
-				  response 'last-modified)))
-	      (destructuring-bind (entity . response) (gethash url-string +http-cache+) 
-		(cond
-		  ((> last-modified (http-response.get-entity-header
-				     response 'last-modified))
-		   (remhash url-string +http-cache+)
-		   (run self))
-		  (t (values entity response)))))))
-	 (t
-	  (destructuring-bind (entity . response) (gethash url-string +http-cache+)
-	    (values entity response)))))
-      (t
-       (http.fetch self)))))
+  ;; (let ((url-string (uri->string (s-v 'url))))
+  ;;   (cond
+  ;;     ((and (not (eq (s-v 'method) 'head)) (http.cache-p self)
+  ;; 	    (http.parse-p self))
+  ;;      (cond
+  ;; 	 ((or (http.debug self) (null (gethash url-string +http-cache+)))
+  ;; 	  (multiple-value-bind (entity response) (http.fetch self)
+  ;; 	    (setf (gethash url-string +http-cache+) (cons entity response))
+  ;; 	    (values entity response)))
+  ;; 	 ((eq 0 (random 20))
+  ;; 	  (multiple-value-bind (entity response) (http :url url-string
+  ;; 						       :post-data (s-v 'post-data)
+  ;; 						       :method 'head
+  ;; 						       :debug-p (http.debug self))
+  ;; 	    (declare (ignore entity))
+  ;; 	    (let ((last-modified (http-response.get-entity-header
+  ;; 				  response 'last-modified)))
+  ;; 	      (destructuring-bind (entity . response) (gethash url-string +http-cache+) 
+  ;; 		(cond
+  ;; 		  ((> last-modified (http-response.get-entity-header
+  ;; 				     response 'last-modified))
+  ;; 		   (remhash url-string +http-cache+)
+  ;; 		   (run self))
+  ;; 		  (t (values entity response)))))))
+  ;; 	 (t
+  ;; 	  (destructuring-bind (entity . response) (gethash url-string +http-cache+)
+  ;; 	    (values entity response)))))
+  ;;     (t
+  ;;      (http.fetch self))))
+  (http.fetch self))
 
 (deftrace http-client '(run http.fetch http.authorize
 			http.send-request http.parse-response http.setup-uri
 			http.evaluate http.debug))
+
+
+
+;; (destructuring-bind (scheme &rest parameters) authenticate
+;;   (http.authorize self scheme parameters)
+;;   (http.fetch self)
+;;   (cond
+;;     ((eq scheme 'basic) ;; Basic Auth
+;; 	(http.authorize self 'basic parameters)
+;; 	(close-stream stream)
+;; 	(http.fetch self))
+;;     ((eq scheme 'digest)
+;; 	(cond
+;; 	  ((equal "true" ;; Stale nonce, retry
+;; 		  (cdr (assoc "stale" parameters :test #'equal)))
+;; 	   (close-stream stream)
+;; 	   (http.fetch self))
+;; 	  (t
+;; 	   (http.authorize self 'digest parameters)
+;; 	   (close-stream stream)
+;; 	   (http.fetch self))))
+;;     (t
+;; 	(error self "Unknown authorization scheme" scheme)
+;; 	(values nil response))))
