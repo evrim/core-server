@@ -17,8 +17,16 @@
 						:default-value "Username")))
   (:default-initargs :id "loginBox"))
 
-(defmethod/local answer-component ((self <core:login) arg)
-  (answer arg))
+(defmethod/local login-with-credentials ((self <core:login) username password)
+  (answer (list username password)))
+
+(defmethod/remote do-login-with-credentials ((self <core:login) username password)
+  (login-with-credentials self username password))
+
+(defmethod/remote buttons ((self <core:login))
+  (with-field ""
+      (<:input :type "submit" :class "button"
+	       :value "login" :disabled t)))
 
 (defmethod/remote template ((self <core:login))
   (let ((_username (make-component (_username-input self)
@@ -28,18 +36,15 @@
 				   ;; :class-name "text"
 				   :validation-span-id "password-validation")))
     (<:form :onsubmit (lifte
-		       (answer-component self (cons
-					       (get-input-value _username)
-					       (get-input-value _password))))
-	    (with-field _username
-	      (<:span :class "validation"
-		      :id "username-validation" "Enter your username"))
-	    (with-field _password
-	      (<:span :class "validation"
-		      :id "password-validation" "Enter your password"))
-	    (with-field ""
-	      (<:input :type "submit" :class "button"
-		       :value "login" :disabled t)))))
+		       (do-login-with-credentials self (get-input-value _username)
+			 (get-input-value _password)))
+     (with-field _username
+	 (<:span :class "validation"
+		 :id "username-validation" "Enter your username"))
+     (with-field _password
+	 (<:span :class "validation"
+		 :id "password-validation" "Enter your password"))
+     (buttons self))))
 
 (defmethod/remote destroy ((self <core:login))
   (remove-class self "core")
