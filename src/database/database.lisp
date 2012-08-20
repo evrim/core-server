@@ -265,7 +265,7 @@
 			   ;; (format *standard-output* "Notice: system rollback/restore due to error (~a)~%" condition)
 			   ;; (restore self)
 			   )))
-	 (prog1 (execute-on self transaction)
+	 (multiple-value-prog1 (execute-on self transaction)
 	   (commit-stream (database.stream self))))))))
 
 (defmethod restore ((self abstract-database))
