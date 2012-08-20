@@ -854,7 +854,7 @@
 (defun make-web-error (severity message &rest args)
   (eval
    `(jambda (self k)
-      (raise-error self ,(symbol->js severity) (_ ,message ,@args)))))
+      (raise-error self ,(format nil "~@(~A~)" severity) (_ ,message ,@args)))))
 
 (defmethod/remote raise-error ((self component) severity message)
-  (alert (+ severity ":" message)))
+  (alert (+ severity ": " message)))
