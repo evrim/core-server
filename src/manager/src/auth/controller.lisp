@@ -128,20 +128,24 @@
 		     (account
 		      (let* ((k-url
 			       (action/hash ()
-				 (destructuring-bind (component action &rest args)
-				     (javascript/suspend
-				      (lambda (stream)
-					(let ((kontroller (controller/anonymous "recover")))
-					  (rebinding-js/cc (kontroller) stream
-					     (setf (slot-value window 'controller)
-						   (kontroller nil))))))
-				   (case action
-				     (:recover
-				      (destructuring-bind (password) args
-					(local-account.update self account :password password)
-					(setf (query-session :account) account)
-					(continue/js t)))
-				     (t (handle-action component action args))))))
+				 (let ((k-url (core-server::http-request.query
+					       (context.request +context+)
+					       +continuation-query-name+)))
+				   (destructuring-bind (component action &rest args)
+				       (javascript/suspend
+					(lambda (stream)
+					  (let ((kontroller (controller/anonymous "recover")))
+					    (rebinding-js/cc (kontroller) stream
+					      (setf (slot-value window 'controller)
+						    (kontroller nil))))))
+				     (case action
+				       (:recover
+					(destructuring-bind (password) args
+					  (local-account.update self account :password password)
+					  (setf (query-session :account) account)
+					  (context.remove-action +context+ k-url)
+					  (continue/js t)))
+				       (t (handle-action component action args)))))))
 			     (url (manager.oauth-uri self)))
 			(setf (uri.queries url)
 			      `(("action" . "recover")
