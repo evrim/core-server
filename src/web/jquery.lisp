@@ -25,13 +25,6 @@
 ;; -------------------------------------------------------------------------
 ;; Supply LightBox
 ;; -------------------------------------------------------------------------
-(defvar +jquery-lightbox-config+
-  (jobject :image-loading "/js/lightbox/images/lightbox-ico-loading.gif"
-	   :image-btn-prev "/js/lightbox/images/lightbox-btn-prev.gif"
-	   :image-btn-next "/js/lightbox/images/lightbox-btn-next.gif"
-	   :image-btn-close "/js/lightbox/images/lightbox-btn-close.gif"
-	   :image-blank "/js/lightbox/images/lightbox-blank.gif"))
-
 (defcomponent supply-jquery-lightbox (supply-jquery)
   ((lightbox-uri :host remote :Initform +jquery-lightbox-uri+)
    (lightbox-css-uri :host remote :initform +jquery-lightbox-css-uri+)
@@ -50,9 +43,6 @@
 ;; -------------------------------------------------------------------------
 ;; Supply Jquery Carousel
 ;; -------------------------------------------------------------------------
-(defvar +jquery-carousel-config+
-  (jobject))
-
 (defcomponent supply-jquery-carousel (supply-jquery-ui)
   ((carousel-uri :host remote :Initform +jquery-carousel-uri+)
    (carousel-css-uri :host remote :initform +jquery-carousel-css-uri+)

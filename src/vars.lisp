@@ -102,9 +102,6 @@
 ;;---------------------------------------------------------------------------
 (defvar +loading-gif+ "style/images/loading.gif")
 (defvar +default-extension+ ".core" "Web application default extension")
-(defvar +dojo-path+ "/dojo/" "Dojo Pathname")
-(defvar +fckeditor-path+ "/js/ckeditor/"
-  "Fckeditor Pathname")
 
 ;; -------------------------------------------------------------------------
 ;; JQuery Variables
@@ -114,8 +111,16 @@
 (defvar +jquery-ui-css-uri+ "/js/jquery-ui/css/blitzer/jquery-ui.custom.css")
 (defvar +jquery-lightbox-uri+ "/js/lightbox/js/jquery.lightbox-0.5.min.js")
 (defvar +jquery-lightbox-css-uri+ "/js/lightbox/css/jquery.lightbox-0.5.css")
+(defvar +jquery-lightbox-config+
+  (jobject :image-loading "/js/lightbox/images/lightbox-ico-loading.gif"
+	   :image-btn-prev "/js/lightbox/images/lightbox-btn-prev.gif"
+	   :image-btn-next "/js/lightbox/images/lightbox-btn-next.gif"
+	   :image-btn-close "/js/lightbox/images/lightbox-btn-close.gif"
+	   :image-blank "/js/lightbox/images/lightbox-blank.gif"))
+
 (defvar +jquery-carousel-uri+ "/js/jcarousel/lib/jquery.jcarousel.min.js")
 (defvar +jquery-carousel-css-uri+ "/js/jcarousel/skins/tango/skin.css")
+(defvar +jquery-carousel-config+ (jobject))
 
 (defvar +jquery-nested-sortable-uri+ "/js/nested-sortable/jquery.ui.nestedSortable.js")
 (defvar +jquery-newsticker-uri+ "/js/jquery.newsTicker.js")
