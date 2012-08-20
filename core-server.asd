@@ -225,6 +225,7 @@
 				   (:file "facebook")
 				   (:file "google")
 				   (:file "twitter")
+				   (:file "yahoo")
 				   (:file "paypal")))
                          (:module :web
                                   :serial t

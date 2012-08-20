@@ -51,12 +51,14 @@
 
 (defmethod http.evaluate ((self <twitter:get-access-token) result response)
   (flet ((get-key (name) (cdr (assoc name result :test #'equal))))
-    (values (<twitter:%make-access-token
-	     :token (get-key "oauth_token")
-	     :token-secret (get-key "oauth_token_secret")
-	     :user-id (get-key "user_id")
-	     :screen-name (get-key "screen_name"))
-	    response)))
+    (if (eq (http-response.status-code response) 200)
+	(values (<twitter:%make-access-token
+		 :token (get-key "oauth_token")
+		 :token-secret (get-key "oauth_token_secret")
+		 :user-id (get-key "user_id")
+		 :screen-name (get-key "screen_name"))
+		response)
+	(values result response))))
 
 ;; -------------------------------------------------------------------------
 ;; Secure Get User

@@ -147,6 +147,12 @@
 	 (let ((entity (json? stream)))
 	   (if entity
 	       (setf (http-response.entities response) (list entity)))))
+	((and (string= "text" (car content-type))
+	      (string= "plain" (cadr content-type)))
+	 (let ((entity (read-everything? stream)))
+	   (if entity
+	       (setf (http-response.entities response)
+		     (list (octets-to-string entity :utf-8))))))
 	(t
 	 (typecase stream
 	   ((or core-chunked-stream bounded-stream)
@@ -289,7 +295,7 @@
   (if (or (not (http.parse-p self)) (not (http.error-p self)))
       (call-next-method self)
       (multiple-value-bind (result response) (call-next-method self)
-	(http.evaluate self result response))))
+  	(http.evaluate self result response))))
 
 (defmethod run ((self http))
   ;; (let ((url-string (uri->string (s-v 'url))))
@@ -300,7 +306,7 @@
   ;; 	 ((or (http.debug self) (null (gethash url-string +http-cache+)))
   ;; 	  (multiple-value-bind (entity response) (http.fetch self)
   ;; 	    (setf (gethash url-string +http-cache+) (cons entity response))
-  ;; 	    (values entity response)))
+  ;; 	    (values entity response)))5B
   ;; 	 ((eq 0 (random 20))
   ;; 	  (multiple-value-bind (entity response) (http :url url-string
   ;; 						       :post-data (s-v 'post-data)

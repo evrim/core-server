@@ -125,16 +125,20 @@
   (let ((response (call-next-method self stream)))
     (prog1 response
       (setf (http-response.entities response)
-	    (query? (http-response.stream response))))))
+	    (aif (http-response.entities response)
+		 (query? (make-core-stream (car it)))
+		 (query? (http-response.stream response)))))))
 
 (defmethod http.evaluate ((self <oauth1:get-request-token) result response)
   (flet ((get-key (name) (cdr (assoc name result :test #'equal))))
-    (values (<oauth1:%make-request-token
-	     :token (get-key "oauth_token")
-	     :token-secret (get-key "oauth_token_secret")
-	     :callback-confirmed (json-deserialize
-				  (get-key "oauth_callback_confirmed")))
-	    response)))
+    (if (eq (http-response.status-code response) 200)
+	(values (<oauth1:%make-request-token
+		 :token (get-key "oauth_token")
+		 :token-secret (get-key "oauth_token_secret")
+		 :callback-confirmed (json-deserialize
+				      (get-key "oauth_callback_confirmed")))
+		response)
+	(values result response))))
 
 ;; -------------------------------------------------------------------------
 ;; OAuth Authorize Url
@@ -179,21 +183,28 @@
 (defmethod http.setup-uri ((self <oauth1:get-access-token))
   (let ((url (call-next-method self)))
     (with-slots (verifier) self
-      (prog1 url (http.add-post self "oauth_verifier" verifier)))))
+      (with-slots (token) (slot-value self 'request-token)
+	(prog1 url
+	  (http.add-post self "oauth_token" token)
+	  (http.add-post self "oauth_verifier" verifier))))))
 
 (defmethod http.parse-response ((self <oauth1:get-access-token)
 				(stream core-fd-io-stream))
   (let ((response (call-next-method self stream)))
     (prog1 response
       (setf (http-response.entities response)
-	    (query? (http-response.stream response))))))
+	    (aif (http-response.entities response)
+		 (query? (make-core-stream (car it)))
+		 (query? (http-response.stream response)))))))
 
 (defmethod http.evaluate ((self <oauth1:get-access-token) result response)
   (flet ((get-key (name) (cdr (assoc name result :test #'equal))))
-    (values (<oauth1:%make-access-token
-	     :token (get-key "oauth_token")
-	     :token-secret (get-key "oauth_token_secret"))
-	    response)))
+    (if (eq (http-response.status-code response) 200)
+	(values (<oauth1:%make-access-token
+		 :token (get-key "oauth_token")
+		 :token-secret (get-key "oauth_token_secret"))
+		response)
+	(values result response))))
 
 ;; -------------------------------------------------------------------------
 ;; Secure Funkall
