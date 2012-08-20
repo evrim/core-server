@@ -37,20 +37,22 @@
 		    acc))
 	      (tabs self)))
 
-(defmethod/remote maintain-height ((self <core:tab))
-  (with-slots (_offset) self
-    (when (eq _offset 0)
-      (setf (_offset self)
-	    (- (parse-int (slot-value (get-style self) 'height))
-	       (parse-int (slot-value (get-style (_content self)) 'height)))))
+(defmethod/remote maintain-height ((self <core:tab))  
+  (with-slots (_offset style) self
+    (with-slots (overflow) (get-style self)
+      (when (not (equal overflow "hidden")) ;; don't do when overflow:hidden;
+      	(when (eq _offset 0)
+      	  (setf (_offset self)
+      		(- (parse-int (slot-value (get-style self) 'height))
+      		   (parse-int (slot-value (get-style (_content self)) 'height)))))
 
-    (let* ((content (_content self))
-	   (height (parse-int (slot-value (get-style content) 'height)))
-	   (max-height (*math.max (_height self) height)))
-      ;; (_debug (list "foo" height (_height self) max-height (_offset self)))
-      (setf (slot-value (slot-value self 'style) 'min-height)
-	    (+ (+ max-height (_offset self)) "px")
-	    (_height self) max-height))))
+      	(let* ((content (_content self))
+      	       (height (parse-int (slot-value (get-style content) 'height)))
+      	       (max-height (*math.max (_height self) height)))
+      	  ;; (_debug (list "foo" height (_height self) max-height (_offset self)))
+      	  (setf (slot-value (slot-value self 'style) 'min-height)
+      		(+ (+ max-height (_offset self)) "px")
+      		(_height self) max-height))))))
 
 (defmethod/remote show-tab ((self <core:tab) tab)
   (hilight-tab self tab)
