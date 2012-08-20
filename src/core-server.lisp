@@ -618,7 +618,12 @@
    ;; [Logger]
    #:logger-server
    #:log-me
-   #:log-me-raw
+   #:log!
+   #:logger-application
+   #:logger-application.log-pathname
+   #:logger-application.log-stream
+   #:log-patname
+   #:log-stream
 
    ;; [Database]
    ;; Classes
@@ -1200,6 +1205,7 @@
    #:+jquery-tree-uri+
    #:+jquery-cookie-uri+
    #:+ckeditor-toolbar+
+   #:+ckeditor-simple-toolbar+
    #:+ckeditor-config+
    #:+ckeditor-uri+
    #:+ckeditor-source-uri+

@@ -235,6 +235,8 @@ iv) t      - 06/06/2008 17:30"
 		     year (nth day-of-week (rest (assoc lang +day-names+))) hour minute second))
       (:tag (format nil "~d-~2,'0d-~2,'0d-~2,'0d-~2,'0d-~2,'0d"
 		    year month day hour minute second))
+      (:log (format nil "~d/~2,'0d/~2,'0d ~2,'0d:~2,'0d:~2,'0d"
+		    year month day hour minute second))
       (t (format nil "~2,'0d/~2,'0d/~d ~2,'0d:~2,'0d" day month year hour minute)))))
 
 (defun time->ymd (time)

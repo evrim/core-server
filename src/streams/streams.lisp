@@ -168,6 +168,8 @@
 
   (defmethod write-stream ((self core-standard-output) (a null))
     self)
+
+  (defmethod close-stream ((self core-standard-output)) self)
   
   (defvar *core-output* (make-instance 'core-standard-output)))
 
