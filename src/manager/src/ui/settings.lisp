@@ -18,21 +18,28 @@
    (consumer-secret :label "Consumer Secret"))
   (:default-initargs :title "Twitter API Configuration"))
 
+(defwebcrud yahoo-app-crud ()
+  ((consumer-key :label "Consumer Key")
+   (consumer-secret :label "Consumer Secret"))
+  (:default-initargs :title "Yahoo API Configuration"))
+
 ;; -------------------------------------------------------------------------
 ;; Settings Component
 ;; -------------------------------------------------------------------------
 (defcomponent <manager:settings (<widget:tab)
   ((_facebook-crud :host remote :initform (facebook-app-crud))
    (_google-crud :host remote :initform (google-app-crud))
-   (_twitter-crud :host remote :initform (twitter-app-crud)))
-  (:default-initargs :tabs '("Facebook API" "Google API" "Twitter API")
-    :tab-title "Server Settings"))
+   (_twitter-crud :host remote :initform (twitter-app-crud))
+   (_yahoo-crud :host remote :initform (yahoo-app-crud)))
+  (:default-initargs :tab-title "Server Settings"
+		     :tabs '("Facebook API" "Google API" "Twitter API" "Yahoo API")))
 
 (defmethod/local get-config ((self <manager:settings) tab)
   (or (cond
 	((equal tab "Facebook API") (database.get application :facebook))
 	((equal tab "Google API") (database.get application :google))
-	((equal tab "Twitter API") (database.get application :Twitter)))
+	((equal tab "Twitter API") (database.get application :twitter))
+	((equal tab "Yahoo API") (database.get application :yahoo)))
       (jobject)))
 
 (defmethod/local save-config ((self <manager:settings) tab args)
@@ -45,7 +52,10 @@
 	   (apply #'make-google-credentials (jobject.attributes args))))
     ((equal tab "Twitter API")
      (setf (database.get application :twitter)
-	   (apply #'make-twitter-credentials (jobject.attributes args))))))
+	   (apply #'make-twitter-credentials (jobject.attributes args))))
+    ((equal tab "Yahoo API")
+     (setf (database.get application :yahoo)
+	   (apply #'make-yahoo-credentials (jobject.attributes args))))))
 
 (defmethod/local delete-config ((self <manager:settings) tab)
   (cond
@@ -54,7 +64,9 @@
     ((equal tab "Google API")
      (setf (database.get application :google) nil))
     ((equal tab "Twitter API")
-     (setf (database.get application :twitter) nil))))
+     (setf (database.get application :twitter) nil))
+    ((equal tab "Yahoo API")
+     (setf (database.get application :yahoo) nil))))
 
 (defmethod/remote core-server::make-tab ((self <manager:settings) tab)
   (let* ((_config (get-config self tab))
@@ -65,7 +77,9 @@
 	    ((eq tab "Google API")
 	     (make-component (_google-crud self) :instance _config))
 	    ((eq tab "Twitter API")
-	     (make-component (_twitter-crud self) :instance _config)))))
+	     (make-component (_twitter-crud self) :instance _config))
+	    ((eq tab "Yahoo API")
+	     (make-component (_yahoo-crud self) :instance _config)))))
     (make-web-thread
      (lambda ()
        (destructuring-bind (action args) (call-component _crud)

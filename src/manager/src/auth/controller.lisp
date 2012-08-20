@@ -34,6 +34,28 @@
 				      "Our services in other languages: "
 				      (<:a :href "#" "English") " | "
 				      (<:a :href "#" "Turkce"))))
+   (<core:simple-page :name "forgot"
+    (<core:simple-widget-map :selector "top-right"
+			     :widget (<widget:simple-content
+				      (<:p "Already have an account?"
+				       (<:a :class "pad5"
+					    :href "#page:login"
+					    "Sign In"))))
+    (<core:simple-widget-map :selector "middle"
+			     :widget (<manager:forgot-password))
+    (<core:simple-widget-map :selector "bottom"
+			     :widget (<widget:simple-content
+				      "Our services in other languages: "
+				      (<:a :href "#" "English") " | "
+				      (<:a :href "#" "Turkce"))))
+   (<core:simple-page :name "recover"
+    (<core:simple-widget-map :selector "middle"
+			     :widget (<manager:recover-password))
+    (<core:simple-widget-map :selector "bottom"
+			     :widget (<widget:simple-content
+				      "Our services in other languages: "
+				      (<:a :href "#" "English") " | "
+				      (<:a :href "#" "Turkce"))))			   
    (<core:simple-page :name "error"
     (<core:simple-widget-map :selector "top-right"
 			     :widget (<widget:simple-content
@@ -81,11 +103,60 @@
 		  (setf (query-session :account)
 			(oauth.handle-v1 self provider request-token token verifier
 					 (query-session :account)))))
+	       (handle-local (email password)
+		 (let ((account (local-account.find self :email email)))
+		   (if (and account (equal (local-account.password account) password))
+		       (apply #'handle-action
+			      (continue/js
+			       (controller/user (setf (query-session :account) account))))
+		       (continue/js
+			(make-web-error 'error "Sorry, cannot validate credentials.")))))
+	       (handle-registration (name email password)
+		 (let ((account (local-account.find self :email email)))
+		   (if account
+		       (continue/js
+			(make-web-error 'error "Sorry, this account already exists."))
+		       (multiple-value-bind (user account)
+			   (user.register self :name name :email email :password password)
+			 (declare (ignore user))
+			 (apply #'handle-action
+				(continue/js
+				 (controller/user (setf (query-session :account) account))))))))
+	       (handle-forgot-password (email)
+		 (let ((account (local-account.find self :email email)))
+		   (cond
+		     (account
+		      (let* ((k-url
+			       (action/hash ()
+				 (destructuring-bind (component action &rest args)
+				     (javascript/suspend
+				      (lambda (stream)
+					(let ((kontroller (controller/anonymous "recover")))
+					  (rebinding-js/cc (kontroller) stream
+					     (setf (slot-value window 'controller)
+						   (kontroller nil))))))
+				   (case action
+				     (:recover
+				      (destructuring-bind (password) args
+					(local-account.update self account :password password)
+					(setf (query-session :account) account)
+					(continue/js t)))
+				     (t (handle-action component action args))))))
+			     (url (manager.oauth-uri self)))
+			(setf (uri.queries url)
+			      `(("action" . "recover")
+				("state" . ,k-url)
+				("return-to" . ,return-to)))
+			(manager.send-password-recovery-email self email (uri->string url))
+			(continue/js "An email has been sent to your adress.")))
+		     (t
+		      (continue/js
+		       (make-web-error 'error "Sorry, this email is not registered."))))))
 	       (handle-action (component action &rest args)
 		 (declare (ignore component))
 		 (case action
 		   (:login
-		    (destructuring-bind (provider) args
+		    (destructuring-bind (provider &rest args) args
 		      (case provider
 			((facebook google)
 			 (let ((k-url (action/hash ((code "code"))
@@ -102,9 +173,18 @@
 							   token verifier))))
 			       (assert (equal k-url +action-hash-override+))
 			       (continue/js url)))))
+			(local
+			 (destructuring-bind (email password) args
+			   (handle-local email password)))
 			(t
 			 (send/anonymous "error" (format nil "Unknown provider ~A (2)"
 							 provider))))))
+		   (:forgot
+		    (destructuring-bind (email) args
+		      (handle-forgot-password email)))
+		   (:register
+		    (destructuring-bind (name email password) args
+		      (handle-registration name email password)))
 		   (:use
 		    (destructuring-bind (account) args
 		      (let* ((session-id (session.id (context.session +context+)))
@@ -117,26 +197,36 @@
 			   (jambda (self)
 			     (setf (slot-value window 'location)
 				   (+ return-to "?token=" token))))))))))
+	       (controller/user (account)
+		 (let* ((kontroller (make-auth-controller/user self account realm)))
+		   (authorize self (account.user account) kontroller)))
+	       (controller/anonymous (page &optional error)
+		 (let ((kontroller (make-auth-controller/anonymous self
+								   :page page
+								   :error-message error)))
+		   (authorize self (make-anonymous-user) kontroller)))
 	       (send/user (account)
 		 (apply #'handle-action
 			(javascript/suspend
 			 (lambda (stream)
-			   (let* ((kontroller (make-auth-controller/user self account realm))
-				  (kontroller
-				    (authorize self (account.user account) kontroller)))
+			   (let ((kontroller (controller/user account)))
 			     (rebinding-js/cc (kontroller) stream
 			       (setf (slot-value window 'controller) (kontroller nil))))))))
 	       (send/anonymous (page &optional error)
 		 (apply #'handle-action
 			(javascript/suspend
 			 (lambda (stream)
-			   (let* ((kontroller
-				    (make-auth-controller/anonymous self :page page
-									 :error-message error))
-				  (kontroller (authorize self (make-anonymous-user) kontroller)))
+			   (let ((kontroller (controller/anonymous page error)))
 			     (rebinding-js/cc (kontroller) stream
 			       (setf (slot-value window 'controller) (kontroller nil)))))))))
-	(cond	  
+	(cond
+	  ((equal action "recover")
+	   (let ((state (uri.query referer "state"))
+		 (return-to (uri.query referer "return-to"))
+		 (url (http-request.uri request)))
+	     (uri.add-query url +continuation-query-name+ state)
+	     (if return-to (uri.add-query url "return-to" return-to))
+	     (send/redirect (uri->string url))))
 	  ((equal action "answer") ;; Redirect to exact continuation + avoid CSRF
 	   (let ((state (uri.query referer "state"))
 		 (url (http-request.uri request)))

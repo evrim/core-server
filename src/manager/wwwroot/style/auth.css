@@ -1,20 +1,20 @@
 @import "auth-buttons.css";
-.manager-auth-error, .manager-registration, .manager-login { text-align:left; }
-.manager-registration p { margin:15px 0; }
-.manager-login p { margin-bottom:15px; }
-.manager-registration a, .manager-login a { text-decoration:none; }
-.manager-registration h1, .manager-login h1, .manager-auth-error h1 {
+.core-auth-widget {text-align:left;}
+.core-auth-widget h1 {
     font-size:1.2em;
     border-bottom:1px solid #777;
-    padding-bottom:5px; 
+    padding-bottom:5px;
     font-weight:normal;
 }
-.manager-registration h2, .manager-login h2, .manager-auth-error h2 {
+.core-auth-widget h2 {
     font-size:1em !important;
     font-weight:normal !important;
     padding:3px 0 !important;
     color:#444;
     margin-bottom:10px;
 }
-.manager-login .field .value, .manager-registration .field .value { padding:5px 0; }
-.manager-login .buttons { padding-right:20px; }
+.core-auth-widget .field .value { padding:5px 0; }
+.core-auth-widget .oauth-buttons { padding-right:20px; }
+.core-auth-widget .oauth-buttons p { margin-bottom:15px; }
+.core-auth-widget p.agreement { padding:10px 0; }
+.core-auth-widget a { text-decoration:none; }

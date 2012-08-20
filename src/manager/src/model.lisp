@@ -21,6 +21,11 @@
    (consumer-secret :host both))
   (:ctor make-twitter-credentials))
 
+(defclass+ yahoo-credentials ()
+  ((consumer-key :host both)
+   (consumer-secret :host both))
+  (:ctor make-yahoo-credentials))
+
 ;; +-------------------------------------------------------------------------
 ;; | Administrator Definition (Manager Application Users)
 ;; +-------------------------------------------------------------------------
@@ -33,21 +38,6 @@
   (:default-initargs
    :permissions '((owner . 0) (group . 0) (other . 0) (unauthorized . -1))
    :levels '(admin/authorized)))
-
-;; -------------------------------------------------------------------------
-;; User Definition
-;; -------------------------------------------------------------------------
-(defclass+ user (object-with-id simple-user)
-  ((accounts :host local :type account* :relation user
-	     :documentation "Associated accounts")
-   (default-account :host local :type account
-		    :documentation "Default Account of this user")
-   (associations :host local :type account-associations :relation user))
-  (:ctor make-user))
-
-(defmethod user.default-account ((self user))
-  (with-slots (accounts default-account) self
-    (or default-account (car accounts))))
 
 ;; -------------------------------------------------------------------------
 ;; Account Definition
@@ -65,7 +55,7 @@
 ;; -------------------------------------------------------------------------
 (defclass+ local-account (account)
   ((email :host local :print t :index t :documentation "Email address")
-   (password :host local :print t :documentation "Password"))
+   (password :host local :documentation "Password"))
   (:ctor make-local-account)
   (:default-initargs :provider 'coretal))
 
@@ -140,6 +130,31 @@
   (:default-initargs :provider 'twitter))
 
 ;; -------------------------------------------------------------------------
+;; Yahoo Account
+;; -------------------------------------------------------------------------
+(defclass+ yahoo-account (external-account)
+  ((nickname :host local)
+   (first-name :host local)
+   (last-name :host local))
+  (:ctor make-yahoo-account)
+  (:default-initargs :provider 'yahoo))
+
+;; -------------------------------------------------------------------------
+;; User Definition
+;; -------------------------------------------------------------------------
+(defclass+ user (object-with-id simple-user)
+  ((accounts :host local :type account* :relation user
+	     :documentation "Associated accounts" :leaf t)
+   (default-account :host local :type account
+		    :documentation "Default Account of this user")
+   (associations :host local :type account-associations :relation user))
+  (:ctor make-user))
+
+(defmethod user.default-account ((self user))
+  (with-slots (accounts default-account) self
+    (or default-account (car accounts))))
+
+;; -------------------------------------------------------------------------
 ;; Account Association
 ;; -------------------------------------------------------------------------
 (defclass+ account-association (object-with-id)
@@ -164,6 +179,7 @@
 ;; -------------------------------------------------------------------------
 (defcrud admin)
 (defcrud user)
+(defcrud account)
 (defcrud local-account)
 (defcrud external-account)
 (defcrud facebook-account)

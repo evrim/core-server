@@ -57,6 +57,34 @@
    (email :host remote :lift t)))
 
 ;; -------------------------------------------------------------------------
+;; Yahoo Account CRUD
+;; -------------------------------------------------------------------------
+(defwebcrud yahoo-account/crud (account-crud-mixin)
+  ((first-name :label "First Name")
+   (last-name :label "Last Name")
+   (nickname :label "Nickname"))
+  (:default-initargs :title nil))
+
+(defcomponent yahoo-account/view (remote-reference)
+  ((account :host lift :type yahoo-account)
+   (first-name :host remote :lift t)
+   (last-name :host remote :lift t)
+   (nickname :host remote :lift t)))
+
+;; -------------------------------------------------------------------------
+;; Local Account CRUD
+;; -------------------------------------------------------------------------
+(defwebcrud local-account/crud (account-crud-mixin)
+  ((name :label "Name")
+   (email :label "E-mail"))
+  (:default-initargs :title nil))
+
+(defcomponent local-account/view (remote-reference)
+  ((account :host lift :type local-account)
+   (name :host remote :lift t)
+   (email :host remote :lift t)))
+
+;; -------------------------------------------------------------------------
 ;; Account Widget
 ;; -------------------------------------------------------------------------
 (defcomponent <manager:accounts (secure-object <widget:simple)
@@ -83,7 +111,9 @@
 (defparameter +account-cruds+
   (list (cons "Facebook" (facebook-account/crud))
 	(cons "Twitter" (twitter-account/crud))
-	(cons "Google" (google-account/crud))))
+	(cons "Google" (google-account/crud))
+	(cons "Google" (yahoo-account/crud))
+	(cons "Coretal" (local-account/crud))))
 
 (defcomponent <manager:accounts/registered (secure-object/authorized
 					    <widget:tab)
@@ -91,15 +121,16 @@
    (accounts :host local :export nil)
    (default-account :host remote :lift t)
    (account-cruds :host remote :initform +account-cruds+))
-  (:default-initargs :tabs (list "Coretal" "Facebook" "Google" "Twitter")
-		     :tab-title "Accounts"))
+  (:default-initargs :tab-title "Accounts"
+		     :tabs (list "Coretal" "Facebook" "Google" "Twitter"
+				 "Yahoo")))
 
 (defmethod/local get-account ((self <manager:accounts/registered) name)
   (let ((accounts (user.accounts (secure.user self))))
     (acond
      ((and (equal "Coretal" name)
 	   (any (make-type-matcher 'local-account) accounts))
-      (coretal-account/crud :instance it))
+      (local-account/view :account it))
      ((and (equal "Facebook" name)
 	   (any (make-type-matcher 'facebook-account) accounts))
       (facebook-account/view :account it))
@@ -108,7 +139,10 @@
       (google-account/view :account it))
      ((and (equal "Twitter" name)
 	   (any (make-type-matcher 'twitter-account) accounts))
-      (twitter-account/view :account it)))))
+      (twitter-account/view :account it))
+     ((and (equal "Yahoo" name)
+	   (any (make-type-matcher 'yahoo-account) accounts))
+      (yahoo-account/view :account it)))))
 
 (defmethod/local do-use1 ((self <manager:accounts/registered) account)
   (answer-component self (list self :use (slot-value account 'account))))

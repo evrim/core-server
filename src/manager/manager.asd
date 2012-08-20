@@ -23,8 +23,8 @@
 		      :serial t
 		      :components
 		      ((:file "interface")
-		       (:file "login")
-		       (:file "accounts")
+		       (:file "anonymous")
+		       (:file "user")
 		       (:file "controller")))
 	     (:module :api
 		      :serial t

@@ -137,6 +137,56 @@
     (let ((account (google-account.add self :account-id id)))
       (google-account.update-from-jobject self account data))))
 
+(deftransaction user.register ((self database) &key name email password
+			       (timestamp (get-universal-time)))
+  (let ((local-account (local-account.add self
+					  :password password
+					  :name name
+					  :email email
+					  :last-update timestamp)))
+    (values (user.add self :accounts (list local-account)
+			   :group (simple-group.find self :name "user"))
+	    local-account)))
+
+;; -------------------------------------------------------------------------
+;; Sendmail
+;; -------------------------------------------------------------------------
+(defmethod manager.sendmail ((self manager-application) to subject body)
+  (sendmail (application.server self)
+	    (format nil "no-reply@~A" (web-application.fqdn self))
+	    to (format nil "[Core-serveR] ~A" subject)
+	    (<:html
+	     (<:head
+	      (<:meta :http--equiv "content-type"
+		      :content "text/html; charset=utf-8")
+	      (<:title "[Core serveR] - " subject))
+	     (<:body
+	      (<:h1 "[Core Server]")
+	      (<:h2 subject)
+	      (<:p "Dear Sir/Madam,")
+	      body
+	      (<:p :class "footer" "--" (<:br) "Kind regards," (<:br)
+		   "Core Server Team "
+		   (let ((email (format nil "info@~A" (web-application.fqdn self))))
+		     (<:a :href (concatenate 'string "mailto:" email)
+			  (concatenate 'string "&lt;" email "&gt;"))))))
+	    nil
+	    nil
+	    "[Core-serveR]"))
+
+(defmethod manager.send-password-recovery-email ((self manager-application)
+						 email url)
+  (manager.sendmail self email "Password Recovery"
+    (list
+     (<:p
+      "You declared that you have just lost your password. "
+      "To recover your password please click the link below.")
+     (<:p
+      (<:a :href (typecase url
+		   (uri (uri->string url))
+		   (string url))
+	   "Recover Password")))))
+
 ;; -------------------------------------------------------------------------
 ;; Init Database
 ;; -------------------------------------------------------------------------

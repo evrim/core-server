@@ -59,6 +59,8 @@
 	   #:login
 	   #:registration
 	   #:authentication-error
+	   #:recover-password
+	   #:forgot-password
 	   
 	   ;; Login Link
 	   #:login-link

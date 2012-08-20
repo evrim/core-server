@@ -79,6 +79,15 @@
 	 (account (external-account.find self :account-id account-id)))
 
     (cond
+      ((and account current-account ;; Merge accounts
+	    (not (eq (account.user account) (account.user current-account))))
+       (let* ((old-user (account.user account))
+	      (old-accounts (user.accounts old-user))
+	      (new-user (account.user current-account)))
+	 (mapcar (lambda (account) (account.update self account :user new-user))
+		 old-accounts)
+	 (user.delete self old-user)
+	 account))
       (account account) ;; Already exists, return it
       ((and current-account (null account))
        ;; Previous accounts, adding a new one.
