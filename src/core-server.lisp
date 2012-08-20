@@ -1459,6 +1459,14 @@
 	   #:access-token #:%make-access-token #:get-user-lists
 	   #:secure-get-user #:access-token.user-id #:access-token.screen-name))
 
+(defpackage :<yahoo
+  (:nicknames :tr.gen.core.server.yahoo)
+  (:use :cl)
+  (:export #:funkall #:authorize-url #:get-request-token #:request-token
+	   #:%make-request-token #:get-access-token
+	   #:access-token #:%make-access-token #:get-user-lists
+	   #:secure-get-user #:access-token.user-id #:access-token.screen-name))
+
 (defpackage :<wp
   (:nicknames :<wordpress :tr.gen.core.server.wordpress)
   (:use :cl)
