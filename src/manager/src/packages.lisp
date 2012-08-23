@@ -7,7 +7,8 @@
 		#:server)
   (:use :common-lisp :core-server :arnesi)
   (:export #:manager-web-application-mixin #:web-application.oauth-uri
-	   #:web-application.oauth-handler-uri #:web-application.api-uri))
+	   #:web-application.oauth-handler-uri #:web-application.api-uri
+	   #:dynamic-application+ #:dynamic-application))
 
 
 (defpackage :tr.gen.core.manager.widget
