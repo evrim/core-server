@@ -252,6 +252,9 @@
 				   (:file "page")
 				   (:file "widget")
 				   (:file "plugin")
+				   (:file "i18n")
+				   (:file "taskbar")
+				   (:file "console")
 				   (:file "controller")))
 			 (:module :widget
 				  :serial t
