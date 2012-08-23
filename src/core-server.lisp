@@ -768,6 +768,7 @@
    #:with-current-directory
    #:time->string
    #:get-unix-time
+   #:concat
    
    #+ssl #:hmac
    #:+day-names+
@@ -885,7 +886,8 @@
    #:json/suspend
    #:xml/suspend
    #:css/suspend
-
+   #:with-cache
+   
    ;; Test Utilties
    #:with-test-context
    #:kontinue
