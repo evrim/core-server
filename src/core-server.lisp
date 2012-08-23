@@ -1364,13 +1364,16 @@
 	   #:simple-page #:simple-page/unauthorized
 	   #:simple-page/anonymous #:simple-page/registered
 	   #:simple-widget-map #:simple-widget-map/anonymous
-	   #:simple-controller #:simple-controller/unauthorized
+	   #:simple-controller #:controller/unauthorized
 	   #:simple-controller/anonymous
 	   #:simple-controller/authorized
 	   #:login #:dialog #:prompt-dialog #:yes-no-dialog
 	   #:login-dialog #:registration-dialog
 	   #:forgot-password-dialog #:big-dialog
-	   #:fullscreen-dialog))
+	   #:fullscreen-dialog
+	   #:console #:toaster-task #:task #:menu-task #:taskbar
+	   #:language-pack #:sidebar
+	   #:portal-controller))
 
 (defpackage :<atom
   (:nicknames :tr.gen.core.server.atom)
