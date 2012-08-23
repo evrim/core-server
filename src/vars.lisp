@@ -111,16 +111,9 @@
 (defvar +jquery-ui-css-uri+ "/js/jquery-ui/css/blitzer/jquery-ui.custom.css")
 (defvar +jquery-lightbox-uri+ "/js/lightbox/js/jquery.lightbox-0.5.min.js")
 (defvar +jquery-lightbox-css-uri+ "/js/lightbox/css/jquery.lightbox-0.5.css")
-(defvar +jquery-lightbox-config+
-  (jobject :image-loading "/js/lightbox/images/lightbox-ico-loading.gif"
-	   :image-btn-prev "/js/lightbox/images/lightbox-btn-prev.gif"
-	   :image-btn-next "/js/lightbox/images/lightbox-btn-next.gif"
-	   :image-btn-close "/js/lightbox/images/lightbox-btn-close.gif"
-	   :image-blank "/js/lightbox/images/lightbox-blank.gif"))
 
 (defvar +jquery-carousel-uri+ "/js/jcarousel/lib/jquery.jcarousel.min.js")
 (defvar +jquery-carousel-css-uri+ "/js/jcarousel/skins/tango/skin.css")
-(defvar +jquery-carousel-config+ (jobject))
 
 (defvar +jquery-nested-sortable-uri+ "/js/nested-sortable/jquery.ui.nestedSortable.js")
 (defvar +jquery-newsticker-uri+ "/js/jquery.newsTicker.js")
@@ -134,7 +127,16 @@
 (defvar +jquery-date-time-picker-uri+ "/js/jquery-ui-timepicker-addon.js")
 (defvar +jquery-date-time-picker-css+ "/js/jquery-ui-timepicker-addon.css")
 
+
+;; -------------------------------------------------------------------------
+;; Component Specific Stylesheets
+;; -------------------------------------------------------------------------
+(defvar +core-css+ "style/core.css")
 (defvar +tab-css+ "style/tab.css")
+(defvar +console-css+ "style/console.css")
+(defvar +toaster-css+ "style/toaster.css")
+(defvar +taskbar-css+ "style/taskbar.css")
+(defvar +sidebar-css+ "style/sidebar.css")
 
 ;; -------------------------------------------------------------------------
 ;; Picasa Variables
