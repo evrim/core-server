@@ -54,13 +54,16 @@
 	  (class-slots class)))
 	:key #'slot-definition-name :test #'string=))
 
-(defmethod class+.self-slots ((class class+))
-  (set-difference 
-   (class+.slots class)
-   (reduce #'append 
-	   (mapcar (lambda (a) (class+.slots a))
-		   (remove class (class+.superclasses class))))
-   :key #'core-server::slot-definition-name))
+;; (defmethod class+.self-slots ((class class+))
+;;   (set-difference 
+;;    (class+.slots class)
+;;    (reduce #'append 
+;;   	   (mapcar (lambda (a) (class+.slots a))
+;;   		   (remove class (class+.superclasses class))))
+;;    :key #'core-server::slot-definition-name))
+
+(defmethod class+.direct-slots ((class class+))
+  (sb-mop:class-direct-slots class))
 
 (defmethod class+.add-method ((class class+) name type args)
   (setf (class+.%methods class)

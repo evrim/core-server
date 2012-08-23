@@ -38,7 +38,9 @@
   (:metaclass component+)
   (:documentation "Base component class"))
 
-(defvar +markup-slots+ (make-html-attributes (list :core :i18n :event)))
+(defvar +markup-slots+
+  (remove 'title (make-html-attributes (list :core :i18n :event))))
+
 (defmethod shared-initialize :after ((self component) slots &key &allow-other-keys)
   ;; Set Random DOM ID
   (with-slots (id remote-slots) self
@@ -278,59 +280,52 @@
 ;; defcomponent-accessors Macro: Defines remote and local accessors
 ;; for slots of a component
 ;; --------------------------------------------------------------------------
-(defmacro defcomponent-accessors (class-name slots)
-  (flet ((reader (name)
-	   (intern (format nil "GET-~A" name) (symbol-package name)))
-	 (writer (name)
-	   (intern (format nil "SET-~A" name) (symbol-package name)))
-	 (method-type (host)
-	   (ecase host
-	     (local 'defmethod/local)
-	     ((or both remote) 'defmethod/remote))))    
+(defmethod component+.codomain-reader-name ((self component+) slot)
+  (let ((name (slot-definition-name slot)))
+    (intern (format nil "GET-~A" name) (symbol-package name))))
+
+(defmethod component+.codomain-writer-name ((self component+) slot)
+  (let ((name (slot-definition-name slot)))
+    (intern (format nil "SET-~A" name) (symbol-package name))))
+
+(defmacro defcomponent-accessor (class)
+  (let ((class+ (class+.find class)))
     `(progn
-       ,@(reduce0
-	  (lambda (acc slot)
-	    (let ((name (car slot))
-		  (accessor (cadr slot))
-		  (host (caddr slot))
-		  (export (cdddr slot)))
-	      (if export
-		  (append acc
-			  `((,(method-type host) ,(reader name) ((self ,class-name))
+       ,@(mapcar
+	   (lambda (slot)
+	     (with-slotdef (name export reader writer) slot
+	       (when export
+		 `(progn
+		    ,(when (and reader (null (gethash reader *javascript-macros*)))
+		       `(defmacro/js ,reader (self)
+			  `(slot-value ,self ',',name)))
+		    ,(when (and writer (null (gethash writer *javascript-setf-macros*)))
+		       `(defsetf/js ,writer (value self)
+			  `(setf (slot-value ,self ',',name) ,value)))))))
+	   (filter (lambda (a) (or (eq 'remote (slot-definition-host a))
+				   (eq 'both (slot-definition-host a))))
+		   (class+.direct-slots class+)))
+       ,@(mapcar
+	   (lambda (slot)
+	     (with-slotdef (name export reader writer) slot
+	       (when export
+		 `(progn
+		    ,(when reader
+		       (let ((coreader (component+.codomain-reader-name class+ slot)))
+			 `(progn
+			    (defmethod/local ,coreader ((self ,class))
 			      (slot-value self ',name))
-			    (,(method-type host) ,(writer name) ((self ,class-name) value)
+			    (defmacro/js ,reader (self)
+			      `(,',coreader ,self)))))
+		    ,(when writer
+		       (let ((cowriter (component+.codomain-writer-name class+ slot)))
+			 `(progn
+			    (defmethod/local ,cowriter ((self ,class) value)
 			      (setf (slot-value self ',name) value))
-			    (eval-when (:compile-toplevel :execute :load-toplevel)
-			      (defmacro/js ,accessor (self)
-				`(,',(reader name) ,self))
-			      (defsetf/js ,accessor (value self)
-				`(,',(writer name) ,self ,value)))))
-		  acc)))
-	  (filter (lambda (slot) (eq (caddr slot) 'local))
-		  slots))
-       ,@(reduce0
-	  (lambda (acc slot)
-	    (let* ((name (car slot))
-		   (export (caddr slot))
-		   (accessor (cadr slot))
-		   (macro1 `(defmacro/js ,accessor (self)
-			      `(slot-value ,self ',',name)))
-		   (macro2 `(defsetf/js ,accessor (value self)
-			      `(setf (slot-value ,self ',',name) ,value))))
-	      (cond
-		((not export) acc)
-		((and (not (gethash accessor *javascript-macros*))
-		      (not (gethash accessor *javascript-setf-macros*)))
-		 (cons macro1 (cons macro2 acc)))
-		((not (gethash accessor *javascript-macros*))
-		 (cons macro1 acc))
-		((not (gethash accessor *javascript-setf-macros*))
-		 (cons macro2 acc))
-		(t acc))))
-	  (filter (lambda (slot)
-		    (or (eq (caddr slot) 'both)
-			(eq (caddr slot) 'remote)))
-		  slots)))))
+			    (defsetf/js ,writer (value self)
+			      `(,',cowriter ,self ,value)))))))))
+	   (filter (lambda (a) (eq 'local (slot-definition-host a)))
+		   (class+.direct-slots class+))))))
 
 ;; +-------------------------------------------------------------------------
 ;; | defcomponent Macro: Defines a new component
@@ -372,19 +367,20 @@
 		  slots)
 	 ,@rest
 	 (:metaclass ,(or metaclass1 metaclass)))
-       (defcomponent-accessors ,name
-	   ,(mapcar
-	     (lambda (slot)
-	       (cons (car slot)
-		     (cons (or (getf (cdr slot) :accessor)
-			       (car slot))
-			   (cons (or (getf (cdr slot) :host)
-				     'local)
-				 (if (member :export slot)
-				     (getf (cdr slot) :export)
-				     t)))))
-	     slots))
-       (find-class+ ',name))))
+       (defcomponent-accessor ,name)
+       ;; (defcomponent-accessors ,name
+       ;; 	   ,(mapcar
+       ;; 	     (lambda (slot)
+       ;; 	       (cons (car slot)
+       ;; 		     (cons (or (getf (cdr slot) :accessor)
+       ;; 			       (car slot))
+       ;; 			   (cons (or (getf (cdr slot) :host)
+       ;; 				     'local)
+       ;; 				 (if (member :export slot)
+       ;; 				     (getf (cdr slot) :export)
+       ;; 				     t)))))
+       ;; 	     slots))
+       (class+.find ',name))))
 
 (defmethod/cc component.register ((component component) (context http-context))
   (let ((+context+ context)
@@ -858,3 +854,59 @@
 
 (defmethod/remote raise-error ((self component) severity message)
   (alert (+ severity ": " message)))
+
+
+
+;; (defmacro defcomponent-accessors (class-name slots)
+;;   (flet ((reader (name)
+;; 	   (intern (format nil "GET-~A" name) (symbol-package name)))
+;; 	 (writer (name)
+;; 	   (intern (format nil "SET-~A" name) (symbol-package name)))
+;; 	 (method-type (host)
+;; 	   (ecase host
+;; 	     (local 'defmethod/local)
+;; 	     ((or both remote) 'defmethod/remote))))    
+;;     `(progn
+;;        ,@(reduce0
+;; 	  (lambda (acc slot)
+;; 	    (let ((name (car slot))
+;; 		  (accessor (cadr slot))
+;; 		  (host (caddr slot))
+;; 		  (export (cdddr slot)))
+;; 	      (if export
+;; 		  (append acc
+;; 			  `((,(method-type host) ,(reader name) ((self ,class-name))
+;; 			      (slot-value self ',name))
+;; 			    (,(method-type host) ,(writer name) ((self ,class-name) value)
+;; 			      (setf (slot-value self ',name) value))
+;; 			    (eval-when (:compile-toplevel :execute :load-toplevel)
+;; 			      (defmacro/js ,accessor (self)
+;; 				`(,',(reader name) ,self))
+;; 			      (defsetf/js ,accessor (value self)
+;; 				`(,',(writer name) ,self ,value)))))
+;; 		  acc)))
+;; 	  (filter (lambda (slot) (eq (caddr slot) 'local))
+;; 		  slots))
+;;        ,@(reduce0
+;; 	  (lambda (acc slot)
+;; 	    (let* ((name (car slot))
+;; 		   (export (caddr slot))
+;; 		   (accessor (cadr slot))
+;; 		   (macro1 `(defmacro/js ,accessor (self)
+;; 			      `(slot-value ,self ',',name)))
+;; 		   (macro2 `(defsetf/js ,accessor (value self)
+;; 			      `(setf (slot-value ,self ',',name) ,value))))
+;; 	      (cond
+;; 		((not export) acc)
+;; 		((and (not (gethash accessor *javascript-macros*))
+;; 		      (not (gethash accessor *javascript-setf-macros*)))
+;; 		 (cons macro1 (cons macro2 acc)))
+;; 		((not (gethash accessor *javascript-macros*))
+;; 		 (cons macro1 acc))
+;; 		((not (gethash accessor *javascript-setf-macros*))
+;; 		 (cons macro2 acc))
+;; 		(t acc))))
+;; 	  (filter (lambda (slot)
+;; 		    (or (eq (caddr slot) 'both)
+;; 			(eq (caddr slot) 'remote)))
+;; 		  slots)))))
