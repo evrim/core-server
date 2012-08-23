@@ -1,0 +1,49 @@
+.core-console {
+  position:fixed;
+  bottom:0;
+  left:0;
+  width:100%;
+  color:#000000;
+  margin:0;
+  background-color:#AAAAAA;
+  border-bottom:2px solid #000000;
+}
+.core-console * {
+    font-family: Arial,Helvetica,FreeSans,"Luxi-sans","Nimbus Sans L",sans-serif;
+}
+.core-console .title > div { 
+  color:#ffffff;                  
+  padding:10px;
+  font-size:1.0em;
+  margin-left:10px;
+  background:url(images/stripe.png); 
+  border-left:2px solid #333333;
+}
+.core-console .title > div > div { color:#ffffff; }
+.core-console .title {
+  background-color:#222222;
+}
+.core-console a, .core-console a:visited, .core-console a:link, .core-console a:hover { 
+  color:#ffffff;
+  cursor:hand; 
+}
+.core-console .close { margin-right:10px; }
+.core-console a.close-button { display:block; cursor:pointer; }
+
+.core-console .body { 
+  background-color:#FFFFFF;
+  margin-left:10px;
+  border-left:2px solid #777777;
+}
+
+/* .feedback-console .field .label { */
+/*   float:left; */
+/*   padding:5px; */
+/*   width:100px; */
+/* } */
+/* .feedback-console .feedback-title { */
+/*   padding:10px; */
+/*   padding-left:5px; */
+/*   font-size:15px; */
+/*   margin-bottom:5px; */
+/* } */

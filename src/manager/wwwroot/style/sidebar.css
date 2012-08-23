@@ -1,0 +1,48 @@
+.core-sidebar { 
+ position:fixed;
+ left:0;
+ top:36px;
+ height:92%;
+ width:200px;
+ background:#ffffff;
+ padding:10px;
+ border-right:5px solid #222222;
+ padding-right:5px;
+ overflow-y:scroll;
+ font-size:12px;
+ padding-bottom:100px;
+ text-align:left;
+}
+.core-sidebar input[type=submit], .core-sidebar input[type=button], .core-sidebar input[type=reset] { 
+  font-size:12px;
+}
+.core-sidebar input[type=text],.core-sidebar select, .core-sidebar input[type=password], .core-sidebar textarea { 
+  font-size:12px;
+}
+.core-sidebar .label { 
+ font-size:12px;
+}
+.core-sidebar ul { 
+  padding:10px;
+}
+.core-sidebar p { 
+  font-size:0.9em;
+}
+.core-sidebar a,.core-sidebar a:link { text-decoration:underline; }
+.core-sidebar a:hover { cursor:pointer; }
+
+.core-sidebar a.sidebar-close-button { 
+  width:25px;
+  height:25px;
+  background: url(images/close.jpg);
+  display:block;
+}
+.core-sidebar h1 { font-size:1.3em; margin-bottom:10px; }
+.core-sidebar h2 { margin-bottom:2px; }
+
+body { 
+ margin-left: 200px;
+/*  left:200px; */
+/*  position:absolute; */
+}
+.ckeditor-bottom, .ckeditor-top, .core-toaster, .core-toaster-baloon { left:215px !important; }

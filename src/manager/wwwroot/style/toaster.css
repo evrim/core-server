@@ -1,0 +1,71 @@
+.core-toaster { 
+  position:fixed;
+  bottom:0;
+  left:0;
+  width:100%;
+  color:#000000;
+  margin:0;
+  background-color:#EEEEEE;
+  z-index:10;
+  /* border-bottom:2px solid #000000; */
+  /* border-top:2px solid #000000; */
+}
+.core-toaster *, .core-toaster-baloon * {
+  color:#ffffff;
+  font-family: Arial,Helvetica,FreeSans,"Luxi-sans","Nimbus Sans L",sans-serif;
+  font-size:13px;
+}
+.core-toaster .title > div  { 
+  color:#ffffff;                  
+  padding:10px;
+  font-size:1.0em;
+  margin-left:10px;
+  background:url(images/stripe.png); 
+  border-left:2px solid #333333;
+}
+.core-toaster .title > div > div { color:#ffffff; }
+.core-toaster .title {
+  background-color:#222222;
+  height:30px;
+}
+.core-toaster .log * { color:#000000; }
+.core-toaster .log { 
+  background-color:#AAAAAA;
+  border-bottom:2px solid #000000;
+  text-align:left;
+}
+.core-toaster .toast { 
+  padding:7px;
+  padding-top:3px;
+  padding-bottom:3px;
+  margin-left:10px;
+  border-left:2px solid #777777;
+  background-color:#ffffff;
+}
+.core-toaster a, .core-toaster a:visited, .core-toaster a:link, .core-toaster a:hover { 
+  color:#ffffff;
+  cursor:hand; 
+}
+.core-toaster .close { margin-right:10px; }
+.core-toaster a.close-button { display:block; cursor:pointer; color:#ffffff; }
+
+.core-toaster-baloon { 
+  position:fixed;
+  bottom:0;
+  left:0;
+  width:100%;
+  color:#000000;
+  margin:0;
+  background-color:#AAAAAA;
+  color:#ffffff;
+  text-align:left;
+}
+.core-toaster-baloon .toast { 
+  color:#ffffff;
+  background-color:#222222;
+  padding:7px;
+  padding-top:3px;
+  padding-bottom:3px;
+  margin-left:10px;
+  border-left:3px solid #777777;
+}
