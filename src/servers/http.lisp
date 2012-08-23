@@ -124,13 +124,21 @@ nil if stream data is invalid"
 ;; Eval Request & Return Response
 ;; -------------------------------------------------------------------------
 (defmethod eval-request ((server http-server) (request http-request))
-  (let* ((host (car (http-request.header request 'host)))
+  (let* ((root-application (slot-value server 'root-application))
+	 (host (car (http-request.header request 'host)))
 	 (app-name (caar (uri.paths (http-request.uri request))))
-	 (application (or (aif (find-application server app-name)
-			       (prog1 it
-				 (pop (uri.paths (http-request.uri request)))))
-			  (find-application server host)
-			  (slot-value server 'root-application))))
+	 (application (if (and root-application host
+			       (equal (web-application.fqdn root-application)
+				      host))
+			  (acond
+			   ((and app-name (not (equal app-name ""))
+				 (find-application server app-name))
+			    (pop (uri.paths (http-request.uri request)))
+			    it)
+			   (t root-application))
+			  (acond
+			   ((and host (find-application server host)) it)
+			   (t nil)))))
     (let ((response (if application (dispatch application request))))
       (if response
 	  response
