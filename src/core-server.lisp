@@ -1360,6 +1360,7 @@
 	   #:select-input #:multiple-select-input
 	   #:radio-group #:simple-clock #:table-with-crud
 	   #:multiple-checkbox #:checkbox #:fqdn-input
+	   #:in-place-edit
 	   #:simple-page #:simple-page/unauthorized
 	   #:simple-page/anonymous #:simple-page/registered
 	   #:simple-widget-map #:simple-widget-map/anonymous

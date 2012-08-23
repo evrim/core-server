@@ -578,3 +578,29 @@
       (append self _password1)
       (append self _password2)
       (call-next-method self))))
+
+;; -------------------------------------------------------------------------
+;; In Place Edit
+;; -------------------------------------------------------------------------
+(defcomponent <core:in-place-edit (<:a)
+  ((current-value :host remote)
+   (_input :host remote :initform (<core:required-value-input))))
+
+(defmethod/remote onsave ((self <core:in-place-edit) value)
+  (_debug (+ "Inplace edit: " value)))
+
+(defmethod/remote on-click1 ((self <core:in-place-edit) e)
+  (let* ((input (make-component (_input self) :value (current-value self)))
+	 (form (<:form :class (slot-value self 'class-name) input))
+	 (save-fun (event (e)
+		    (let ((v (slot-value input 'value)))
+		      (replace-node form self)
+		      (setf (current-value self) v)
+		      (setf (slot-value self 'inner-h-t-m-l) v)
+		      (onsave self v)))))
+    (setf (slot-value form 'onsubmit) save-fun)
+    (replace-node self form)))
+
+(defmethod/remote init ((self <core:in-place-edit))
+  (setf (slot-value self 'inner-h-t-m-l) (current-value self))
+  (setf (slot-value self 'onclick) (lifte self.on-click1)))
