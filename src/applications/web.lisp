@@ -21,7 +21,7 @@
 ;; | Web Application
 ;; +-------------------------------------------------------------------------
 (defclass+ web-application (application)
-  ((fqdn :reader web-application.fqdn :initarg :fqdn :host local
+  ((fqdn :reader web-application.fqdn :initarg :fqdn :host local :print t
 	 :initform (error "Fqdn must be supplied.")
 	 :documentation "Fully qualified domain name of this application")
    (admin-email :accessor web-application.admin-email :initarg :admin-email
