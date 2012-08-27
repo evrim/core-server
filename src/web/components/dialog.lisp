@@ -7,7 +7,7 @@
   ((overlay :host remote :initform nil)
    (message :host remote :initform "This is a message dialog.")
    (title :host remote :initform "message")
-   (css-url :host remote :initform "/style/dialog/dialog.css")
+   (dialog-css :host remote :initform +dialog.css+)
    (_scroll :host remote :initform (list 0 0)))
   (:default-initargs :class "core core-dialog"))
 
@@ -39,7 +39,7 @@
   (call-next-method self arg))
 
 (defmethod/remote show-component ((self <core:dialog))
-  (load-css (css-url self))
+  (load-css (dialog-css self))
   (setf (_scroll self)
 	(list (or document.document-element.scroll-left
 		  window.page-x-offset)
@@ -51,7 +51,7 @@
   (setf document.body.style.overflow "hidden"))
 
 (defmethod/remote hide-component ((self <core:dialog))
-  (remove-css (css-url self))
+  (remove-css (dialog-css self))
   (setf document.body.style.overflow "visible")  
   (.remove-child document.body self)
   (.remove-child document.body (overlay self))

@@ -106,37 +106,47 @@
 ;; -------------------------------------------------------------------------
 ;; JQuery Variables
 ;; -------------------------------------------------------------------------
-(defvar +jquery-uri+ "/js/jquery.min.js")
-(defvar +jquery-ui-uri+ "/js/jquery-ui.min.js")
-(defvar +jquery-ui-css-uri+ "/js/jquery-ui/css/blitzer/jquery-ui.custom.css")
-(defvar +jquery-lightbox-uri+ "/js/lightbox/js/jquery.lightbox-0.5.min.js")
-(defvar +jquery-lightbox-css-uri+ "/js/lightbox/css/jquery.lightbox-0.5.css")
+(defvar +jquery.js+ "/js/jquery.min.js")
+(defvar +jquery-ui.js+ "/js/jquery-ui.min.js")
+(defvar +jquery-ui.css+ "/js/jquery-ui/css/blitzer/jquery-ui.custom.css")
+(defvar +jquery-lightbox.js+ "/js/lightbox/js/jquery.lightbox-0.5.min.js")
+(defvar +jquery-lightbox.css+ "/js/lightbox/css/jquery.lightbox-0.5.css")
 
-(defvar +jquery-carousel-uri+ "/js/jcarousel/lib/jquery.jcarousel.min.js")
-(defvar +jquery-carousel-css-uri+ "/js/jcarousel/skins/tango/skin.css")
+(defvar +jquery-carousel.js+ "/js/jcarousel/lib/jquery.jcarousel.min.js")
+(defvar +jquery-carousel.css+ "/js/jcarousel/skins/tango/skin.css")
 
-(defvar +jquery-nested-sortable-uri+ "/js/nested-sortable/jquery.ui.nestedSortable.js")
-(defvar +jquery-newsticker-uri+ "/js/jquery.newsTicker.js")
-(defvar +jquery-slider-uri+ "/js/slider/slider.js")
-(defvar +jquery-slider-css+ "/js/slider/slider.css")
-(defvar +jquery-text-effects-uri+ "/js/slider/jquery.text-effects.js")
+(defvar +jquery-nested-sortable.js+ "/js/nested-sortable/jquery.ui.nestedSortable.js")
+(defvar +jquery-newsticker.js+ "/js/jquery.newsTicker.js")
+(defvar +jquery-slider.js+ "/js/slider/slider.js")
+(defvar +jquery-slider.css+ "/js/slider/slider.css")
+(defvar +jquery-text-effects.js+ "/js/slider/jquery.text-effects.js")
 
-(defvar +jquery-tree-uri+ "/js/jquery-tree/jquery.tree.js")
-(defvar +jquery-cookie-uri+ "/js/jquery-tree/jquery.cookie.js")
+(defvar +jquery-tree.js+ "/js/jquery-tree/jquery.tree.js")
+(defvar +jquery-cookie.js+ "/js/jquery-tree/jquery.cookie.js")
 
-(defvar +jquery-date-time-picker-uri+ "/js/jquery-ui-timepicker-addon.js")
-(defvar +jquery-date-time-picker-css+ "/js/jquery-ui-timepicker-addon.css")
+(defvar +jquery-date-time-picker.js+ "/js/jquery-ui-timepicker-addon.js")
+(defvar +jquery-date-time-picker.css+ "/js/jquery-ui-timepicker-addon.css")
 
+(defvar +ckeditor.js+ "/js/ckeditor/ckeditor.js")
+(defvar +ckeditor-source.js+ "/js/ckeditor/ckeditor_source.js")
+(defvar +ckeditor.css+ "/style/ckeditor.css")
 
 ;; -------------------------------------------------------------------------
 ;; Component Specific Stylesheets
 ;; -------------------------------------------------------------------------
-(defvar +core-css+ "style/core.css")
-(defvar +tab-css+ "style/tab.css")
-(defvar +console-css+ "style/console.css")
-(defvar +toaster-css+ "style/toaster.css")
-(defvar +taskbar-css+ "style/taskbar.css")
-(defvar +sidebar-css+ "style/sidebar.css")
+(defvar +theme-root+ "style/themes/")
+(defvar +default-theme+ "default")
+(defvar +core.css+ "style/core.css")
+(defvar +tab.css+ "style/tab.css")
+(defvar +console.css+ "style/console.css")
+(defvar +toaster.css+ "style/toaster.css")
+(defvar +taskbar.css+ "style/taskbar.css")
+(defvar +sidebar.css+ "style/sidebar.css")
+(defvar +page-plugin.css+ "style/page.css")
+
+(defvar +table.css+ "style/table.css")
+(defvar +dialog.css+ "/style/dialog/dialog.css")
+(defvar +crud.css+ "style/crud.css")
 
 ;; -------------------------------------------------------------------------
 ;; Picasa Variables

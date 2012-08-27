@@ -285,9 +285,9 @@
 ;; -------------------------------------------------------------------------
 (defcomponent <core:date-time-input (<core:validating-input supply-jquery-ui)
   ((jquery-date-time-picker-uri :host remote
-				:initform +jquery-date-time-picker-uri+)
+				:initform +jquery-date-time-picker.js+)
    (jquery-date-time-picker-css :host remote
-				:initform +jquery-date-time-picker-css+)
+				:initform +jquery-date-time-picker.css+)
    (default-value :host remote)
    (show-time :host remote :initform t))
   (:default-initargs :default-value "Enter a date"))

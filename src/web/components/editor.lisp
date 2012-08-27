@@ -55,16 +55,13 @@
 	   :startup-focus t
 	   :toolbar +ckeditor-simple-toolbar+))
 
-(defvar +ckeditor-uri+ "/js/ckeditor/ckeditor.js")
-(defvar +ckeditor-source-uri+ "/js/ckeditor/ckeditor_source.js")
-(defvar +ckeditor-css+ "/style/ckeditor.css")
 
 ;; -------------------------------------------------------------------------
 ;; Ck Editor Form Field
 ;; -------------------------------------------------------------------------
 (defcomponent <core:ckeditor (<core:validating-input)
-  ((ckeditor-uri :host remote :initform +ckeditor-uri+)
-   (ckeditor-css :host remote :initform +ckeditor-css+)
+  ((ckeditor-uri :host remote :initform +ckeditor.js+)
+   (ckeditor-css :host remote :initform +ckeditor.css+)
    (config :host remote :initform +ckeditor-config+)
    (instance :host remote))
   (:tag . "textarea"))

@@ -232,40 +232,50 @@
                                   :components
                                   ((:file "component")
 				   (:file "rest")
-				   (:file "jquery")
-				   (:file "form")
-				   (:file "dialog")
-				   (:file "editor")
-				   (:file "representations")
-				   (:file "table")
-				   (:file "crud")
-				   (:file "table-with-crud")
-				   (:file "tab")
-				   (:file "extra")
-				   (:file "auth")
-				   (:file "image")
-				   (:file "picasa")))
-			 (:module :coretal
-				  :serial t
-				  :components
-				  ((:file "map")
-				   (:file "page")
-				   (:file "widget")
-				   (:file "plugin")
-				   (:file "i18n")
-				   (:file "taskbar")
-				   (:file "console")
-				   (:file "controller")))
-			 (:module :widget
-				  :serial t
-				  :components
-				  ((:file "menu")
-				   (:file "content")
-				   (:file "tab"))))))
+				   (:module :components
+					    :serial t
+					    :components
+					    ((:file "jquery")
+					     (:file "form")
+					     (:file "dialog")
+					     (:file "editor")
+					     (:file "representations")
+					     (:file "table")
+					     (:file "crud")
+					     (:file "table-with-crud")
+					     (:file "tab")
+					     (:file "extra")
+					     (:file "auth")
+					     (:file "image")
+					     (:file "picasa")))
+				   (:module :framework
+					    :serial t
+					    :components
+					    ((:file "map")
+					     (:file "page")
+					     (:file "widget")    
+					     (:file "controller")))
+				   (:module :coretal
+					    :serial t
+					    :components
+					    ((:file "i18n")
+					     (:file "taskbar")
+					     (:file "console")
+					     (:file "plugin")
+					     (:file "controller")))
+				   (:module :plugins
+					    :serial t
+					    :components
+					    ((:file "page")))
+				   (:module :widgets
+					    :serial t
+					    :components
+					    ((:file "menu")
+					     (:file "content")
+					     (:file "tab"))))))))
   
-  :depends-on (:swank :bordeaux-threads ;; :cl-prevalence
-		      :sb-bsd-sockets :arnesi+ :cl-ppcre :cl-fad :cffi
-		      :salza2 :ironclad)
+  :depends-on (:swank :bordeaux-threads :sb-bsd-sockets :arnesi+ :cl-ppcre
+		      :cl-fad :cffi :salza2 :ironclad)
   :serial t)
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :core-server))))
@@ -279,36 +289,37 @@
 				     (:file "quiz")))))
 
 (defsystem :core-server.test
-  :components ((:module :t
-                        :serial t
-			:components ((:file "packages")
-                                     (:file "test-harness")
-				     (:file "method")
-				     (:file "class+")
-                                     (:file "postfix")
-                                     (:file "parser")
-                                     (:file "streams")
-                                     (:file "sockets")
-				     (:file "markup")
-                                     (:file "json")
-                                     (:file "units")
-                                     (:module :rfc
-                                              :components ((:file "2109")
-                                                           (:file "2396")
-                                                           (:file "2045")
-                                                           (:file "2388")
-							   (:file "2616"))
-                                              :serial t)
-				     (:module :database
-					      :components ((:file "serialization")
-							   (:file "database")))
-                                     ;; (:file "database")
-                                     ;; (:file "dns")
-                                     ;; (:file "apache")
-                                     ;; (:file "ucw")
-                                     ;; (:file "core")
-				     (:file "javascript")
-				     (:file "component"))))
+  :components
+  ((:module :t
+	    :serial t
+	    :components ((:file "packages")
+			 (:file "test-harness")
+			 (:file "method")
+			 (:file "class+")
+			 (:file "postfix")
+			 (:file "parser")
+			 (:file "streams")
+			 (:file "sockets")
+			 (:file "markup")
+			 (:file "json")
+			 (:file "units")
+			 (:module :rfc
+				  :components ((:file "2109")
+					       (:file "2396")
+					       (:file "2045")
+					       (:file "2388")
+					       (:file "2616"))
+				  :serial t)
+			 (:module :database
+				  :components ((:file "serialization")
+					       (:file "database")))
+			 ;; (:file "database")
+			 ;; (:file "dns")
+			 ;; (:file "apache")
+			 ;; (:file "ucw")
+			 ;; (:file "core")
+			 (:file "javascript")
+			 (:file "component"))))
   :depends-on (:core-server :rt))
 
 

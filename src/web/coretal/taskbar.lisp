@@ -47,7 +47,7 @@
    (toaster :host remote)
    (toaster-ctor :host remote :initform (<core:toaster-task))
    (menu :host remote :initform (<core:menu-task))
-   (taskbar-css :host remote :initform +taskbar-css+)
+   (taskbar-css :host remote :initform +taskbar.css+)
    (title :host remote :initform "[Core Server]")
    (hidden-p :host remote :initform nil)
    (coretal-icon :host remote)))

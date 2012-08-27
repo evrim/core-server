@@ -10,7 +10,7 @@
    (title :host remote :initform "Please set crud title")
    (deletable-p :host both :initform t)
    (editable-p :host both :initform t)
-   (crud-css :host remote :initform "style/crud.css")
+   (crud-css :host remote :initform +crud.css+)
    (slot-editors :host remote :initform nil)
    (default-slot-editor :host remote :initform (<core:required-value-input))
    (yes-no-dialog-ctor :host remote :initform (<core:yes-no-dialog))

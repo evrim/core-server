@@ -8,7 +8,7 @@
    (hilight-class :host remote :initform "hilight")
    (tab-title :host remote :initform "Tab Title")
    (nav-alignment :host remote :initform "right")
-   (tab-css :host remote :initform +tab-css+)
+   (tab-css :host remote :initform +tab.css+)
    (default-tab :host remote :initform nil)
    (_content :host remote)
    (_nav :host remote)

@@ -4,7 +4,7 @@
 ;; Sidebar
 ;; -------------------------------------------------------------------------
 (defcomponent <core:sidebar (<:div callable-component cached-component)
-  ((sidebar-css :host remote :initform +sidebar-css+)
+  ((sidebar-css :host remote :initform +sidebar.css+)
    (dirty-p :host remote :initform nil)))
 
 (defmethod/remote destroy ((self <core:sidebar))

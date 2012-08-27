@@ -273,16 +273,19 @@
 		(let ((lifted-slot (find-lifted-slot name)))
 		  (let ((reader1 reader)
 			(writer1 writer))
+		    (declare (ignore reader1 writer1))
 		    (assert (not (null lifted-slot))
 			    nil "Cant find slot ~A to lift" name)
 		    (with-slotdef (reader writer) lifted-slot
 		      `(progn
 			 ,(if reader
 			      `(defmethod/lift ,reader ((self ,class-name))
-				 ,reader1))
+				 ;; ,reader1
+				 ))
 			 ,(if writer
 			      `(defmethod/lift ,writer (value (self ,class-name))
-				 ,writer1))))))))
+				 ;; ,writer1
+				 ))))))))
 	    (filter (lambda (slot)
 		      (and (eq 'local (slot-definition-host slot))
 			   (slot-definition-lift slot)))

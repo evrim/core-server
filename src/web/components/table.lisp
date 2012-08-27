@@ -11,7 +11,7 @@
    (hilight-class :initform "hilighted" :host remote)
    (hover-class :initform "hover" :host remote)
    (selected-class :initform "selected" :host remote)
-   (table-css :host remote :initform "style/table.css")
+   (table-css :host remote :initform +table.css+)
    (selected :initform nil :host remote)
    (_sorted-slot :host remote)
    (_head :host remote)

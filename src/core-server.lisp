@@ -1187,32 +1187,46 @@
    #:application.debug
    #:application.server
 
-   ;; [ Web Variables ]
-   #:+dojo-path+
-   #:+fckeditor-path+
-   #:+jquery-uri+
-   #:+jquery-ui-css-uri+
-   #:+jquery-ui-uri+
-   #:+jquery-text-effects-uri+
-   #:+jquery-lightbox-uri+
-   #:+jquery-lightbox-css-uri+
+   ;; [ Web Variables ]   
+   #:+jquery.js+
+   #:+jquery-ui.css+
+   #:+jquery-ui.js+
+
+   #:+jquery-lightbox.js+
+   #:+jquery-lightbox.css+
    #:+jquery-lightbox-config+
-   #:+jquery-carousel-uri+
-   #:+jquery-carousel-css-uri+
+   
+   #:+jquery-carousel.js+
+   #:+jquery-carousel.css+
    #:+jquery-carousel-config+
-   #:+jquery-nested-sortable-uri+
-   #:+jquery-newsticker-uri+
-   #:+jquery-slider-uri+
-   #:+jquery-slider-css+
-   #:+jquery-tree-uri+
-   #:+jquery-cookie-uri+
+
+   #:+jquery-nested-sortable.js+
+   #:+jquery-newsticker.js+
+   #:+jquery-slider.js+
+   #:+jquery-slider.css+ 
+   #:+jquery-text-effects.js+
+   
+   #:+jquery-tree.js+
+   #:+jquery-cookie.js+
+
+   #:+ckeditor.js+
+   #:+ckeditor-source.js+
+   #:+ckeditor.css+
    #:+ckeditor-toolbar+
    #:+ckeditor-simple-toolbar+
    #:+ckeditor-config+
-   #:+ckeditor-uri+
-   #:+ckeditor-source-uri+
-   #:+ckeditor-css+
 
+   #:+core.css+
+   #:+tab.css+
+   #:+console.css+
+   #:+toaster.css+
+   #:+taskbar.css+
+   #:+sidebar.css+
+   #:+page-plugin.css+
+   #:+table.css+
+   #:+dialog.css+
+   #:+crud.css+
+   
    ;; [Coretal]
    ;; #:abstract-controller
    ;; #:simple-controller
@@ -1343,6 +1357,11 @@
   (:use :core-server)
   (:export #:simple #:simple-content #:simple-menu #:tab))
 
+(defpackage :<plugin
+  (:nicknames :tr.gen.core.server.plugin :core-server.plugin)
+  (:use :core-server)
+  (:export #:page #:page.get #:page/anonymous #:page/registered #:page/owner))
+
 (defpackage :<rss
   (:nicknames :tr.gen.core.server.rss :core-server.rss)
   (:use :core-server))
@@ -1373,7 +1392,8 @@
 	   #:fullscreen-dialog
 	   #:console #:toaster-task #:task #:menu-task #:taskbar
 	   #:language-pack #:sidebar
-	   #:portal-controller))
+	   #:portal-controller #:template #:template/anonymous #:template/owner
+	   #:page #:page/anonymous #:page/owner))
 
 (defpackage :<atom
   (:nicknames :tr.gen.core.server.atom)

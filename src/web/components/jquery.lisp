@@ -4,7 +4,7 @@
 ;; Supply JQuery
 ;; -------------------------------------------------------------------------
 (defcomponent supply-jquery ()
-  ((jquery-uri :host remote :initform +jquery-uri+)))
+  ((jquery-uri :host remote :initform +jquery.js+)))
 
 (defmethod/remote load-jquery ((self supply-jquery))
   (load-javascript (jquery-uri self) (lambda () (not (null j-query)))))
@@ -13,8 +13,8 @@
 ;; Supply Jquery UI
 ;; -------------------------------------------------------------------------
 (defcomponent supply-jquery-ui (supply-jquery)
-  ((jquery-ui-uri :host remote :initform +jquery-ui-uri+)
-   (jquery-ui-css-uri :host remote :initform +jquery-ui-css-uri+)))
+  ((jquery-ui-uri :host remote :initform +jquery-ui.js+)
+   (jquery-ui-css-uri :host remote :initform +jquery-ui.css+)))
 
 (defmethod/remote load-jquery-ui ((self supply-jquery-ui))
   (load-jquery self)
@@ -33,8 +33,8 @@
 	   :image-blank "/js/lightbox/images/lightbox-blank.gif"))
 
 (defcomponent supply-jquery-lightbox (supply-jquery)
-  ((lightbox-uri :host remote :Initform +jquery-lightbox-uri+)
-   (lightbox-css-uri :host remote :initform +jquery-lightbox-css-uri+)
+  ((lightbox-uri :host remote :Initform +jquery-lightbox.js+)
+   (lightbox-css-uri :host remote :initform +jquery-lightbox.css+)
    (lightbox-config :host remote :initform +jquery-lightbox-config+)))
 
 (defmethod/remote destroy ((self supply-jquery-lightbox))
@@ -52,8 +52,8 @@
 ;; -------------------------------------------------------------------------
 (defvar +jquery-carousel-config+ (jobject))
 (defcomponent supply-jquery-carousel (supply-jquery-ui)
-  ((carousel-uri :host remote :Initform +jquery-carousel-uri+)
-   (carousel-css-uri :host remote :initform +jquery-carousel-css-uri+)
+  ((carousel-uri :host remote :Initform +jquery-carousel.js+)
+   (carousel-css-uri :host remote :initform +jquery-carousel.css+)
    (carousel-config :host remote :initform +jquery-carousel-config+)))
 
 (defmethod/remote destroy ((self supply-jquery-carousel))
@@ -71,7 +71,7 @@
 ;; Supply Nested Sortable
 ;; -------------------------------------------------------------------------
 (defcomponent supply-jquery-nested-sortable (supply-jquery-ui)
-  ((nested-sortable-uri :host remote :initform +jquery-nested-sortable-uri+)))
+  ((nested-sortable-uri :host remote :initform +jquery-nested-sortable.js+)))
 
 (defmethod/remote load-jquery-nested-sortable ((self supply-jquery-nested-sortable))
   (load-jquery-ui self)
@@ -82,7 +82,7 @@
 ;; Supply Newsticker
 ;; -------------------------------------------------------------------------
 (defcomponent supply-jquery-newsticker (supply-jquery)
-  ((newsticker-uri :host remote :initform +jquery-newsticker-uri+)))
+  ((newsticker-uri :host remote :initform +jquery-newsticker.js+)))
 
 (defmethod/remote load-jquery-newsticker ((self supply-jquery-newsticker))
   (load-jquery self)
@@ -93,8 +93,8 @@
 ;; Supply Slider
 ;; -------------------------------------------------------------------------
 (defcomponent supply-jquery-slider (supply-jquery)
-  ((slider-uri :host remote :initform +jquery-slider-uri+)
-   (slider-css :host remote :initform +jquery-slider-css+)))
+  ((slider-uri :host remote :initform +jquery-slider.js+)
+   (slider-css :host remote :initform +jquery-slider.css+)))
 
 (defmethod/remote load-jquery-slider ((self supply-jquery-slider))
   (load-jquery self)
@@ -106,7 +106,7 @@
 ;; Supply Jquery Text Effects
 ;; -------------------------------------------------------------------------
 (defcomponent supply-jquery-text-effects (supply-jquery)
-  ((text-effects-uri :host remote :initform +jquery-text-effects-uri+)))
+  ((text-effects-uri :host remote :initform +jquery-text-effects.js+)))
 
 (defmethod/remote load-jquery-text-effects ((self supply-jquery-text-effects))
   (load-jquery self)
@@ -118,8 +118,8 @@
 ;; -------------------------------------------------------------------------
 ;; https://github.com/pioz/jquery-tree
 (defcomponent supply-jquery-tree (supply-jquery)
-  ((tree-uri :host remote :initform +jquery-tree-uri+)
-   (cookie-uri :host remote :initform +jquery-cookie-uri+)))
+  ((tree-uri :host remote :initform +jquery-tree.js+)
+   (cookie-uri :host remote :initform +jquery-cookie.js+)))
 
 (defmethod/remote load-jquery-tree ((self supply-jquery-tree))
   (load-jquery self)

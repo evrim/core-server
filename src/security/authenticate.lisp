@@ -29,3 +29,6 @@
 	 (admin (simple-user.add self :name "admin"
 				 :groups (list admins editors))))
     (list admin admins editors)))
+
+(defvar +system-group+ (make-simple-group :name "admin"))
+(defvar +system+ (make-simple-user :name "admin" :group +system-group+))

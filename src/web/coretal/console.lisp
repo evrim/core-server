@@ -6,7 +6,7 @@
 (defcomponent <core:console (<:div callable-component)
   ((showing-p :host remote :initform nil)
    (console-div :host remote :initform nil)
-   (console-css :host remote :initform +console-css+)
+   (console-css :host remote :initform +console.css+)
    (title :host remote :initform "Console")))
 
 (defmethod/remote get-title ((self <core:console))
@@ -65,7 +65,7 @@
 (defcomponent <core:toaster-task (<:div)
   ((max-messages :host remote :initform 10)
    (message-timeout :host remote :initform 2000)
-   (toaster-css :host remote :initform +toaster-css+)
+   (toaster-css :host remote :initform +toaster.css+)
    (taskbar :host remote)
    (_log-div :host remote)
    (_log-baloon :host remote)

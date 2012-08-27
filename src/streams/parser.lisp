@@ -298,10 +298,13 @@ environment for rules."
     (:return acc)))
 
 (defparser lines? (c (acc (make-accumulator)) lst)
-  (:zom (:or (:and #\Newline (:do (push acc lst)
+  (:oom (:or (:and #\Newline (:do (push acc lst)
 				  (setq acc (make-accumulator))))
 	     (:and (:type octet? c) (:collect c acc))))
-  (:return lst))
+  (:return (nreverse
+	    (if (> (length acc) 0)
+		(cons acc lst)
+		lst))))
 
 (defparser words? (c (acc (make-accumulator)) lst)
   (:lwsp?)

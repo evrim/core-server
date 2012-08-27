@@ -24,7 +24,9 @@
 ;; This file contains javascript library functions.
 ;;
 
-(defrender/js core-library! (&optional (loading-gif +loading-gif+))
+(defrender/js core-library! (&optional (loading-gif +loading-gif+)
+				       (theme-root +theme-root+)
+				       (current-theme +default-theme+))
   (defun atom (a)
     (cond
       ((null a) t)
@@ -754,8 +756,15 @@
 	       (- (slot-value *css-refcount-table* url) 1))))
       url))
 
-  (defvar *loading-table* (jobject))
+  (defvar +theme-root+ theme-root)
+  (defvar +current-theme+ current-theme)
+  (defun load-theme-css (name)
+    (load-css (+ +theme-root+ +current-theme+ "/" name)))
+
+  (defun remove-theme-css (name)
+    (remove-css (+ +theme-root+ +current-theme+ "/" name)))
   
+  (defvar *loading-table* (jobject))
   (defun/cc load-javascript (url loaded-p)
     (when (slot-value *loading-table* url)
       (make-web-thread
