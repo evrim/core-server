@@ -61,10 +61,8 @@
 
 (defpackage :tr.gen.core.server
   (:nicknames :core-server)
-  (:use :common-lisp ;; :cl-prevalence
-	:arnesi :cl-ppcre
-	:sb-bsd-sockets :tr.gen.core.install :bordeaux-threads :cffi
-	:salza2)
+  (:use :common-lisp :arnesi :cl-ppcre :sb-bsd-sockets :tr.gen.core.install
+	:bordeaux-threads :cffi :salza2)
   (:shadowing-import-from #:swank #:send #:receive #:accept-connection)
   (:shadowing-import-from #:arnesi #:name #:body #:self #:new)
   (:shadowing-import-from #:salza2 :callback)
@@ -1305,7 +1303,7 @@
   (:use :cl :core-server :cffi))
 
 ;; ----------------------------------------------------------------------------
-;; Serialization Codomain Package
+;; Database Codomain
 ;; ----------------------------------------------------------------------------
 (defpackage :<db
   (:nicknames :tr.gen.core.tags.db)
@@ -1316,34 +1314,6 @@
 	   #:transaction #:pathname #:dynamic-class))
 
 ;; -------------------------------------------------------------------------
-;; HTML Codomain
-;; -------------------------------------------------------------------------
-(defpackage :<
-  (:nicknames :tr.gen.core.server.html :<html :core-server.html)
-  (:use :core-server)
-  (:export #:a #:abbr #:acronym #:address #:area #:b #:base #:bdo #:big
-	   #:blockquote #:body #:br #:button #:caption #:cite #:code #:col
-	   #:colgroup #:dd #:del #:dfn #:div #:dl #:dt #:em #:fieldset #:form
-	   #:frame #:frameset #:h1 #:h2 #:h3 #:h4 #:h5 #:h6 #:head #:hr
-	   #:html #:i #:iframe #:img #:input #:ins #:kbd #:label #:legend
-	   #:li #:link #:map #:meta #:noframes #:noscript #:object #:ol
-	   #:optgroup #:option #:p #:param #:pre #:q #:samp #:script
-	   #:select #:small #:span #:strike #:strong #:style #:sub #:sup
-	   #:table #:tbody #:td #:textarea #:tfoot #:th #:thead
-	   #:title #:tr #:tt #:u #:ul #:var #:embed #:foo #:bar))
-
-;; -------------------------------------------------------------------------
-;; XML Schema CoDomain
-;; -------------------------------------------------------------------------
-(defpackage :<xs
-  (:nicknames :tr.gen.core.server.xml-schema :core-server.xml-schema)
-  (:export #:schema #:element #:complex-type #:sequence #:any
-	   #:any-attribute #:annotation #:documentation #:complex-content
-	   #:extension #:unique #:selector #:field #:choice #:attribute
-	   #:simple-type #:list #:union #:restriction #:enumeration
-	   #:simple-content #:import :attribute-group #:pattern))
-
-;; -------------------------------------------------------------------------
 ;; JSON Codomain
 ;; -------------------------------------------------------------------------
 (defpackage :<json
@@ -1352,20 +1322,9 @@
 	   #:object #:closure #:hash-table #:undefined #:symbol
 	   #:instance #:json))
 
-(defpackage :<widget
-  (:nicknames :tr.gen.core.server.widget :core-server.widget)
-  (:use :core-server)
-  (:export #:simple #:simple-content #:simple-menu #:tab))
-
-(defpackage :<plugin
-  (:nicknames :tr.gen.core.server.plugin :core-server.plugin)
-  (:use :core-server)
-  (:export #:page #:page.get #:page/anonymous #:page/registered #:page/owner))
-
-(defpackage :<rss
-  (:nicknames :tr.gen.core.server.rss :core-server.rss)
-  (:use :core-server))
-
+;; -------------------------------------------------------------------------
+;; Web Framework Codomain
+;; -------------------------------------------------------------------------
 (defpackage :<core
   (:nicknames :tr.gen.core.server.tags)
   (:use :cl)
@@ -1395,6 +1354,157 @@
 	   #:portal-controller #:template #:template/anonymous #:template/owner
 	   #:page #:page/anonymous #:page/owner))
 
+;; -------------------------------------------------------------------------
+;; Rest Codomain
+;; -------------------------------------------------------------------------
+(defpackage :<rest
+  (:nicknames :tr.gen.core.server.rest :core-server.rest)
+  (:export #:find #:list #:add #:update #:delete))
+
+;; -------------------------------------------------------------------------
+;; Coretal CoDomain
+;; -------------------------------------------------------------------------
+(defpackage :<coretal
+  (:nicknames :tr.gen.core.server.coretal :core-server.coretal)
+  (:export #:controller))
+
+;; -------------------------------------------------------------------------
+;; Plugin CoDomain
+;; -------------------------------------------------------------------------
+(defpackage :<plugin
+  (:nicknames :tr.gen.core.server.plugin :core-server.plugin)
+  (:use :core-server)
+  (:export #:page #:page.get #:page/anonymous #:page/registered #:page/owner))
+
+;; -------------------------------------------------------------------------
+;; Widget CoDomain
+;; -------------------------------------------------------------------------
+(defpackage :<widget
+  (:nicknames :tr.gen.core.server.widget :core-server.widget)
+  (:use :core-server)
+  (:export #:simple #:simple-content #:simple-menu #:tab))
+
+;; -------------------------------------------------------------------------
+;; HTML CoDomain
+;; -------------------------------------------------------------------------
+(defpackage :<
+  (:nicknames :tr.gen.core.server.html :<html :core-server.html)
+  (:use :core-server)
+  (:export #:a #:abbr #:acronym #:address #:area #:b #:base #:bdo #:big
+	   #:blockquote #:body #:br #:button #:caption #:cite #:code #:col
+	   #:colgroup #:dd #:del #:dfn #:div #:dl #:dt #:em #:fieldset #:form
+	   #:frame #:frameset #:h1 #:h2 #:h3 #:h4 #:h5 #:h6 #:head #:hr
+	   #:html #:i #:iframe #:img #:input #:ins #:kbd #:label #:legend
+	   #:li #:link #:map #:meta #:noframes #:noscript #:object #:ol
+	   #:optgroup #:option #:p #:param #:pre #:q #:samp #:script
+	   #:select #:small #:span #:strike #:strong #:style #:sub #:sup
+	   #:table #:tbody #:td #:textarea #:tfoot #:th #:thead
+	   #:title #:tr #:tt #:u #:ul #:var #:embed #:foo #:bar))
+
+;; -------------------------------------------------------------------------
+;; XML Schema CoDomain
+;; -------------------------------------------------------------------------
+(defpackage :<xs
+  (:nicknames :tr.gen.core.server.xml-schema :core-server.xml-schema)
+  (:export #:schema #:element #:complex-type #:sequence #:any
+	   #:any-attribute #:annotation #:documentation #:complex-content
+	   #:extension #:unique #:selector #:field #:choice #:attribute
+	   #:simple-type #:list #:union #:restriction #:enumeration
+	   #:simple-content #:import :attribute-group #:pattern))
+
+
+;; -------------------------------------------------------------------------
+;; OpenID CoDomain (Depreciated)
+;; -------------------------------------------------------------------------
+(defpackage :<openid
+  (:nicknames :tr.gen.core.server.openid)
+  (:use :cl)
+  (:export #:funkall #:associate #:request-authentication
+	   #:verify-authentication))
+
+;; -------------------------------------------------------------------------
+;; OAuth v1.0 CoDomain
+;; -------------------------------------------------------------------------
+(defpackage :<oauth1
+  (:nicknames :tr.gen.core.server.oauth1)
+  (:use :cl)
+  (:export #:funkall #:funkall.parameters #:funkall.signature-key
+	   #:funkall.sign #:funkall.build-signature #:funkall.header
+	   #:get-request-token
+	   #:request-token #:request-token.token #:request-token.token-secret
+	   #:request-token.callback-confirmed #:%make-request-token
+	   #:authorize-url #:access-token #:%make-access-token
+	   #:get-access-token #:secure-funkall))
+
+;; -------------------------------------------------------------------------
+;; OAuth v2.0 CoDomain
+;; -------------------------------------------------------------------------
+(defpackage :<oauth2
+  (:nicknames :tr.gen.core.server.oauth2)
+  (:use :cl)
+  (:export #:oauth-uri #:exception #:exception.code #:exception.type
+	   #:exception.message #:funkall #:access-token #:access-token.timestamp
+	   #:access-token.expires #:access-token.token
+	   #:access-token.id-token #:access-token.token-type
+	   #:%make-access-token
+	   #:get-access-token #:authorized-funkall))
+
+;; -------------------------------------------------------------------------
+;; Facebook CoDomain
+;; -------------------------------------------------------------------------
+(defpackage :<fb
+  (:nicknames :tr.gen.core.server.facebook)
+  (:use :cl)
+  (:export #:oauth-uri #:get-access-token #:authorized-funkall #:me
+	   #:friends #:home #:feed #:likes #:movies #:music #:books
+	   #:notes #:permissions #:photos #:albums #:videos #:events
+	   #:groups #:checkins #:videos-uploaded
+	   #:fetch #:authenticate))
+
+;; -------------------------------------------------------------------------
+;; Google CoDomain
+;; -------------------------------------------------------------------------
+(defpackage :<google
+  (:nicknames :tr.gen.core.server.google)
+  (:use :cl)
+  (:export ;; OAuth 2.0
+   #:oauth-uri #:get-access-token #:userinfo
+   ;; Open ID (Depreciated)
+   ;; #:associate #:request-authentication
+   ;; #:verify-authentication #:extract-authentication
+   ))
+
+;; -------------------------------------------------------------------------
+;; Twitter CoDomain
+;; -------------------------------------------------------------------------
+(defpackage :<twitter
+  (:nicknames :tr.gen.core.server.twitter)
+  (:use :cl)
+  (:export #:funkall #:authorize-url #:get-request-token #:get-access-token
+	   #:access-token #:%make-access-token #:get-user-lists
+	   #:secure-get-user #:access-token.user-id #:access-token.screen-name))
+
+;; -------------------------------------------------------------------------
+;; Yahoo CoDomain
+;; -------------------------------------------------------------------------
+(defpackage :<yahoo
+  (:nicknames :tr.gen.core.server.yahoo)
+  (:use :cl)
+  (:export #:funkall #:authorize-url #:get-request-token #:request-token
+	   #:%make-request-token #:get-access-token
+	   #:access-token #:%make-access-token #:get-user-lists
+	   #:secure-get-user #:access-token.user-id #:access-token.screen-name))
+
+;; -------------------------------------------------------------------------
+;; RSS CoDomain
+;; -------------------------------------------------------------------------
+(defpackage :<rss
+  (:nicknames :tr.gen.core.server.rss :core-server.rss)
+  (:use :core-server))
+
+;; -------------------------------------------------------------------------
+;; Atom CoDomain
+;; -------------------------------------------------------------------------
 (defpackage :<atom
   (:nicknames :tr.gen.core.server.atom)
   (:use :cl)
@@ -1405,6 +1515,9 @@
 	   #:rss #:channel #:description #:pub-date #:language
 	   #:cloud #:image #:url #:item #:guid))
 
+;; -------------------------------------------------------------------------
+;; Google GPhoto CoDomain
+;; -------------------------------------------------------------------------
 (defpackage :<gphoto
   (:nicknames :tr.gen.core.server.gphoto)
   (:use :cl)
@@ -1420,6 +1533,9 @@
 	   #:weight #:allow-prints #:allow-downloads #:version
 	   #:position #:client #:license #:image-version))
 
+;; -------------------------------------------------------------------------
+;; Media CoDomain
+;; -------------------------------------------------------------------------
 (defpackage :<media
   (:nicknames :tr.gen.core.server.media)
   (:use :cl)
@@ -1431,74 +1547,17 @@
 	   #:license #:sub-title #:peer-link #:location #:rights #:scenes
 	   #:scene))
 
+;; -------------------------------------------------------------------------
+;; OpenSearch CoDomain
+;; -------------------------------------------------------------------------
 (defpackage :<open-search
   (:nicknames :tr.gen.core.server.open-search)
   (:use :cl)
   (:export #:total-results :start-index :items-per-page))
 
-(defpackage :<openid
-  (:nicknames :tr.gen.core.server.openid)
-  (:use :cl)
-  (:export #:funkall #:associate #:request-authentication
-	   #:verify-authentication))
-
-(defpackage :<oauth1
-  (:nicknames :tr.gen.core.server.oauth1)
-  (:use :cl)
-  (:export #:funkall #:funkall.parameters #:funkall.signature-key
-	   #:funkall.sign #:funkall.build-signature #:funkall.header
-	   #:get-request-token
-	   #:request-token #:request-token.token #:request-token.token-secret
-	   #:request-token.callback-confirmed #:%make-request-token
-	   #:authorize-url #:access-token #:%make-access-token
-	   #:get-access-token #:secure-funkall))
-
-(defpackage :<oauth2
-  (:nicknames :tr.gen.core.server.oauth2)
-  (:use :cl)
-  (:export #:oauth-uri #:exception #:exception.code #:exception.type
-	   #:exception.message #:funkall #:access-token #:access-token.timestamp
-	   #:access-token.expires #:access-token.token
-	   #:access-token.id-token #:access-token.token-type
-	   #:%make-access-token
-	   #:get-access-token #:authorized-funkall))
-
-(defpackage :<fb
-  (:nicknames :tr.gen.core.server.facebook)
-  (:use :cl)
-  (:export #:oauth-uri #:get-access-token #:authorized-funkall #:me
-	   #:friends #:home #:feed #:likes #:movies #:music #:books
-	   #:notes #:permissions #:photos #:albums #:videos #:events
-	   #:groups #:checkins #:videos-uploaded
-	   #:fetch #:authenticate))
-
-(defpackage :<google
-  (:nicknames :tr.gen.core.server.google)
-  (:use :cl)
-  (:export
-   ;; OAuth 2.0
-   #:oauth-uri #:get-access-token #:userinfo
-
-   ;; Open ID (Depreciated)
-   ;; #:associate #:request-authentication
-   ;; #:verify-authentication #:extract-authentication
-   ))
-
-(defpackage :<twitter
-  (:nicknames :tr.gen.core.server.twitter)
-  (:use :cl)
-  (:export #:funkall #:authorize-url #:get-request-token #:get-access-token
-	   #:access-token #:%make-access-token #:get-user-lists
-	   #:secure-get-user #:access-token.user-id #:access-token.screen-name))
-
-(defpackage :<yahoo
-  (:nicknames :tr.gen.core.server.yahoo)
-  (:use :cl)
-  (:export #:funkall #:authorize-url #:get-request-token #:request-token
-	   #:%make-request-token #:get-access-token
-	   #:access-token #:%make-access-token #:get-user-lists
-	   #:secure-get-user #:access-token.user-id #:access-token.screen-name))
-
+;; -------------------------------------------------------------------------
+;; WordPress CoDomain
+;; -------------------------------------------------------------------------
 (defpackage :<wp
   (:nicknames :<wordpress :tr.gen.core.server.wordpress)
   (:use :cl)
@@ -1517,24 +1576,26 @@
 	   #:author #:author_id #:author_email #:author_display_name
 	   #:author_first_name #:author_last_name #:author_login))
 
+;; -------------------------------------------------------------------------
+;; Content CoDomain
+;; -------------------------------------------------------------------------
 (defpackage :<content
   (:nicknames :tr.gen.core.server.content)
   (:use :cl)
   (:export #:encoded))
 
+;; -------------------------------------------------------------------------
+;; DC CoDomain
+;; -------------------------------------------------------------------------
 (defpackage :<dc
   (:nicknames :tr.gen.core.server.dc)
   (:use :cl)
   (:export #:creator))
 
+;; -------------------------------------------------------------------------
+;; Excerpt CoDomain
+;; -------------------------------------------------------------------------
 (defpackage :<excerpt
   (:nicknames :tr.gen.core.server.excerpt)
   (:use :cl)
   (:export #:encoded))
-
-;; -------------------------------------------------------------------------
-;; Rest Codomain
-;; -------------------------------------------------------------------------
-(defpackage :<rest
-  (:nicknames :tr.gen.core.server.rest :core-server.rest)
-  (:export #:find #:list #:add #:update #:delete))
