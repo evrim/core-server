@@ -1361,6 +1361,7 @@
    (peer-type :accessor http-request.peer-type :initform 'http)
    (authenticated-p :accessor http-request.authenticated-p :initform nil)
    (authenticated-user :accessor http-request.authenticated-user :initform nil)
+   (relative-p :accessor http-request.relative-p :initform nil)
    (stream :accessor http-request.stream :initform nil :initarg :stream)))
 
 (defprint-object (self http-request :identity t)

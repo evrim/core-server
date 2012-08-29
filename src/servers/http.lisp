@@ -133,6 +133,7 @@ nil if stream data is invalid"
 			  (acond
 			   ((and app-name (not (equal app-name ""))
 				 (find-application server app-name))
+			    (setf (http-request.relative-p request) t)
 			    (pop (uri.paths (http-request.uri request)))
 			    it)
 			   (t root-application))

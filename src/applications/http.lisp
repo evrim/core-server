@@ -130,10 +130,17 @@ that has set before"
 ;; --------------------------------------------------------------------------
 (defmethod (setf context.session) :after ((session t) (self http-context))
   (prog1 session
-    (http-response.add-cookie (context.response self)
-			      (make-cookie +session-query-name+ ""
-					   :comment "Core Server Session Cookie"
-					   :max-age 0))))
+    (let* ((request (context.request self))
+	   (cookie (if (http-request.relative-p request)
+		       (make-cookie +session-query-name+ ""
+				    :comment "Core Server Session Cookie"
+				    :path (concat "/"
+						  (web-application.fqdn
+						   (context.application self))
+						  "/"))
+		       (make-cookie +session-query-name+ (session.id session)
+				    :comment "Core Server Session Cookie"))))
+      (http-response.add-cookie (context.response self) cookie))))
 
 ;; --------------------------------------------------------------------------
 ;; Methods that add "Session" Cookie to Response
@@ -141,9 +148,17 @@ that has set before"
 (defmethod (setf context.session) :after ((session http-session)
 					  (self http-context))
   (prog1 session
-    (http-response.add-cookie (context.response self)
-			      (make-cookie +session-query-name+ (session.id session)
-					   :comment "Core Server Session Cookie"))))
+    (let* ((request (context.request self))
+	   (cookie (if (http-request.relative-p request)
+		       (make-cookie +session-query-name+ (session.id session)
+				    :comment "Core Server Session Cookie"
+				    :path (concat "/"
+						  (web-application.fqdn
+						   (context.application self))
+						  "/"))
+		       (make-cookie +session-query-name+ (session.id session)
+				    :comment "Core Server Session Cookie"))))
+      (http-response.add-cookie (context.response self) cookie))))
 
 ;;+--------------------------------------------------------------------------
 ;;| HTTP Application Metaclass
