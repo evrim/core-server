@@ -3,7 +3,8 @@
 (defpackage :tr.gen.core.manager
   (:nicknames :manager)
   (:import-from #:core-server #:host #:port #:peers-max #:peer-class
-		#:protocol #:username #:password #:mail-port #:ssl
+		#:protocol #:username #:password #:mail-port
+		#+ssl #:ssl
 		#:server)
   (:use :common-lisp :core-server :arnesi)
   (:export #:manager-web-application-mixin #:web-application.oauth-uri
