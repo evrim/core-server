@@ -469,8 +469,8 @@ this 'layout' to '(layout.systems self)'"))
      ;;     (setf asdf:*source-to-target-mappings* '((#p"/opt/sbcl/lib/sbcl/" nil)))
      ;;     /usr/share/sbcl-source/-> debian
      
-     (setf (symbol-value (find-symbol "*CODING-SYSTEM*" (find-package 'swank)))
-	   ,(layout.swank-encoding self))
+     ;; (setf (symbol-value (find-symbol "*CODING-SYSTEM*" (find-package 'swank)))
+     ;; 	   ,(layout.swank-encoding self))
      (funcall (find-symbol "CREATE-SERVER" (find-package 'swank))
 	      :port ,(layout.swank-port self) :dont-close t)
 
