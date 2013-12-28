@@ -157,8 +157,8 @@
   (find-class 'class+-direct-slot-definition))
 
 (defmethod %class+-inherited-slots ((class class+))
-  '(host remote-type sb-pcl::readers sb-pcl::writers relation
-    index print label lift export leaf authorize))
+  '(host remote-type ;; sb-pcl::readers sb-pcl::writers
+	 relation index print label lift export leaf authorize))
 
 (defmethod compute-effective-slot-definition-initargs :around ((class class+) direct-slotds)
   (let ((slotd (car direct-slotds)))
@@ -202,29 +202,39 @@
 
 (defmethod slot-definition-to-plist ((slot class+-slot-definition))
   (let ((initarg (car (reverse (slot-definition-initargs slot)))))
-    (list :name (slot-definition-name slot)
-	  :initarg initarg
-	  :initform ;; (slot-definition-initform slot)
-	  (let ((initform (assoc initarg
-				 (class-default-initargs
-				  (class-name
-				   (sb-pcl::slot-definition-class slot))))))
-	    (if initform
-		(cadr initform)		      
-		(slot-definition-initform slot)))
-	  :supplied-p (slot-definition-supplied-p slot)
-	  :host (slot-definition-host slot)
-	  :remote-type (slot-definition-remote-type slot)
-	  :type (sb-pcl::slot-definition-type slot)
-	  :relation (slot-definition-relation slot)
-	  :writer (car (reverse (sb-pcl::slot-definition-writers slot)))
-	  :reader (car (reverse (sb-pcl::slot-definition-readers slot)))
-	  :index (slot-definition-index slot)
-	  :label (slot-definition-label slot)
-	  :lift (slot-definition-lift slot)
-	  :export (slot-definition-export slot)
-	  :leaf (slot-definition-leaf slot)
-	  :authorize (slot-definition-authorize slot))))
+    (flet ((find-direct-slot ()
+	     (let* ((class (slot-value slot 'sb-pcl::%class))
+		    (slots (flatten1 (mapcar #'(lambda (a)
+						 (if (typep a 'standard-class)
+						     (slot-value a 'sb-pcl::direct-slots)))
+					     (class-superclasses class)))))
+	       (find (slot-definition-name slot) slots :key #'slot-definition-name))))
+      (let ((direct-slot (find-direct-slot)))
+	(list :name (slot-definition-name slot)
+	      :initarg initarg
+	      :initform ;; (slot-definition-initform slot)
+	      (let ((initform (assoc initarg
+				     (class-default-initargs
+				      (class-name
+				       (sb-pcl::slot-definition-class slot))))))
+		(if initform
+		    (cadr initform)		      
+		    (slot-definition-initform slot)))
+	      :supplied-p (slot-definition-supplied-p slot)
+	      :host (slot-definition-host slot)
+	      :remote-type (slot-definition-remote-type slot)
+	      :type (sb-pcl::slot-definition-type slot)
+	      :relation (slot-definition-relation slot)
+	      :writer (if direct-slot
+			  (car (reverse (sb-mop::slot-definition-writers direct-slot))))
+	      :reader (if direct-slot
+			  (car (reverse (sb-mop::slot-definition-readers direct-slot))))
+	      :index (slot-definition-index slot)
+	      :label (slot-definition-label slot)
+	      :lift (slot-definition-lift slot)
+	      :export (slot-definition-export slot)
+	      :leaf (slot-definition-leaf slot)
+	      :authorize (slot-definition-authorize slot))))))
 
 (defmacro with-slotdef (arglist slot &body body)
   `(destructuring-bind (&key ,@arglist &allow-other-keys)
